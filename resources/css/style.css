@@ -1,0 +1,32 @@
+.navbar-nav .nav-link {
+    color: black;
+    transition: color 0.3s;
+}
+
+.navbar-nav .nav-link.active-link {
+    color: red !important;
+}
+
+.hero .carousel-container {
+    position: absolute;
+    inset: 90px 64px 64px 64px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 3;
+  }
+
+  .carousel-item {
+    background-color: transparent !important;
+}
+
+.carousel-item img {
+    filter: none !important;
+    opacity: 1 !important;
+}
+.carousel-control-prev-icon,
+.carousel-control-next-icon {
+    filter: none !important;
+}
+

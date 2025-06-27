@@ -1,0 +1,455 @@
+@include('template.header')
+        <!-- Property List Start -->
+
+        <div class="container-xxl py-5">
+            <div class="container">
+                <div class="bg-light rounded p-3">
+                    <div class="bg-white rounded p-4" style="border: 1px dashed rgba(0, 185, 142, .3)">
+                        <div class="row g-5 align-items-center">
+                            <div class="col-lg-6 wow fadeIn">
+                                <div id="propertyCarousel" class="carousel slide" data-bs-ride="carousel">
+                                    <div class="carousel-inner">
+                                        @foreach(explode(',', $property->gambar) as $index => $image)
+                                            <div class="carousel-item {{ $index == 0 ? 'active' : '' }}">
+                                                <img class="img-fluid rounded w-100" src="{{ $image }}" alt="Property Image" loading="lazy"
+                                                     style="filter: brightness(1) !important; opacity: 1 !important;">
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                    <button class="carousel-control-prev" type="button" data-bs-target="#propertyCarousel" data-bs-slide="prev">
+                                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                        <span class="visually-hidden">Previous</span>
+                                    </button>
+                                    <button class="carousel-control-next" type="button" data-bs-target="#propertyCarousel" data-bs-slide="next">
+                                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                        <span class="visually-hidden">Next</span>
+                                    </button>
+                                </div>
+
+                            </div>
+                            <div class="col-lg-6 wow fadeIn" data-wow-delay="0.5s">
+                                <div class="mb-4">
+                                    <h1 class="mb-3">{{ $property->lokasi }}</h1>
+                                    <p>{{ $property->deskripsi }}</p>
+                                </div>
+                                <div class="row mb-5">
+                                    <div class="col-md-6 col-lg-4 text-center border-bottom border-top py-3">
+                                        <span class="d-inline-block text-black mb-0 caption-text">Kamar Tidur</span>
+                                        <strong class="d-block">{{ $property->kamar_tidur }}</strong>
+                                    </div>
+                                    <div class="col-md-6 col-lg-4 text-center border-bottom border-top py-3">
+                                        <span class="d-inline-block text-black mb-0 caption-text">Kamar Mandi</span>
+                                        <strong class="d-block">{{ $property->kamar_mandi }}</strong>
+                                    </div>
+                                    <div class="col-md-6 col-lg-4 text-center border-bottom border-top py-3">
+                                        <span class="d-inline-block text-black mb-0 caption-text">
+                                            {{ $property->tipe == 'apartemen' ? 'Lantai Unit' : 'Jumlah Lantai' }}
+                                        </span>
+                                        <strong class="d-block">{{ $property->lantai }}</strong>
+                                    </div>
+                                </div>
+
+                                <a href="{{ $property->agent && $property->agent->nomor_telepon ?
+                                    'https://wa.me/62' . ltrim($property->agent->nomor_telepon, '0') : '#' }}"
+                                    class="btn btn-primary py-3 px-4 me-2"
+                                    {{ $property->agent && $property->agent->nomor_telepon ? '' : 'onclick="return false;"' }}>
+                                    <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
+                                </a>
+
+                                <!-- Button Ikuti Lelang -->
+                                @if (Session::has('id_account') || Cookie::has('id_account'))
+                                    <a href="{{ route('property.interest.show', $property->id_listing) }}" class="btn btn-dark py-3 px-4">
+                                        <i class="fa fa-calendar-alt me-2"></i>Ikuti Lelang Ini
+                                    </a>
+                                @else
+                                    <a href="{{ url('login') }}" class="btn btn-dark py-3 px-4">
+                                        <i class="fa fa-lock me-2"></i>Login untuk Ikut Lelang
+                                    </a>
+                                @endif
+
+                                <!-- Button Edit Properti -->
+                                @if (Session::has('id_account'))
+                                    @php
+                                        $loggedInId = Session::get('id_account');
+                                    @endphp
+
+                                    @if ($property->id_agent == $loggedInId) <!-- Cek apakah id_agent sama dengan id_account -->
+                                        <a href="{{ route('editproperty', $property->id_listing) }}" class="btn btn-warning py-3 px-4">
+                                            <i class="fa fa-edit me-2"></i>Edit Properti
+                                        </a>
+                                    @endif
+                                @endif
+
+                            </div>
+                        </div>
+                        <div class="single-property section">
+                            <div class="container">
+                                <div class="row">
+                                    <div class="col-lg-8">
+                                        <div class="main-image">
+
+                                        </div>
+                                        <div class="main-content">
+                                            <span class="category">{{ $property->tipe }}</span>
+
+                                        </div>
+                                    </div>
+
+
+                                    <section id="features" class="features section">
+
+                                        <!-- Section Title -->
+                                        <div class="container-xxl py-2" data-aos="fade-up">
+
+                                        </div><!-- End Section Title -->
+
+                                        <div class="container" data-aos="fade-up" data-aos-delay="100">
+
+                                          <div class="row">
+                                            <div class="col-lg-3">
+                                              <ul class="nav nav-tabs flex-column">
+                                                <li class="nav-item mb-2">
+                                                    <a class="nav-link active show" data-bs-toggle="tab" href="#features-tab-1"><i class="fa fa-tag me-2"></i>Harga Properti</a>
+                                                </li>
+                                                <li class="nav-item mb-2">
+                                                    <a class="nav-link" data-bs-toggle="tab" href="#features-tab-2"><i class="fa fa-list me-2"></i>Spesifikasi</a>
+                                                </li>
+                                                <li class="nav-item mb-2">
+                                                    <a class="nav-link" data-bs-toggle="tab" href="#features-tab-3"><i class="fa fa-map-marked-alt me-2"></i>Google Maps</a>
+                                                </li>
+                                                <li class="nav-item">
+                                                    <a class="nav-link" data-bs-toggle="tab" href="#features-tab-4">
+                                                        <i class="fa fa-chart-line me-2"></i>Analisa market
+                                                      </a>
+                                                </li>
+                                                <li class="nav-item">
+                                                  <a class="nav-link" data-bs-toggle="tab" href="#features-tab-5">Iusto ut expedita aut</a>
+                                                </li>
+                                              </ul>
+                                            </div>
+                                            <div class="col-lg-9 mt-4 mt-lg-0">
+                                              <div class="tab-content">
+                                                <div class="tab-pane active show" id="features-tab-1">
+                                                    <div class="card shadow-sm border-0 p-4 mb-4">
+                                                        <h4 class="text-primary">Harga Properti</h4>
+                                                        <div class="table-responsive">
+                                                            <table class="table table-bordered align-middle mt-3">
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <th scope="row" class="bg-light">Harga Properti</th>
+                                                                        <td><strong class="text-dark">Rp {{ number_format($property->harga, 0, ',', '.') }}</strong></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <th scope="row" class="bg-light">Biaya Dokumen</th>
+                                                                        <td>Rp {{ number_format($property->harga * 0.085, 0, ',', '.') }} (8,5% dari harga)</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <th scope="row" class="bg-light">Biaya Pengosongan</th>
+                                                                        <td>
+                                                                            @php
+                                                                                $biayaPengosongan = match(true) {
+                                                                                    $property->harga < 500000000 => 100000000,
+                                                                                    $property->harga <= 1500000000 => 125000000,
+                                                                                    $property->harga <= 2500000000 => 175000000,
+                                                                                    $property->harga <= 10000000000 => 225000000,
+                                                                                    $property->harga <= 100000000000 => 375000000,
+                                                                                    $property->harga <= 250000000000 => 525000000,
+                                                                                    default => 1025000000
+                                                                                };
+                                                                            @endphp
+                                                                            Rp {{ number_format($biayaPengosongan, 0, ',', '.') }}
+                                                                        </td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                        <div class="alert alert-warning mt-3">
+                                                            <strong>Catatan:</strong> Harga belum termasuk PPh, biaya notaris, dan biaya lainnya yang mungkin timbul selama proses jual beli.
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="tab-pane" id="features-tab-2">
+                                                    <div class="card shadow-sm border-0 p-4 mb-4">
+                                                        <h4 class="text-primary">Spesifikasi Properti</h4>
+                                                        <p></p>
+                                                        <div class="row">
+                                                            <div class="col-md-6">
+                                                                <p><i class="fa fa-vector-square text-primary me-2"></i> Luas Tanah: <strong>{{ $property->luas_tanah }} m²</strong></p>
+                                                                <p><i class="fa fa-building text-primary me-2"></i> Luas Bangunan: <strong>{{ $property->luas_bangunan }} m²</strong></p>
+                                                                <p><i class="fa fa-bed text-primary me-2"></i> Kamar Tidur: <strong>{{ $property->kamar_tidur }}</strong></p>
+                                                                <p><i class="fa fa-bath text-primary me-2"></i> Kamar Mandi: <strong>{{ $property->kamar_mandi }}</strong></p>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <p><i class="fa fa-layer-group text-primary me-2"></i> Jumlah Lantai: <strong>{{ $property->lantai }}</strong></p>
+                                                                <p><i class="fa fa-compass text-primary me-2"></i> Orientasi: <strong>{{ $property->orientation }}</strong></p>
+                                                                <p><i class="fa fa-file-alt text-primary me-2"></i> Sertifikat: <strong>{{ $property->sertifikat }}</strong></p>
+                                                                <p><i class="fa fa-map-marker-alt text-primary me-2"></i> Lokasi: <strong>{{ $property->kelurahan }}, {{ $property->kota }}</strong></p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="tab-pane" id="features-tab-3">
+                                                    @php
+                                                        $encodedAlamat = urlencode($property->lokasi); // Pastikan $property->alamat sudah tersedia
+                                                        $apiKey = 'AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8'; // Ganti dengan API key kamu sendiri jika diperlukan
+                                                        $gmapSrc = "https://www.google.com/maps/embed/v1/place?q={$encodedAlamat}&key={$apiKey}";
+                                                    @endphp
+
+                                                    <<div class="row g-4 align-items-stretch">
+                                                        <!-- Map -->
+                                                        <div class="col-md-8">
+                                                            <div class="rounded shadow-sm overflow-hidden" style="height: 410px;">
+                                                                <iframe
+                                                                    src="{{ $gmapSrc }}"
+                                                                    style="width: 100%; height: 100%; border: 0;"
+                                                                    allowfullscreen
+                                                                    loading="lazy"
+                                                                    referrerpolicy="no-referrer-when-downgrade">
+                                                                </iframe>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Location Info & Nearby -->
+                                                        <div class="col-md-4">
+                                                            <div class="card border-0 shadow-sm h-100">
+                                                                <div class="card-body">
+                                                                    <h5 class="card-title text-primary mb-3"><i class="fa fa-map-marker-alt me-2"></i>Detail Lokasi</h5>
+                                                                    <p class="mb-2"><strong>Alamat:</strong><br>{{ $property->lokasi }}</p>
+                                                                    <p class="mb-2"><strong>Kota:</strong> {{ $property->kota }}</p>
+                                                                    <p class="mb-3"><strong>Kelurahan:</strong> {{ $property->kelurahan }}</p>
+                                                                    <a href="https://maps.google.com/?q={{ urlencode($property->lokasi) }}" target="_blank" class="btn btn-outline-primary btn-sm w-100 mb-3">
+                                                                        <i class="fa fa-location-arrow me-1"></i> Buka di Google Maps
+                                                                    </a>
+
+                                                                    <hr>
+
+                                                                    <h6 class="text-muted mb-3">Fasilitas Sekitar</h6>
+                                                                    <div class="row text-center small">
+                                                                        <div class="col-6 mb-3">
+                                                                            <i class="fa fa-utensils fa-lg text-success mb-1"></i><br>Restoran
+                                                                        </div>
+                                                                        <div class="col-6 mb-3">
+                                                                            <i class="fa fa-bed fa-lg text-info mb-1"></i><br>Hotel
+                                                                        </div>
+                                                                        <div class="col-6">
+                                                                            <i class="fa fa-hospital fa-lg text-danger mb-1"></i><br>Rumah Sakit
+                                                                        </div>
+                                                                        <div class="col-6">
+                                                                            <i class="fa fa-bus fa-lg text-warning mb-1"></i><br>Transportasi
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="tab-pane" id="features-tab-4">
+                                                    <div class="row">
+                                                      <!-- Keunggulan Properti (Kiri) -->
+                                                      <div class="col-lg-8 details order-2 order-lg-1">
+                                                        <h3 class="text-primary mb-4">Mengapa Properti Ini Pilihan Terbaik untuk Anda?</h3>
+                                                        <p class="mb-3">Kami tidak hanya menjual rumah, kami menawarkan <strong>gaya hidup dan kenyamanan</strong> jangka panjang. Berikut adalah alasan mengapa properti ini sangat menarik dan bernilai tinggi:</p>
+
+                                                        <ul class="list-group list-group-flush mb-4">
+                                                          <li class="list-group-item d-flex align-items-center">
+                                                            <i class="fa fa-map-marker-alt text-success me-3"></i>
+                                                            <span><strong>Lokasi Strategis:</strong> Terletak di {{ $property->kelurahan }}, {{ $property->kota }} — kawasan yang berkembang pesat dan dekat pusat kota.</span>
+                                                          </li>
+                                                          <li class="list-group-item d-flex align-items-center">
+                                                            <i class="fa fa-shield-alt text-success me-3"></i>
+                                                            <span><strong>Legalitas Terjamin:</strong> Sertifikat resmi jenis <strong>{{ $property->sertifikat }}</strong> menjamin keamanan transaksi Anda.</span>
+                                                          </li>
+                                                          <li class="list-group-item d-flex align-items-center">
+                                                            <i class="fa fa-home text-success me-3"></i>
+                                                            <span><strong>Bangunan Berkualitas:</strong> Dengan luas bangunan {{ $property->luas_bangunan }} m² dan {{ $property->lantai }} lantai, cocok untuk keluarga besar atau investasi kos.</span>
+                                                          </li>
+                                                          <li class="list-group-item d-flex align-items-center">
+                                                            <i class="fa fa-tree text-success me-3"></i>
+                                                            <span><strong>Lingkungan Nyaman:</strong> Dikelilingi area hijau, aman, dan minim polusi — cocok untuk hunian sehat dan tenang.</span>
+                                                          </li>
+                                                          <li class="list-group-item d-flex align-items-center">
+                                                            <i class="fa fa-money-bill-wave text-success me-3"></i>
+                                                            <span><strong>Harga Kompetitif:</strong> Hanya <strong>Rp {{ number_format($property->harga, 0, ',', '.') }}</strong>, setara atau lebih murah dari properti sekelas di area yang sama.</span>
+                                                          </li>
+                                                        </ul>
+                                                      </div>
+
+                                                      <!-- Analisa Harga dan Diskon Properti (Kanan) -->
+                                                        <div class="col-lg-4 order-1 order-lg-2">
+                                                            <div class="row">
+                                                            <!-- Rentang Harga Pasaran -->
+                                                            <div class="col-md-12 mb-4">
+                                                                <div class="alert alert-info d-flex align-items-center">
+                                                                <i class="fa fa-lightbulb me-3"></i>
+                                                                <div>
+                                                                    <strong>Rentang Harga Pasaran di {{ $property->kelurahan }}:</strong>
+                                                                    @if ($minPrice == 0 || $maxPrice == 0)
+                                                                    <br><strong>Tidak ada properti sebanding di area ini untuk perbandingan harga.</strong>
+                                                                    @else
+                                                                    <br>Rp {{ number_format($minPrice, 0, ',', '.') }} - Rp {{ number_format($maxPrice, 0, ',', '.') }}
+                                                                    @endif
+                                                                </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <!-- Harga Tengah (Median) -->
+                                                            <div class="col-md-12 mb-4">
+                                                                <div class="alert alert-info d-flex align-items-center">
+                                                                <i class="fa fa-chart-line me-3"></i>
+                                                                <div>
+                                                                    <strong>Harga Tengah (Median):</strong>
+                                                                    @if ($median == 0)
+                                                                    <br><strong>Tidak ada properti sebanding di area ini untuk perbandingan harga.</strong>
+                                                                    @else
+                                                                    <br>Rp {{ number_format($median, 0, ',', '.') }}
+                                                                    @endif
+                                                                </div>
+                                                                </div>
+                                                            </div>
+
+                                                          <!-- Diskon Properti -->
+                                                          <div class="col-md-12 mb-4">
+                                                            <div class="alert alert-warning d-flex align-items-center">
+                                                              <i class="fa fa-percent me-3"></i>
+                                                              <div>
+                                                                <strong>Diskon Properti:</strong>
+                                                                @if (is_string($discountPercentage))
+                                                                  <p>{{ $discountPercentage }}</p> <!-- Menampilkan pesan jika hanya ada satu properti -->
+                                                                @else
+                                                                  <p>Harga rata-rata properti di wilayah ini adalah Rp {{ number_format($avgPrice, 0, ',', '.') }}, sementara properti ini dijual dengan harga <strong>Rp {{ number_format($property->harga, 0, ',', '.') }}</strong>.</p>
+                                                                  <p>Properti ini telah terdiskon sebesar <strong>{{ number_format($discountPercentage, 0, ',', '.') }}%</strong> dari harga rata-rata.</p>
+                                                                @endif
+                                                              </div>
+                                                            </div>
+                                                          </div>
+
+
+                                                        </div>
+                                                      </div>
+                                                    </div>
+                                                  </div>
+
+
+
+                                                <div class="tab-pane" id="features-tab-5">
+                                                  <div class="row">
+                                                    <div class="col-lg-8 details order-2 order-lg-1">
+                                                      <h3>Est eveniet ipsam sindera pad rone matrelat sando reda</h3>
+                                                      <p class="fst-italic">Omnis blanditiis saepe eos autem qui sunt debitis porro quia.</p>
+                                                      <p>Exercitationem nostrum omnis. Ut reiciendis repudiandae minus. Omnis recusandae ut non quam ut quod eius qui. Ipsum quia odit vero atque qui quibusdam amet. Occaecati sed est sint aut vitae molestiae voluptate vel</p>
+                                                    </div>
+                                                    <div class="col-lg-4 text-center order-1 order-lg-2">
+                                                      <img src="assets/img/tabs/tab-5.png" alt="" class="img-fluid">
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                        </div>
+
+                                      </section><!-- /Features Section -->
+
+                                    {{-- <div class="col-lg-4">
+                                        <div class="info-table">
+                                            <ul>
+                                                <li>
+                                                    <img src="{{ asset('img/info-icon-01.png') }}" alt="" style="max-width: 52px;">
+                                                    <h4>{{ $property->luas_tanah }} m2<br><span>Luas Tanah</span></h4>
+                                                </li>
+                                                <li>
+                                                    <img src="{{ asset('img/info-icon-01.png') }}" alt="" style="max-width: 52px;">
+                                                    <h4>{{ $property->luas_bangunan }} m2<br><span>Luas Bangunan</span></h4>
+                                                </li>
+                                                <li>
+                                                    <img src="{{ asset('img/info-icon-02.png') }}" alt="" style="max-width: 52px;">
+                                                    <h4>{{ $property->sertifikat }}<br><span>Jenis Setifikat</span></h4>
+                                                </li>
+                                                <li>
+                                                    <img src="{{ asset('img/info-icon-03.png') }}" alt="" style="max-width: 52px;">
+                                                    <h4>{{ $property->payment }}<br><span>Pembayaran</span></h4>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div> --}}
+
+
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <hr class="my-4 border-top border-2 border-dashed border-secondary">
+
+            {{-- Property Serupa --}}
+            <style>
+                .property-item img {
+                    height: 200px;
+                    object-fit: cover;
+                }
+
+                .overflow-auto::-webkit-scrollbar {
+                    height: 6px;
+                }
+
+                .overflow-auto::-webkit-scrollbar-thumb {
+                    background: #ddd;
+                    border-radius: 4px;
+                }
+
+                .overflow-auto {
+                    scrollbar-color: #ccc transparent;
+                    scrollbar-width: thin;
+                }
+            </style>
+{{-- Sliding Properti Serupa --}}
+<h4 class="mb-3">Properti Serupa di {{ $property->kota }}</h4>
+<div class="d-flex gap-3 overflow-auto pb-2" style="scroll-snap-type: x mandatory;">
+    @foreach ($similarProperties as $property)
+        <div class="property-item flex-shrink-0 rounded overflow-hidden wow fadeInUp" style="width: 320px; scroll-snap-align: start;" data-wow-delay="0.1s">
+            <div class="position-relative overflow-hidden">
+                <a href="{{ route('property-detail', $property->id_listing) }}">
+                    <img class="img-fluid rounded w-100" src="{{ explode(',', $property->gambar)[0] }}" alt="Property Image" loading="lazy">
+                </a>
+                <div class="bg-primary rounded text-white position-absolute start-0 top-0 m-3 py-1 px-3">{{ $property->tipe }}</div>
+                <div class="bg-white rounded-top text-primary position-absolute start-0 bottom-0 mx-3 pt-1 px-3">{{ $property->tipe }}</div>
+            </div>
+            <div class="p-4 pb-0">
+                <h5 class="text-primary mb-3">{{ 'Rp ' . number_format($property->harga, 0, ',', '.') }}</h5>
+                <a class="d-block h5 mb-2" href="{{ route('property-detail', $property->id_listing) }}">
+                    {{ \Illuminate\Support\Str::limit($property->deskripsi, 50) }}
+                </a>
+
+                <p><i class="fa fa-map-marker-alt text-primary me-2"></i>{{ $property->lokasi }}</p>
+            </div>
+            <div class="d-flex border-top">
+                <small class="flex-fill text-center border-end py-2">
+                    <i class="fa fa-ruler-combined text-primary me-2"></i>{{ $property->luas_bangunan }} Sqft
+                </small>
+                <small class="flex-fill text-center border-end py-2">
+                    <i class="fa fa-bed text-primary me-2"></i>{{ $property->kamar_tidur }} Bed
+                </small>
+                <small class="flex-fill text-center py-2">
+                    <i class="fa fa-bath text-primary me-2"></i>{{ $property->kamar_mandi }} Bath
+                </small>
+            </div>
+        </div>
+    @endforeach
+</div>
+
+        </div>
+
+
+
+
+
+        <!-- Property List End -->
+
+
+
+
+@include('template.footer')
