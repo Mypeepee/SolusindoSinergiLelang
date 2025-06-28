@@ -127,16 +127,17 @@ class AgentAdminController extends Controller
         }
 
         $earnings = DB::table('transaction')
-            ->select(
-                DB::raw('YEAR(tanggal_transaksi) as year'),
-                DB::raw('MONTH(tanggal_transaksi) as month'),
-                DB::raw('SUM(selisih) as total')
-            )
-            ->where('id_agent', $idAccount)
-            ->groupBy(DB::raw('YEAR(tanggal_transaksi)'), DB::raw('MONTH(tanggal_transaksi)'))
-            ->orderBy('year')
-            ->orderBy('month')
-            ->get();
+        ->select(
+            DB::raw('EXTRACT(YEAR FROM tanggal_transaksi) AS year'),
+            DB::raw('EXTRACT(MONTH FROM tanggal_transaksi) AS month'),
+            DB::raw('SUM(selisih) AS total')
+        )
+        ->where('id_agent', $idAccount)
+        ->groupByRaw('EXTRACT(YEAR FROM tanggal_transaksi), EXTRACT(MONTH FROM tanggal_transaksi)')
+        ->orderByRaw('EXTRACT(YEAR FROM tanggal_transaksi)')
+        ->orderByRaw('EXTRACT(MONTH FROM tanggal_transaksi)')
+        ->get();
+
 
         $salesData = [];
 
