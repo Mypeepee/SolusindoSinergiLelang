@@ -86,7 +86,7 @@ class AgentAdminController extends Controller
         $clientsPengosongan = collect();
         if ($role === 'Register') {
             $clientsClosing = DB::table('property_interests')
-                ->join('account', 'property_interests.id_account', '=', 'account.id_account')
+                ->join('account', 'property_interests.id_klien', '=', 'account.id_account')
                 ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
                 ->whereIn('property_interests.status', [
                     'closing',
@@ -102,10 +102,9 @@ class AgentAdminController extends Controller
                     'property.lokasi',
                     'property.harga',
                     'property_interests.status',
-                    'property_interests.updated_at',
-                    'property_interests.is_hidden'
+                    'property_interests.tanggal_diupdate',
                 )
-                ->orderBy('property_interests.updated_at', 'asc') // urutkan berdasarkan yang paling lama
+                ->orderBy('property_interests.tanggal_diupdate', 'asc') // urutkan berdasarkan yang paling lama
                 ->get();
         }
         if ($role === 'Pengosongan') {
