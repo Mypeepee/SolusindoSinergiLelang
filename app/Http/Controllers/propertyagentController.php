@@ -18,6 +18,7 @@ class propertyagentController extends Controller
         // Kirim data agen ke view
         return view('property-agent', compact('agents'));
     }
+    
     public function showagentindex()
     {
         // Ambil semua data agen dari database

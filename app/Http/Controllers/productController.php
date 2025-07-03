@@ -21,43 +21,43 @@ use App\Helpers\GoogleDriveUploader;
 class productController extends Controller
 {
     public function showRandom()
-{
-    // Ambil 6 properti secara acak dengan status available
-    $hotListings = Property::where('status', 'Tersedia')->inRandomOrder()->take(6)->get();
+    {
+        // Ambil 6 properti secara acak dengan status available
+        $hotListings = Property::where('status', 'Tersedia')->inRandomOrder()->take(6)->get();
 
-    $properties = Property::where('status', 'Tersedia')
-                          ->select('tipe', DB::raw('count(*) as total'))
-                          ->groupBy('tipe')
-                          ->get();
+        $properties = Property::where('status', 'Tersedia')
+                            ->select('tipe', DB::raw('count(*) as total'))
+                            ->groupBy('tipe')
+                            ->get();
 
-                          $testimonials = DB::table('transaction')
-                          ->join('account', 'transaction.id_klien', '=', 'account.id_account')
-                          ->select('account.nama', 'transaction.rating', 'transaction.comment')
-                          ->whereNotNull('transaction.rating')
-                          ->orderByDesc('transaction.tanggal_transaksi')
-                          ->limit(10)
-                          ->get();
+                            $testimonials = DB::table('transaction')
+                            ->join('account', 'transaction.id_klien', '=', 'account.id_account')
+                            ->select('account.nama', 'transaction.rating', 'transaction.comment')
+                            ->whereNotNull('transaction.rating')
+                            ->orderByDesc('transaction.tanggal_transaksi')
+                            ->limit(10)
+                            ->get();
 
-                      return view('index', compact('hotListings', 'properties', 'testimonials'));
-}
-
-public function showPropertyTypeIndex()
-{
-    // Ambil jumlah properti per tipe dengan status 'Tersedia'
-    $propertyCountsRaw = DB::table('property')
-        ->select('tipe', DB::raw('count(*) as total'))
-        ->whereRaw('LOWER(status) = ?', [strtolower('Tersedia')])
-        ->groupBy('tipe')
-        ->get();
-
-    $counts = [];
-    foreach ($propertyCountsRaw as $row) {
-        $counts[strtolower(trim($row->tipe))] = $row->total;
+                        return view('index', compact('hotListings', 'properties', 'testimonials'));
     }
 
-    // Kirim kedua variabel ke view
-    return view('index', compact('propertyTypes', 'counts'));
-}
+    public function showPropertyTypeIndex()
+    {
+        // Ambil jumlah properti per tipe dengan status 'Tersedia'
+        $propertyCountsRaw = DB::table('property')
+            ->select('tipe', DB::raw('count(*) as total'))
+            ->whereRaw('LOWER(status) = ?', [strtolower('Tersedia')])
+            ->groupBy('tipe')
+            ->get();
+
+        $counts = [];
+        foreach ($propertyCountsRaw as $row) {
+            $counts[strtolower(trim($row->tipe))] = $row->total;
+        }
+
+        // Kirim kedua variabel ke view
+        return view('index', compact('propertyTypes', 'counts'));
+    }
 
     public function propertyList(Request $request)
     {
@@ -222,115 +222,114 @@ public function showPropertyTypeIndex()
 //     return back()->with('success', 'Property added successfully!');
 // }
 
-//pake laravel storage
-public function store(Request $request)
-{
+    //pake laravel storage
+    public function store(Request $request)
+    {
 
-    $request->merge([
-        'harga' => str_replace('.', '', $request->harga)
-    ]);
+        $request->merge([
+            'harga' => str_replace('.', '', $request->harga)
+        ]);
 
-    $request->validate([
-        'judul' => 'required|string|max:100',
-        'tipe' => 'required|string|max:15',
-        'deskripsi' => 'required|string|max:2200',
-        'kamar_tidur' => 'required|integer|min:0',
-        'kamar_mandi' => 'required|integer|min:0',
-        'harga' => 'required|numeric|min:0',
-        'lokasi' => 'required|string|max:100',
-        'provinsi' => 'required|string|max:50',
-        'kota' => 'required|string|max:50',
-        'kelurahan' => 'required|string|max:50',
-        'sertifikat' => 'required|string|max:50',
-        'lantai' => 'required|integer|min:0',
-        'orientation' => 'required|string|max:15',
-        'gambar' => 'required|array|min:1',
-        'gambar.*' => 'image|mimes:jpeg,png,jpg|max:8192',
-        'luas_tanah' => 'required|integer|min:0',
-        'luas_bangunan' => 'required|integer|min:0',
-        'payment' => 'nullable|array',
-        'cover_image_index' => 'nullable|string',
-    ]);
+        $request->validate([
+            'judul' => 'required|string|max:100',
+            'tipe' => 'required|string|max:15',
+            'deskripsi' => 'required|string|max:2200',
+            'kamar_tidur' => 'required|integer|min:0',
+            'kamar_mandi' => 'required|integer|min:0',
+            'harga' => 'required|numeric|min:0',
+            'lokasi' => 'required|string|max:100',
+            'provinsi' => 'required|string|max:50',
+            'kota' => 'required|string|max:50',
+            'kelurahan' => 'required|string|max:50',
+            'sertifikat' => 'required|string|max:50',
+            'lantai' => 'required|integer|min:0',
+            'orientation' => 'required|string|max:15',
+            'gambar' => 'required|array|min:1',
+            'gambar.*' => 'image|mimes:jpeg,png,jpg|max:8192',
+            'luas_tanah' => 'required|integer|min:0',
+            'luas_bangunan' => 'required|integer|min:0',
+            'payment' => 'nullable|array',
+            'cover_image_index' => 'nullable|string',
+        ]);
 
-    $imageUrls = [];
-    $coverIndex = $request->input('cover_image_index');
+        $imageUrls = [];
+        $coverIndex = $request->input('cover_image_index');
 
-    if ($request->hasFile('gambar')) {
-        foreach ($request->file('gambar') as $index => $file) {
-            $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $filePath = $file->storeAs('property-images', $fileName, 'public');
+        if ($request->hasFile('gambar')) {
+            foreach ($request->file('gambar') as $index => $file) {
+                $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $filePath = $file->storeAs('property-images', $fileName, 'public');
 
-            // Gantilah kode di bawah ini dengan path relatif
-            $url = '/storage/' . $filePath;
+                // Gantilah kode di bawah ini dengan path relatif
+                $url = '/storage/' . $filePath;
 
-            if ((string) $index === $coverIndex) {
-                array_unshift($imageUrls, $url);
-            } else {
-                $imageUrls[] = $url;
+                if ((string) $index === $coverIndex) {
+                    array_unshift($imageUrls, $url);
+                } else {
+                    $imageUrls[] = $url;
+                }
             }
+        } else {
+            return back()->withInput()->withErrors(['gambar' => 'Minimal satu gambar wajib diunggah']);
         }
-    } else {
-        return back()->withInput()->withErrors(['gambar' => 'Minimal satu gambar wajib diunggah']);
+
+        $imageString = implode(',', $imageUrls);
+        $paymentString = implode(',', $request->input('payment', []));
+
+        // Ambil data agen
+        $id_account = session('id_account');
+        $agent = Agent::where('id_account', $id_account)->first();
+
+        if (!$agent || !$agent->id_account) {
+            return back()->withInput()->withErrors(['agent' => 'Data agent tidak ditemukan atau tidak valid']);
+        }
+        // Simpan properti
+        $property = Property::create([
+            'judul' => $request->judul,
+            'tipe' => $request->tipe,
+            'deskripsi' => $request->deskripsi,
+            'kamar_tidur' => $request->kamar_tidur,
+            'kamar_mandi' => $request->kamar_mandi,
+            'harga' => $request->harga,
+            'lokasi' => $request->lokasi,
+            'provinsi' => $request->provinsi,
+            'kota' => $request->kota,
+            'kelurahan' => $request->kelurahan,
+            'sertifikat' => $request->sertifikat,
+            'lantai' => $request->lantai,
+            'orientation' => $request->orientation,
+            'status' => 'Tersedia',
+            'gambar' => $imageString,
+            'luas_tanah' => $request->luas_tanah,
+            'luas_bangunan' => $request->luas_bangunan,
+            'payment' => $paymentString,
+            'id_agent' => $id_account,
+        ]);
+        // Tambahkan dd di sini untuk debug
+        DB::table('listingan_agent')->insert([
+            'agent_id' => $agent->id_account,
+            'property_id' => $property->id_listing,
+
+        ]);
+
+        return redirect()->route('agent.properties')->with('success', 'Properti berhasil ditambahkan!');
     }
-
-    $imageString = implode(',', $imageUrls);
-    $paymentString = implode(',', $request->input('payment', []));
-
-    // Ambil data agen
-    $id_account = session('id_account');
-    $agent = Agent::where('id_account', $id_account)->first();
-
-    if (!$agent || !$agent->id_account) {
-        return back()->withInput()->withErrors(['agent' => 'Data agent tidak ditemukan atau tidak valid']);
-    }
-    // Simpan properti
-    $property = Property::create([
-        'judul' => $request->judul,
-        'tipe' => $request->tipe,
-        'deskripsi' => $request->deskripsi,
-        'kamar_tidur' => $request->kamar_tidur,
-        'kamar_mandi' => $request->kamar_mandi,
-        'harga' => $request->harga,
-        'lokasi' => $request->lokasi,
-        'provinsi' => $request->provinsi,
-        'kota' => $request->kota,
-        'kelurahan' => $request->kelurahan,
-        'sertifikat' => $request->sertifikat,
-        'lantai' => $request->lantai,
-        'orientation' => $request->orientation,
-        'status' => 'Tersedia',
-        'gambar' => $imageString,
-        'luas_tanah' => $request->luas_tanah,
-        'luas_bangunan' => $request->luas_bangunan,
-        'payment' => $paymentString,
-        'id_agent' => $id_account,
-    ]);
-    // Tambahkan dd di sini untuk debug
-    DB::table('listingan_agent')->insert([
-        'agent_id' => $agent->id_account,
-        'property_id' => $property->id_listing,
-
-    ]);
-
-    return redirect()->route('agent.properties')->with('success', 'Properti berhasil ditambahkan!');
-}
 
     public function create()
     {
-
         return view('addProperty');
     }
 
     public function showInterestForm($id_listing)
-{
-    $id_account = Session::get('id_account') ?? $_COOKIE['id_account'] ?? null;
+    {
+        $id_account = Session::get('id_account') ?? $_COOKIE['id_account'] ?? null;
 
-    $user = DB::table('account')->where('id_account', $id_account)->first();
-    $property = DB::table('property')->where('id_listing', $id_listing)->first();
-    $clientData = DB::table('informasi_klien')->where('id_account', $id_account)->first();
+        $user = DB::table('account')->where('id_account', $id_account)->first();
+        $property = DB::table('property')->where('id_listing', $id_listing)->first();
+        $clientData = DB::table('informasi_klien')->where('id_account', $id_account)->first();
 
-    return view('property_interest', compact('property', 'user', 'clientData'));
-}
+        return view('property_interest', compact('property', 'user', 'clientData'));
+    }
 
     public function submitInterestForm(Request $request, $id_listing)
     {
@@ -356,112 +355,111 @@ public function store(Request $request)
 
 
         return redirect()->route('property_interest')->with('success', 'Berhasil mengajukan ketertarikan.');
-
     }
 
-public function showInterestPage($id_listing)
-{
-    $property = Property::where('id_listing', $id_listing)->firstOrFail();
-    $user = Account::where('id_account', Auth::id())->first();
+    public function showInterestPage($id_listing)
+    {
+        $property = Property::where('id_listing', $id_listing)->firstOrFail();
+        $user = Account::where('id_account', Auth::id())->first();
 
-    return view('propertyinterest', compact('property', 'user'));
-}
-
-public function showPropertyInterest($id_listing)
-{
-    // Ambil data properti berdasarkan id_listing
-    $property = Property::where('id_listing', $id_listing)->first();
-
-    if (!$property) {
-        return redirect()->back()->with('error', 'Properti tidak ditemukan.');
+        return view('propertyinterest', compact('property', 'user'));
     }
 
-    // Ambil informasi pengguna dari session
-    $id_account = session('id_account'); // Ambil ID pengguna dari session
-    $user = $id_account ? Account::where('id_account', $id_account)->first() : null;
+    public function showPropertyInterest($id_listing)
+    {
+        // Ambil data properti berdasarkan id_listing
+        $property = Property::where('id_listing', $id_listing)->first();
 
-    return view('property_interest', compact('property', 'user'));
-}
+        if (!$property) {
+            return redirect()->back()->with('error', 'Properti tidak ditemukan.');
+        }
 
-public function viewCart(Request $request)
-{
-    // Ambil akun yang sedang login
-    $id_account = session('id_account'); // atau Auth::user()->id_account jika pakai Auth
+        // Ambil informasi pengguna dari session
+        $id_account = session('id_account'); // Ambil ID pengguna dari session
+        $user = $id_account ? Account::where('id_account', $id_account)->first() : null;
 
-    $joinedProperties = DB::table('property_interests')
-    ->join('property', 'property.id_listing', '=', 'property_interests.id_listing')
-    ->where('property_interests.id_klien', $id_account)  // ganti id_account jadi id_klien
-    ->select('property.*')
-    ->get();
+        return view('property_interest', compact('property', 'user'));
+    }
 
+    public function viewCart(Request $request)
+    {
+        // Ambil akun yang sedang login
+        $id_account = session('id_account'); // atau Auth::user()->id_account jika pakai Auth
 
-    // Pagination manual
-    $perPage = 6;
-    $currentPage = LengthAwarePaginator::resolveCurrentPage();
-    $collection = collect($joinedProperties);
-    $currentItems = $collection->slice(($currentPage - 1) * $perPage)->values();
-
-    $paginated = new LengthAwarePaginator(
-        $currentItems,
-        $collection->count(),
-        $perPage,
-        $currentPage,
-        ['path' => $request->url(), 'query' => $request->query()]
-    );
-
-    $wonStatuses = ['selesai'];
-
-    $wonProperties = DB::table('property_interests')
-    ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
-    ->where('property_interests.id_klien', $id_account)  // Ganti id_account jadi id_klien
-    ->whereIn('property_interests.status', $wonStatuses)
-    ->select('property.*')
-    ->get();
-
-$closingStatuses = ['closing', 'kutipan_risalah_lelang', 'akte_grosse', 'balik_nama'];
-
-$closingProperties = DB::table('property_interests')
-    ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
-    ->where('property_interests.id_klien', $id_account)  // Ganti id_account jadi id_klien
-    ->whereIn('property_interests.status', $closingStatuses)
-    ->select('property.*')
-    ->get();
+        $joinedProperties = DB::table('property_interests')
+        ->join('property', 'property.id_listing', '=', 'property_interests.id_listing')
+        ->where('property_interests.id_klien', $id_account)  // ganti id_account jadi id_klien
+        ->select('property.*')
+        ->get();
 
 
-    return view('cart', [
-        'properties' => $paginated,
-        'menangProperties' => $wonProperties,
-        'closingProperties' => $closingProperties
-    ]);
-}
+        // Pagination manual
+        $perPage = 6;
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $collection = collect($joinedProperties);
+        $currentItems = $collection->slice(($currentPage - 1) * $perPage)->values();
 
-public function removeFromCart($id_listing)
-{
-    $id_account = session('id_account');
+        $paginated = new LengthAwarePaginator(
+            $currentItems,
+            $collection->count(),
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
-    DB::table('property_interests')
-        ->where('id_account', $id_account)
-        ->where('id_listing', $id_listing)
-        ->delete();
+        $wonStatuses = ['selesai'];
 
-        return redirect()->route('cart.view')->with('success', 'Properti berhasil dihapus dari keranjang.');
-}
+        $wonProperties = DB::table('property_interests')
+        ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
+        ->where('property_interests.id_klien', $id_account)  // Ganti id_account jadi id_klien
+        ->whereIn('property_interests.status', $wonStatuses)
+        ->select('property.*')
+        ->get();
 
-public function deleteClient(Request $request)
-{
-    $request->validate([
-        'id_account' => 'required',
-        'id_listing' => 'required',
-    ]);
+    $closingStatuses = ['closing', 'kutipan_risalah_lelang', 'akte_grosse', 'balik_nama'];
 
-    DB::table('property_interests')
-        ->where('id_account', $request->id_account)
-        ->where('id_listing', $request->id_listing)
-        ->update([
-            'updated_at' => now(),
+    $closingProperties = DB::table('property_interests')
+        ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
+        ->where('property_interests.id_klien', $id_account)  // Ganti id_account jadi id_klien
+        ->whereIn('property_interests.status', $closingStatuses)
+        ->select('property.*')
+        ->get();
+
+
+        return view('cart', [
+            'properties' => $paginated,
+            'menangProperties' => $wonProperties,
+            'closingProperties' => $closingProperties
+        ]);
+    }
+
+    public function removeFromCart($id_listing)
+    {
+        $id_account = session('id_account');
+
+        DB::table('property_interests')
+            ->where('id_account', $id_account)
+            ->where('id_listing', $id_listing)
+            ->delete();
+
+            return redirect()->route('cart.view')->with('success', 'Properti berhasil dihapus dari keranjang.');
+    }
+
+    public function deleteClient(Request $request)
+    {
+        $request->validate([
+            'id_account' => 'required',
+            'id_listing' => 'required',
         ]);
 
-    return back()->with('success', 'Client marked as deleted (updated_at changed)');
-}
+        DB::table('property_interests')
+            ->where('id_account', $request->id_account)
+            ->where('id_listing', $request->id_listing)
+            ->update([
+                'updated_at' => now(),
+            ]);
+
+        return back()->with('success', 'Client marked as deleted (updated_at changed)');
+    }
 
 }
