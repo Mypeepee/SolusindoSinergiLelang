@@ -36,7 +36,7 @@ return new class extends Migration
             $table->timestamp('tanggal_diupdate')->useCurrent()->useCurrentOnUpdate();
 
             // Optional: Add foreign key if you want to link with `account` table
-            $table->foreign('id_agent')->references('id_account')->on('account')->onDelete('set null');
+            $table->foreign('id_agent')->references('id_agent')->on('agent')->onDelete('set null');
         });
 
     }
