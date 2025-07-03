@@ -23,7 +23,14 @@ return new class extends Migration
             $table->bigInteger('selisih');
             $table->bigInteger('komisi_agent');
 
-            $table->string('status_transaksi', 100)->default('Pending');
+            $table->enum('status_transaksi', [
+                'Closing',
+                'Kutipan Risalah Lelang',
+                'Akte Grosse',
+                'Balik Nama',
+                'Eksekusi Pengosongan',
+                'Selesai'
+            ])->default('Closing');
 
             $table->date('tanggal_transaksi');
             $table->timestamp('tanggal_dibuat')->useCurrent();

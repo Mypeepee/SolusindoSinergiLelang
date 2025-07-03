@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('property', function (Blueprint $table) {
@@ -32,6 +29,12 @@ return new class extends Migration
             $table->enum('status', ['Tersedia', 'Terjual'])->nullable(); // check constraint
             $table->string('gambar', 500)->nullable();
             $table->string('payment', 20)->nullable();
+
+            $table->string('penyelenggara')->nullable();
+            $table->bigInteger('uang_jaminan')->nullable();
+            $table->date('batas_akhir_jaminan')->nullable();
+            $table->date('batas_akhir_penawaran')->nullable();
+
             $table->timestamp('tanggal_dibuat')->useCurrent();
             $table->timestamp('tanggal_diupdate')->useCurrent()->useCurrentOnUpdate();
 
@@ -41,9 +44,6 @@ return new class extends Migration
 
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('property');

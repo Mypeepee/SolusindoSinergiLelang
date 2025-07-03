@@ -17,7 +17,14 @@ return new class extends Migration
             $table->string('id_account', 50);
             $table->string('id_transaction', 10);
 
-            $table->string('status_transaksi', 100)->default('pending');
+            $table->enum('status_transaksi', [
+                'Closing',
+                'Kutipan Risalah Lelang',
+                'Akte Grosse',
+                'Balik Nama',
+                'Eksekusi Pengosongan',
+                'Selesai'
+            ])->default('Closing');
             $table->text('catatan')->nullable();
 
             $table->timestamp('tanggal_dibuat')->useCurrent();
