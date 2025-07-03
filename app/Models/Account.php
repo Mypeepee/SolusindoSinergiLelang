@@ -2,9 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Agent;
+use App\Models\TransactionDetail;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Session;
+use Kreait\Firebase\Database\Transaction;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Account extends Model
 {
@@ -34,9 +39,35 @@ class Account extends Model
         return self::where('id_account', $id_account)->value('nomor_telepon');
     }
 
-    // Relasi: satu akun bisa punya banyak properti
-    public function properties()
+    // Account ke InformasiKlien (One to One)
+    public function informasiKlien(): HasOne
     {
-        return $this->hasMany(Property::class, 'id_agent', 'id_account');
+        return $this->hasOne(InformasiKlien::class, 'id_account');
     }
+
+    // Account ke Agent (One to One, jika ada)
+    public function agent(): HasOne
+    {
+        return $this->hasOne(Agent::class, 'id_account');
+    }
+
+    // Account dan PropertyInterest (One to Many)
+    public function propertyInterests(): HasMany
+    {
+        return $this->hasMany(PropertyInterest::class, 'id_klien', 'id_account');
+    }
+
+    // Account (Klien) dan Transaction (One to Many)
+    public function transactionsAsClient(): HasMany
+    {
+        return $this->hasMany(Transaction::class, 'id_klien', 'id_account');
+    }
+
+    // Account dan TransactionDetail (One to Many)
+    public function transactionDetails(): HasMany
+    {
+        return $this->hasMany(TransactionDetail::class, 'id_account', 'id_account');
+    }
+
+
 }

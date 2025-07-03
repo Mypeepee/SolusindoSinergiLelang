@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('nik', 20);
             $table->string('pekerjaan', 100)->nullable();
             $table->enum('jenis_kelamin', ['Laki-laki', 'Perempuan']);
-            $table->enum('status_verifikasi', ['pending', 'terverifikasi', 'ditolak'])->default('pending');
+            $table->enum('status_verifikasi', ['Pending', 'Terverifikasi', 'Ditolak'])->default('Pending');
             $table->string('nomor_rekening', 30)->nullable();
             $table->string('nama_bank', 50)->nullable();
             $table->string('atas_nama', 100)->nullable();
@@ -39,6 +39,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        Schema::dropIfExists('informasi_klien');
     }
 };

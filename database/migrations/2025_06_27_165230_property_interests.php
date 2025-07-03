@@ -12,21 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('property_interests', function (Blueprint $table) {
+            $table->id();
             $table->unsignedBigInteger('id_listing');
             $table->string('id_klien', 50);
-            $table->string('ktp', 255);
-            $table->string('npwp', 255);
-            $table->string('buku_tabungan', 255);
             $table->enum('status', [
-                'followup',
-                'pending',
-                'gagal',
-                'closing',
-                'buyer_meeting',
-                'kutipan_risalah_lelang',
-                'akte_grosse',
-                'balik_nama'
-            ])->default('pending');
+                'Pending',
+                'FollowUp',
+                'BuyerMeeting',
+                'Gagal',
+                'Closing'
+            ])->default('Pending');
             $table->timestamp('tanggal_dibuat')->useCurrent();
             $table->timestamp('tanggal_diupdate')->useCurrent()->useCurrentOnUpdate();
 
@@ -51,6 +46,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        Schema::dropIfExists('property_interests');
     }
 };

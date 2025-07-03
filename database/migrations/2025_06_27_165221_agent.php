@@ -24,12 +24,13 @@ return new class extends Migration
             $table->string('kota', 100)->nullable();
             $table->string('status', 20)->default('Aktif');
             $table->integer('rating')->nullable();
+            $table->string('comment', 250)->nullable();
             $table->integer('jumlah_penjualan')->default(0);
             $table->string('lokasi_kerja', 100)->nullable();
-            $table->timestamp('tanggal_dibuat')->useCurrent();
-            $table->timestamp('tanggal_diupdate')->useCurrent()->useCurrentOnUpdate();
             $table->string('gambar_ktp', 255)->nullable();
             $table->string('gambar_npwp', 255)->nullable();
+            $table->timestamp('tanggal_dibuat')->useCurrent();
+            $table->timestamp('tanggal_diupdate')->useCurrent()->useCurrentOnUpdate();
 
             // Foreign key constraint
             $table->foreign('id_account')->references('id_account')->on('account');
@@ -42,6 +43,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        Schema::dropIfExists('agent');
     }
 };

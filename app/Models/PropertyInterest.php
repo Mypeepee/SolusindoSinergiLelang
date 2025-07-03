@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+
 class PropertyInterest extends Model
 {
     use HasFactory;
@@ -20,12 +22,6 @@ class PropertyInterest extends Model
         'buku_tabungan',
     ];
 
-    // Relasi ke Property
-    public function property()
-    {
-        return $this->belongsTo(Property::class, 'id_listing', 'id_listing');
-    }
-
     // Fungsi untuk mendapatkan semua data property interest
     public static function getAllPropertyInterests()
     {
@@ -37,4 +33,17 @@ class PropertyInterest extends Model
     {
         return DB::table('property_interests')->insert($data);
     }
+
+    // PropertyInterest dan Account (Many to One sebagai Klien)
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'id_klien', 'id_account');
+    }
+
+    // PropertyInterest dan Property (Many to One)
+    public function property(): BelongsTo
+    {
+        return $this->belongsTo(Property::class, 'id_listing', 'id_listing');
+    }
+
 }

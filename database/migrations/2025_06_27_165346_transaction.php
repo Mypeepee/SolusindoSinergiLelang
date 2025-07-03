@@ -15,10 +15,6 @@ return new class extends Migration
             $table->string('id_transaction', 10)->primary();
 
             $table->string('id_agent', 10);
-            $table->foreign('id_agent', 'fk_transaction_agent')
-            ->references('id_agent')->on('agent')->onDelete('cascade');
-
-
             $table->string('id_klien', 50);
             $table->unsignedBigInteger('id_listing');
 
@@ -27,11 +23,9 @@ return new class extends Migration
             $table->bigInteger('selisih');
             $table->bigInteger('komisi_agent');
 
-            $table->string('status_transaksi', 100)->default('pending');
-            $table->text('catatan')->nullable();
+            $table->string('status_transaksi', 100)->default('Pending');
 
             $table->date('tanggal_transaksi');
-
             $table->timestamp('tanggal_dibuat')->useCurrent();
             $table->timestamp('tanggal_diupdate')->useCurrent()->useCurrentOnUpdate();
 
@@ -56,6 +50,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        Schema::dropIfExists('transaction');
+        
     }
 };

@@ -26,7 +26,7 @@ class productController extends Controller
     $hotListings = Property::where('status', 'Tersedia')->inRandomOrder()->take(6)->get();
 
     $properties = Property::where('status', 'Tersedia')
-                          ->select('tipe', \DB::raw('count(*) as total'))
+                          ->select('tipe', DB::raw('count(*) as total'))
                           ->groupBy('tipe')
                           ->get();
 

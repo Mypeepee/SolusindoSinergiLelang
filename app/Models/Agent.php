@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Agent extends Model
 {
@@ -33,14 +35,24 @@ class Agent extends Model
         'gambar_ktp',
         'gambar_npwp',
     ];
-
-public function agent()
-{
-    return $this->belongsTo(Account::class, 'id_agent', 'id_account');
-}
-public function account()
+    
+    // Agent dan Account (One to One)
+    public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class, 'id_account', 'id_account');
     }
+
+    // Agent dan Property (One to Many)
+    public function properties(): HasMany
+    {
+        return $this->hasMany(Property::class, 'id_agent');
+    }
+
+    // Agent dan Transaction (One to Many)
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class, 'id_agent', 'id_agent');
+    }
+
 
 }
