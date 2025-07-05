@@ -60,11 +60,11 @@
                                             <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
                                             <input type="password" name="password" class="form-control" id="yourPassword" required>
                                             <span class="input-group-text toggle-password" onclick="togglePasswordVisibility()">
-                                                <i class="bi bi-eye-fill" id="eyeIcon"></i>
+                                                <!-- Default icon: mata dicoret -->
+                                                <i class="bi bi-eye-slash-fill" id="eyeIcon"></i>
                                             </span>
                                         </div>
                                     </div>
-
                                     {{-- <div class="mb-3 form-check">
                                         <input class="form-check-input" type="checkbox" name="remember" id="rememberMe">
                                         <label class="form-check-label" for="rememberMe">Ingat saya</label>
@@ -91,15 +91,16 @@
     function togglePasswordVisibility() {
         const passwordInput = document.getElementById("yourPassword");
         const eyeIcon = document.getElementById("eyeIcon");
-
         if (passwordInput.type === "password") {
             passwordInput.type = "text";
-            eyeIcon.classList.remove("bi-eye-fill");
-            eyeIcon.classList.add("bi-eye-slash-fill");
-        } else {
-            passwordInput.type = "password";
+            // saat terlihat → icon mata biasa
             eyeIcon.classList.remove("bi-eye-slash-fill");
             eyeIcon.classList.add("bi-eye-fill");
+        } else {
+            passwordInput.type = "password";
+            // saat tersembunyi → icon mata dicoret
+            eyeIcon.classList.remove("bi-eye-fill");
+            eyeIcon.classList.add("bi-eye-slash-fill");
         }
     }
 </script>

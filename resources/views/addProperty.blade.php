@@ -51,7 +51,7 @@
         </div>
     </div>
     <div class="tab-content" id="wizardContent">
-        <!-- Step 1: Info Umum -->
+                <!-- Step 1: Info Umum -->
         <div class="tab-pane fade show active" id="step1" role="tabpanel">
             <div class="card shadow-sm rounded-4 p-4">
                 <h5 class="mb-4 fw-semibold text-orange">
@@ -127,6 +127,7 @@
             </div>
         </div>
 
+
         <!-- Step 2: Lokasi -->
         <div class="tab-pane fade" id="step2" role="tabpanel">
             <div class="card shadow-sm rounded-4 p-4">
@@ -181,20 +182,22 @@
 
                 <!-- Google Maps -->
                 <div class="mt-4">
-                    <label class="form-label"><i class="bi bi-map text-orange me-2"></i> Lokasi di Peta (Opsional)</label>
-                    <div class="rounded-3 border overflow-hidden shadow-sm" style="height: 250px; background-color: #f8f9fa;">
-                        <iframe
-                            width="100%"
-                            height="100%"
-                            frameborder="0"
-                            style="border:0;"
-                            src="https://maps.google.com/maps?q={{ urlencode($property->lokasi ?? 'Surabaya') }}&output=embed"
-                            allowfullscreen>
-                        </iframe>
+                    <label class="form-label"><i class="bi bi-map text-orange me-2"></i> Lokasi di Peta (Live)</label>
+                    <div style="overflow:hidden;max-width:100%;width:100%;height:300px;">
+                        <div id="my-map-display" style="height:100%; width:100%;max-width:100%;">
+                            <iframe
+                                id="googleMap"
+                                style="height:100%;width:100%;border:0;"
+                                frameborder="0"
+                                src="https://www.google.com/maps/embed/v1/place?q=Surabaya&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8"
+                                allowfullscreen>
+                            </iframe>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+        
         <!-- Step 3: Spesifikasi -->
         <div class="tab-pane fade" id="step3" role="tabpanel">
             <div class="card shadow-sm rounded-4 p-4">
@@ -319,230 +322,180 @@
 @include('template.footer')
 
 <script>
-    document.querySelector('form').addEventListener('submit', function (e) {
-  const previews = document.querySelectorAll('#previewContainer img');
-  if (previews.length === 0) {
-    e.preventDefault();
-    alert('Minimal satu gambar harus diunggah!');
-  }
-});
-
 document.addEventListener('DOMContentLoaded', function () {
-  const dropzone = document.getElementById('dropzone');
-  const fileInput = document.getElementById('gambar');
-  const previewContainer = document.getElementById('previewContainer');
+    const alamatInput = document.getElementById('lokasi');
+    const mapFrame = document.getElementById('googleMap');
+    const provinceSelect = document.getElementById('province');
+    const citySelect = document.getElementById('city');
+    const kelurahanSelect = document.getElementById('kelurahan');
 
-  const coverInput = document.createElement('input');
-  coverInput.type = 'hidden';
-  coverInput.name = 'cover_image_index';
-  coverInput.value = '';
-  previewContainer.appendChild(coverInput);
+    let lokasiData = [];
 
-  dropzone.addEventListener('click', () => fileInput.click());
-
-  dropzone.addEventListener('dragover', e => {
-    e.preventDefault();
-    dropzone.classList.add('border-primary');
-  });
-
-  dropzone.addEventListener('dragleave', () => {
-    dropzone.classList.remove('border-primary');
-  });
-
-  dropzone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropzone.classList.remove('border-primary');
-    fileInput.files = e.dataTransfer.files;
-    renderPreviews(fileInput.files);
-  });
-
-  fileInput.addEventListener('change', e => {
-    renderPreviews(e.target.files);
-  });
-
-  function renderPreviews(files) {
-    previewContainer.innerHTML = '';
-    Array.from(files).forEach((file, index) => {
-      if (!file.type.startsWith('image/')) return;
-
-      const reader = new FileReader();
-      reader.onload = e => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'position-relative';
-        wrapper.style.width = '240px';
-        wrapper.style.height = '240px';
-        wrapper.dataset.index = index;
-
-        const img = document.createElement('img');
-        img.src = e.target.result;
-        img.className = 'img-thumbnail rounded';
-        img.style.width = '100%';
-        img.style.height = '100%';
-        img.style.objectFit = 'cover';
-
-        const deleteBtn = document.createElement('button');
-        deleteBtn.type = 'button';
-        deleteBtn.innerHTML = '<i class="bi bi-x"></i>';
-        deleteBtn.className = 'btn btn-danger btn-sm position-absolute';
-        deleteBtn.style.top = '6px';
-        deleteBtn.style.right = '6px';
-        deleteBtn.style.width = '28px';
-        deleteBtn.style.height = '28px';
-        deleteBtn.style.borderRadius = '50%';
-        deleteBtn.style.padding = '0';
-        deleteBtn.onclick = () => {
-          alert('Untuk menghapus gambar, silakan pilih ulang semua file.');
-        };
-
-        const coverBtn = document.createElement('button');
-        coverBtn.type = 'button';
-        coverBtn.innerHTML = '<i class="bi bi-star me-1"></i> Cover';
-        coverBtn.className = 'btn btn-outline-secondary btn-sm position-absolute';
-        coverBtn.style.bottom = '6px';
-        coverBtn.style.right = '6px';
-        coverBtn.style.padding = '4px 10px';
-        coverBtn.style.borderRadius = '20px';
-        coverBtn.style.fontSize = '12px';
-        coverBtn.style.background = 'rgba(255, 255, 255, 0.85)';
-        coverBtn.style.color = '#333';
-        coverBtn.style.backdropFilter = 'blur(2px)';
-        coverBtn.style.boxShadow = '0 0 4px rgba(0,0,0,0.1)';
-        coverBtn.setAttribute('data-cover-btn', 'true');
-
-        coverBtn.onclick = () => {
-          previewContainer.querySelectorAll('[data-cover-btn]').forEach(btn => {
-            btn.classList.remove('btn-success');
-            btn.classList.add('btn-outline-secondary');
-            btn.innerHTML = '<i class="bi bi-star me-1"></i> Cover';
-            btn.style.background = 'rgba(255, 255, 255, 0.85)';
-            btn.style.color = '#333';
-          });
-
-          coverBtn.classList.remove('btn-outline-secondary');
-          coverBtn.classList.add('btn-success');
-          coverBtn.innerHTML = '<i class="bi bi-star-fill me-1"></i> Cover';
-          coverBtn.style.background = '';
-          coverBtn.style.color = '';
-
-          coverInput.value = index;
-        };
-
-        wrapper.appendChild(img);
-        wrapper.appendChild(deleteBtn);
-        wrapper.appendChild(coverBtn);
-        previewContainer.appendChild(wrapper);
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-});
-
-document.addEventListener('DOMContentLoaded', function () {
-    const hargaInput = document.getElementById('harga');
-    hargaInput.addEventListener('input', function () {
-        let value = this.value.replace(/\D/g, '');
-        if (!value) return this.value = '';
-        this.value = new Intl.NumberFormat('id-ID').format(value);
-    });
-
-    // Province - City dynamic dropdown
-    const provinsiSelect = document.getElementById('provinsi');
-    const kotaSelect = document.getElementById('kota');
-
-    fetch('{{ url("data/indonesia.json") }}')
-        .then(response => response.json())
+    // Fetch indonesia.json
+    fetch('{{ asset("data/indonesia.json") }}')
+        .then(res => res.json())
         .then(data => {
-            Object.keys(data).forEach(prov => {
-                let option = document.createElement('option');
-                option.value = prov;
-                option.textContent = prov;
-                provinsiSelect.appendChild(option);
-            });
+            lokasiData = data;
 
-            provinsiSelect.addEventListener('change', function () {
-                let selectedProvinsi = this.value;
-                kotaSelect.innerHTML = '<option value="">Pilih Kota/Kabupaten</option>';
-                if (selectedProvinsi && data[selectedProvinsi]) {
-                    data[selectedProvinsi].forEach(kota => {
-                        let option = document.createElement('option');
-                        option.value = kota;
-                        option.textContent = kota;
-                        kotaSelect.appendChild(option);
-                    });
-                }
+            // Populate Provinsi (UPPERCASE in value, display normal)
+            const provinsiSet = new Set(data.map(item => item.province.toUpperCase().trim()));
+            provinsiSet.forEach(prov => {
+                provinceSelect.innerHTML += `<option value="${prov}">${prov}</option>`;
             });
         });
-});
 
-const deskripsiInput = document.getElementById('deskripsi');
-const charCount = document.getElementById('charCount');
+    alamatInput.addEventListener('input', function () {
+        const alamat = this.value.trim();
 
-deskripsiInput.addEventListener('input', function () {
-    const currentLength = this.value.length;
-    if (currentLength > 2200) {
-        this.value = this.value.slice(0, 2200);
-    }
-    charCount.textContent = this.value.length;
-});
-
-// Untuk preload jika ada old('deskripsi')
-document.addEventListener('DOMContentLoaded', function () {
-    charCount.textContent = deskripsiInput.value.length;
-});
-
-</script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const provinceSelect = document.getElementById('province');
-        const citySelect = document.getElementById('city');
-        const kelurahanSelect = document.getElementById('kelurahan');
-
-        let lokasiData = [];
-
-        fetch("{{ asset('data/indonesia.json') }}")
-            .then(res => res.json())
-            .then(data => {
-                lokasiData = data;
-
-                const provinsiSet = new Set(data.map(item => item.province));
-                provinsiSet.forEach(prov => {
-                    provinceSelect.innerHTML += `<option value="${prov}">${prov}</option>`;
-                });
-            });
-
-        provinceSelect.addEventListener('change', function () {
-            const selectedProvinsi = this.value;
+        if (alamat === "") {
+            // Default Surabaya jika alamat kosong
+            mapFrame.src = "https://www.google.com/maps/embed/v1/place?q=Surabaya&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8";
+            provinceSelect.value = "";
             citySelect.innerHTML = '<option value="">Pilih Kota/Kabupaten</option>';
             kelurahanSelect.innerHTML = '<option value="">Pilih Kelurahan</option>';
-            citySelect.disabled = false;
+            citySelect.disabled = true;
             kelurahanSelect.disabled = true;
+            return;
+        }
 
+        // Update Google Maps
+        const encodedAlamat = encodeURIComponent(alamat);
+        const apiKey = 'AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8';
+        mapFrame.src = `https://www.google.com/maps/embed/v1/place?q=${encodedAlamat}&key=${apiKey}`;
+
+        // Auto-fill dropdowns
+        const found = lokasiData.find(item =>
+            alamat.toLowerCase().includes(item.district.toLowerCase().trim()) ||
+            alamat.toLowerCase().includes(item.regency.toLowerCase().trim()) ||
+            alamat.toLowerCase().includes(item.province.toLowerCase().trim())
+        );
+        
+        if (found) {
+            // Set Provinsi
+            const provinsiFormatted = found.province.trim().toUpperCase();
+            provinceSelect.value = provinsiFormatted;
+
+            // Fill Kota/Kabupaten
+            citySelect.innerHTML = '<option value="">Pilih Kota/Kabupaten</option>';
             const kotaSet = new Set(
                 lokasiData
-                    .filter(item => item.province === selectedProvinsi)
-                    .map(item => item.regency)
+                    .filter(item => item.province.trim().toUpperCase() === provinsiFormatted)
+                    .map(item => {
+                        if (item.regency.toLowerCase().startsWith("kota")) {
+                            return `KOTA ${item.regency.substring(5).trim().toUpperCase()}`;
+                        } else if (item.regency.toLowerCase().startsWith("kabupaten")) {
+                            return `KAB. ${item.regency.substring(10).trim().toUpperCase()}`;
+                        } else {
+                            return item.regency.trim().toUpperCase();
+                        }
+                    })
             );
-
             kotaSet.forEach(kota => {
                 citySelect.innerHTML += `<option value="${kota}">${kota}</option>`;
             });
-        });
 
-        citySelect.addEventListener('change', function () {
-            const selectedProvinsi = provinceSelect.value;
-            const selectedKota = this.value;
+            // Set value Kota/Kabupaten
+            let regencyFormatted = "";
+            if (found.regency.toLowerCase().startsWith("kota")) {
+                regencyFormatted = `KOTA ${found.regency.substring(5).trim().toUpperCase()}`;
+            } else if (found.regency.toLowerCase().startsWith("kabupaten")) {
+                regencyFormatted = `KAB. ${found.regency.substring(10).trim().toUpperCase()}`;
+            } else {
+                regencyFormatted = found.regency.trim().toUpperCase();
+            }
+            citySelect.value = regencyFormatted;
+            citySelect.disabled = false;
+
+            // Fill Kelurahan
             kelurahanSelect.innerHTML = '<option value="">Pilih Kelurahan</option>';
-            kelurahanSelect.disabled = false;
-
             const kelurahanSet = new Set(
                 lokasiData
-                    .filter(item => item.province === selectedProvinsi && item.regency === selectedKota)
-                    .map(item => item.district)
+                    .filter(item =>
+                        item.province.trim().toUpperCase() === provinsiFormatted &&
+                        item.regency.trim().toUpperCase() === found.regency.trim().toUpperCase()
+                    )
+                    .map(item =>
+                        item.district
+                            .toLowerCase()
+                            .split(" ")
+                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                            .join(" ")
+                    )
             );
-
             kelurahanSet.forEach(kel => {
                 kelurahanSelect.innerHTML += `<option value="${kel}">${kel}</option>`;
             });
+
+            // Set value kelurahan
+            const kelurahanFormatted = found.district
+                .toLowerCase()
+                .split(" ")
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(" ");
+            kelurahanSelect.value = kelurahanFormatted;
+            kelurahanSelect.disabled = false;
+        }
+    });
+
+    // Manual Dropdown Chain
+    provinceSelect.addEventListener('change', function () {
+        const selectedProvinsi = this.value.trim().toUpperCase();
+        citySelect.innerHTML = '<option value="">Pilih Kota/Kabupaten</option>';
+        kelurahanSelect.innerHTML = '<option value="">Pilih Kelurahan</option>';
+        citySelect.disabled = false;
+        kelurahanSelect.disabled = true;
+
+        const kotaSet = new Set(
+            lokasiData
+                .filter(item => item.province.trim().toUpperCase() === selectedProvinsi)
+                .map(item => {
+                    if (item.regency.toLowerCase().startsWith("kota")) {
+                        return `KOTA ${item.regency.substring(5).trim().toUpperCase()}`;
+                    } else if (item.regency.toLowerCase().startsWith("kabupaten")) {
+                        return `KAB. ${item.regency.substring(10).trim().toUpperCase()}`;
+                    } else {
+                        return item.regency.trim().toUpperCase();
+                    }
+                })
+        );
+        kotaSet.forEach(kota => {
+            citySelect.innerHTML += `<option value="${kota}">${kota}</option>`;
         });
     });
-    </script>
+
+    citySelect.addEventListener('change', function () {
+        const selectedProvinsi = provinceSelect.value.trim().toUpperCase();
+        const selectedKota = this.value.trim().toUpperCase();
+        kelurahanSelect.innerHTML = '<option value="">Pilih Kelurahan</option>';
+        kelurahanSelect.disabled = false;
+
+        const kelurahanSet = new Set(
+            lokasiData
+                .filter(item => {
+                    let regencyFormatted = "";
+                    if (item.regency.toLowerCase().startsWith("kota")) {
+                        regencyFormatted = `KOTA ${item.regency.substring(5).trim().toUpperCase()}`;
+                    } else if (item.regency.toLowerCase().startsWith("kabupaten")) {
+                        regencyFormatted = `KAB. ${item.regency.substring(10).trim().toUpperCase()}`;
+                    } else {
+                        regencyFormatted = item.regency.trim().toUpperCase();
+                    }
+                    return (
+                        item.province.trim().toUpperCase() === selectedProvinsi &&
+                        regencyFormatted === selectedKota
+                    );
+                })
+                .map(item =>
+                    item.district
+                        .toLowerCase()
+                        .split(" ")
+                        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                        .join(" ")
+                )
+        );
+        kelurahanSet.forEach(kel => {
+            kelurahanSelect.innerHTML += `<option value="${kel}">${kel}</option>`;
+        });
+    });
+});
+</script>

@@ -58,6 +58,7 @@
 
         body {
             padding-top: 80px; /* Supaya konten tidak ketumpuk navbar */
+            background: #ffffff;
         }
 
         /* Perbaiki dropdown agar tidak geser */
@@ -104,7 +105,7 @@
         <!-- Spinner End -->
 
         <!-- Navbar Start -->
-        <div id="mainNavbar" class="container-fluid nav-bar bg-transparent">
+        <div id="mainNavbar" class="container-fluid nav-bar bg-white">
             <nav class="navbar navbar-expand-lg bg-white navbar-light py-0 px-4">
                 <a href="{{ url('/') }}" class="navbar-brand d-flex align-items-center text-center">
                     <div class="icon p-2 me-2">
@@ -219,9 +220,24 @@
                         Cookie::get('role') === 'Agent' ||
                         Cookie::get('role') === 'Register'
                     )
-                    <a href="#">
-                        <i class="fas fa-bell"></i>
-                    </a>
+
+                    <!-- Notifikasi -->
+                    <div class="dropdown position-relative">
+                        <a href="#" class="nav-link dropdown-toggle" id="notifDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-bell"></i>
+                            <!-- Badge jumlah notifikasi -->
+                            <span id="notifCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem; display: none;">
+                                0
+                            </span>
+                        </a>
+                        <div id="notifDropdownMenu" class="dropdown-menu dropdown-menu-end shadow-sm p-2" style="min-width: 300px;">
+                            <p class="dropdown-item fw-bold mb-2">Notifikasi</p>
+                            <div class="overflow-auto" style="max-height: 300px;">
+                                <span class="dropdown-item text-muted">Memuat notifikasi...</span>
+                            </div>
+                        </div>
+                    </div>
+
                     @endif
                     <a href="#">
                         <i class="fas fa-cog"></i>
@@ -260,4 +276,50 @@
         <script src="{{ asset('js/main.js')}}"></script>
     </div>
 </body>
+
+<!-- Script untuk update notifikasi -->
+<script>
+    function loadNotifications() {
+        $.ajax({
+            url: "{{ url('/agent/new-clients-json') }}",
+            method: 'GET',
+            success: function(response) {
+                const notifCount = response.count || 0;
+                const notifBadge = document.getElementById('notifCount');
+                const notifMenu = document.querySelector('#notifDropdownMenu .overflow-auto');
+
+                // Update badge
+                if (notifCount > 0) {
+                    notifBadge.style.display = 'inline-block';
+                    notifBadge.textContent = notifCount;
+                } else {
+                    notifBadge.style.display = 'none';
+                }
+
+                // Update dropdown content
+                notifMenu.innerHTML = '';
+                if (response.clients.length > 0) {
+                    response.clients.slice(0, 5).forEach(function(client) {
+                        notifMenu.innerHTML += `
+                            <a class="dropdown-item d-flex justify-content-between align-items-center" href="/client/detail/${client.id}">
+                                <span>${client.nama}</span>
+                                <small class="text-muted">${client.created_at}</small>
+                            </a>`;
+                    });
+                } else {
+                    notifMenu.innerHTML = '<span class="dropdown-item text-muted">Tidak ada notifikasi baru</span>';
+                }
+            },
+            error: function() {
+                console.error('Gagal memuat notifikasi.');
+            }
+        });
+    }
+
+    // Panggil saat dropdown dibuka
+    document.getElementById('notifDropdown').addEventListener('click', loadNotifications);
+
+    // Auto-refresh setiap 15 detik
+    setInterval(loadNotifications, 15000);
+</script>
 </html>

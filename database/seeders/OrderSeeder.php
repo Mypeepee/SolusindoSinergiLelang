@@ -132,7 +132,7 @@ class OrderSeeder extends Seeder
                 'sertifikat' => 'SHM',
                 'orientation' => 'selatan',
                 'status' => 'Tersedia',
-                'gambar' => '/storage/property-images/1748617589_6839c97557ddf.jpg',
+                'gambar' => 'https://file.lelang.go.id/lelang/photo_barang/2025/05/27/whatsapp-image-2025-05-27-at-15-51-36-1-6835708243d4b743993655.jpg',
                 'payment' => 'cash,kpr',
                 'tanggal_dibuat' => now(),
                 'tanggal_diupdate' => now(),
