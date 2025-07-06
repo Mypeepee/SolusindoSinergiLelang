@@ -44,13 +44,13 @@
                     <select name="property_type" class="form-select border-0 py-3">
                         <option selected disabled>Tipe Property</option>
                         <option value="Lelang">Lelang</option>
-                        <option value="Primary">Rumah</option>
-                        <option value="Secondary">Villa</option>
-                        <option value="Apartemen">Apartemen</option>
-                        <option value="Gudang">Gudang</option>
-                        <option value="Tanah">Tanah</option>
-                        <option value="Ruko">Ruko</option>
-                        <option value="Sewa">Sewa</option>
+                        <option value="rumah">Rumah</option>
+                        <option value="secondary">Villa</option>
+                        <option value="apartemen">Apartemen</option>
+                        <option value="gudang">Gudang</option>
+                        <option value="tanah">Tanah</option>
+                        <option value="ruko">Ruko</option>
+                        <option value="sewa">Sewa</option>
                     </select>
                 </div>
 

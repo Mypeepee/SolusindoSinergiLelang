@@ -7,6 +7,8 @@ use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\DomCrawler\Crawler;
 use Spatie\Browsershot\Browsershot;
 use App\Models\Property;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class ScrapeProperty extends Command
 {
@@ -27,8 +29,62 @@ class ScrapeProperty extends Command
     /**
      * Execute the console command.
      */
+    private function parseTanggalIndonesia($tanggalString)
+{
+    if (empty($tanggalString)) {
+        return null; // 🛡️ Jika kosong, kembalikan null
+    }
+
+    $bulanMap = [
+        'Januari' => '01',
+        'Februari' => '02',
+        'Maret' => '03',
+        'April' => '04',
+        'Mei' => '05',
+        'Juni' => '06',
+        'Juli' => '07',
+        'Agustus' => '08',
+        'September' => '09',
+        'Oktober' => '10',
+        'November' => '11',
+        'Desember' => '12',
+    ];
+
+    // 🔥 Bersihkan WIB/WITA/WIT
+    $tanggalString = preg_replace('/\s*(WIB|WITA|WIT)\s*/i', '', $tanggalString);
+
+    // 🔥 Ganti bulan Indonesia ke angka
+    foreach ($bulanMap as $indo => $num) {
+        if (stripos($tanggalString, $indo) !== false) {
+            $tanggalString = str_ireplace($indo, $num, $tanggalString);
+            break;
+        }
+    }
+
+    // 🛡️ Cek apakah string punya jam
+    $hasTime = preg_match('/\d{1,2}:\d{2}/', $tanggalString);
+
+    try {
+        if ($hasTime) {
+            return \Carbon\Carbon::createFromFormat('d m Y H:i', trim($tanggalString));
+        } else {
+            return \Carbon\Carbon::createFromFormat('d m Y', trim($tanggalString));
+        }
+    } catch (\Exception $e) {
+        // 🛡️ Fallback: log error dan kembalikan null
+        \Log::warning("Gagal parse tanggal: '{$tanggalString}' - {$e->getMessage()}");
+        return null;
+    }
+}
     public function handle()
 {
+    DB::statement("
+    SELECT setval(
+        pg_get_serial_sequence('property', 'id_listing'),
+        COALESCE(MAX(id_listing), 1),
+        true
+    ) FROM property
+");
     $baseUrl = 'https://lelang.go.id';
     $kategori = 'Rumah';
     $page = 1;
@@ -147,60 +203,72 @@ JSON.stringify(
 $imageUrls = json_decode($imageJson, true);
 $allImages = array_unique(array_filter($imageUrls));
 
-                    // 🔥 Ambil data tambahan (judul, harga, dll)
-                    $detailsJson = $browser->evaluate('
-                    JSON.stringify({
-                        judul: document.querySelector("h3.mb-5.text-2xl.text-ternary-gray-200")?.innerText || null,
-                        harga: (function(){
-                            const h = document.querySelectorAll("h6.text-primary-500")[0]?.innerText || null;
-                            return h ? parseInt(h.replace(/[^\d]/g, "")) : null; // 💰 Rp jadi integer
-                        })(),
-                        uang_jaminan: (function(){
-                            const u = document.querySelectorAll("h6.text-primary-500")[1]?.innerText || null;
-                            return u ? parseInt(u.replace(/[^\d]/g, "")) : null; // 💵 Rp jadi integer
-                        })(),
-                        penjual: document.querySelectorAll("h6.text-ternary-gray-200")[0]?.innerText || null,
-                        batas_penawaran: document.querySelectorAll("h6.text-ternary-gray-200")[1]?.innerText || null,
-                        penyelenggara: document.querySelectorAll("h6.text-ternary-gray-200")[3]?.innerText || null,
-                        batas_setor_jaminan: document.querySelectorAll("h6.text-ternary-gray-200")[4]?.innerText || null,
+$detailsJson = $browser->evaluate('
+JSON.stringify({
+    judul: document.querySelector("h3.mb-5.text-2xl.text-ternary-gray-200")?.innerText || null,
 
-                        // 🎯 Ambil bukti kepemilikan & tanggal lebih aman
-                        bukti_kepemilikan_data: (function(){
-                            const blocks = Array.from(document.querySelectorAll("div.flex.w-full.flex-col"));
-                            const buktiBlock = blocks.find(block =>
-                                block.querySelector("div.mb-3")?.innerText.trim() === "Bukti Kepemilikan"
-                            );
-                            if (buktiBlock) {
-                                const textXs = buktiBlock.querySelectorAll("div.text-xs");
-                                return {
-                                    bukti_kepemilikan: textXs[0]?.innerText.trim() || null,
-                                    tanggal_kepemilikan: textXs[1]?.innerText.trim() || null
-                                };
-                            }
-                            return { bukti_kepemilikan: null, tanggal_kepemilikan: null };
-                        })(),
+    // 💰 Harga +26.8%
+    harga: (function(){
+        const h = document.querySelectorAll("h6.text-primary-500")[0]?.innerText || null;
+        if (h) {
+            const hargaAsli = parseInt(h.replace(/[^\d]/g, ""));
+            const hargaMarkup = Math.round(hargaAsli * 1.268); // 🔥 Tambah 26.8%
+            return hargaMarkup;
+        }
+        return null;
+    })(),
 
-                        // 🎯 Ambil luas tanah (integer saja)
-                        luas_tanah: (function(){
-                            const div = Array.from(document.querySelectorAll("div.text-xs"))
-                                            .find(el => el.textContent.includes("Luas"));
-                            if (div) {
-                                const match = div.innerText.match(/Luas:\s*(\d+)/);
-                                return match ? parseInt(match[1]) : null;
-                            }
-                            return null;
-                        })(),
+    // 💵 Uang Jaminan +20%
+    uang_jaminan: (function(){
+        const u = document.querySelectorAll("h6.text-primary-500")[1]?.innerText || null;
+        if (u) {
+            const jaminanAsli = parseInt(u.replace(/[^\d]/g, ""));
+            const jaminanMarkup = Math.round(jaminanAsli * 1.2); // 🔥 Tambah 20%
+            return jaminanMarkup;
+        }
+        return null;
+    })(),
 
-                        alamat: (function(){
-                            const div = Array.from(document.querySelectorAll("div.text-xs"))
-                                            .find(el => el.textContent.includes("Alamat"));
-                            return div ? div.innerText.trim() : null;
-                        })()
-                    })
-                ');$details = json_decode($detailsJson, true);
+    penjual: document.querySelectorAll("h6.text-ternary-gray-200")[0]?.innerText || null,
+    batas_penawaran: document.querySelectorAll("h6.text-ternary-gray-200")[1]?.innerText || null,
+    batas_setor_jaminan: document.querySelectorAll("h6.text-ternary-gray-200")[4]?.innerText || null,
+
+    // 🎯 Ambil bukti kepemilikan & tanggal lebih aman
+    bukti_kepemilikan_data: (function(){
+        const blocks = Array.from(document.querySelectorAll("div.flex.w-full.flex-col"));
+        const buktiBlock = blocks.find(block =>
+            block.querySelector("div.mb-3")?.innerText.trim() === "Bukti Kepemilikan"
+        );
+        if (buktiBlock) {
+            const textXs = buktiBlock.querySelectorAll("div.text-xs");
+            return {
+                bukti_kepemilikan: textXs[0]?.innerText.trim() || null,
+            };
+        }
+        return { bukti_kepemilikan: null };
+    })(),
+
+    // 🎯 Ambil luas tanah (integer saja)
+    luas_tanah: (function(){
+        const div = Array.from(document.querySelectorAll("div.text-xs"))
+                        .find(el => el.textContent.includes("Luas"));
+        if (div) {
+            const match = div.innerText.match(/Luas:\s*(\d+)/);
+            return match ? parseInt(match[1]) : null;
+        }
+        return null;
+    })(),
+
+    alamat: (function(){
+        const div = Array.from(document.querySelectorAll("div.text-xs"))
+                        .find(el => el.textContent.includes("Alamat"));
+        return div ? div.innerText.trim() : null;
+    })()
+})
+');
+$details = json_decode($detailsJson, true);
 
                     $buktiKepemilikan = $details['bukti_kepemilikan_data']['bukti_kepemilikan'] ?? null;
-                    $tanggalKepemilikan = $details['bukti_kepemilikan_data']['tanggal_kepemilikan'] ?? null;
 
                     // 🆕 Convert harga & uang_jaminan ke integer
                     $hargaInt = null;
@@ -236,6 +304,18 @@ $allImages = array_unique(array_filter($imageUrls));
                             }
                         }
 
+                        // 🧹 Bersihkan alamat
+if (!empty($details['alamat'])) {
+    $alamatClean = preg_replace('/^Alamat:\s*/i', '', $details['alamat']);
+    $details['alamat'] = trim($alamatClean);
+}
+
+                        if (!empty($buktiKepemilikan)) {
+                            // 🧹 Hapus "No:" di akhir jika tidak ada nomor setelahnya
+                            $buktiKepemilikan = preg_replace('/No:\s*$/i', '', $buktiKepemilikan);
+                            $buktiKepemilikan = trim($buktiKepemilikan);
+                        }
+
                         // 🎯 Cari Kecamatan
                         if (preg_match('/\bkec(?:amatan|\.)?\s*([a-zA-Z\s]+)/i', $alamat, $kecMatch)) {
                             $kecamatanRaw = trim($kecMatch[1]);
@@ -263,43 +343,39 @@ $allImages = array_unique(array_filter($imageUrls));
                         }
                     }
 
-                    $this->info("📄 Judul: " . ($details['judul'] ?? 'Tidak ditemukan'));
-                    $this->info("💰 Harga: " . ($hargaInt ?? 'Tidak ditemukan'));
-                    $this->info("💵 Uang Jaminan: " . ($uangJaminanInt ?? 'Tidak ditemukan'));
-                    $this->info("🏦 Penjual: " . ($details['penjual'] ?? 'Tidak ditemukan'));
-                    $this->info("📆 Batas Penawaran: " . ($details['batas_penawaran'] ?? 'Tidak ditemukan'));
-                    $this->info("🏢 Penyelenggara: " . ($details['penyelenggara'] ?? 'Tidak ditemukan'));
-                    $this->info("💳 Batas Setor Jaminan: " . ($details['batas_setor_jaminan'] ?? 'Tidak ditemukan'));
-                    $this->info("📜 Bukti Kepemilikan: " . ($buktiKepemilikan ?? 'Tidak ditemukan'));
-                    $this->info("📅 Tanggal Kepemilikan: " . ($tanggalKepemilikan ?? 'Tidak ditemukan'));
-                    $this->info("📏 Luas Tanah (m2): " . ($details['luas_tanah'] ?? 'Tidak ditemukan'));
-                    $this->info("📍 Alamat: " . ($details['alamat'] ?? 'Tidak ditemukan'));
-                    $this->info("🌎 Provinsi: " . ($provinsi ?? 'Tidak ditemukan'));
-                    $this->info("🏛️ Kabupaten: " . ($kabupaten ?? 'Tidak ditemukan'));
-                    $this->info("🏘️ Kecamatan: " . ($kecamatan ?? 'Tidak ditemukan'));
-                    $this->info("🏘️ Kelurahan: " . ($kelurahan ?? 'Tidak ditemukan'));
+                    // ✅ Jika kelurahan kosong tapi kecamatan ada, fallback ke kecamatan
+    $kelurahanFinal = $kelurahan ?: $kecamatan;
 
 
-                    // 🗂️ Tambahkan ke data
-                    // $allData[] = [
-                    //     'url' => $detailUrl,
-                    //     'images' => $allImages,
-                    //     'judul' => $details['judul'],
-                    //     'harga' => $details['harga'],
-                    //     'uang_jaminan' => $details['uang_jaminan'],
-                    //     'penjual' => $details['penjual'],
-                    //     'batas_penawaran' => $details['batas_penawaran'],
-                    //     'penyelenggara' => $details['penyelenggara'],
-                    //     'batas_setor_jaminan' => $details['batas_setor_jaminan'],
-                    //     'bukti_kepemilikan' => $buktiKepemilikan,
-                    //     'tanggal_kepemilikan' => $tanggalKepemilikan,
-                    //     'luas_tanah' => $details['luas_tanah'],
-                    //     'alamat' => $details['alamat'],
-                    //     'provinsi' => $provinsi,
-                    //     'kabupaten' => $kabupaten,
-                    //     'kecamatan' => $kecamatan,
-                    //     'kelurahan' => $kelurahan,
-                    // ];
+    // 🗄️ INSERT KE DATABASE
+    DB::table('property')->insert([
+    'id_agent' => 'AG001',
+    'judul' => $details['judul'] ?? 'Property Rumah Lelang',
+    'deskripsi' => "Lelang properti dengan luas tanah {$details['luas_tanah']} m2 di {$kabupaten}, {$provinsi}. Sertifikat: " . ($buktiKepemilikan ?? 'Tidak tersedia') . ". Batas penawaran hingga {$details['batas_penawaran']}.",
+    'tipe' => 'rumah',
+    'harga' => $hargaInt,
+    'lokasi' => $details['alamat'] ?? 'Lokasi tidak diketahui',
+    'luas' => $details['luas_tanah'] ?? null,
+    'provinsi' => $provinsi ?? null,
+    'kota' => $kabupaten ?? null,
+    'kelurahan' => $kelurahanFinal,
+    'sertifikat' => $buktiKepemilikan ?? null,
+    'status' => 'Tersedia',
+    'gambar' => !empty($allImages) ? implode(',', $allImages) : null,
+    'payment' => 'cash',
+    'uang_jaminan' => $uangJaminanInt ?? null,
+    'batas_akhir_jaminan' => !empty($details['batas_setor_jaminan'])
+        ? $this->parseTanggalIndonesia($details['batas_setor_jaminan'])->format('Y-m-d')
+        : null,
+    'batas_akhir_penawaran' => !empty($details['batas_penawaran'])
+        ? $this->parseTanggalIndonesia($details['batas_penawaran'])->format('Y-m-d')
+        : null,
+    'tanggal_dibuat' => now(),
+    'tanggal_diupdate' => now(),
+]);
+
+
+    $this->info("✅ Data berhasil disimpan ke database (judul: {$details['judul']})");
                 } catch (\Exception $e) {
                     $this->warn("⚠️ Gagal scrape detail untuk $detailUrl. Error: " . $e->getMessage());
                 }

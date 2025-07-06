@@ -14,23 +14,17 @@ return new class extends Migration
             $table->string('judul')->nullable();
             $table->string('deskripsi', 2200)->nullable();
             $table->string('tipe', 15)->nullable();
-            $table->integer('kamar_tidur')->nullable();
-            $table->integer('kamar_mandi')->nullable();
             $table->bigInteger('harga')->nullable();
-            $table->string('lokasi', 100)->nullable();
-            $table->integer('lantai'); // NOT NULL
-            $table->integer('luas_tanah')->nullable();
-            $table->integer('luas_bangunan')->nullable();
+            $table->string('lokasi', 500)->nullable();
+            $table->integer('luas')->nullable();
             $table->string('provinsi', 255)->nullable();
-            $table->string('kota', 50)->nullable();
-            $table->string('kelurahan', 50)->nullable();
-            $table->string('sertifikat', 50)->nullable();
-            $table->string('orientation', 15)->nullable();
+            $table->string('kota', 70)->nullable();
+            $table->string('kelurahan', 70)->nullable();
+            $table->string('sertifikat', 70)->nullable();
             $table->enum('status', ['Tersedia', 'Terjual'])->nullable(); // check constraint
-            $table->string('gambar', 500)->nullable();
+            $table->string('gambar', 900)->nullable();
             $table->string('payment', 20)->nullable();
 
-            $table->string('penyelenggara')->nullable();
             $table->bigInteger('uang_jaminan')->nullable();
             $table->date('batas_akhir_jaminan')->nullable();
             $table->date('batas_akhir_penawaran')->nullable();
