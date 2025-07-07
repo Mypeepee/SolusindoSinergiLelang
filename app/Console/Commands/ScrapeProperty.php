@@ -17,7 +17,7 @@ class ScrapeProperty extends Command
      *
      * @var string
      */
-    protected $signature = 'app:scrape-property';
+    protected $signature = 'app:scrape-property {kategori}';
 
     /**
      * The console command description.
@@ -76,6 +76,7 @@ class ScrapeProperty extends Command
         return null;
     }
 }
+
     public function handle()
 {
     DB::statement("
@@ -85,17 +86,20 @@ class ScrapeProperty extends Command
         true
     ) FROM property
 ");
-    $baseUrl = 'https://lelang.go.id';
-    $kategori = 'Rumah';
-    $page = 1;
-    $allLinks = [];
-    $allData = []; // 🆕 untuk menyimpan link + gambar
+$baseUrl = 'https://lelang.go.id';
+$kategori = $this->argument('kategori') ?? 'Rumah'; // 🆕 bisa ganti kategori lewat argument artisan
+$page = 1;
+$allLinks = [];
+$allData = []; // 🆕 untuk menyimpan link + gambar
 
-    $this->info("📄 Mulai scrape semua halaman kategori: $kategori");
+$this->info("📄 Mulai scrape semua halaman kategori: $kategori");
 
-    while (true) {
-        $listUrl = "$baseUrl/lot-lelang/katalog-lot-lelang?kategori=$kategori&page=$page";
-        $this->info("🌐 Scraping halaman ke-$page: $listUrl");
+// Ubah kategori jadi lowercase untuk field tipe di DB
+$tipeProperti = strtolower($kategori); // e.g. Rumah -> rumah, Ruko -> ruko
+
+while (true) {
+    $listUrl = "$baseUrl/lot-lelang/katalog-lot-lelang?kategori=$kategori&page=$page";
+    $this->info("🌐 Scraping halaman ke-$page: $listUrl");
 
         try {
             $html = \Spatie\Browsershot\Browsershot::url($listUrl)
@@ -305,21 +309,28 @@ $details = json_decode($detailsJson, true);
                         }
 
                         // 🧹 Bersihkan alamat
-if (!empty($details['alamat'])) {
-    $alamatClean = preg_replace('/^Alamat:\s*/i', '', $details['alamat']);
-    $details['alamat'] = trim($alamatClean);
-}
+                        if (!empty($details['alamat'])) {
+                            $alamatClean = preg_replace('/^Alamat:\s*/i', '', $details['alamat']);
+                            $details['alamat'] = trim($alamatClean);
+                        }
+
+                        $buktiKepemilikan = $details['bukti_kepemilikan_data']['bukti_kepemilikan'] ?? null;
 
                         if (!empty($buktiKepemilikan)) {
-                            // 🧹 Hapus "No:" di akhir jika tidak ada nomor setelahnya
-                            $buktiKepemilikan = preg_replace('/No:\s*$/i', '', $buktiKepemilikan);
-                            $buktiKepemilikan = trim($buktiKepemilikan);
+                            // ✅ Ambil SHM No + optional pemilik
+                            if (preg_match('/(SHM\s+No\.\s*\d+(\/[^.,]*)?)/i', $buktiKepemilikan, $sertifikatMatch)) {
+                                $buktiKepemilikan = trim($sertifikatMatch[1]);
+                            } else {
+                                // 🧹 Hapus "No:" di akhir jika tidak ada nomor
+                                $buktiKepemilikan = preg_replace('/No:\s*$/i', '', $buktiKepemilikan);
+                                $buktiKepemilikan = trim($buktiKepemilikan);
+                            }
                         }
 
                         // 🎯 Cari Kecamatan
                         if (preg_match('/\bkec(?:amatan|\.)?\s*([a-zA-Z\s]+)/i', $alamat, $kecMatch)) {
                             $kecamatanRaw = trim($kecMatch[1]);
-                            // 🧠 Hapus kata tambahan "Kota ..." / "Kabupaten ..."
+                            // 🧠 Bersihkan tambahan "Kota ..." / "Kabupaten ..."
                             $kecamatanClean = preg_replace('/\b(kota|kabupaten)\b.*$/i', '', $kecamatanRaw);
                             $kecamatan = ucwords(strtolower(trim($kecamatanClean))); // 🔥 Capitalize
                         }
@@ -327,12 +338,30 @@ if (!empty($details['alamat'])) {
                         // 🎯 Cari Kelurahan
                         if (preg_match('/\bkel(?:urahan|\.)?\s*([a-zA-Z\s]+)/i', $alamat, $kelMatch)) {
                             $kelurahanRaw = trim($kelMatch[1]);
-                            // 🧠 Hapus kata tambahan "Kecamatan ..." / "Kota ..." / "Kabupaten ..."
-                            $kelurahanClean = preg_replace('/\b(kecamatan|kota|kabupaten)\b.*$/i', '', $kelurahanRaw);
-                            $kelurahan = ucwords(strtolower(trim($kelurahanClean))); // 🔥 Capitalize
-                        }
-                    }
 
+                            // 🎯 Ambil hanya sampai sebelum kata kunci (Kec/Kab/Kota/Prov)
+                            $kelurahanClean = preg_replace('/\s*(kec(?:amatan)?|kab(?:upaten)?|kota|prov(?:insi)?|prop(?:insi)?).*/i', '', $kelurahanRaw);
+                            $kelurahan = ucwords(strtolower(trim($kelurahanClean))); // 🔥 Capitalize
+
+                            // ✅ Tambahan pembersih: jika masih ada "Kec"/"Kab"/"Kota" di Kelurahan
+                            if (stripos($kelurahan, 'Kec') !== false || stripos($kelurahan, 'Kab') !== false || stripos($kelurahan, 'Kota') !== false) {
+                                if (preg_match('/\bkel(?:urahan|\.)?\s*([a-zA-Z\s]+?)(?=\s*(kec|kecamatan|kota|kab|prov|prop|$))/i', $alamat, $kelFixMatch)) {
+                                    $kelurahan = ucwords(strtolower(trim($kelFixMatch[1]))); // 🎯 Ambil versi bersih
+                                }
+                            }
+                        } else {
+                            // ✅ Jika regex lama gagal, coba regex presisi
+                            if (preg_match('/\bkel(?:urahan|\.)?\s*([a-zA-Z\s]+?)(?=\s*(kec|kecamatan|kota|kab|prov|prop|$))/i', $alamat, $kelFixMatch)) {
+                                $kelurahan = ucwords(strtolower(trim($kelFixMatch[1])));
+                            }
+                        }
+
+                        // ✅ Tambahan: Jika Kelurahan sama dengan Kecamatan, kosongkan Kelurahan
+                        if (!empty($kelurahan) && strtolower($kelurahan) === strtolower($kecamatan)) {
+                            $kelurahan = null;
+                        }
+
+                    }
                     // 🖊️ Log hasil
                     if (empty($allImages)) {
                         $this->warn("📸 Tidak ada gambar ditemukan untuk $detailUrl");
@@ -344,38 +373,38 @@ if (!empty($details['alamat'])) {
                     }
 
                     // ✅ Jika kelurahan kosong tapi kecamatan ada, fallback ke kecamatan
-    $kelurahanFinal = $kelurahan ?: $kecamatan;
+                    $kelurahanFinal = $kelurahan ?: $kecamatan;
 
 
-    // 🗄️ INSERT KE DATABASE
-    DB::table('property')->insert([
-    'id_agent' => 'AG001',
-    'judul' => $details['judul'] ?? 'Property Rumah Lelang',
-    'deskripsi' => "Lelang properti dengan luas tanah {$details['luas_tanah']} m2 di {$kabupaten}, {$provinsi}. Sertifikat: " . ($buktiKepemilikan ?? 'Tidak tersedia') . ". Batas penawaran hingga {$details['batas_penawaran']}.",
-    'tipe' => 'rumah',
-    'harga' => $hargaInt,
-    'lokasi' => $details['alamat'] ?? 'Lokasi tidak diketahui',
-    'luas' => $details['luas_tanah'] ?? null,
-    'provinsi' => $provinsi ?? null,
-    'kota' => $kabupaten ?? null,
-    'kelurahan' => $kelurahanFinal,
-    'sertifikat' => $buktiKepemilikan ?? null,
-    'status' => 'Tersedia',
-    'gambar' => !empty($allImages) ? implode(',', $allImages) : null,
-    'payment' => 'cash',
-    'uang_jaminan' => $uangJaminanInt ?? null,
-    'batas_akhir_jaminan' => !empty($details['batas_setor_jaminan'])
-        ? $this->parseTanggalIndonesia($details['batas_setor_jaminan'])->format('Y-m-d')
-        : null,
-    'batas_akhir_penawaran' => !empty($details['batas_penawaran'])
-        ? $this->parseTanggalIndonesia($details['batas_penawaran'])->format('Y-m-d')
-        : null,
-    'tanggal_dibuat' => now(),
-    'tanggal_diupdate' => now(),
-]);
+                    // 🗄️ INSERT KE DATABASE
+                    DB::table('property')->insert([
+                    'id_agent' => 'AG001',
+                    'judul' => $details['judul'] ?? 'Property Rumah Lelang',
+                    'deskripsi' => "Lelang properti dengan luas tanah {$details['luas_tanah']} m2 di {$kabupaten}, {$provinsi}. Sertifikat: " . ($buktiKepemilikan ?? 'Tidak tersedia') . ". Batas penawaran hingga {$details['batas_penawaran']}.",
+                    'tipe' => $tipeProperti,
+                    'harga' => $hargaInt,
+                    'lokasi' => $details['alamat'] ?? 'Lokasi tidak diketahui',
+                    'luas' => $details['luas_tanah'] ?? null,
+                    'provinsi' => $provinsi ?? null,
+                    'kota' => $kabupaten ?? null,
+                    'kelurahan' => $kelurahanFinal,
+                    'sertifikat' => $buktiKepemilikan ?? null,
+                    'status' => 'Tersedia',
+                    'gambar' => !empty($allImages) ? implode(',', $allImages) : null,
+                    'payment' => 'cash',
+                    'uang_jaminan' => $uangJaminanInt ?? null,
+                    'batas_akhir_jaminan' => !empty($details['batas_setor_jaminan'])
+                        ? $this->parseTanggalIndonesia($details['batas_setor_jaminan'])->format('Y-m-d')
+                        : null,
+                    'batas_akhir_penawaran' => !empty($details['batas_penawaran'])
+                        ? $this->parseTanggalIndonesia($details['batas_penawaran'])->format('Y-m-d')
+                        : null,
+                    'tanggal_dibuat' => now(),
+                    'tanggal_diupdate' => now(),
+                ]);
 
 
-    $this->info("✅ Data berhasil disimpan ke database (judul: {$details['judul']})");
+                $this->info("✅ Data berhasil disimpan ke database (judul: {$details['judul']})");
                 } catch (\Exception $e) {
                     $this->warn("⚠️ Gagal scrape detail untuk $detailUrl. Error: " . $e->getMessage());
                 }

@@ -430,12 +430,6 @@
                 <small class="flex-fill text-center border-end py-2">
                     <i class="fa fa-ruler-combined text-primary me-2"></i>{{ $property->luas }} M2
                 </small>
-                <small class="flex-fill text-center border-end py-2">
-                    <i class="fa fa-bed text-primary me-2"></i>{{ $property->kamar_tidur }} Bed
-                </small>
-                <small class="flex-fill text-center py-2">
-                    <i class="fa fa-bath text-primary me-2"></i>{{ $property->kamar_mandi }} Bath
-                </small>
             </div>
         </div>
     @endforeach

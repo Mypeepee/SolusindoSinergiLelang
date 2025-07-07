@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('provinsi', 255)->nullable();
             $table->string('kota', 70)->nullable();
             $table->string('kelurahan', 70)->nullable();
-            $table->string('sertifikat', 70)->nullable();
+            $table->string('sertifikat', 100)->nullable();
             $table->enum('status', ['Tersedia', 'Terjual'])->nullable(); // check constraint
             $table->string('gambar', 900)->nullable();
             $table->string('payment', 20)->nullable();
