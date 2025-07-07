@@ -6,48 +6,133 @@
                 <div class="bg-light rounded p-3">
                     <div class="bg-white rounded p-4" style="border: 1px dashed rgba(0, 185, 142, .3)">
                         <div class="row g-5 align-items-center">
+                            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.css" />
                             <div class="col-lg-6 wow fadeIn">
+
+                                <!-- Swiper CSS -->
+                                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.css" />
+
                                 <div id="propertyCarousel" class="carousel slide" data-bs-ride="carousel">
-                                    <div class="carousel-inner">
-                                        @foreach(explode(',', $property->gambar) as $index => $image)
-                                            <div class="carousel-item {{ $index == 0 ? 'active' : '' }}">
-                                                <img class="img-fluid rounded w-100" src="{{ $image }}" alt="Property Image" loading="lazy"
-                                                     style="filter: brightness(1) !important; opacity: 1 !important;">
-                                            </div>
-                                        @endforeach
+                                    <div class="swiper mySwiperMain">
+                                        <div class="swiper-wrapper">
+                                            @foreach(explode(',', $property->gambar) as $index => $image)
+                                                <div class="swiper-slide">
+                                                    <img src="{{ $image }}" alt="Property Image" class="rounded w-100">
+                                                </div>
+                                            @endforeach
+                                        </div>
                                     </div>
-                                    <button class="carousel-control-prev" type="button" data-bs-target="#propertyCarousel" data-bs-slide="prev">
-                                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+
+                                    <!-- Bootstrap Next/Prev Buttons (Custom UI) -->
+                                    <button id="prevBtn" class="carousel-control-prev custom-btn" type="button">
+                                        <span class="custom-btn-icon">&larr;</span>
                                         <span class="visually-hidden">Previous</span>
                                     </button>
-                                    <button class="carousel-control-next" type="button" data-bs-target="#propertyCarousel" data-bs-slide="next">
-                                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                    <button id="nextBtn" class="carousel-control-next custom-btn" type="button">
+                                        <span class="custom-btn-icon">&rarr;</span>
                                         <span class="visually-hidden">Next</span>
                                     </button>
+
+                                    <style>
+                                    /* Custom Button Style */
+                                    .custom-btn {
+                                        position: absolute;
+                                        top: 50%;
+                                        transform: translateY(-50%);
+                                        width: 45px;
+                                        height: 45px;
+                                        background: rgba(0, 0, 0, 0.5); /* semi-transparent black */
+                                        border-radius: 50%;
+                                        display: flex;
+                                        justify-content: center;
+                                        align-items: center;
+                                        border: none;
+                                        cursor: pointer;
+                                        z-index: 10;
+                                        transition: background 0.3s, transform 0.2s;
+                                    }
+
+                                    .custom-btn:hover {
+                                        background: rgba(0, 0, 0, 0.7);
+                                        transform: translateY(-50%) scale(1.1); /* grow a bit on hover */
+                                    }
+
+                                    .custom-btn-icon {
+                                        color: white;
+                                        font-size: 20px;
+                                        font-weight: bold;
+                                        user-select: none;
+                                    }
+
+                                    #prevBtn {
+                                        left: 10px;
+                                    }
+
+                                    #nextBtn {
+                                        right: 10px;
+                                    }
+                                    </style>
+
                                 </div>
 
+                                <!-- Swiper JS -->
+                                <script src="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.js"></script>
+                                <script>
+                                    // Init Swiper
+                                    var swiper = new Swiper(".mySwiperMain", {
+                                        spaceBetween: 10,
+                                        loop: true, // Optional: make it loop
+                                    });
+
+                                    // Hijack Bootstrap buttons to control Swiper
+                                    document.getElementById('prevBtn').addEventListener('click', function(e) {
+                                        e.preventDefault(); // prevent Bootstrap default
+                                        swiper.slidePrev();
+                                    });
+                                    document.getElementById('nextBtn').addEventListener('click', function(e) {
+                                        e.preventDefault();
+                                        swiper.slideNext();
+                                    });
+                                </script>
+
+
                             </div>
+
                             <div class="col-lg-6 wow fadeIn" data-wow-delay="0.5s">
                                 <div class="mb-4">
-                                    <h1 class="mb-3">{{ $property->lokasi }}</h1>
-                                    <p>{{ $property->deskripsi }}</p>
+                                    <h1 class="mb-3">{{ $property->judul }}</h1>
+
+                                    <div class="row text-center mb-4">
+                                        <div class="col-6">
+                                            <div class="text-muted mb-1">Nilai Limit</div>
+                                            <div class="fw-bold fs-4 text-secondary">
+                                                Rp.{{ number_format($property->harga, 0, ',', '.') }}
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="text-muted mb-1">Uang Jaminan</div>
+                                            <div class="fw-bold fs-4 text-secondary">
+                                                Rp.{{ number_format($property->uang_jaminan, 0, ',', '.') }}
+                                            </div>
+                                        </div>
+                                    </div>
+
                                 </div>
                                 <div class="row mb-5">
                                     <div class="col-md-6 col-lg-4 text-center border-bottom border-top py-3">
-                                        <span class="d-inline-block text-black mb-0 caption-text">Kamar Tidur</span>
-                                        <strong class="d-block">{{ $property->kamar_tidur }}</strong>
+                                        <span class="d-inline-block text-black mb-0 caption-text">Luas Tanah</span>
+                                        <strong class="d-block">{{ $property->luas }} m<sup>2</sup></strong>
                                     </div>
                                     <div class="col-md-6 col-lg-4 text-center border-bottom border-top py-3">
-                                        <span class="d-inline-block text-black mb-0 caption-text">Kamar Mandi</span>
-                                        <strong class="d-block">{{ $property->kamar_mandi }}</strong>
+                                        <span class="d-inline-block text-black mb-0 caption-text">Sertifikat</span>
+                                        <strong class="d-block">{{ $property->sertifikat }}</strong>
                                     </div>
                                     <div class="col-md-6 col-lg-4 text-center border-bottom border-top py-3">
-                                        <span class="d-inline-block text-black mb-0 caption-text">
-                                            {{ $property->tipe == 'apartemen' ? 'Lantai Unit' : 'Jumlah Lantai' }}
-                                        </span>
-                                        <strong class="d-block">{{ $property->lantai }}</strong>
+                                        <span class="d-inline-block text-black mb-0 caption-text">Batas Setoran Jaminan</span>
+                                        <strong class="d-block">{{ \Carbon\Carbon::parse($property->batas_akhir_jaminan)->format('d M Y') }}</strong>
                                     </div>
                                 </div>
+
 
                                 <a href="{{ $property->agent && $property->agent->nomor_telepon ?
                                     'https://wa.me/62' . ltrim($property->agent->nomor_telepon, '0') : '#' }}"
@@ -82,6 +167,7 @@
 
                             </div>
                         </div>
+
                         <div class="single-property section">
                             <div class="container">
                                 <div class="row">
@@ -164,30 +250,51 @@
                                                             </table>
                                                         </div>
                                                         <div class="alert alert-warning mt-3">
-                                                            <strong>Catatan:</strong> Harga belum termasuk PPh, biaya notaris, dan biaya lainnya yang mungkin timbul selama proses jual beli.
+                                                            <strong>Catatan:</strong> Sudah termasuk biaya pengosongan, ditambah biaya-biaya (biaya lelang, biaya balik nama sertifikat, biaya roya, biaya akte grosse, penerimaan negara bukan pajak dan Pajak-Pajak seperti BPHTB dan Pajak Penambahan Nilai), tidak termasuk tunggakan biaya utilitas apabila ada
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div class="tab-pane" id="features-tab-2">
                                                     <div class="card shadow-sm border-0 p-4 mb-4">
-                                                        <h4 class="text-primary">Spesifikasi Properti</h4>
-                                                        <p></p>
-                                                        <div class="row">
-                                                            <div class="col-md-6">
-                                                                <p><i class="fa fa-vector-square text-primary me-2"></i> Luas Tanah: <strong>{{ $property->luas_tanah }} m²</strong></p>
-                                                                <p><i class="fa fa-building text-primary me-2"></i> Luas Bangunan: <strong>{{ $property->luas_bangunan }} m²</strong></p>
-                                                                <p><i class="fa fa-bed text-primary me-2"></i> Kamar Tidur: <strong>{{ $property->kamar_tidur }}</strong></p>
-                                                                <p><i class="fa fa-bath text-primary me-2"></i> Kamar Mandi: <strong>{{ $property->kamar_mandi }}</strong></p>
-                                                            </div>
-                                                            <div class="col-md-6">
-                                                                <p><i class="fa fa-layer-group text-primary me-2"></i> Jumlah Lantai: <strong>{{ $property->lantai }}</strong></p>
-                                                                <p><i class="fa fa-compass text-primary me-2"></i> Orientasi: <strong>{{ $property->orientation }}</strong></p>
-                                                                <p><i class="fa fa-file-alt text-primary me-2"></i> Sertifikat: <strong>{{ $property->sertifikat }}</strong></p>
-                                                                <p><i class="fa fa-map-marker-alt text-primary me-2"></i> Lokasi: <strong>{{ $property->kelurahan }}, {{ $property->kota }}</strong></p>
-                                                            </div>
+                                                        <h4 class="text-primary mb-3">Spesifikasi Properti</h4>
+
+                                                        <div class="table-responsive">
+                                                            <table class="table table-bordered align-middle mb-0">
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <th scope="row" class="bg-light">Tipe</th>
+                                                                        <td class="text-capitalize">{{ $property->tipe }}</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <th scope="row" class="bg-light">Luas Tanah</th>
+                                                                        <td>{{ $property->luas }} m²</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <th scope="row" class="bg-light">Sertifikat</th>
+                                                                        <td>{{ $property->sertifikat }}</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <th scope="row" class="bg-light">Lokasi</th>
+                                                                        <td>{{ $property->kelurahan }}, {{ $property->kota }}, {{ $property->provinsi }}</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <th scope="row" class="bg-light">Batas Penawaran</th>
+                                                                        <td>{{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->format('d M Y') }}</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <th scope="row" class="bg-light">Status</th>
+                                                                        <td>
+                                                                            <span class="badge {{ $property->status == 'Tersedia' ? 'bg-success' : 'bg-danger' }}">
+                                                                                {{ $property->status }}
+                                                                            </span>
+                                                                        </td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
                                                         </div>
                                                     </div>
                                                 </div>
+
                                                 <div class="tab-pane" id="features-tab-3">
                                                     @php
                                                         $encodedAlamat = urlencode($property->lokasi); // Pastikan $property->alamat sudah tersedia

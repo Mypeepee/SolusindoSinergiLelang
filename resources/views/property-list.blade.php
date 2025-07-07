@@ -273,7 +273,10 @@
                                             <a class="d-block h5 mb-2" href="{{ route('property-detail', $property->id_listing) }}">
                                                 {{ \Illuminate\Support\Str::limit($property->deskripsi, 50, '...') }}
                                             </a>
-                                            <p><i class="fa fa-map-marker-alt text-primary me-2"></i>{{ $property->lokasi }}</p>
+                                            <p>
+                                                <i class="fa fa-map-marker-alt text-primary me-2"></i>
+                                                {{ \Illuminate\Support\Str::limit($property->lokasi, 70, '...') }}
+                                            </p>
                                         </div>
                                         <div class="d-flex border-top">
                                             <small class="flex-fill text-center border-end py-2"><i class="fa fa-ruler-combined text-primary me-2"></i>{{ $property->luas_bangunan }} Sqft</small>
