@@ -27,47 +27,70 @@ class propertydetailController extends Controller
             abort(404);
         }
 
-        // Ambil properti serupa berdasarkan kota, kelurahan, dan rentang harga
+        // ✅ Hitung harga per m² properti ini
+        $thisPricePerM2 = ($property->luas > 0) ? $property->harga / $property->luas : 0;
+
+        // ✅ Hitung range harga per m² ±25% (dibulatkan supaya Postgres tidak error)
+        $lowerBound = (int) floor($thisPricePerM2 * 0.75);
+        $upperBound = (int) ceil($thisPricePerM2 * 1.25);
+
+        // ✅ Ambil properti serupa berdasarkan kecamatan & harga per m² ±25%
         $similarProperties = DB::table('property')
             ->where('id_listing', '!=', $property->id_listing)
-            ->where(function ($query) use ($property) {
-                $query->where('kota', $property->kota)
-                    ->orWhere('kelurahan', $property->kelurahan);
-            })
-            ->whereBetween('harga', [$property->harga - 100000000, $property->harga + 100000000])
+            ->whereRaw('LOWER(kecamatan) = ?', [strtolower($property->kecamatan)])
+            ->whereBetween(DB::raw('harga / luas'), [$lowerBound, $upperBound])
             ->limit(10)
             ->get();
 
-        // Hitung rentang harga untuk properti serupa
-        $minPrice = $similarProperties->min('harga');
-        $maxPrice = $similarProperties->max('harga');
+        // ✅ Fallback: kalau tidak ada properti dalam range, ambil semua di kecamatan
+        if ($similarProperties->isEmpty()) {
+            $similarProperties = DB::table('property')
+                ->where('id_listing', '!=', $property->id_listing)
+                ->whereRaw('LOWER(kecamatan) = ?', [strtolower($property->kecamatan)])
+                ->limit(10)
+                ->get();
+        }
 
-        // Hitung median harga untuk properti serupa
-        $prices = $similarProperties->pluck('harga')->sort();
-        $median = $prices->count() % 2 == 0
-            ? ($prices->get($prices->count() / 2 - 1) + $prices->get($prices->count() / 2)) / 2
-            : $prices->get(floor($prices->count() / 2));
+        // ✅ Hitung statistik harga per m² properti serupa
+        $pricesPerM2 = $similarProperties->map(function ($p) {
+            return ($p->luas > 0) ? $p->harga / $p->luas : null;
+        })->filter();
 
-        // Hitung harga rata-rata properti di wilayah tersebut
-        // Menghitung harga rata-rata properti di wilayah tersebut
-    $avgPrice = $similarProperties->avg('harga');
+        $avgPricePerM2 = $pricesPerM2->avg();
+        $minPricePerM2 = $pricesPerM2->min();
+        $maxPricePerM2 = $pricesPerM2->max();
 
-    // Menghitung harga rata-rata properti di wilayah tersebut
-    $avgPrice = $similarProperties->avg('harga');
+        // ✅ Hitung median harga per m²
+        $sortedPrices = $pricesPerM2->sort()->values();
+        $count = $sortedPrices->count();
+        $medianPricePerM2 = null;
+        if ($count > 0) {
+            $medianPricePerM2 = ($count % 2 == 0)
+                ? ($sortedPrices[$count / 2 - 1] + $sortedPrices[$count / 2]) / 2
+                : $sortedPrices[floor($count / 2)];
+        }
 
-    // Jika hanya ada 1 properti di wilayah ini
-    if ($avgPrice == 0 || count($similarProperties) == 0) {
-        // Tidak ada perbandingan harga
-        $discountPercentage = "Properti ini adalah satu-satunya properti di wilayah ini, tidak ada properti sebanding untuk perbandingan harga.";
-    } else {
-        // Hitung diskon dari harga rata-rata
-        $discountPercentage = round((($avgPrice - $property->harga) / $avgPrice) * 100, 2);
+        // ✅ Hitung selisih harga properti ini dari rata-rata (%)
+        if ($avgPricePerM2 && $thisPricePerM2) {
+            $selisihPersen = round((($avgPricePerM2 - $thisPricePerM2) / $avgPricePerM2) * 100, 2);
+        } else {
+            $selisihPersen = "Tidak ada data pembanding di kecamatan ini.";
+        }
+
+        return view("property-detail", compact(
+            'property',
+            'similarProperties',
+            'thisPricePerM2',
+            'avgPricePerM2',
+            'minPricePerM2',
+            'maxPricePerM2',
+            'medianPricePerM2',
+            'selisihPersen'
+        ));
     }
 
 
-        // Kirim data ke view
-        return view("property-detail", compact('property', 'similarProperties', 'minPrice', 'maxPrice', 'median', 'avgPrice', 'discountPercentage'));
-    }
+
 
 //     public function update(Request $request, $id_listing)
 // {

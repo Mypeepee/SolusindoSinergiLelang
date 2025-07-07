@@ -383,56 +383,59 @@
                                                       </div>
 
                                                       <!-- Analisa Harga dan Diskon Properti (Kanan) -->
-                                                        <div class="col-lg-4 order-1 order-lg-2">
-                                                            <div class="row">
+                                                      <div class="col-lg-4 order-1 order-lg-2">
+                                                        <div class="row">
                                                             <!-- Rentang Harga Pasaran -->
                                                             <div class="col-md-12 mb-4">
                                                                 <div class="alert alert-info d-flex align-items-center">
-                                                                <i class="fa fa-lightbulb me-3"></i>
-                                                                <div>
-                                                                    <strong>Rentang Harga Pasaran di {{ $property->kelurahan }}:</strong>
-                                                                    @if ($minPrice == 0 || $maxPrice == 0)
-                                                                    <br><strong>Tidak ada properti sebanding di area ini untuk perbandingan harga.</strong>
-                                                                    @else
-                                                                    <br>Rp {{ number_format($minPrice, 0, ',', '.') }} - Rp {{ number_format($maxPrice, 0, ',', '.') }}
-                                                                    @endif
-                                                                </div>
+                                                                    <i class="fa fa-lightbulb me-3"></i>
+                                                                    <div>
+                                                                        <strong>Rentang Harga Pasaran per m² di {{ $property->kelurahan ?? $property->kecamatan }}:</strong>
+                                                                        @if ($minPricePerM2 == 0 || $maxPricePerM2 == 0)
+                                                                            <br><strong>Tidak ada properti sebanding di area ini untuk perbandingan harga.</strong>
+                                                                        @else
+                                                                            <br>Rp {{ number_format($minPricePerM2, 0, ',', '.') }} /m² - Rp {{ number_format($maxPricePerM2, 0, ',', '.') }} /m²
+                                                                        @endif
+                                                                    </div>
                                                                 </div>
                                                             </div>
 
                                                             <!-- Harga Tengah (Median) -->
                                                             <div class="col-md-12 mb-4">
                                                                 <div class="alert alert-info d-flex align-items-center">
-                                                                <i class="fa fa-chart-line me-3"></i>
-                                                                <div>
-                                                                    <strong>Harga Tengah (Median):</strong>
-                                                                    @if ($median == 0)
-                                                                    <br><strong>Tidak ada properti sebanding di area ini untuk perbandingan harga.</strong>
-                                                                    @else
-                                                                    <br>Rp {{ number_format($median, 0, ',', '.') }}
-                                                                    @endif
-                                                                </div>
+                                                                    <i class="fa fa-chart-line me-3"></i>
+                                                                    <div>
+                                                                        <strong>Harga Tengah (Median) per m²:</strong>
+                                                                        @if ($medianPricePerM2 == 0 || empty($medianPricePerM2))
+                                                                            <br><strong>Tidak ada properti sebanding di area ini untuk perbandingan harga.</strong>
+                                                                        @else
+                                                                            <br>Rp {{ number_format($medianPricePerM2, 0, ',', '.') }} /m²
+                                                                        @endif
+                                                                    </div>
                                                                 </div>
                                                             </div>
 
-                                                          <!-- Diskon Properti -->
-                                                          <div class="col-md-12 mb-4">
-                                                            <div class="alert alert-warning d-flex align-items-center">
-                                                              <i class="fa fa-percent me-3"></i>
-                                                              <div>
-                                                                <strong>Diskon Properti:</strong>
-                                                                @if (is_string($discountPercentage))
-                                                                  <p>{{ $discountPercentage }}</p> <!-- Menampilkan pesan jika hanya ada satu properti -->
-                                                                @else
-                                                                  <p>Harga rata-rata properti di wilayah ini adalah Rp {{ number_format($avgPrice, 0, ',', '.') }}, sementara properti ini dijual dengan harga <strong>Rp {{ number_format($property->harga, 0, ',', '.') }}</strong>.</p>
-                                                                  <p>Properti ini telah terdiskon sebesar <strong>{{ number_format($discountPercentage, 0, ',', '.') }}%</strong> dari harga rata-rata.</p>
-                                                                @endif
-                                                              </div>
+                                                            <!-- Diskon Properti -->
+                                                            <div class="col-md-12 mb-4">
+                                                                <div class="alert alert-warning d-flex align-items-center">
+                                                                    <i class="fa fa-percent me-3"></i>
+                                                                    <div>
+                                                                        <strong>Diskon Properti:</strong>
+                                                                        @if (is_string($selisihPersen))
+                                                                            <p>{{ $selisihPersen }}</p>
+                                                                        @else
+                                                                            <p>Harga rata-rata properti di wilayah ini adalah Rp {{ number_format($avgPricePerM2, 0, ',', '.') }} /m², sementara properti ini dijual dengan harga <strong>Rp {{ number_format($thisPricePerM2, 0, ',', '.') }} /m²</strong>.</p>
+                                                                            @if ($selisihPersen >= 0)
+                                                                                <p>Properti ini lebih murah <strong>{{ number_format($selisihPersen, 2, ',', '.') }}%</strong> dibanding rata-rata.</p>
+                                                                            @else
+                                                                                <p>Properti ini lebih mahal <strong>{{ number_format(abs($selisihPersen), 2, ',', '.') }}%</strong> dibanding rata-rata.</p>
+                                                                            @endif
+                                                                        @endif
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                          </div>
-
-
                                                         </div>
+
                                                       </div>
                                                     </div>
                                                   </div>
