@@ -303,20 +303,29 @@ $details = json_decode($detailsJson, true);
                     if (!empty($details['alamat'])) {
                         $alamat = $details['alamat'];
 
-                        // 🎯 Cari Provinsi (support typo: Provinsi / Propinsi / Prov.)
-                        if (preg_match('/\b(prov(?:insi)?|prop(?:insi)?)\s*([a-zA-Z\s]+)/i', $alamat, $provMatch)) {
-                            $provinsi = strtoupper(trim($provMatch[2])); // 🔥 Kapital semua
-                        }
+                        // 🎯 CARI PROVINSI (support typo Prop., Prov., dll + hapus titik)
+if (preg_match('/\b(prov(?:insi)?|prop(?:insi)?)\.?\s*([a-zA-Z\s]+)/i', $alamat, $provMatch)) {
+    $provinsi = strtoupper(trim(preg_replace('/\.$/', '', $provMatch[2]))); // ✅ Hapus titik di belakang
+}
 
-                        // 🎯 Cari Kabupaten atau Kota
-                        if (preg_match('/\b(kab(?:upaten|\.)?|kota)\s*([a-zA-Z\s]+?)(?=\s*(kec|kecamatan|kel|kelurahan|prov|prop|$))/i', $alamat, $kabMatch)) {
-                            $namaKab = strtoupper(trim($kabMatch[2])); // Kapital semua
-                            if (stripos($kabMatch[1], 'kota') !== false) {
-                                $kabupaten = "KOTA " . $namaKab;
-                            } else {
-                                $kabupaten = "KAB. " . $namaKab;
-                            }
-                        }
+// 🎯 Cari Kabupaten/Kota (super ketat + fallback Kota/Kab.)
+if (preg_match('/\b(kab(?:\.|upaten)?|kota|kota\/kab(?:\.)?)\s*([a-zA-Z\s]+?)(?=\s*(kec|kecamatan|kel|kelurahan|desa|prop|prov|setempat|rt|rw|$))/i', $alamat, $kabMatch)) {
+    $namaKab = strtoupper(trim($kabMatch[2]));
+    if (stripos($kabMatch[1], 'kota') !== false) {
+        $kabupaten = "KOTA " . $namaKab;
+    } else {
+        $kabupaten = "KAB. " . $namaKab;
+}
+} elseif (preg_match('/kota\/kab(?:\.)?\s*([a-zA-Z\s]+)/i', $alamat, $kkMatch)) {
+    // 🛡️ Jika ada "Kota/Kab." ambil namanya langsung
+    $kabupaten = "KAB. " . strtoupper(trim($kkMatch[1]));
+} elseif (preg_match('/kab\s*([a-zA-Z\s]+)/i', $alamat, $kabAltMatch)) {
+    $kabupaten = "KAB. " . strtoupper(trim($kabAltMatch[1]));
+} elseif (preg_match('/kota\s*([a-zA-Z\s]+)/i', $alamat, $kotaAltMatch)) {
+    $kabupaten = "KOTA " . strtoupper(trim($kotaAltMatch[1]));
+}
+
+
 
                         // 🧹 Bersihkan alamat
                         if (!empty($details['alamat'])) {
@@ -327,7 +336,7 @@ $details = json_decode($detailsJson, true);
                         $buktiKepemilikan = $details['bukti_kepemilikan_data']['bukti_kepemilikan'] ?? null;
 
                         // 🎯 Cari Kecamatan
-                        if (preg_match('/\bkec(?:amatan|\.)?\s*([a-zA-Z\s]+)/i', $alamat, $kecMatch)) {
+                        if (preg_match('/\bkec(?:amatan|\.)?\s*[:,]*\s*([a-zA-Z\s]+)/i', $alamat, $kecMatch)) {
                             $kecamatanRaw = trim($kecMatch[1]);
 
                             // 🎯 Ambil hanya sampai sebelum kata kunci (Kab/Kota/Prov)
