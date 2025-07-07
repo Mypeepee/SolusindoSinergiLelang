@@ -284,6 +284,16 @@ $details = json_decode($detailsJson, true);
                         $uangJaminanInt = (int) preg_replace('/[^\d]/', '', $details['uang_jaminan']);
                     }
 
+                    if (!empty($buktiKepemilikan)) {
+                        // ✅ Ambil SHM No + optional pemilik
+                        if (preg_match('/(SHM\s+No\.\s*\d+(\/[^.,]*)?)/i', $buktiKepemilikan, $sertifikatMatch)) {
+                            $buktiKepemilikan = trim($sertifikatMatch[1]);
+                        } else {
+                            // 🧹 Hapus "No:" di akhir jika tidak ada nomor
+                            $buktiKepemilikan = preg_replace('/No:\s*$/i', '', $buktiKepemilikan);
+                            $buktiKepemilikan = trim($buktiKepemilikan);
+                        }
+                    }
                     // 🆕 Parsing alamat ke provinsi, kabupaten/kota, kecamatan/kelurahan
                     $provinsi = null;
                     $kabupaten = null;
@@ -299,7 +309,7 @@ $details = json_decode($detailsJson, true);
                         }
 
                         // 🎯 Cari Kabupaten atau Kota
-                        if (preg_match('/\b(kab(?:upaten|\.)?|kota)\s*([a-zA-Z\s]+)/i', $alamat, $kabMatch)) {
+                        if (preg_match('/\b(kab(?:upaten|\.)?|kota)\s*([a-zA-Z\s]+?)(?=\s*(kec|kecamatan|kel|kelurahan|prov|prop|$))/i', $alamat, $kabMatch)) {
                             $namaKab = strtoupper(trim($kabMatch[2])); // Kapital semua
                             if (stripos($kabMatch[1], 'kota') !== false) {
                                 $kabupaten = "KOTA " . $namaKab;
@@ -316,22 +326,12 @@ $details = json_decode($detailsJson, true);
 
                         $buktiKepemilikan = $details['bukti_kepemilikan_data']['bukti_kepemilikan'] ?? null;
 
-                        if (!empty($buktiKepemilikan)) {
-                            // ✅ Ambil SHM No + optional pemilik
-                            if (preg_match('/(SHM\s+No\.\s*\d+(\/[^.,]*)?)/i', $buktiKepemilikan, $sertifikatMatch)) {
-                                $buktiKepemilikan = trim($sertifikatMatch[1]);
-                            } else {
-                                // 🧹 Hapus "No:" di akhir jika tidak ada nomor
-                                $buktiKepemilikan = preg_replace('/No:\s*$/i', '', $buktiKepemilikan);
-                                $buktiKepemilikan = trim($buktiKepemilikan);
-                            }
-                        }
-
                         // 🎯 Cari Kecamatan
                         if (preg_match('/\bkec(?:amatan|\.)?\s*([a-zA-Z\s]+)/i', $alamat, $kecMatch)) {
                             $kecamatanRaw = trim($kecMatch[1]);
-                            // 🧠 Bersihkan tambahan "Kota ..." / "Kabupaten ..."
-                            $kecamatanClean = preg_replace('/\b(kota|kabupaten)\b.*$/i', '', $kecamatanRaw);
+
+                            // 🎯 Ambil hanya sampai sebelum kata kunci (Kab/Kota/Prov)
+                            $kecamatanClean = preg_replace('/\s*\b(kab(?:upaten)?|kota|prov(?:insi)?|prop(?:insi)?)\b.*$/i', '', $kecamatanRaw);
                             $kecamatan = ucwords(strtolower(trim($kecamatanClean))); // 🔥 Capitalize
                         }
 
@@ -340,18 +340,18 @@ $details = json_decode($detailsJson, true);
                             $kelurahanRaw = trim($kelMatch[1]);
 
                             // 🎯 Ambil hanya sampai sebelum kata kunci (Kec/Kab/Kota/Prov)
-                            $kelurahanClean = preg_replace('/\s*(kec(?:amatan)?|kab(?:upaten)?|kota|prov(?:insi)?|prop(?:insi)?).*/i', '', $kelurahanRaw);
+                            $kelurahanClean = preg_replace('/\s*\b(kec(?:amatan)?|kab(?:upaten)?|kota|prov(?:insi)?|prop(?:insi)?)\b.*$/i', '', $kelurahanRaw);
                             $kelurahan = ucwords(strtolower(trim($kelurahanClean))); // 🔥 Capitalize
 
-                            // ✅ Tambahan pembersih: jika masih ada "Kec"/"Kab"/"Kota" di Kelurahan
+                            // ✅ Tambahan pembersih: jika masih ada “Kec/Kab/Kota” di Kelurahan
                             if (stripos($kelurahan, 'Kec') !== false || stripos($kelurahan, 'Kab') !== false || stripos($kelurahan, 'Kota') !== false) {
-                                if (preg_match('/\bkel(?:urahan|\.)?\s*([a-zA-Z\s]+?)(?=\s*(kec|kecamatan|kota|kab|prov|prop|$))/i', $alamat, $kelFixMatch)) {
+                                if (preg_match('/\bkel(?:urahan|\.)?\s*([a-zA-Z\s]+?)(?=\s*(kec|kab|kota|prov|prop|$))/i', $alamat, $kelFixMatch)) {
                                     $kelurahan = ucwords(strtolower(trim($kelFixMatch[1]))); // 🎯 Ambil versi bersih
                                 }
                             }
                         } else {
                             // ✅ Jika regex lama gagal, coba regex presisi
-                            if (preg_match('/\bkel(?:urahan|\.)?\s*([a-zA-Z\s]+?)(?=\s*(kec|kecamatan|kota|kab|prov|prop|$))/i', $alamat, $kelFixMatch)) {
+                            if (preg_match('/\bkel(?:urahan|\.)?\s*([a-zA-Z\s]+?)(?=\s*(kec|kab|kota|prov|prop|$))/i', $alamat, $kelFixMatch)) {
                                 $kelurahan = ucwords(strtolower(trim($kelFixMatch[1])));
                             }
                         }
@@ -387,6 +387,7 @@ $details = json_decode($detailsJson, true);
                     'luas' => $details['luas_tanah'] ?? null,
                     'provinsi' => $provinsi ?? null,
                     'kota' => $kabupaten ?? null,
+                    'kecamatan' => $kecamatan ?? null,
                     'kelurahan' => $kelurahanFinal,
                     'sertifikat' => $buktiKepemilikan ?? null,
                     'status' => 'Tersedia',

@@ -104,7 +104,7 @@
 
                                     <div class="row text-center mb-4">
                                         <div class="col-6">
-                                            <div class="text-muted mb-1">Nilai Limit</div>
+                                            <div class="text-muted mb-1">Harga</div>
                                             <div class="fw-bold fs-4 text-secondary">
                                                 Rp.{{ number_format($property->harga, 0, ',', '.') }}
                                             </div>
