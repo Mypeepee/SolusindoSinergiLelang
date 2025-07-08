@@ -51,17 +51,18 @@
                         });
                     });
                 </script>
+                                <!-- Tipe Properti -->
                 <div class="col-md-2">
                     <select name="property_type" class="form-select border-0 py-3">
-                        <option selected>Tipe Property</option>
+                        <option selected disabled>Tipe Property</option>
                         <option value="Lelang">Lelang</option>
-                        <option value="Primary">Primary</option>
-                        <option value="Secondary">Secondary</option>
-                        <option value="Apartemen">Apartemen</option>
-                        <option value="Gudang">Gudang</option>
-                        <option value="Tanah">Tanah</option>
-                        <option value="Ruko">Ruko</option>
-                        <option value="Sewa">Sewa</option>
+                        <option value="rumah">Rumah</option>
+                        <option value="villa">Villa</option>
+                        <option value="apartemen">Apartemen</option>
+                        <option value="gudang">Gudang</option>
+                        <option value="tanah">Tanah</option>
+                        <option value="ruko">Ruko</option>
+                        <option value="sewa">Sewa</option>
                     </select>
                 </div>
                 <div class="col-md-2">

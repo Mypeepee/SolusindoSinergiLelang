@@ -45,7 +45,7 @@
                         <option selected disabled>Tipe Property</option>
                         <option value="Lelang">Lelang</option>
                         <option value="rumah">Rumah</option>
-                        <option value="secondary">Villa</option>
+                        <option value="villa">Villa</option>
                         <option value="apartemen">Apartemen</option>
                         <option value="gudang">Gudang</option>
                         <option value="tanah">Tanah</option>
@@ -315,12 +315,31 @@
                                                         <a class="d-block h5 mb-2" href="{{ route('property-detail', $property->id_listing) }}">
                                                             {{ \Illuminate\Support\Str::limit($property->deskripsi, 50, '...') }}
                                                         </a>
-                                                        <p><i class="fa fa-map-marker-alt text-primary me-2"></i>{{ $property->lokasi }}</p>
+                                                        <p>
+                                                            <i class="fa fa-map-marker-alt text-primary me-2"></i>
+                                                            {{ \Illuminate\Support\Str::limit($property->lokasi, 70, '...') }}
+                                                        </p>
                                                     </div>
-                                                    <div class="d-flex border-top">
-                                                        <small class="flex-fill text-center border-end py-2"><i class="fa fa-ruler-combined text-primary me-2"></i>{{ $property->luas_bangunan }} Sqft</small>
-                                                        <small class="flex-fill text-center border-end py-2"><i class="fa fa-bed text-primary me-2"></i>{{ $property->kamar_tidur }} Bed</small>
-                                                        <small class="flex-fill text-center py-2"><i class="fa fa-bath text-primary me-2"></i>{{ $property->kamar_mandi }} Bath</small>
+                                                    <div class="d-flex border-top border-2 border-dashed border-orange">
+                                                        <!-- Luas Properti -->
+                                                        <small class="flex-fill text-center border-end border-dashed py-2">
+                                                            <i class="fa fa-vector-square text-danger me-2"></i>
+                                                            <span class="text-dark">{{ $property->luas }} m²</span>
+                                                        </small>
+
+                                                        <!-- Kota -->
+                                                        <small class="flex-fill text-center border-end border-dashed py-2">
+                                                            <i class="fa fa-map-marker-alt text-danger me-2"></i>
+                                                            <span class="text-dark text-uppercase">{{ $property->kota }}</span>
+                                                        </small>
+
+                                                        <!-- Batas Penawaran -->
+                                                        <small class="flex-fill text-center py-2">
+                                                            <i class="fa fa-calendar-alt text-danger me-2"></i>
+                                                            <span class="text-dark">
+                                                                {{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->format('d M Y') }}
+                                                            </span>
+                                                        </small>
                                                     </div>
                                                 </div>
                                             </div>
