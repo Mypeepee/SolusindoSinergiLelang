@@ -2,18 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cookie;
-use Illuminate\Support\Facades\DB;
-use App\Models\Account;
-use App\Models\Agent;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 use App\Models\User;
+use App\Models\Agent;
+use App\Models\Account;
+use Illuminate\Support\Str;
+use Illuminate\Http\Request;
 use Kreait\Firebase\Factory;
+use Illuminate\Validation\Rule;
+use App\Mail\VerificationCodeMail;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 
@@ -613,4 +615,114 @@ class AuthController extends Controller
         $informasi_klien = DB::table('informasi_klien')->where('id_account', $id_account)->first();
         return view('informasi_klien.rekening_edit', compact('informasi_klien'));
     }
+
+    public function showForgotForm()
+    {
+        return view('pass.forget');
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:account,email',
+        ], [
+            'email.required' => 'Please enter your email address.',
+            'email.email' => 'Enter a valid email address.',
+            'email.exists' => 'We couldn\'t find that email in our system.',
+        ]);
+
+        $email = $request->email;
+
+        try {
+            // Generate OTP
+            $otp = rand(100000, 999999);
+
+            // Store in DB
+            DB::table('password_reset_tokens')->updateOrInsert(
+                ['email' => $email],
+                ['token' => $otp, 'created_at' => now()]
+            );
+
+            // Send email
+            Mail::to($email)->send(new VerificationCodeMail($otp));
+
+            // Save email in session
+            session(['email' => $email]);
+
+            return redirect()->route('otp.form')->with('status', 'An OTP has been sent to your email.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to send OTP. Try again.');
+        }
+    }
+
+    public function showOtpForm()
+    {
+        return view('pass.otp'); // view input OTP
+    }
+
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'otp' => 'required|digits:6',
+        ]);
+
+        $email = session('email');
+        $storedOtp = DB::table('password_reset_tokens')->where('email', $email)->first();
+
+        if ($storedOtp && $request->otp == $storedOtp->token) {
+            return redirect()->route('password.reset.form', ['email' => $email]);
+        }
+
+        return back()->with('error', 'Invalid OTP. Please try again.');
+    }
+
+    public function resendOtp(Request $request)
+    {
+        $email = session('email');  // Ambil email yang disimpan di session
+
+        if (!$email) {
+            return redirect()->route('forgot.password')->with('error', 'Session expired. Silakan masukkan email Anda lagi.');
+        }
+
+        // Generate OTP baru
+        $otp = rand(100000, 999999);
+
+        // Update OTP di tabel password_resets
+        DB::table('password_resets')->updateOrInsert(
+            ['email' => $email],
+            ['token' => $otp, 'created_at' => now()]
+        );
+
+        // Kirim email lagi
+        Mail::to($email)->send(new VerificationCodeMail($otp));
+
+        return back()->with('status', 'Kode OTP baru telah dikirim ke email Anda.');
+    }
+
+    public function showResetPasswordForm($email)
+    {
+        return view('pass.reset', compact('email'));
+    }
+
+    public function updatePassword(Request $request, $email)
+    {
+        $request->validate([
+            'new_password' => 'required|string|min:6',
+            'confirm_password' => 'required|string|same:new_password',
+        ],[
+            'confirm_password.required' => 'Konfirmasi password wajib diisi.',
+            'confirm_password.same' => 'Konfirmasi password tidak sama.',
+        ]);
+
+        // Update password di tabel users
+        DB::table('account')->where('email', $email)->update([
+            'password' => $request->new_password
+        ]);
+
+        // Hapus OTP setelah berhasil reset password
+        DB::table('password_reset_tokens')->where('email', $email)->delete();
+
+        return redirect('/login')->with('status', 'Password berhasil direset. Silakan login.');
+    }
+
 }

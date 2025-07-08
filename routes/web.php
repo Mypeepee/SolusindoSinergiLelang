@@ -178,3 +178,14 @@ Route::post('/verify-agent/{id_account}', [AgentAdminController::class, 'verifyA
 
 Route::post('/agent/update-profile-picture', [AuthController::class, 'updateProfilePicture'])->name('agent.updateProfilePicture');
 
+//forget password
+Route::get('/forgot-password', [AuthController::class, 'showForgotForm'])->name('forgot.password');
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->name('forgot.send');
+
+Route::get('/otp', [AuthController::class, 'showOtpForm'])->name('otp.form');
+Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->name('verify.otp');
+Route::post('/resend-otp', [AuthController::class, 'resendOtp'])->name('resend.otp');
+
+Route::get('/password/reset/{email}', [AuthController::class, 'showResetPasswordForm'])->name('password.reset.form');
+Route::post('/update-password/{email}', [AuthController::class, 'updatePassword'])->name('password.update');
+
