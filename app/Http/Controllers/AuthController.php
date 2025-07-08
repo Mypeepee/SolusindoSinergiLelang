@@ -688,7 +688,7 @@ class AuthController extends Controller
         $otp = rand(100000, 999999);
 
         // Update OTP di tabel password_resets
-        DB::table('password_resets')->updateOrInsert(
+        DB::table('password_reset_tokens')->updateOrInsert(
             ['email' => $email],
             ['token' => $otp, 'created_at' => now()]
         );
