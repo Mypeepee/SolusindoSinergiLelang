@@ -13,7 +13,6 @@
   body {
     background: url('/img/home.webp') no-repeat center center fixed;
     background-size: cover;
-    font-family: 'Poppins', sans-serif;
   }
 
   .page-wrapper {
