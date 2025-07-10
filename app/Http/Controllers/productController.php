@@ -20,26 +20,26 @@ use App\Helpers\GoogleDriveUploader;
 
 class productController extends Controller
 {
-    public function showRandom()
-    {
-        // Ambil 6 properti secara acak dengan status available
-        $hotListings = Property::where('status', 'Tersedia')->inRandomOrder()->take(6)->get();
+    // public function showRandom()
+    // {
+    //     // Ambil 6 properti secara acak dengan status available
+    //     $hotListings = Property::where('status', 'Tersedia')->inRandomOrder()->take(6)->get();
 
-        $properties = Property::where('status', 'Tersedia')
-                            ->select('tipe', DB::raw('count(*) as total'))
-                            ->groupBy('tipe')
-                            ->get();
+    //     $properties = Property::where('status', 'Tersedia')
+    //                         ->select('tipe', DB::raw('count(*) as total'))
+    //                         ->groupBy('tipe')
+    //                         ->get();
 
-                            $testimonials = DB::table('transaction')
-                            ->join('account', 'transaction.id_klien', '=', 'account.id_account')
-                            ->select('account.nama', 'transaction.rating', 'transaction.comment')
-                            ->whereNotNull('transaction.rating')
-                            ->orderByDesc('transaction.tanggal_transaksi')
-                            ->limit(10)
-                            ->get();
+    //                         $testimonials = DB::table('transaction')
+    //                         ->join('account', 'transaction.id_klien', '=', 'account.id_account')
+    //                         ->select('account.nama', 'transaction.rating', 'transaction.comment')
+    //                         ->whereNotNull('transaction.rating')
+    //                         ->orderByDesc('transaction.tanggal_transaksi')
+    //                         ->limit(10)
+    //                         ->get();
 
-                        return view('index', compact('hotListings', 'properties', 'testimonials'));
-    }
+    //                     return view('index', compact('hotListings', 'properties', 'testimonials'));
+    // }
 
     public function showPropertyTypeIndex()
     {

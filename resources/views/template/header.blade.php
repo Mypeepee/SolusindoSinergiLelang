@@ -91,6 +91,17 @@
         .icon-actions a:hover {
             color: #fd6e14; /* warna hover orange */
         }
+
+        .navbar-nav .nav-link.active,
+        .icon-actions a.active {
+            color: #fd6e14 !important;
+            font-weight: 600;
+        }
+
+        .dropdown-menu .dropdown-item.active {
+            color: #fd6e14 !important;
+            font-weight: 600;
+        }
     </style>
 </head>
 
@@ -127,20 +138,29 @@
                             Cookie::get('role') === 'Agent' ||
                             Cookie::get('role') === 'Register'
                         )
-                            <a href="{{ route('dashboard.agent') }}" class="nav-item nav-link">Dashboard</a>
+                            <a href="{{ route('dashboard.agent') }}" 
+                            class="nav-item nav-link {{ Request::is('dashboard/agent*') ? 'active' : '' }}">
+                                Dashboard
+                            </a>
+
                             @endif
                         @endif
-                        <a href="{{ url('/') }}" class="nav-item nav-link active">Home</a>
-                        <a href="{{ url('/about') }}" class="nav-item nav-link">Tentang Kami</a>
+                        <a href="{{ url('/') }}" class="nav-item nav-link {{ Request::is('/') ? 'active' : '' }}">Home</a>
+                        <a href="{{ url('/about') }}" class="nav-item nav-link {{ Request::is('about') ? 'active' : '' }}">Tentang Kami</a>
 
-                        <!-- Property Dropdown -->
-                        <div class="nav-item dropdown">
-                            <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+                        <div class="nav-item dropdown {{ Request::is('property*') ? 'active text-orange' : '' }}">
+                            <a href="#" class="nav-link dropdown-toggle {{ Request::is('property*') ? 'active text-orange' : '' }}" data-bs-toggle="dropdown">
                                 Property <i class="fas fa-chevron-down ms-1"></i>
                             </a>
                             <div class="dropdown-menu rounded-0 m-0">
-                                <a href="{{ url('/property-list') }}" class="dropdown-item">Property List</a>
-                                <a href="{{ url('/property-agent') }}" class="dropdown-item">Property Agent</a>
+                                <a href="{{ url('/property-list') }}" 
+                                class="dropdown-item {{ Request::is('property-list') ? 'active bg-orange text-white' : '' }}">
+                                    Property List
+                                </a>
+                                <a href="{{ url('/property-agent') }}" 
+                                class="dropdown-item {{ Request::is('property-agent') ? 'active bg-orange text-white' : '' }}">
+                                    Property Agent
+                                </a>
                             </div>
                         </div>
 
@@ -148,37 +168,46 @@
                         @if (Session::has('id_account') || isset($_COOKIE['id_account']))
                         <ul class="navbar-nav">
                             <li class="nav-item dropdown d-flex align-items-center">
-                                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                                <a class="nav-link dropdown-toggle 
+                                {{ Request::is('profile*') || Request::is('agent/properties*') || Request::is('cart*') ? 'text-orange' : '' }}" 
+                                href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                                     <i class="fas fa-user" style="font-size: 1rem;"></i>
                                     <i class="fas fa-chevron-down ms-1"></i>
                                 </a>
+
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                                     <li>
-                                        <a class="dropdown-item" href="{{ route('profile', ['id_account' => Session::get('id_account') ?? $_COOKIE['id_account'] ?? '']) }}">
+                                        <a class="dropdown-item {{ Request::is('profile*') ? 'active bg-orange text-white' : '' }}" 
+                                        href="{{ route('profile', ['id_account' => Session::get('id_account') ?? $_COOKIE['id_account'] ?? '']) }}">
                                             <i class="fa fa-user me-2"></i> Profile
                                         </a>
                                     </li>
+
                                     @if (
                                         Session::get('role') === 'Agent' ||
                                         Session::get('role') === 'Register' ||
                                         Cookie::get('role') === 'Agent' ||
                                         Cookie::get('role') === 'Register'
                                     )
-                                        <li>
-                                            <a class="dropdown-item" href="{{ route('agent.properties') }}">
-                                                <i class="fa fa-home me-2"></i> Daftar Listingan Saya
-                                            </a>
-                                        </li>
+                                    <li>
+                                        <a class="dropdown-item {{ Request::is('agent/properties*') ? 'active bg-orange text-white' : '' }}" 
+                                        href="{{ route('agent.properties') }}">
+                                            <i class="fa fa-home me-2"></i> Daftar Listingan Saya
+                                        </a>
+                                    </li>
                                     @endif
+
                                     @if (
                                         Session::get('role') === 'User' || Cookie::get('role') === 'User'
                                     )
-                                        <li>
-                                            <a class="dropdown-item" href="{{ route('cart.view') }}">
-                                                <i class="fa fa-shopping-cart me-2"></i> Status Lelang Saya
-                                            </a>
-                                        </li>
+                                    <li>
+                                        <a class="dropdown-item {{ Request::is('cart*') ? 'active bg-orange text-white' : '' }}" 
+                                        href="{{ route('cart.view') }}">
+                                            <i class="fa fa-shopping-cart me-2"></i> Status Lelang Saya
+                                        </a>
+                                    </li>
                                     @endif
+
                                     <li>
                                         <form action="{{ route('logout') }}" method="POST" style="display:inline;">
                                             @csrf
@@ -188,20 +217,31 @@
                                 </ul>
                             </li>
                         </ul>
+
                         @else
                         <!-- Guest User Dropdown -->
-                        <ul class="navbar-nav">
+                       <ul class="navbar-nav">
                             <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                                <a class="nav-link dropdown-toggle {{ Request::is('login') || Request::is('register') ? 'active text-orange' : '' }}"
+                                href="#"
+                                id="navbarDropdown"
+                                role="button"
+                                data-bs-toggle="dropdown">
                                     <i class="fas fa-user" style="font-size: 1rem;"></i>
                                     <i class="fas fa-chevron-down ms-1"></i>
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                                     <li>
-                                        <a class="dropdown-item" href="{{ url('/login') }}">Login</a>
+                                        <a class="dropdown-item {{ Request::is('login') ? 'active bg-orange text-white' : '' }}"
+                                        href="{{ url('/login') }}">
+                                            Login
+                                        </a>
                                     </li>
                                     <li>
-                                        <a class="dropdown-item" href="{{ url('/register') }}">Register</a>
+                                        <a class="dropdown-item {{ Request::is('register') ? 'active bg-orange text-white' : '' }}"
+                                        href="{{ url('/register') }}">
+                                            Register
+                                        </a>
                                     </li>
                                 </ul>
                             </li>
@@ -223,7 +263,11 @@
 
                     <!-- Notifikasi -->
                     <div class="dropdown position-relative">
-                        <a href="#" class="nav-link dropdown-toggle" id="notifDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a href="#"
+                        class="nav-link dropdown-toggle"
+                        id="notifDropdown"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false">
                             <i class="fas fa-bell"></i>
                             <!-- Badge jumlah notifikasi -->
                             <span id="notifCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem; display: none;">
@@ -238,8 +282,9 @@
                         </div>
                     </div>
 
+
                     @endif
-                    <a href="#">
+                    <a href="#" class="{{ Request::is('setting*') ? 'active' : '' }}">
                         <i class="fas fa-cog"></i>
                     </a>
                 </div>

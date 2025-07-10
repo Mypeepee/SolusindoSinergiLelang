@@ -1,30 +1,26 @@
 <?php
 
+use Kreait\Firebase\Factory;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\MOUController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\aboutController;
-use App\Http\Controllers\propertytypeController;
+use App\Http\Controllers\AgentController;
+use App\Http\Controllers\productController;
+use App\Http\Controllers\AgentAdminController;
+use App\Http\Controllers\CartDetailController;
 use App\Http\Controllers\testimonialController;
 use App\Http\Controllers\propertylistController;
-use App\Http\Controllers\propertydetailController;
-use App\Http\Controllers\AuthController;
+
+
+use App\Http\Controllers\propertytypeController;
 use App\Http\Controllers\propertyagentController;
-use App\Http\Controllers\productController;
-use App\Http\Controllers\CartDetailController;
-use App\Http\Controllers\MOUController;
-use App\Http\Controllers\AgentAdminController;
-use Kreait\Firebase\Factory;
+use App\Http\Controllers\propertydetailController;
 
+Route::get('/', [HomeController::class, 'Home'])->name('home');
 
-use App\Http\Controllers\AgentController;
-
-
-
-Route::get('/', function () {
-    return view('index');
-});
-Route::get('/', function () {
-    return view('index');
-})->name('home');
 
 /*  Routing   */
 Route::get('/property-detail', function () {
@@ -45,8 +41,8 @@ Route::get('/register', [AuthController::class, 'Register']);
 Route::get('/addProperty', [ProductController::class, 'create']);
 /*  Selesai   */
 
-/*  Routing INDEX  */
-Route::get('/', [productController::class, 'showRandom']);
+//  Routing INDEX  gadipake
+// Route::get('/', [productController::class, 'showRandom']);
 
 
 

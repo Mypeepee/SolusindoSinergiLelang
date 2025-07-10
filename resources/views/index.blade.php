@@ -3,25 +3,37 @@
 <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+<style>
+    /* Hilangkan jarak antara navbar & carousel */
+    #carousel {
+        margin-top: -50px; /* geser carousel naik */
+    }
 
-        <!-- Carousel Start -->
-        <div id="carousel" class="carousel slide" data-ride="carousel">
+    body {
+        padding-top: 0 !important; /* jika ada header fixed hilangkan padding body */
+    }
 
-            <div class="carousel-inner">
+    .navbar {
+        z-index: 9999; /* pastikan navbar di atas carousel */
+    }
+</style>
 
-                <div class="carousel-item active">
-                    <img src="img/carousel1.jpg" alt="Carousel Image">
-                    <div class="carousel-caption">
-                        <p class="animated fadeInRight">Temukan Rumah Sempurna</p>
-                        <h1 class="animated fadeInLeft">Untuk Tinggal Bersama Keluarga Anda</h1>
-                        <a href="{{ url('/property-list') }}" class="btn btn-primary py-3 px-5 me-3 animated fadeIn">Explore Lebih Lanjut</a>
-                    </div>
-                </div>
-
+<!-- Carousel Start -->
+<div id="carousel" class="carousel slide mt-0 pt-0" data-ride="carousel" style="margin-top: -50px;">
+    <div class="carousel-inner">
+        <div class="carousel-item active">
+            <img src="img/carousel1.jpg" alt="Carousel Image" style="width:100%; height:auto;">
+            <div class="carousel-caption">
+                <p class="animated fadeInRight">Temukan Rumah Sempurna</p>
+                <h1 class="animated fadeInLeft">Untuk Tinggal Bersama Keluarga Anda</h1>
+                <a href="{{ url('/property-list') }}" class="btn btn-primary py-3 px-5 me-3 animated fadeIn">
+                    Explore Lebih Lanjut
+                </a>
             </div>
-
         </div>
-        <!-- Carousel End -->
+    </div>
+</div>
+<!-- Carousel End -->
 
 
 <!-- Search Start -->
@@ -109,6 +121,7 @@
         margin-left: 8px;
         color: red;
     }
+
 </style>
 
 <!-- Script -->
@@ -220,27 +233,35 @@
                     <p>Temukan beragam tipe properti terbaik sesuai kebutuhan Anda — dari rumah lelang harga miring hingga apartemen modern dan ruko strategis. Pilih jenis properti favorit Anda dan mulai jelajahi sekarang!</p>
                 </div>
                 <div class="row g-4">
-                    @php
-                    $propertyTypes = ['Rumah', 'Gudang', 'Apartemen', 'Tanah', 'Pabrik', 'Villa', 'Ruko', 'Sewa'];
-                    @endphp
-                    @foreach ($propertyTypes as $tipe)
+                    @foreach ($properties as $property)
                         @php
-                            // Ambil jumlah properti dengan key lowercase
-                            $count = $counts[strtolower($tipe)] ?? 0;
-                        @endphp
+                            // Capitalize tiap kata pada tipe properti
+                            $tipeFormatted = ucwords($property->tipe);
+                            $isDisabled = $property->total == 0;
+                            @endphp
+
                         <div class="col-lg-3 col-sm-6 wow fadeInUp" data-wow-delay="0.1s">
-                            <a class="cat-item d-block bg-light text-center rounded p-3" href="{{ route('property.list', ['property_type' => $tipe]) }}#property-list-section">
-                                <div class="rounded p-4">
+                            <a
+                                class="cat-item d-block text-center rounded p-3 {{ $isDisabled ? 'bg-light opacity-50 pointer-events-none' : 'bg-light' }}"
+                                href="{{ $isDisabled ? 'javascript:void(0);' : route('property.list', ['property_type' => strtolower($property->tipe)]) . '#property-list-section' }}"
+                            >
+                                <div class="rounded p-4 border {{ $isDisabled ? 'border-secondary' : '' }}">
                                     <div class="icon mb-3">
-                                        <img class="img-fluid" src="{{ asset('img/' . strtolower($tipe) . '.png') }}" alt="Icon {{ $tipe }}">
+                                        <img
+                                            class="img-fluid {{ $isDisabled ? 'grayscale' : '' }}"
+                                            src="{{ asset('img/' . strtolower($property->tipe) . '.png') }}"
+                                            alt="Icon {{ $tipeFormatted }}">
                                     </div>
-                                    <h6>{{ $tipe }}</h6>
-                                    <span>{{ $count }} Asset{{ $count != 1 ? 's' : '' }}</span>
+                                    <h6 class="{{ $isDisabled ? 'text-muted' : 'text-dark' }}">{{ $tipeFormatted }}</h6>
+                                    <span class="{{ $isDisabled ? 'text-muted small' : 'fw-bold' }}">
+                                        {{ $property->total }} Asset{{ $property->total != 1 ? 's' : '' }}
+                                    </span>
                                 </div>
                             </a>
                         </div>
                     @endforeach
                 </div>
+
             </div>
         </div>
         <!-- Category End -->
@@ -304,9 +325,8 @@
                                                                 object-position: center;
                                                             }
                                                         </style>
-                                                        <a href="{{ route('property-detail', $property->id_listing) }}">
-                                                            <img class="img-fluid" src="{{ $property->gambar }}" alt="">
-                                                        </a>
+                                                        <img class="img-fluid" src="{{ explode(',', $property->gambar)[0] }}" alt="Gambar {{ $property->tipe }}">
+
                                                         <div class="bg-primary rounded text-white position-absolute start-0 top-0 m-4 py-1 px-3">{{ $property->tipe }}</div>
                                                         <div class="bg-white rounded-top text-primary position-absolute start-0 bottom-0 mx-4 pt-1 px-3">{{ $property->tipe }}</div>
                                                     </div>
