@@ -43,7 +43,7 @@
                         <option selected disabled>Tipe Property</option>
                         <option value="Lelang">Lelang</option>
                         <option value="rumah">Rumah</option>
-                        <option value="villa">Villa</option>
+                        <option value="hotel dan villa">Villa</option>
                         <option value="apartemen">Apartemen</option>
                         <option value="gudang">Gudang</option>
                         <option value="tanah">Tanah</option>
@@ -308,55 +308,55 @@
 
 
                             <!-- Pagination links -->
-<div class="row">
-    <div class="col-12">
-        <div class="pagination d-flex justify-content-center mt-5">
-            {{-- Previous Page Link --}}
-            @if ($properties->onFirstPage())
-                <a class="rounded disabled">&laquo;</a>
-            @else
-                <a href="{{ $properties->appends(request()->query())->previousPageUrl() }}" class="rounded">&laquo;</a>
-            @endif
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="pagination d-flex justify-content-center mt-5">
+                                        {{-- Previous Page Link --}}
+                                        @if ($properties->onFirstPage())
+                                            <a class="rounded disabled">&laquo;</a>
+                                        @else
+                                            <a href="{{ $properties->appends(request()->query())->previousPageUrl() }}" class="rounded">&laquo;</a>
+                                        @endif
 
-            {{-- Pagination Elements --}}
-            @php
-                $currentPage = $properties->currentPage();
-                $lastPage = $properties->lastPage();
-                $start = max($currentPage - 3, 1);
-                $end = min($currentPage + 3, $lastPage);
-            @endphp
+                                        {{-- Pagination Elements --}}
+                                        @php
+                                            $currentPage = $properties->currentPage();
+                                            $lastPage = $properties->lastPage();
+                                            $start = max($currentPage - 3, 1);
+                                            $end = min($currentPage + 3, $lastPage);
+                                        @endphp
 
-            {{-- First Page Link --}}
-            @if ($start > 1)
-                <a href="{{ $properties->appends(request()->query())->url(1) }}" class="rounded">1</a>
-                @if ($start > 2)
-                    <span class="rounded disabled">...</span>
-                @endif
-            @endif
+                                        {{-- First Page Link --}}
+                                        @if ($start > 1)
+                                            <a href="{{ $properties->appends(request()->query())->url(1) }}" class="rounded">1</a>
+                                            @if ($start > 2)
+                                                <span class="rounded disabled">...</span>
+                                            @endif
+                                        @endif
 
-            {{-- Page Number Links --}}
-            @for ($i = $start; $i <= $end; $i++)
-                <a href="{{ $properties->appends(request()->query())->url($i) }}"
-                   class="rounded {{ $i === $currentPage ? 'active' : '' }}">{{ $i }}</a>
-            @endfor
+                                        {{-- Page Number Links --}}
+                                        @for ($i = $start; $i <= $end; $i++)
+                                            <a href="{{ $properties->appends(request()->query())->url($i) }}"
+                                            class="rounded {{ $i === $currentPage ? 'active' : '' }}">{{ $i }}</a>
+                                        @endfor
 
-            {{-- Last Page Link --}}
-            @if ($end < $lastPage)
-                @if ($end < $lastPage - 1)
-                    <span class="rounded disabled">...</span>
-                @endif
-                <a href="{{ $properties->appends(request()->query())->url($lastPage) }}" class="rounded">{{ $lastPage }}</a>
-            @endif
+                                        {{-- Last Page Link --}}
+                                        @if ($end < $lastPage)
+                                            @if ($end < $lastPage - 1)
+                                                <span class="rounded disabled">...</span>
+                                            @endif
+                                            <a href="{{ $properties->appends(request()->query())->url($lastPage) }}" class="rounded">{{ $lastPage }}</a>
+                                        @endif
 
-            {{-- Next Page Link --}}
-            @if ($properties->hasMorePages())
-                <a href="{{ $properties->appends(request()->query())->nextPageUrl() }}" class="rounded">&raquo;</a>
-            @else
-                <a class="rounded disabled">&raquo;</a>
-            @endif
-        </div>
-    </div>
-</div>
+                                        {{-- Next Page Link --}}
+                                        @if ($properties->hasMorePages())
+                                            <a href="{{ $properties->appends(request()->query())->nextPageUrl() }}" class="rounded">&raquo;</a>
+                                        @else
+                                            <a class="rounded disabled">&raquo;</a>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
 
 
                         </div>

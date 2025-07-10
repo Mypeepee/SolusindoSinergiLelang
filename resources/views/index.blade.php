@@ -57,7 +57,7 @@
                         <option selected disabled>Tipe Property</option>
                         <option value="Lelang">Lelang</option>
                         <option value="rumah">Rumah</option>
-                        <option value="villa">Villa</option>
+                        <option value="hotel dan villa">Villa</option>
                         <option value="apartemen">Apartemen</option>
                         <option value="gudang">Gudang</option>
                         <option value="tanah">Tanah</option>

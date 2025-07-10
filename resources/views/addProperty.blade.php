@@ -89,7 +89,7 @@
                                 <span class="input-group-text"><i class="bi bi-house-door"></i></span>
                                 <select name="tipe" class="form-select" required>
                                     <option value="">Pilih tipe</option>
-                                    @foreach(['rumah', 'villa', 'pabrik', 'ruko', 'tanah', 'gudang', 'apartemen', 'sewa'] as $type)
+                                    @foreach(['rumah', 'hotel dan villa', 'pabrik', 'ruko', 'tanah', 'gudang', 'apartemen', 'sewa'] as $type)
                                     <option value="{{ $type }}" {{ old('tipe') == $type ? 'selected' : '' }}>{{ ucfirst($type) }}</option>
                                 @endforeach
                                 </select>
@@ -197,7 +197,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Step 3: Spesifikasi -->
         <div class="tab-pane fade" id="step3" role="tabpanel">
             <div class="card shadow-sm rounded-4 p-4">
@@ -369,7 +369,7 @@ document.addEventListener('DOMContentLoaded', function () {
             alamat.toLowerCase().includes(item.regency.toLowerCase().trim()) ||
             alamat.toLowerCase().includes(item.province.toLowerCase().trim())
         );
-        
+
         if (found) {
             // Set Provinsi
             const provinsiFormatted = found.province.trim().toUpperCase();
