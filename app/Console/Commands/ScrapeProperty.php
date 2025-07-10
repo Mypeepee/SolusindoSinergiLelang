@@ -98,7 +98,8 @@ $this->info("📄 Mulai scrape semua halaman kategori: $kategori");
 $tipeProperti = strtolower($kategori); // e.g. Rumah -> rumah, Ruko -> ruko
 
 while (true) {
-    $listUrl = "$baseUrl/lot-lelang/katalog-lot-lelang?kategori=$kategori&page=$page";
+    $listUrl = "$baseUrl/lot-lelang/katalog-lot-lelang?kategori=" . urlencode($kategori) . "&page=$page";
+
     $this->info("🌐 Scraping halaman ke-$page: $listUrl");
 
         try {
@@ -216,7 +217,7 @@ JSON.stringify({
         const h = document.querySelectorAll("h6.text-primary-500")[0]?.innerText || null;
         if (h) {
             const hargaAsli = parseInt(h.replace(/[^\d]/g, ""));
-            const hargaMarkup = Math.round(hargaAsli * 1.268); // 🔥 Tambah 26.8%
+            const hargaMarkup = Math.round(hargaAsli * 1.278); // 🔥 Tambah 27.8%
             return hargaMarkup;
         }
         return null;
