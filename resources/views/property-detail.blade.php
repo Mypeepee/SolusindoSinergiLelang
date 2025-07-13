@@ -516,34 +516,156 @@
                     scrollbar-width: thin;
                 }
             </style>
-{{-- Sliding Properti Serupa --}}
-<h4 class="mb-3">Properti Serupa di {{ $property->kota }}</h4>
-<div class="d-flex gap-3 overflow-auto pb-2" style="scroll-snap-type: x mandatory;">
-    @foreach ($similarProperties as $property)
-        <div class="property-item flex-shrink-0 rounded overflow-hidden wow fadeInUp" style="width: 320px; scroll-snap-align: start;" data-wow-delay="0.1s">
-            <div class="position-relative overflow-hidden">
-                <a href="{{ route('property-detail', $property->id_listing) }}">
-                    <img class="img-fluid rounded w-100" src="{{ explode(',', $property->gambar)[0] }}" alt="Property Image" loading="lazy">
-                </a>
-                <div class="bg-primary rounded text-white position-absolute start-0 top-0 m-3 py-1 px-3">{{ $property->tipe }}</div>
-                <div class="bg-white rounded-top text-primary position-absolute start-0 bottom-0 mx-3 pt-1 px-3">{{ $property->tipe }}</div>
-            </div>
-            <div class="p-4 pb-0">
-                <h5 class="text-primary mb-3">{{ 'Rp ' . number_format($property->harga, 0, ',', '.') }}</h5>
-                <a class="d-block h5 mb-2" href="{{ route('property-detail', $property->id_listing) }}">
-                    {{ \Illuminate\Support\Str::limit($property->deskripsi, 50) }}
-                </a>
+<link
+rel="stylesheet"
+href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css"
+/>
 
-                <p><i class="fa fa-map-marker-alt text-primary me-2"></i>{{ $property->lokasi }}</p>
-            </div>
-            <div class="d-flex border-top">
-                <small class="flex-fill text-center border-end py-2">
-                    <i class="fa fa-ruler-combined text-primary me-2"></i>{{ $property->luas }} M2
-                </small>
+{{-- Sliding Properti Serupa --}}
+{{-- Sliding Properti Serupa --}}
+<h4 class="mb-3">Properti Serupa di {{ $similarLocation }}</h4>
+
+<div class="swiper mySwiper">
+    <div class="swiper-wrapper">
+        @foreach ($similarProperties as $property)
+        <div class="swiper-slide">
+            <div class="property-item rounded overflow-hidden shadow-sm">
+                <div class="position-relative overflow-hidden">
+                    <a href="{{ route('property-detail', $property->id_listing) }}">
+                        <img class="img-fluid rounded w-100" src="{{ explode(',', $property->gambar)[0] }}" alt="Property Image" loading="lazy">
+                    </a>
+                    <div class="bg-primary rounded text-white position-absolute start-0 top-0 m-2 py-1 px-3">{{ $property->tipe }}</div>
+                    <div class="bg-white rounded-top text-primary position-absolute start-0 bottom-0 mx-2 pt-1 px-3">{{ $property->tipe }}</div>
+                </div>
+                <div class="p-3">
+                    <h5 class="text-primary mb-2">{{ 'Rp ' . number_format($property->harga, 0, ',', '.') }}</h5>
+                    <a class="d-block h6 mb-2" href="{{ route('property-detail', $property->id_listing) }}">
+                        {{ \Illuminate\Support\Str::limit($property->deskripsi, 50) }}
+                    </a>
+                    <p><i class="fa fa-map-marker-alt text-primary me-2"></i>{{ $property->lokasi }}</p>
+                </div>
+                <div class="d-flex border-top border-2 border-dashed border-orange">
+                    <small class="flex-fill text-center border-end border-dashed py-2">
+                        <i class="fa fa-vector-square text-danger me-2"></i>
+                        <span class="text-dark">{{ $property->luas }} m²</span>
+                    </small>
+                    <small class="flex-fill text-center border-end border-dashed py-2">
+                        <i class="fa fa-map-marker-alt text-danger me-2"></i>
+                        <span class="text-dark text-uppercase">{{ $property->kota }}</span>
+                    </small>
+                    <small class="flex-fill text-center py-2">
+                        <i class="fa fa-calendar-alt text-danger me-2"></i>
+                        <span class="text-dark">
+                            {{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->format('d M Y') }}
+                        </span>
+                    </small>
+                </div>
             </div>
         </div>
-    @endforeach
+        @endforeach
+    </div>
+
+    <!-- Tombol Navigasi -->
+    <div class="swiper-button-next"></div>
+    <div class="swiper-button-prev"></div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const swiper = new Swiper(".mySwiper", {
+            slidesPerView: 1.2,
+            spaceBetween: 15,
+            loop: true,
+            grabCursor: true,
+            navigation: {
+                nextEl: ".swiper-button-next",
+                prevEl: ".swiper-button-prev",
+            },
+            breakpoints: {
+                576: {
+                    slidesPerView: 2.2,
+                },
+                768: {
+                    slidesPerView: 3,
+                },
+                992: {
+                    slidesPerView: 4,
+                }
+            }
+        });
+    });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.js"></script>
+<script>
+    const swiper = new Swiper(".mySwiper", {
+        slidesPerView: 1.2,
+        spaceBetween: 15,
+        loop: true,
+        grabCursor: true,
+        navigation: {
+            nextEl: ".swiper-button-next",
+            prevEl: ".swiper-button-prev",
+        },
+        breakpoints: {
+            576: {
+                slidesPerView: 2.2,
+            },
+            768: {
+                slidesPerView: 3,
+            },
+            992: {
+                slidesPerView: 4,
+            }
+        }
+    });
+</script>
+<style>
+    .swiper {
+        padding-bottom: 30px;
+    }
+    .swiper-slide {
+        width: 320px;
+    }
+    .swiper-button-next, .swiper-button-prev {
+        color: #ff6600; /* warna tombol navigasi */
+    }
+    .swiper-slide {
+    display: flex;
+    height: auto; /* Biarkan Swiper menyesuaikan tinggi otomatis */
+}
+
+.property-item {
+    height: 100%; /* Buat semua card setara tinggi */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: transform 0.2s ease;
+}
+
+.property-item:hover {
+    transform: translateY(-4px);
+}
+.property-item a.d-block.h6 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Maks 2 baris */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.swiper {
+    padding-bottom: 40px; /* Tambahkan space bawah slider */
+}
+
+.swiper-button-next,
+.swiper-button-prev {
+    color: #ff6600; /* Warna panah sesuai brand */
+    top: 45%; /* Posisikan panah di tengah */
+}
+
+    </style>
+
 
         </div>
 

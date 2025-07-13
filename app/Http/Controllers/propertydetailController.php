@@ -30,11 +30,11 @@ class propertydetailController extends Controller
         // ✅ Hitung harga per m² properti ini
         $thisPricePerM2 = ($property->luas > 0) ? $property->harga / $property->luas : 0;
 
-        // ✅ Hitung range harga per m² ±25% (dibulatkan supaya Postgres tidak error)
+        // ✅ Hitung range harga per m² ±25%
         $lowerBound = (int) floor($thisPricePerM2 * 0.75);
         $upperBound = (int) ceil($thisPricePerM2 * 1.25);
 
-        // ✅ Ambil properti serupa berdasarkan kecamatan & harga per m² ±25%
+        // ✅ Ambil properti serupa berdasarkan kecamatan & range harga
         $similarProperties = DB::table('property')
             ->where('id_listing', '!=', $property->id_listing)
             ->whereRaw('LOWER(kecamatan) = ?', [strtolower($property->kecamatan)])
@@ -42,16 +42,33 @@ class propertydetailController extends Controller
             ->limit(10)
             ->get();
 
-        // ✅ Fallback: kalau tidak ada properti dalam range, ambil semua di kecamatan
+        // ✅ Default: anggap serupa di kecamatan
+        $similarLocation = "Kecamatan " . $property->kecamatan;
+
+        // ✅ Fallback: kalau properti serupa di kecamatan kosong ➡️ ambil di kota
         if ($similarProperties->isEmpty()) {
             $similarProperties = DB::table('property')
                 ->where('id_listing', '!=', $property->id_listing)
-                ->whereRaw('LOWER(kecamatan) = ?', [strtolower($property->kecamatan)])
+                ->whereRaw('LOWER(kota) = ?', [strtolower($property->kota)])
+                ->whereBetween(DB::raw('harga / luas'), [$lowerBound, $upperBound])
                 ->limit(10)
                 ->get();
+
+            $similarLocation = "Kota " . $property->kota; // ✅ update location fallback
+
+            // ✅ Kalau di kota juga tidak ada ➡️ ambil semua di kota
+            if ($similarProperties->isEmpty()) {
+                $similarProperties = DB::table('property')
+                    ->where('id_listing', '!=', $property->id_listing)
+                    ->whereRaw('LOWER(kota) = ?', [strtolower($property->kota)])
+                    ->limit(10)
+                    ->get();
+
+                $similarLocation = "Kota " . $property->kota; // tetap kota
+            }
         }
 
-        // ✅ Hitung statistik harga per m² properti serupa
+        // ✅ Statistik harga
         $pricesPerM2 = $similarProperties->map(function ($p) {
             return ($p->luas > 0) ? $p->harga / $p->luas : null;
         })->filter();
@@ -60,7 +77,7 @@ class propertydetailController extends Controller
         $minPricePerM2 = $pricesPerM2->min();
         $maxPricePerM2 = $pricesPerM2->max();
 
-        // ✅ Hitung median harga per m²
+        // ✅ Median harga per m²
         $sortedPrices = $pricesPerM2->sort()->values();
         $count = $sortedPrices->count();
         $medianPricePerM2 = null;
@@ -70,16 +87,17 @@ class propertydetailController extends Controller
                 : $sortedPrices[floor($count / 2)];
         }
 
-        // ✅ Hitung selisih harga properti ini dari rata-rata (%)
+        // ✅ Selisih harga properti ini
         if ($avgPricePerM2 && $thisPricePerM2) {
             $selisihPersen = round((($avgPricePerM2 - $thisPricePerM2) / $avgPricePerM2) * 100, 2);
         } else {
-            $selisihPersen = "Tidak ada data pembanding di kecamatan ini.";
+            $selisihPersen = "Tidak ada data pembanding di kecamatan/kota ini.";
         }
 
         return view("property-detail", compact(
             'property',
             'similarProperties',
+            'similarLocation', // ✅ kirim ke blade
             'thisPricePerM2',
             'avgPricePerM2',
             'minPricePerM2',
@@ -88,6 +106,8 @@ class propertydetailController extends Controller
             'selisihPersen'
         ));
     }
+
+
 
 
 
