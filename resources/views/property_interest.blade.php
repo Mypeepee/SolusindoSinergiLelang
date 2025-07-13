@@ -21,7 +21,7 @@
                 <h2>Detail Lot Lelang</h2>
                 <hr style="border: 1px solid #ccc;">
                 <p><strong>Kode Lot:</strong> {{ $property->id_listing }}</p>
-                <p><strong>Nama Jalan:</strong> 1 bidang tanah dengan total luas {{ $property->luas_tanah }} m2 berikut bangunan dan barang bergerak lainnya di {{ $property->kota }}</p>
+                <p><strong>Nama Jalan:</strong> 1 bidang tanah dengan total luas {{ $property->luas }} m2 berikut bangunan dan barang bergerak lainnya di {{ $property->kota }}</p>
                 <p><strong>Harga:</strong> Rp{{ number_format($property->harga, 0, ',', '.') }}</p>
                 <p class="fst-italic">
                     Harga properti ini belum termasuk biaya tambahan. Berikut rincian perkiraan biaya tambahan yang perlu diperhatikan:

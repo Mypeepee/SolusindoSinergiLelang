@@ -133,8 +133,9 @@ Route::get('/cart', [ProductController::class, 'viewCart'])->name('cart.view');
 Route::delete('/cart/{id_listing}', [ProductController::class, 'removeFromCart'])->name('cart.delete');
 Route::post('/client-delete', [ProductController::class, 'deleteClient']);
 
+Route::post('/update-status', [AgentAdminController::class, 'updateStatus']);
 Route::post('/progress-track', [AgentAdminController::class, 'trackProgress']);
-Route::post('/buyer-meeting', [AgentAdminController::class, 'trackBuyerMeeting']);
+Route::post('/update-buyer-meeting', [AgentAdminController::class, 'updateBuyerMeeting'])->name('update-buyer-meeting');
 Route::post('/progress-track-final', [AgentAdminController::class, 'trackFinalStatus']);
 Route::post('/hide-client', [AgentAdminController::class, 'hideClient'])->name('hide.client');
 

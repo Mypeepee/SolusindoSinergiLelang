@@ -249,15 +249,38 @@ class AgentAdminController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function trackBuyerMeeting(Request $request)
+    public function updateBuyerMeeting(Request $request)
     {
+        // Update status & simpan jadwal
         DB::table('property_interests')
-            ->where('id_account', $request->id_account)
+            ->where('id_klien', $request->id_account)
             ->where('id_listing', $request->id_listing)
-            ->update(['status' => 'buyer_meeting', 'updated_at' => now()]);
+            ->update([
+                'status' => 'BuyerMeeting',
+                'tanggal_meeting' => $request->tanggal,
+                'jam_meeting' => $request->jam,
+                'tanggal_diupdate' => now()
+            ]);
 
-        return response()->json(['success' => true]);
+        // Ambil data klien untuk WhatsApp
+        $client = DB::table('account')
+            ->join('property', 'property.id_listing', '=', 'property_interests.id_listing')
+            ->join('property_interests', function($join) use ($request) {
+                $join->on('property_interests.id_klien', '=', 'account.id_account')
+                     ->where('property_interests.id_listing', '=', $request->id_listing);
+            })
+            ->where('account.id_account', $request->id_account)
+            ->select('account.nama as nama_klien', 'account.nomor_telepon', 'property.alamat as alamat_property')
+            ->first();
+
+        return response()->json([
+            'success' => true,
+            'nama_klien' => $client->nama_klien,
+            'nomor_telepon' => $client->nomor_telepon,
+            'alamat_property' => $client->alamat_property
+        ]);
     }
+
 
     public function trackFinalStatus(Request $request)
     {
@@ -270,21 +293,29 @@ class AgentAdminController extends Controller
     }
 
     public function updateStatus(Request $request)
-    {
+{
+    try {
         $id_account = $request->id_account;
         $id_listing = $request->id_listing;
         $status = $request->status;
 
+        // Update status di property_interests
+        DB::table('property_interests')
+            ->where('id_klien', $id_account) // sesuai schema kamu pakai id_klien
+            ->where('id_listing', $id_listing)
+            ->update([
+                'status' => $status,
+                'tanggal_diupdate' => now() // ✅ fix kolom timestamp
+            ]);
+
         // Jika status = closing, simpan ke transaction dan company_earnings
-        if ($status === 'closing') {
-            $harga_deal = (int) preg_replace('/[^\d]/', '', $request->harga_deal);
-            $harga_bidding = (int) preg_replace('/[^\d]/', '', $request->harga_bidding);
+        if (strtolower($status) === 'closing') {
+            $harga_deal = (int) preg_replace('/[^\d]/', '', $request->harga_deal ?? 0);
+            $harga_bidding = (int) preg_replace('/[^\d]/', '', $request->harga_bidding ?? 0);
             $selisih = $harga_deal - $harga_bidding;
             $komisi_agent = $selisih * 0.4;
             $pendapatan_bersih = $selisih * 0.6;
 
-
-            // Simpan ke company_earnings
             DB::table('company_earnings')->insert([
                 'id_listing' => $id_listing,
                 'id_account' => session('id_account'),
@@ -298,21 +329,19 @@ class AgentAdminController extends Controller
             ]);
 
             DB::table('property')
-            ->where('id_listing', $id_listing)
-            ->update(['status' => 'sold']);
+                ->where('id_listing', $id_listing)
+                ->update(['status' => 'sold']);
         }
 
-        // Update status di property_interests
-        DB::table('property_interests')
-            ->where('id_account', $id_account)
-            ->where('id_listing', $id_listing)
-            ->update([
-                'status' => $status,
-                'updated_at' => now()
-            ]);
-
         return response()->json(['success' => true]);
+
+    } catch (\Exception $e) {
+        \Log::error('updateStatus error: '.$e->getMessage());
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
     }
+}
+
+
 
     public function hideClient(Request $request)
     {

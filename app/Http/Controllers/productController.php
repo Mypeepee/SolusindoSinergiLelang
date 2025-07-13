@@ -344,17 +344,14 @@ class productController extends Controller
 
         // Insert ke property_interests
         DB::table('property_interests')->insert([
-            'id_klien' => $id_account,  // gunakan 'id_klien' bukan 'id_account'
+            'id_klien' => $id_account,
             'id_listing' => $id_listing,
-            'ktp' => $clientData->gambar_ktp,
-            'npwp' => $clientData->gambar_npwp,
-            'buku_tabungan' => $clientData->nomor_rekening,
             'tanggal_dibuat' => now(),
             'tanggal_diupdate' => now(),
         ]);
 
 
-        return redirect()->route('property_interest')->with('success', 'Berhasil mengajukan ketertarikan.');
+        return redirect()->route('cart.view')->with('success', 'Berhasil mengajukan ketertarikan.');
     }
 
     public function showInterestPage($id_listing)
