@@ -90,261 +90,301 @@
                         padding: 0 20px 20px 20px;
                     }
                 </style>
-                
-@if (session('role') === 'Agent')
-<div class="card shadow-sm border-0 mb-4">
-    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-        <h5 class="mb-0 fw-semibold text-primary">📋 Daftar Klien Tertarik</h5>
-    </div>
-    <div class="card-body table-responsive">
-        <table class="table align-middle table-hover" id="clientTable">
-            <thead class="table-light">
-                <tr>
-                    <th>#</th>
-                    <th>ID Klien</th>
-                    <th>Nama</th>
-                    <th>ID Properti</th>
-                    <th>Lokasi</th>
-                    <th>Harga</th>
-                    <th>Progres</th>
-                    <th>Status & Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($clients as $index => $client)
+
+                @if (session('role') === 'Agent')
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-semibold text-primary">📋 Daftar Klien Tertarik</h5>
+                    </div>
+                    <div class="card-body table-responsive">
+                        <table class="table align-middle table-hover" id="clientTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>ID Klien</th>
+                                    <th>Nama</th>
+                                    <th>ID Properti</th>
+                                    <th>Lokasi</th>
+                                    <th>Harga</th>
+                                    <th>Progres</th>
+                                    <th>Status & Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($clients as $index => $client)
+                                    @php
+                                        $status = $client->status;
+                                        $progress = match($status) {
+                                            'Pending' => 0,
+                                            'FollowUp' => 33,
+                                            'BuyerMeeting' => 66,
+                                            'Closing', 'Gagal' => 100,
+                                            default => 0,
+                                        };
+                                        $barClass = match($status) {
+                                            'gagal' => 'bg-danger',
+                                            'pending' => 'bg-warning',
+                                            default => 'bg-success',
+                                        };
+                                    @endphp
+                                    <tr id="row-{{ $client->id_account }}-{{ $client->id_listing }}">
+                                        <td>{{ $index + 1 }}</td>
+                                        <td><span class="badge bg-light text-dark">{{ $client->id_account }}</span></td>
+                                        <td>{{ $client->nama }}</td>
+                                        <td><span class="badge bg-secondary">{{ $client->id_listing }}</span></td>
+                                        <td>{{ $client->lokasi }}</td>
+                                        <td>Rp {{ number_format($client->harga, 0, ',', '.') }}</td>
+                                        <td style="min-width: 160px;">
+                                            <div class="progress" style="height: 18px;">
+                                                <div class="progress-bar {{ $barClass }}"
+                                                    role="progressbar"
+                                                    style="width: {{ $progress }}%;"
+                                                    aria-valuenow="{{ $progress }}"
+                                                    aria-valuemin="0"
+                                                    aria-valuemax="100">
+                                                    {{ $progress }}%
+                                                </div>
+                                            </div>
+                                        </td>
+                                        @php
+                    $status = $client->status; // biar konsisten kita nggak ubah case
+                @endphp
+
+                <td style="min-width: 220px;">
+                    @if ($status === 'Gagal')
+                    <span class="badge bg-danger">GAGAL</span>
+
+                    @elseif ($status === 'Pending')
                     @php
-                        $status = $client->status;
-                        $progress = match($status) {
-    'Pending' => 0,
-    'FollowUp' => 33,
-    'BuyerMeeting' => 66,
-    'Closing', 'Gagal' => 100,
-    default => 0,
-};
-
-
-
-                        $barClass = match($status) {
-                            'gagal' => 'bg-danger',
-                            'pending' => 'bg-warning',
-                            default => 'bg-success',
-                        };
+                        $pesan = urlencode("Halo {{nama_klien}}, saya ingin memastikan apakah ada informasi yang bisa saya bantu terkait rumah di {{alamat_property}}?");
                     @endphp
-                    <tr id="row-{{ $client->id_account }}-{{ $client->id_listing }}">
-                        <td>{{ $index + 1 }}</td>
-                        <td><span class="badge bg-light text-dark">{{ $client->id_account }}</span></td>
-                        <td>{{ $client->nama }}</td>
-                        <td><span class="badge bg-secondary">{{ $client->id_listing }}</span></td>
-                        <td>{{ $client->lokasi }}</td>
-                        <td>Rp {{ number_format($client->harga, 0, ',', '.') }}</td>
-                        <td style="min-width: 160px;">
-                            <div class="progress" style="height: 18px;">
-                                <div class="progress-bar {{ $barClass }}"
-                                     role="progressbar"
-                                     style="width: {{ $progress }}%;"
-                                     aria-valuenow="{{ $progress }}"
-                                     aria-valuemin="0"
-                                     aria-valuemax="100">
-                                    {{ $progress }}%
-                                </div>
+                    <a href="https://wa.me/+62{{ $client->nomor_telepon }}?text={{ $pesan }}"
+                    class="btn btn-sm btn-success mb-1"
+                    target="_blank"
+                    onclick="
+                            // Jalankan update status di background
+                            updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'FollowUp');">
+                        FollowUp
+                    </a>
+
+                    @elseif (!$status || $status === null)
+                    <a href="https://wa.me/{{ $client->nomor_telepon }}"
+                    class="btn btn-sm btn-success mb-1" target="_blank"
+                    onclick="updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'FollowUp')">
+                        WA
+                    </a>
+
+                @elseif ($status === 'FollowUp')
+                <button class="btn btn-sm btn-primary mb-1"
+                    onclick="openBuyerMeetingModal(
+                        '{{ $client->id_account }}',
+                        '{{ $client->id_listing }}',
+                        '{{ $client->nama }}',
+                        '{{ $client->nomor_telepon }}',
+                        '{{ $client->lokasi }}'
+                    )">
+                    Buyer Meeting
+                </button>
+                <!-- Modal Buyer Meeting -->
+                <div class="modal fade" id="buyerMeetingModal" tabindex="-1" aria-labelledby="buyerMeetingModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title" id="buyerMeetingModalLabel">Atur Jadwal Buyer Meeting</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                        <form id="buyerMeetingForm">
+                            <div class="mb-3">
+                            <label for="meetingDate" class="form-label">Tanggal</label>
+                            <input type="date" class="form-control" id="meetingDate" required>
                             </div>
-                        </td>
-                        @php
-    $status = $client->status; // biar konsisten kita nggak ubah case
-@endphp
+                            <div class="mb-3">
+                            <label for="meetingTime" class="form-label">Jam</label>
+                            <input type="time" class="form-control" id="meetingTime" required>
+                            </div>
+                            <input type="hidden" id="modalIdAccount">
+                            <input type="hidden" id="modalIdListing">
+                            <input type="hidden" id="modalNamaKlien">
+                            <input type="hidden" id="modalNomorWA">
+                            <input type="hidden" id="modalAlamatProperty">
+                        </form>
+                        </div>
+                        <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="button" class="btn btn-success" id="submitBuyerMeeting">Simpan Jadwal</button>
+                        </div>
+                    </div>
+                    </div>
+                </div>
 
-<td style="min-width: 220px;">
-    @if ($status === 'Gagal')
-    <span class="badge bg-danger">GAGAL</span>
+                <style>
+                    /* Backdrop abu-abu elegan */
+                    .modal-backdrop.show {
+                        opacity: 0.5 !important;
+                        background-color: rgba(0,0,0,0.7) !important;
+                    }
 
-    @elseif ($status === 'Pending')
-    @php
-        $pesan = urlencode("Halo {{nama_klien}}, saya ingin memastikan apakah ada informasi yang bisa saya bantu terkait rumah di {{alamat_property}}?");
-    @endphp
-    <a href="https://wa.me/+62{{ $client->nomor_telepon }}?text={{ $pesan }}"
-       class="btn btn-sm btn-success mb-1"
-       target="_blank"
-       onclick="
-            // Jalankan update status di background
-            updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'FollowUp');
-       ">
-        FollowUp
-    </a>
+                    /* Modal di atas backdrop */
+                    .modal {
+                        z-index: 99999 !important;
+                    }
 
-@elseif (!$status || $status === null)
-    <a href="https://wa.me/{{ $client->nomor_telepon }}"
-       class="btn btn-sm btn-success mb-1" target="_blank"
-       onclick="updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'FollowUp')">
-        WA
-    </a>
+                    /* Hide navbar saat modal aktif */
+                    .navbar-hidden {
+                        display: none !important;
+                    }
+                    </style>
 
-@elseif ($status === 'FollowUp')
-<button class="btn btn-sm btn-primary mb-1"
-    onclick="openBuyerMeetingModal(
-        '{{ $client->id_account }}',
-        '{{ $client->id_listing }}',
-        '{{ $client->nama }}',
-        '{{ $client->nomor_telepon }}',
-        '{{ $client->lokasi }}'
-    )">
-    Buyer Meeting
-</button>
-<!-- Modal Buyer Meeting -->
-<div class="modal fade" id="buyerMeetingModal" tabindex="-1" aria-labelledby="buyerMeetingModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content border-0 shadow-lg">
-        <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title" id="buyerMeetingModalLabel">Atur Jadwal Buyer Meeting</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <form id="buyerMeetingForm">
-            <div class="mb-3">
-              <label for="meetingDate" class="form-label">Tanggal</label>
-              <input type="date" class="form-control" id="meetingDate" required>
-            </div>
-            <div class="mb-3">
-              <label for="meetingTime" class="form-label">Jam</label>
-              <input type="time" class="form-control" id="meetingTime" required>
-            </div>
-            <input type="hidden" id="modalIdAccount">
-            <input type="hidden" id="modalIdListing">
-            <input type="hidden" id="modalNamaKlien">
-            <input type="hidden" id="modalNomorWA">
-            <input type="hidden" id="modalAlamatProperty">
-          </form>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
-          <button type="button" class="btn btn-success" onclick="submitBuyerMeeting()">Simpan Jadwal</button>
-        </div>
-      </div>
-    </div>
-  </div>
+                <script>
+                    function openBuyerMeetingModal(idAccount, idListing, namaKlien, nomorWA, alamatProperty) {
+                        // Isi data ke modal hidden input
+                        document.getElementById('modalIdAccount').value = idAccount;
+                        document.getElementById('modalIdListing').value = idListing;
+                        document.getElementById('modalNamaKlien').value = namaKlien;
+                        document.getElementById('modalNomorWA').value = nomorWA;
+                        document.getElementById('modalAlamatProperty').value = alamatProperty;
 
-  <script>
-    function openBuyerMeetingModal(idAccount, idListing, namaKlien, nomorWA, alamatProperty) {
-        document.getElementById('modalIdAccount').value = idAccount;
-        document.getElementById('modalIdListing').value = idListing;
-        document.getElementById('modalNamaKlien').value = namaKlien;
-        document.getElementById('modalNomorWA').value = nomorWA;
-        document.getElementById('modalAlamatProperty').value = alamatProperty;
+                        // Paksa modal render di <body>
+                        const modalEl = document.getElementById('buyerMeetingModal');
+                        document.body.appendChild(modalEl);
 
-        const modal = new bootstrap.Modal(document.getElementById('buyerMeetingModal'));
-        modal.show();
-    }
+                        // Show modal
+                        const modal = new bootstrap.Modal(modalEl, {
+                            backdrop: true,
+                            keyboard: true
+                        });
+                        modal.show();
+                    }
 
-    function submitBuyerMeeting() {
-        const idAccount = document.getElementById('modalIdAccount').value;
-        const idListing = document.getElementById('modalIdListing').value;
-        const namaKlien = document.getElementById('modalNamaKlien').value;
-        const nomorWA = document.getElementById('modalNomorWA').value;
-        const alamatProperty = document.getElementById('modalAlamatProperty').value;
-        const tanggal = document.getElementById('meetingDate').value;
-        const jam = document.getElementById('meetingTime').value;
+                    function submitBuyerMeeting() {
+                        const idAccount = document.getElementById('modalIdAccount').value;
+                        const idListing = document.getElementById('modalIdListing').value;
+                        const namaKlien = document.getElementById('modalNamaKlien').value;
+                        const nomorWA = document.getElementById('modalNomorWA').value;
+                        const alamatProperty = document.getElementById('modalAlamatProperty').value;
+                        const tanggal = document.getElementById('meetingDate').value;
+                        const jam = document.getElementById('meetingTime').value;
 
-        if (!tanggal || !jam) {
-            alert('Silakan pilih tanggal dan jam meeting.');
-            return;
-        }
+                        if (!tanggal || !jam) {
+                            alert('Silakan pilih tanggal dan jam meeting.');
+                            return;
+                        }
 
-        fetch('/update-buyer-meeting', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            },
-            body: JSON.stringify({
-                id_account: idAccount,
-                id_listing: idListing,
-                tanggal: tanggal,
-                jam: jam,
-                status: 'BuyerMeeting'
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const hari = getHariIndonesia(new Date(tanggal));
+                        fetch('/update-buyer-meeting', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({
+                                id_account: idAccount,
+                                id_listing: idListing,
+                                tanggal: tanggal,
+                                jam: jam,
+                                status: 'BuyerMeeting'
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                const hari = getHariIndonesia(new Date(tanggal));
 
-                const pesan = encodeURIComponent(
-                    `📅 Reminder Buyer Meeting\n` +
-                    `Obyek: ${alamatProperty}\n` +
-                    `Hari: ${hari}\n` +
-                    `Tanggal: ${formatTanggalIndonesia(tanggal)}\n` +
-                    `Pukul: ${jam}\n\n` +
-                    `📍 Lokasi: Solitaire Property\n` +
-                    `Justicia Law Firm\n` +
-                    `Kantor Pemasaran dan Layanan Hukum\n` +
-                    `Santorini Town Square\n` +
-                    `Jl. Ronggolawe No.2A, DR. Soetomo\n` +
-                    `Kec. Tegalsari, Surabaya, Jawa Timur 60160\n\n` +
-                    `🌐 GMAP: https://maps.app.goo.gl/6gR4s3xDtEaeEya26?g_st=awb`
-                );
+                                const pesan = encodeURIComponent(
+                                    `📅 Reminder Buyer Meeting\n` +
+                                    `Obyek: ${alamatProperty}\n` +
+                                    `Hari: ${hari}\n` +
+                                    `Tanggal: ${formatTanggalIndonesia(tanggal)}\n` +
+                                    `Pukul: ${jam}\n\n` +
+                                    `📍 Lokasi: Solitaire Property\n` +
+                                    `Justicia Law Firm\n` +
+                                    `Kantor Pemasaran dan Layanan Hukum\n` +
+                                    `Santorini Town Square\n` +
+                                    `Jl. Ronggolawe No.2A, DR. Soetomo\n` +
+                                    `Kec. Tegalsari, Surabaya, Jawa Timur 60160\n\n` +
+                                    `🌐 GMAP: https://maps.app.goo.gl/6gR4s3xDtEaeEya26?g_st=awb`
+                                );
 
-                window.open(`https://wa.me/${formatNomorWA(nomorWA)}?text=${pesan}`, '_blank');
-                alert('Jadwal berhasil disimpan & WhatsApp Reminder dikirim.');
-                location.reload();
-            } else {
-                alert('Gagal menyimpan jadwal');
-            }
-        })
-        .catch(error => {
-            console.error(error);
-            alert('Terjadi kesalahan saat menyimpan jadwal');
-        });
-    }
+                                // Tutup modal dulu
+                                const modalInstance = bootstrap.Modal.getInstance(document.getElementById('buyerMeetingModal'));
+                                modalInstance.hide();
 
-    function formatNomorWA(nomor) {
-        nomor = nomor.replace(/\D/g, '');
-        if (nomor.startsWith('0')) {
-            nomor = '62' + nomor.slice(1);
-        }
-        return nomor;
-    }
+                                // Buka WhatsApp
+                                setTimeout(() => {
+                                    window.open(`https://wa.me/${formatNomorWA(nomorWA)}?text=${pesan}`, '_blank');
+                                    alert('Jadwal berhasil disimpan & WhatsApp Reminder dikirim.');
+                                    location.reload();
+                                }, 300);
+                            } else {
+                                alert('Gagal menyimpan jadwal');
+                            }
+                        })
+                        .catch(error => {
+                            console.error(error);
+                            alert('Terjadi kesalahan saat menyimpan jadwal');
+                        });
+                    }
 
-    function getHariIndonesia(date) {
-        const hari = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
-        return hari[date.getDay()];
-    }
+                    function formatNomorWA(nomor) {
+                        nomor = nomor.replace(/\D/g, '');
+                        if (nomor.startsWith('0')) {
+                            nomor = '62' + nomor.slice(1);
+                        }
+                        return nomor;
+                    }
 
-    function formatTanggalIndonesia(tanggal) {
-        const date = new Date(tanggal);
-        const bulan = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-        return `${date.getDate()} ${bulan[date.getMonth()]} ${date.getFullYear()}`;
-    }
-    </script>
-    <button class="btn btn-sm btn-outline-danger mb-1"
-        onclick="updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Gagal')">
-        Batal
-    </button>
+                    function getHariIndonesia(date) {
+                        const hari = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+                        return hari[date.getDay()];
+                    }
 
-@elseif ($status === 'BuyerMeeting')
-    <button class="btn btn-sm btn-success mb-1"
-        onclick="openClosingModal('{{ $client->id_account }}', '{{ $client->id_listing }}')">
-        Closing
-    </button>
-    <button class="btn btn-sm btn-warning mb-1"
-        onclick="updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Pending')">
-        Pending
-    </button>
-    <button class="btn btn-sm btn-outline-danger mb-1"
-        onclick="updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Gagal')">
-        Cancel
-    </button>
+                    function formatTanggalIndonesia(tanggal) {
+                        const date = new Date(tanggal);
+                        const bulan = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+                        return `${date.getDate()} ${bulan[date.getMonth()]} ${date.getFullYear()}`;
+                    }
 
-@else
-    <span class="badge bg-success text-uppercase">{{ $status }}</span>
-@endif
+                    // Hide navbar saat modal aktif
+                    const buyerMeetingModal = document.getElementById('buyerMeetingModal');
+                    buyerMeetingModal.addEventListener('show.bs.modal', () => {
+                        const navbar = document.querySelector('.navbar');
+                        if (navbar) navbar.classList.add('navbar-hidden');
+                    });
+                    buyerMeetingModal.addEventListener('hidden.bs.modal', () => {
+                        const navbar = document.querySelector('.navbar');
+                        if (navbar) navbar.classList.remove('navbar-hidden');
+                    });
+                    </script>
 
+                    <button class="btn btn-sm btn-outline-danger mb-1"
+                        onclick="updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Gagal')">
+                        Batal
+                    </button>
 
-    @if ($progress === 100 && $status !== 'Pending')
-        <button class="btn btn-sm btn-outline-secondary mt-1"
-            onclick="hideRow('{{ $client->id_account }}', '{{ $client->id_listing }}')">
-            Hide
-        </button>
-    @endif
-</td>
+                @elseif ($status === 'BuyerMeeting')
+                    <button class="btn btn-sm btn-success mb-1"
+                        onclick="openClosingModal('{{ $client->id_account }}', '{{ $client->id_listing }}')">
+                        Closing
+                    </button>
+                    <button class="btn btn-sm btn-warning mb-1"
+                        onclick="updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Pending')">
+                        Pending
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger mb-1"
+                        onclick="updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Gagal')">
+                        Cancel
+                    </button>
+                    @else
+                        <span class="badge bg-success text-uppercase">{{ $status }}</span>
+                    @endif
+
+                    @if ($progress === 100 && $status !== 'Pending')
+                        <button class="btn btn-sm btn-outline-secondary mt-1"
+                            onclick="hideRow('{{ $client->id_account }}', '{{ $client->id_listing }}')">
+                            Hide
+                        </button>
+                    @endif
+                </td>
 
                     </tr>
                 @empty
