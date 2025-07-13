@@ -27,13 +27,13 @@ Route::get('/property-detail', function () {
     return view('property-detail');
 });
 
-Route::get('/property-list', [propertylistController::class, 'PropertyList']);
+// Route::get('/property-list', [propertylistController::class, 'PropertyList']);
 Route::get('/about', [aboutController::class, 'About']);
 Route::get('/property-type', [propertytypeController::class, 'PropertyType']);
 
 
 
-Route::get('/property-agent', [propertyagentController::class, 'PropertyAgent']);
+// Route::get('/property-agent', [propertyagentController::class, 'PropertyAgent']);
 Route::get('/testimonial', [testimonialController::class, 'Testimonial']);
 Route::get('/login', [AuthController::class, 'Login']);
 Route::get('/register', [AuthController::class, 'Register']);
@@ -58,7 +58,10 @@ Route::get('/register', [AuthController::class, 'register'])->name('register');
 Route::post('/register', [AuthController::class, 'registerrequest'])->name('register.form');
 
 Route::get('/property-agent', [propertyagentController::class, 'showagent']);
-Route::get('/property-list', [propertylistController::class, 'showproperty']);
+Route::get('/property-agent', [PropertyAgentController::class, 'showPropertyAgent'])->name('property.agent');
+// Filter property milik agent
+Route::get('/property-agent/filter', [PropertyAgentController::class, 'filterPropertyByAgent'])->name('property.agent.filter');
+Route::get('/property-list', [propertylistController::class, 'showproperty'])->name('property.list');
 Route::get('/property-type', [propertytypeController::class, 'tipeproperty']);
 Route::get('/property/{id}', [propertylistController::class, 'showPropertyDetail'])->name('property-detail');
 
@@ -71,7 +74,7 @@ Route::get('/addProperty', [ProductController::class, 'create'])->name('property
 Route::post('/addProperty', [ProductController::class, 'store'])->name('property.store');
 
 /* Search Program */
-Route::get('/property-list', [ProductController::class, 'propertyList'])->name('property.list');
+// Route::get('/property-list', [ProductController::class, 'propertyList'])->name('property.list');
 
 /* Agent */
 Route::get('/indexAgent', function () {

@@ -16,20 +16,29 @@ class propertylistController extends Controller
         $query = Property::query();
         $selectedCities = [];
 
+        // Filter harga minimum
         if ($request->filled('min_price')) {
             $minPrice = str_replace('.', '', $request->min_price);
             $query->where('harga', '>=', $minPrice);
         }
 
+        // Filter harga maksimum
         if ($request->filled('max_price')) {
             $maxPrice = str_replace('.', '', $request->max_price);
             $query->where('harga', '<=', $maxPrice);
         }
 
+        // Filter tipe properti
         if ($request->filled('property_type')) {
             $query->where('tipe', $request->property_type);
         }
 
+        // Filter provinsi (jika dipilih)
+        if ($request->filled('province')) {
+            $query->where('provinsi', $request->province);
+        }
+
+        // Filter kota-kota (jika dipilih)
         if ($request->filled('selected_city_values')) {
             $selectedCities = explode(',', $request->selected_city_values);
             $query->whereIn('kota', $selectedCities);
@@ -39,6 +48,7 @@ class propertylistController extends Controller
 
         return view('property-list', compact('properties', 'selectedCities'));
     }
+
 
     public function showPropertyDetail($id)
     {

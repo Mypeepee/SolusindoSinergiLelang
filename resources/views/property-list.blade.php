@@ -54,7 +54,7 @@
 
                 <!-- Provinsi -->
                 <div class="col-md-2">
-                    <select id="province" class="form-select border-0 py-3">
+                    <select id="province" name="province" class="form-select border-0 py-3">
                         <option selected disabled>Pilih Provinsi</option>
                     </select>
                 </div>
@@ -357,8 +357,6 @@
                                     </div>
                                 </div>
                             </div>
-
-
                         </div>
                     </div>
                 </div>
