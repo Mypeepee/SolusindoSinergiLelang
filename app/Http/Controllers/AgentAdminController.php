@@ -14,61 +14,70 @@ class AgentAdminController extends Controller
         $idAccount = session('id_account');
         $role = session('role');
 
+        $idAgent = null;
+
+        if ($role === 'Agent') {
+            // Ambil id_agent berdasarkan id_account
+            $idAgent = DB::table('agent')
+                ->where('id_account', $idAccount)
+                ->value('id_agent');
+        }
+
         $totalKomisi = DB::table('transaction')
-            ->where('id_agent', $idAccount)
+            ->where('id_agent', $idAgent ?? $idAccount)
             ->sum('komisi_agent');
 
         $totalSelisih = DB::table('transaction')
-            ->where('id_agent', $idAccount)
+            ->where('id_agent', $idAgent ?? $idAccount)
             ->sum('selisih');
 
         $jumlahListing = 0;
         $jumlahClients = 0;
         $clients = collect();
         $clientsClosing = collect();
+        $clientsPengosongan = collect();
         $statusCounts = [];
-
         $pendingAgents = collect();
-        if ($role === 'Owner'){
+
+        if ($role === 'Owner') {
             $pendingAgents = DB::table('account')
-            ->where('account.roles', 'Pending')
-            ->select('id_account','username', 'nama', 'nomor_telepon')
-            ->get();
+                ->where('account.roles', 'Pending')
+                ->select('id_account', 'username', 'nama', 'nomor_telepon')
+                ->get();
         }
 
         if ($role === 'Agent') {
             $statusCounts = DB::table('property_interests')
-        ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
-        ->where('property.id_agent', $idAccount)
-        ->whereNotIn('property_interests.status', [
-            'closing',
-            'kutipan_risalah_lelang',
-            'akte_grosse',
-            'balik_nama'
-        ]) // hanya ambil yang belum selesai
-        ->selectRaw("
-            SUM(CASE WHEN property_interests.status = 'followup' THEN 1 ELSE 0 END) as followup,
-            SUM(CASE WHEN property_interests.status = 'pending' THEN 1 ELSE 0 END) as pending,
-            SUM(CASE WHEN property_interests.status = 'gagal' THEN 1 ELSE 0 END) as gagal,
-            SUM(CASE WHEN property_interests.status = 'buyer_meeting' THEN 1 ELSE 0 END) as buyer_meeting
-        ")
-        ->first();
+                ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
+                ->where('property.id_agent', $idAgent)
+                ->whereNotIn('property_interests.status', [
+                    'closing',
+                    'kutipan_risalah_lelang',
+                    'akte_grosse',
+                    'balik_nama'
+                ]) // hanya ambil yang belum selesai
+                ->selectRaw("
+                    SUM(CASE WHEN property_interests.status = 'FollowUp' THEN 1 ELSE 0 END) as followup,
+                    SUM(CASE WHEN property_interests.status = 'pending' THEN 1 ELSE 0 END) as pending,
+                    SUM(CASE WHEN property_interests.status = 'gagal' THEN 1 ELSE 0 END) as gagal,
+                    SUM(CASE WHEN property_interests.status = 'buyer_meeting' THEN 1 ELSE 0 END) as buyer_meeting
+                ")
+                ->first();
 
             $jumlahListing = DB::table('property')
-                ->where('id_agent', $idAccount)
+                ->where('id_agent', $idAgent)
                 ->count();
 
-                $jumlahClients = DB::table('property_interests')
+            $jumlahClients = DB::table('property_interests')
                 ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
-                ->where('property.id_agent', $idAccount)
+                ->where('property.id_agent', $idAgent)
                 ->distinct('property_interests.id_klien')
                 ->count('property_interests.id_klien');
 
-
-                $clients = DB::table('property_interests')
+            $clients = DB::table('property_interests')
                 ->join('account', 'property_interests.id_klien', '=', 'account.id_account')
                 ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
-                ->where('property.id_agent', $idAccount)
+                ->where('property.id_agent', $idAgent)
                 ->whereNotIn('property_interests.status', ['closing', 'balik_nama', 'akte_grosse'])
                 ->select(
                     'account.id_account',
@@ -81,7 +90,7 @@ class AgentAdminController extends Controller
                 )
                 ->get();
         }
-        $clientsPengosongan = collect();
+
         if ($role === 'Register') {
             $clientsClosing = DB::table('property_interests')
                 ->join('account', 'property_interests.id_klien', '=', 'account.id_account')
@@ -105,40 +114,40 @@ class AgentAdminController extends Controller
                 ->orderBy('property_interests.tanggal_diupdate', 'asc') // urutkan berdasarkan yang paling lama
                 ->get();
         }
+
         if ($role === 'Pengosongan') {
             $clientsPengosongan = DB::table('property_interests')
-            ->join('account', 'account.id_account', '=', 'property_interests.id_account')
-            ->join('property', 'property.id_listing', '=', 'property_interests.id_listing')
-            ->select(
-                'property_interests.id_account',
-                'account.nama',
-                'property_interests.id_listing',
-                'property.lokasi',
-                'property.harga',
-                'property_interests.status',
-                'property_interests.updated_at'
-            )
-            ->whereIn('property_interests.status', ['balik_nama', 'eksekusi_pengosongan', 'selesai'])
-            ->get();
+                ->join('account', 'account.id_account', '=', 'property_interests.id_account')
+                ->join('property', 'property.id_listing', '=', 'property_interests.id_listing')
+                ->select(
+                    'property_interests.id_account',
+                    'account.nama',
+                    'property_interests.id_listing',
+                    'property.lokasi',
+                    'property.harga',
+                    'property_interests.status',
+                    'property_interests.updated_at'
+                )
+                ->whereIn('property_interests.status', ['balik_nama', 'eksekusi_pengosongan', 'selesai'])
+                ->get();
         }
 
         $earnings = DB::table('transaction')
-        ->select(
-            DB::raw('EXTRACT(YEAR FROM tanggal_transaksi) AS year'),
-            DB::raw('EXTRACT(MONTH FROM tanggal_transaksi) AS month'),
-            DB::raw('SUM(selisih) AS total')
-        )
-        ->where('id_agent', $idAccount)
-        ->groupByRaw('EXTRACT(YEAR FROM tanggal_transaksi), EXTRACT(MONTH FROM tanggal_transaksi)')
-        ->orderByRaw('EXTRACT(YEAR FROM tanggal_transaksi)')
-        ->orderByRaw('EXTRACT(MONTH FROM tanggal_transaksi)')
-        ->get();
-
+            ->select(
+                DB::raw('EXTRACT(YEAR FROM tanggal_transaksi) AS year'),
+                DB::raw('EXTRACT(MONTH FROM tanggal_transaksi) AS month'),
+                DB::raw('SUM(selisih) AS total')
+            )
+            ->where('id_agent', $idAgent ?? $idAccount)
+            ->groupByRaw('EXTRACT(YEAR FROM tanggal_transaksi), EXTRACT(MONTH FROM tanggal_transaksi)')
+            ->orderByRaw('EXTRACT(YEAR FROM tanggal_transaksi)')
+            ->orderByRaw('EXTRACT(MONTH FROM tanggal_transaksi)')
+            ->get();
 
         $salesData = [];
 
         foreach ($earnings as $e) {
-            $salesData[$e->year][(int) $e->month - 1] = (int) $e->total;
+            $salesData[$e->year][(int)$e->month - 1] = (int)$e->total;
         }
 
         foreach ($salesData as $year => $months) {
@@ -159,10 +168,11 @@ class AgentAdminController extends Controller
             'clientsClosing' => $clientsClosing,
             'clientsPengosongan' => $clientsPengosongan,
             'salesData' => json_encode($salesData),
-            'statusCounts' => (array) $statusCounts,
+            'statusCounts' => (array)$statusCounts,
             'pendingAgents' => $pendingAgents,
         ]);
     }
+
 
     public function storeregister(Request $request)
     {
@@ -184,7 +194,7 @@ class AgentAdminController extends Controller
 
             return response()->json(['success' => true]);
     }
-        
+
     public function updateToEksekusi(Request $request)
     {
         $id_account = $request->id_account;
