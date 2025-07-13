@@ -44,15 +44,25 @@
 
                                             <p><i class="fa fa-map-marker-alt text-primary me-2"></i>{{ $property->lokasi }}</p>
                                         </div>
-                                        <div class="d-flex border-top">
-                                            <small class="flex-fill text-center border-end py-2">
-                                                <i class="fa fa-ruler-combined text-primary me-2"></i>{{ $property->luas_bangunan }} m²
+                                        <div class="d-flex border-top border-2 border-dashed border-orange">
+                                            <!-- Luas Properti -->
+                                            <small class="flex-fill text-center border-end border-dashed py-2">
+                                                <i class="fa fa-vector-square text-danger me-2"></i>
+                                                <span class="text-dark">{{ $property->luas }} m²</span>
                                             </small>
-                                            <small class="flex-fill text-center border-end py-2">
-                                                <i class="fa fa-bed text-primary me-2"></i>{{ $property->kamar_tidur }} Bed
+
+                                            <!-- Kota -->
+                                            <small class="flex-fill text-center border-end border-dashed py-2">
+                                                <i class="fa fa-map-marker-alt text-danger me-2"></i>
+                                                <span class="text-dark text-uppercase">{{ $property->kota }}</span>
                                             </small>
+
+                                            <!-- Batas Penawaran -->
                                             <small class="flex-fill text-center py-2">
-                                                <i class="fa fa-bath text-primary me-2"></i>{{ $property->kamar_mandi }} Bath
+                                                <i class="fa fa-calendar-alt text-danger me-2"></i>
+                                                <span class="text-dark">
+                                                    {{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->format('d M Y') }}
+                                                </span>
                                             </small>
                                         </div>
                                     </div>
@@ -166,15 +176,25 @@
                                         <div class="d-block h5 mb-2">{{ $property->deskripsi }}</div>
                                         <p><i class="fa fa-map-marker-alt text-primary me-2"></i>{{ $property->lokasi }}</p>
                                     </div>
-                                    <div class="d-flex border-top">
-                                        <small class="flex-fill text-center border-end py-2">
-                                            <i class="fa fa-ruler-combined text-primary me-2"></i>{{ $property->luas_bangunan }} m²
+                                    <div class="d-flex border-top border-2 border-dashed border-orange">
+                                        <!-- Luas Properti -->
+                                        <small class="flex-fill text-center border-end border-dashed py-2">
+                                            <i class="fa fa-vector-square text-danger me-2"></i>
+                                            <span class="text-dark">{{ $property->luas }} m²</span>
                                         </small>
-                                        <small class="flex-fill text-center border-end py-2">
-                                            <i class="fa fa-bed text-primary me-2"></i>{{ $property->kamar_tidur }} Bed
+
+                                        <!-- Kota -->
+                                        <small class="flex-fill text-center border-end border-dashed py-2">
+                                            <i class="fa fa-map-marker-alt text-danger me-2"></i>
+                                            <span class="text-dark text-uppercase">{{ $property->kota }}</span>
                                         </small>
+
+                                        <!-- Batas Penawaran -->
                                         <small class="flex-fill text-center py-2">
-                                            <i class="fa fa-bath text-primary me-2"></i>{{ $property->kamar_mandi }} Bath
+                                            <i class="fa fa-calendar-alt text-danger me-2"></i>
+                                            <span class="text-dark">
+                                                {{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->format('d M Y') }}
+                                            </span>
                                         </small>
                                     </div>
                                 </div>
