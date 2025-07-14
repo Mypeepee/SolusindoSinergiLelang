@@ -342,6 +342,16 @@ class productController extends Controller
             return back()->with('error', 'Lengkapi informasi klien terlebih dahulu.');
         }
 
+        // Cek apakah sudah pernah submit interest untuk listing yang sama
+        $existingInterest = DB::table('property_interests')
+            ->where('id_klien', $id_account)
+            ->where('id_listing', $id_listing)
+            ->first();
+
+        if ($existingInterest) {
+            return back()->with('error', 'Anda sudah pernah mengajukan ketertarikan untuk properti ini.');
+        }
+        
         // Insert ke property_interests
         DB::table('property_interests')->insert([
             'id_klien' => $id_account,
