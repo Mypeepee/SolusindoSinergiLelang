@@ -51,11 +51,23 @@
                             <a href="{{ route('property.agent', ['agent_id' => $agent->id_agent]) }}">
                                 <img class="img-fluid" src="{{ asset($agent->picture) }}" alt="{{ $agent->nama }}">
                             </a>
-                            <!-- Tambahkan tombol sosial di bawah gambar -->
+                            <!-- Tombol Sosial -->
                             <div class="position-absolute start-50 top-100 translate-middle d-flex align-items-center">
-                                <a class="btn btn-square mx-1" href="#"><i class="fab fa-facebook-f"></i></a>
-                                <a class="btn btn-square mx-1" href="#"><i class="fab fa-twitter"></i></a>
-                                <a class="btn btn-square mx-1" href="#"><i class="fab fa-instagram"></i></a>
+                                @if($agent->facebook)
+                                    <a class="btn btn-square mx-1" href="https://{{ $agent->facebook }}" target="_blank">
+                                        <i class="fab fa-facebook-f"></i>
+                                    </a>
+                                @endif
+                                @if($agent->nomor_telepon)
+                                    <a class="btn btn-square mx-1" href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $agent->nomor_telepon) }}" target="_blank">
+                                        <i class="fab fa-whatsapp"></i>
+                                    </a>
+                                @endif
+                                @if($agent->instagram)
+                                    <a class="btn btn-square mx-1" href="https://instagram.com/{{ ltrim($agent->instagram, '@') }}" target="_blank">
+                                        <i class="fab fa-instagram"></i>
+                                    </a>
+                                @endif
                             </div>
                         </div>
                         <div class="text-center p-4 mt-2">
@@ -80,11 +92,27 @@
     <div class="d-flex align-items-center flex-wrap mb-4">
         <h3 class="mb-0 me-3">Properti {{ $selectedAgent->nama }}</h3>
         <div class="d-flex align-items-center">
-            <a class="btn btn-square mx-1" href="#"><i class="fab fa-facebook-f"></i></a>
-            <a class="btn btn-square mx-1" href="#"><i class="fab fa-twitter"></i></a>
-            <a class="btn btn-square mx-1" href="#"><i class="fab fa-instagram"></i></a>
+            @if($selectedAgent->facebook)
+            <a class="btn btn-square mx-1" href="https://{{ $selectedAgent->facebook }}" target="_blank">
+                <i class="fab fa-facebook-f"></i>
+            </a>
+            @endif
+
+            @if($selectedAgent->nomor_telepon)
+            <a class="btn btn-square mx-1" href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $selectedAgent->nomor_telepon) }}" target="_blank">
+                <i class="fab fa-whatsapp"></i>
+            </a>
+            @endif
+
+            @if($selectedAgent->instagram)
+            <a class="btn btn-square mx-1" href="https://instagram.com/{{ $selectedAgent->instagram }}" target="_blank">
+                <i class="fab fa-instagram"></i>
+            </a>
+            @endif
         </div>
     </div>
+</div>
+
 
     <!-- Search Start -->
 <form action="{{ route('property.agent.filter') }}#property-list-section" method="GET">
