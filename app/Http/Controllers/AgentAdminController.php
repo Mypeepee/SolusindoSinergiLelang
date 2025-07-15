@@ -252,6 +252,21 @@ class AgentAdminController extends Controller
         return response()->json(['success' => true]);
     }
 
+    public function showClosing($id_listing, $id_klien)
+    {
+        $property = DB::table('property')->where('id_listing', $id_listing)->first();
+
+        // ✅ DEBUG di sini
+        // dd($property, $id_listing, $id_klien);
+
+        return view('partial.closing', [
+            'property' => $property,
+            'id_klien' => $id_klien
+        ]);
+    }
+
+
+
     public function updateBuyerMeeting(Request $request)
     {
         // Update status & simpan jadwal
@@ -283,6 +298,72 @@ class AgentAdminController extends Controller
             'alamat_property' => $client->alamat_property
         ]);
     }
+
+    public function agentclosing(Request $request)
+{
+    // Hilangkan titik pada angka ribuan
+    $request->merge([
+        'harga_bidding' => str_replace('.', '', $request->harga_bidding),
+        'harga_deal'    => str_replace('.', '', $request->harga_deal),
+    ]);
+
+    // Validasi input
+    $request->validate([
+        'id_agent' => 'required|string|exists:agent,id_account',
+        'id_klien' => 'required|string|exists:account,id_account',
+        'id_listing' => 'required|integer|exists:property,id_listing',
+        'harga_deal' => 'required|integer|min:1',
+        'harga_bidding' => 'required|integer|min:1|lte:harga_deal', // tidak boleh lebih besar dari harga_deal
+    ]);
+
+    DB::beginTransaction();
+
+    try {
+        // Generate ID transaksi unik (contoh: TRX001, TRX002)
+        $lastTransaction = DB::table('transaction')->latest('id_transaction')->first();
+        $newIdNumber = $lastTransaction
+            ? str_pad((int)substr($lastTransaction->id_transaction, 3) + 1, 3, '0', STR_PAD_LEFT)
+            : '001';
+        $idTransaction = 'TRX' . $newIdNumber;
+
+        // Hitung selisih & komisi agent
+        $selisih = $request->harga_deal - $request->harga_bidding;
+        $komisiAgent = floor($selisih * 0.4);
+
+        // Insert ke tabel transaction
+        DB::table('transaction')->insert([
+            'id_transaction'     => $idTransaction,
+            'id_agent'           => $request->id_agent,
+            'id_klien'           => $request->id_klien,
+            'id_listing'         => $request->id_listing,
+            'harga_deal'         => $request->harga_deal,
+            'harga_bidding'      => $request->harga_bidding,
+            'selisih'            => $selisih,
+            'komisi_agent'       => $komisiAgent,
+            'status_transaksi'   => 'Closing',
+            'tanggal_transaksi'  => now()->toDateString(),
+            'tanggal_dibuat'     => now(),
+            'tanggal_diupdate'   => now(),
+        ]);
+
+        // Insert ke tabel transaction_details
+        DB::table('transaction_details')->insert([
+            'id_account'         => $request->id_agent,
+            'id_transaction'     => $idTransaction,
+            'status_transaksi'   => 'Closing',
+            'catatan'            => 'Transaksi berhasil dibuat oleh agent.',
+            'tanggal_dibuat'     => now(),
+            'tanggal_diupdate'   => now(),
+        ]);
+
+        DB::commit();
+
+        return redirect()->route('dashboard.agent')->with('success', '✅ Transaksi berhasil disimpan!');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        dd($e->getMessage()); // debug error
+    }
+}
 
 
     public function trackFinalStatus(Request $request)
@@ -344,17 +425,6 @@ class AgentAdminController extends Controller
     }
 }
 
-
-
-    public function hideClient(Request $request)
-    {
-        DB::table('property_interests')
-            ->where('id_account', $request->id_account)
-            ->where('id_listing', $request->id_listing)
-            ->update(['is_hidden' => 1]);
-
-        return response()->json(['success' => true]);
-    }
 
     public function simpanEarning(Request $request)
     {

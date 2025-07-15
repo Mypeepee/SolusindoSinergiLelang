@@ -259,5 +259,15 @@ class OrderSeeder extends Seeder
                 'tanggal_diupdate' => now(),
             ],
         ]);
+
+        DB::table('transaction')->insert([
+            [
+                'id_listing'       => 4,
+                'id_klien'         => 'AC005',
+                'status'           => 'FollowUp',
+                'tanggal_dibuat'   => now(),
+                'tanggal_diupdate' => now(),
+            ],
+        ]);
     }
 }
