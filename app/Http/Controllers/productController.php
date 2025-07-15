@@ -351,7 +351,7 @@ class productController extends Controller
         if ($existingInterest) {
             return back()->with('error', 'Anda sudah pernah mengajukan ketertarikan untuk properti ini.');
         }
-        
+
         // Insert ke property_interests
         DB::table('property_interests')->insert([
             'id_klien' => $id_account,
@@ -445,9 +445,9 @@ class productController extends Controller
         $id_account = session('id_account');
 
         DB::table('property_interests')
-            ->where('id_account', $id_account)
-            ->where('id_listing', $id_listing)
-            ->delete();
+    ->where('id_klien', $id_account)
+    ->where('id_listing', $id_listing)
+    ->delete();
 
             return redirect()->route('cart.view')->with('success', 'Properti berhasil dihapus dari keranjang.');
     }

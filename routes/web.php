@@ -189,3 +189,6 @@ Route::get('/resend-otp', [AuthController::class, 'resendOtp'])->name('resend.ot
 Route::get('/password/reset/{email}', [AuthController::class, 'showResetPasswordForm'])->name('password.reset.form');
 Route::post('/update-password/{email}', [AuthController::class, 'updatePassword'])->name('password.update');
 
+
+
+

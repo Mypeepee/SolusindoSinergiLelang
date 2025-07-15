@@ -74,11 +74,12 @@ class AgentAdminController extends Controller
                 ->distinct('property_interests.id_klien')
                 ->count('property_interests.id_klien');
 
-            $clients = DB::table('property_interests')
+                $clients = DB::table('property_interests')
                 ->join('account', 'property_interests.id_klien', '=', 'account.id_account')
                 ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
+                ->leftJoin('informasi_klien', 'account.id_account', '=', 'informasi_klien.id_account')
                 ->where('property.id_agent', $idAgent)
-                ->whereNotIn('property_interests.status', ['closing', 'balik_nama', 'akte_grosse'])
+                ->whereNotIn(DB::raw('LOWER(TRIM(property_interests.status))'), ['closing', 'balik_nama', 'akte_grosse', 'gagal']) // cek lowercase dan trim
                 ->select(
                     'account.id_account',
                     'account.nama',
@@ -86,9 +87,11 @@ class AgentAdminController extends Controller
                     'property.id_listing',
                     'property.lokasi',
                     'property.harga',
-                    'property_interests.status'
+                    'property_interests.status',
+                    'informasi_klien.gambar_ktp'
                 )
                 ->get();
+
         }
 
         if ($role === 'Register') {
