@@ -314,7 +314,7 @@
                                                         $gmapSrc = "https://www.google.com/maps/embed/v1/place?q={$encodedAlamat}&key={$apiKey}";
                                                     @endphp
 
-                                                    <<div class="row g-4 align-items-stretch">
+                                                    <div class="row g-4 align-items-stretch">
                                                         <!-- Map -->
                                                         <div class="col-md-8">
                                                             <div class="rounded shadow-sm overflow-hidden" style="height: 410px;">

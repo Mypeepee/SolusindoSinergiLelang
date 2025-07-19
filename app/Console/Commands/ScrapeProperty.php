@@ -146,54 +146,54 @@ while (true) {
                         ->setOption('headless', false) // 🔥 Non-headless biar lihat proses
                         ->userAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/119 Safari/537.36')
                         ->waitUntilNetworkIdle()
-                        ->waitForFunction('document.querySelector("div.scrollbar-hide") !== null', null, 20000)
+                        ->waitForFunction('document.querySelector("div.scrollbar-hide") !== null', null, 15000)
                         ->timeout(300); // Timeout lebih lama
 
                     sleep(2); // 🕒 Tunggu halaman stabil
 
                     // 🔥 Scroll bertahap ke kanan & pastikan semua gambar lazy-load
-$browser->evaluate('
-    (async () => {
-        const scrollDiv = document.querySelector("div.scrollbar-hide");
-        if (scrollDiv) {
-            const totalWidth = scrollDiv.scrollWidth;
-            const viewportWidth = scrollDiv.clientWidth;
-            const step = viewportWidth / 2; // scroll setengah viewport
-            for (let x = 0; x <= totalWidth; x += step) {
-                scrollDiv.scrollLeft = x;
-                await new Promise(resolve => setTimeout(resolve, 1000)); // ⏱️ tunggu 1 detik tiap scroll
-            }
-            // ⏩ Scroll ke kanan penuh sekali lagi sebagai jaga-jaga
-            scrollDiv.scrollLeft = scrollDiv.scrollWidth;
-            await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-    })()
-');
+            $browser->evaluate('
+                (async () => {
+                    const scrollDiv = document.querySelector("div.scrollbar-hide");
+                    if (scrollDiv) {
+                        const totalWidth = scrollDiv.scrollWidth;
+                        const viewportWidth = scrollDiv.clientWidth;
+                        const step = viewportWidth / 2; // scroll setengah viewport
+                        for (let x = 0; x <= totalWidth; x += step) {
+                            scrollDiv.scrollLeft = x;
+                            await new Promise(resolve => setTimeout(resolve, 1000)); // ⏱️ tunggu 1 detik tiap scroll
+                        }
+                        // ⏩ Scroll ke kanan penuh sekali lagi sebagai jaga-jaga
+                        scrollDiv.scrollLeft = scrollDiv.scrollWidth;
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                })()
+            ');
 
-// 🕒 Tunggu sampai jumlah <img> stabil selama 2 detik
-$browser->waitForFunction('
-    (() => {
-        let lastCount = 0;
-        let stableTime = 0;
-        const checkInterval = 500; // cek tiap 0.5 detik
+            // 🕒 Tunggu sampai jumlah <img> stabil selama 2 detik
+            $browser->waitForFunction('
+                (() => {
+                    let lastCount = 0;
+                    let stableTime = 0;
+                    const checkInterval = 500; // cek tiap 0.5 detik
 
-        return new Promise(resolve => {
-            const interval = setInterval(() => {
-                const currentCount = document.querySelectorAll("div.scrollbar-hide img").length;
-                if (currentCount === lastCount) {
-                    stableTime += checkInterval;
-                } else {
-                    stableTime = 0;
-                    lastCount = currentCount;
-                }
-                if (stableTime >= 2000) { // ✅ stabil selama 2 detik
-                    clearInterval(interval);
-                    resolve(true);
-                }
-            }, checkInterval);
-        });
-    })()
-', null, 15000); // Timeout maksimum 15 detik
+                    return new Promise(resolve => {
+                        const interval = setInterval(() => {
+                            const currentCount = document.querySelectorAll("div.scrollbar-hide img").length;
+                            if (currentCount === lastCount) {
+                                stableTime += checkInterval;
+                            } else {
+                                stableTime = 0;
+                                lastCount = currentCount;
+                            }
+                            if (stableTime >= 2000) { // ✅ stabil selama 2 detik
+                                clearInterval(interval);
+                                resolve(true);
+                            }
+                        }, checkInterval);
+                    });
+                })()
+            ', null, 15000); // Timeout maksimum 15 detik
 
 
 // 🔥 Ambil semua <img> setelah scroll selesai & stabil
@@ -274,17 +274,6 @@ JSON.stringify({
         return null;
     })(),
 
-    pic_vendor: (function(){
-        const teleponDiv = Array.from(document.querySelectorAll("div.text-xs"))
-            .find(el => /Telepon\s*:/i.test(el.innerText));
-        if (teleponDiv) {
-            // Ambil hanya nomor telepon
-            const match = teleponDiv.innerText.match(/Telepon\s*:\s*(.+)/i);
-            return match ? match[1].trim() : null;
-        }
-        return null;
-    })(),
-
     // 📏 Luas tanah (integer)
     luas_tanah: (function(){
         const div = Array.from(document.querySelectorAll("div.text-xs"))
@@ -331,47 +320,10 @@ $details = json_decode($detailsJson, true);
                             $provinsi = strtoupper(trim(preg_replace('/\.$/', '', $provMatch[2]))); // ✅ Hapus titik di belakang
                         }
 
-                        // 🧹 Bersihkan alamat dulu supaya lebih rapi
-                        $alamat = preg_replace('/\s+/', ' ', $alamat); // hapus spasi double
-
                         // 🎯 CARI PROVINSI (support Prov, Prop, titik, dll)
                         if (preg_match('/\b(prov(?:insi)?|prop(?:insi)?)\.?\s*([a-zA-Z\s]+)/i', $alamat, $provMatch)) {
                             $provinsi = strtoupper(trim($provMatch[2])); // ✅ Provinsi bersih
                         }
-
-                        // 🎯 CARI KECAMATAN
-                        if (preg_match('/\bkec(?:amatan|\.)?\s*[:,]*\s*([a-zA-Z\s]+)/i', $alamat, $kecMatch)) {
-                            $kecamatanRaw = trim($kecMatch[1]);
-                            $kecamatanClean = preg_replace('/\b(kab(?:upaten)?|kota|prov(?:insi)?|prop(?:insi)?)\b.*$/i', '', $kecamatanRaw);
-                            $kecamatan = ucwords(strtolower(trim($kecamatanClean))); // Capitalize
-                        }
-
-                        // 🎯 CARI KELURAHAN
-                        if (preg_match('/\bkel(?:urahan|\.)?\s*([a-zA-Z\s]+)/i', $alamat, $kelMatch)) {
-                            $kelurahanRaw = trim($kelMatch[1]);
-                            $kelurahanClean = preg_replace('/\b(kec|kecamatan|kab|kota|prov|prop)\b.*$/i', '', $kelurahanRaw);
-                            $kelurahan = ucwords(strtolower(trim($kelurahanClean))); // Capitalize
-                        }
-
-                        $kabupaten = null;
-                        if (!empty($details['judul'])) {
-                            if (preg_match('/di\s+(Kota|Kab\.?|Kabupaten)\s+([a-zA-Z\s]+)/i', $details['judul'], $judulMatch)) {
-                                $namaKab = strtoupper(trim($judulMatch[2]));
-                                if (stripos($judulMatch[1], 'kota') !== false) {
-                                    $kabupaten = "KOTA " . $namaKab;
-                                } else {
-                                    $kabupaten = "KAB. " . $namaKab;
-                                }
-                            }
-                        }
-
-
-                        // 🧹 Bersihkan alamat
-                        if (!empty($details['alamat'])) {
-                            $alamatClean = preg_replace('/^Alamat:\s*/i', '', $details['alamat']);
-                            $details['alamat'] = trim($alamatClean);
-                        }
-
 
                         // 🎯 Cari Kecamatan
                         if (preg_match('/\bkec(?:amatan|\.)?\s*[:,]*\s*([a-zA-Z\s]+)/i', $alamat, $kecMatch)) {
@@ -408,6 +360,24 @@ $details = json_decode($detailsJson, true);
                             $kelurahan = null;
                         }
 
+                        $kabupaten = null;
+                        if (!empty($details['judul'])) {
+                            if (preg_match('/di\s+(Kota|Kab\.?|Kabupaten)\s+([a-zA-Z\s]+)/i', $details['judul'], $judulMatch)) {
+                                $namaKab = strtoupper(trim($judulMatch[2]));
+                                if (stripos($judulMatch[1], 'kota') !== false) {
+                                    $kabupaten = "KOTA " . $namaKab;
+                                } else {
+                                    $kabupaten = "KAB. " . $namaKab;
+                                }
+                            }
+                        }
+
+                        // 🧹 Bersihkan alamat
+                        if (!empty($details['alamat'])) {
+                            $alamatClean = preg_replace('/^Alamat:\s*/i', '', $details['alamat']);
+                            $details['alamat'] = trim($alamatClean);
+                        }
+
                     }
                     // 🖊️ Log hasil
                     if (empty($allImages)) {
@@ -422,12 +392,10 @@ $details = json_decode($detailsJson, true);
                     // ✅ Jika kelurahan kosong tapi kecamatan ada, fallback ke kecamatan
                     $kelurahanFinal = $kelurahan ?: $kecamatan;
 
-
                     // 🗄️ INSERT KE DATABASE
                     DB::table('property')->insert([
                     'id_agent' => 'AG001',
                     'vendor' => $details['penjual'] ?? null, // 🆕 isi vendor dari penjual
-                    'PIC_vendor' => $details['pic_vendor'] ?? null,
                     'judul' => $details['judul'] ?? 'Property Rumah Lelang',
                     'deskripsi' => "Lelang properti dengan luas tanah {$details['luas_tanah']} m2 di {$kabupaten}, {$provinsi}. Sertifikat: " . ($buktiKepemilikan ?? 'Tidak tersedia') . ". Batas penawaran hingga {$details['batas_penawaran']}.",
                     'tipe' => $tipeProperti,
@@ -458,8 +426,6 @@ $details = json_decode($detailsJson, true);
                 } catch (\Exception $e) {
                     $this->warn("⚠️ Gagal scrape detail untuk $detailUrl. Error: " . $e->getMessage());
                 }
-
-
             }
         }
 
