@@ -11,6 +11,7 @@ return new class extends Migration
         Schema::create('property', function (Blueprint $table) {
             $table->id('id_listing'); // AUTO_INCREMENT, PRIMARY KEY
             $table->string('id_agent', 50)->nullable(); // relasi ke account.id_account
+            $table->string('vendor', 100)->nullable();
             $table->string('judul')->nullable();
             $table->string('deskripsi', 2200)->nullable();
             $table->string('tipe', 15)->nullable();
@@ -25,14 +26,12 @@ return new class extends Migration
             $table->enum('status', ['Tersedia', 'Terjual'])->nullable(); // check constraint
             $table->string('gambar', 900)->nullable();
             $table->string('payment', 20)->nullable();
-
             $table->bigInteger('uang_jaminan')->nullable();
             $table->date('batas_akhir_jaminan')->nullable();
             $table->date('batas_akhir_penawaran')->nullable();
-
+            $table->date('tanggal_buyer_meeting')->nullable(); // 🆕 tanggal buyer meeting
             $table->timestamp('tanggal_dibuat')->useCurrent();
             $table->timestamp('tanggal_diupdate')->useCurrent()->useCurrentOnUpdate();
-
             // Optional: Add foreign key if you want to link with `account` table
             $table->foreign('id_agent')->references('id_agent')->on('agent')->onDelete('set null');
         });

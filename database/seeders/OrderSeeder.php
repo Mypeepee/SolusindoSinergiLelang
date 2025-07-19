@@ -97,7 +97,7 @@ class OrderSeeder extends Seeder
                 'email' => 'ftiffany04a@gmail.com',
                 'instagram' => 'felicia_tiffany',
                 'facebook' => 'fb.com/jevon',
-                'jadwal' => '2025-06-01',
+                'tanggal_join' => '2025-06-01',
                 'picture' => '/storage/agents/felicia.jpg',
                 'kota' => 'Surabaya',
                 'status' => 'Aktif',
@@ -260,14 +260,5 @@ class OrderSeeder extends Seeder
             ],
         ]);
 
-        DB::table('transaction')->insert([
-            [
-                'id_listing'       => 4,
-                'id_klien'         => 'AC005',
-                'status'           => 'FollowUp',
-                'tanggal_dibuat'   => now(),
-                'tanggal_diupdate' => now(),
-            ],
-        ]);
     }
 }

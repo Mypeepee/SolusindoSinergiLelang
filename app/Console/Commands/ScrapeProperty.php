@@ -210,13 +210,17 @@ $allImages = array_unique(array_filter($imageUrls));
 
 $detailsJson = $browser->evaluate('
 JSON.stringify({
-    judul: document.querySelector("h3.mb-5.text-2xl.text-ternary-gray-200")?.innerText || null,
+    // 🎯 Ambil judul properti
+    judul: (function(){
+        const el = document.querySelector("h3.mb-5.text-2xl.text-ternary-gray-200");
+        return el ? el.innerText.trim() : null;
+    })(),
 
     // 💰 Harga +26.8%
     harga: (function(){
-        const h = document.querySelectorAll("h6.text-primary-500")[0]?.innerText || null;
+        const h = document.querySelectorAll("h6.text-primary-500")[0];
         if (h) {
-            const hargaAsli = parseInt(h.replace(/[^\d]/g, ""));
+            const hargaAsli = parseInt(h.innerText.replace(/[^\d]/g, ""));
             const hargaMarkup = Math.round(hargaAsli * 1.278); // 🔥 Tambah 27.8%
             return hargaMarkup;
         }
@@ -225,49 +229,78 @@ JSON.stringify({
 
     // 💵 Uang Jaminan +20%
     uang_jaminan: (function(){
-        const u = document.querySelectorAll("h6.text-primary-500")[1]?.innerText || null;
+        const u = document.querySelectorAll("h6.text-primary-500")[1];
         if (u) {
-            const jaminanAsli = parseInt(u.replace(/[^\d]/g, ""));
+            const jaminanAsli = parseInt(u.innerText.replace(/[^\d]/g, ""));
             const jaminanMarkup = Math.round(jaminanAsli * 1.2); // 🔥 Tambah 20%
             return jaminanMarkup;
         }
         return null;
     })(),
 
-    penjual: document.querySelectorAll("h6.text-ternary-gray-200")[0]?.innerText || null,
-    batas_penawaran: document.querySelectorAll("h6.text-ternary-gray-200")[1]?.innerText || null,
-    batas_setor_jaminan: document.querySelectorAll("h6.text-ternary-gray-200")[4]?.innerText || null,
-
-    // 🎯 Ambil bukti kepemilikan & tanggal lebih aman
-    bukti_kepemilikan_data: (function(){
-        const blocks = Array.from(document.querySelectorAll("div.flex.w-full.flex-col"));
-        const buktiBlock = blocks.find(block =>
-            block.querySelector("div.mb-3")?.innerText.trim() === "Bukti Kepemilikan"
-        );
-        if (buktiBlock) {
-            const textXs = buktiBlock.querySelectorAll("div.text-xs");
-            return {
-                bukti_kepemilikan: textXs[0]?.innerText.trim() || null,
-            };
-        }
-        return { bukti_kepemilikan: null };
+    // 👤 Nama penjual
+    penjual: (function(){
+        const el = document.querySelectorAll("h6.text-ternary-gray-200")[0];
+        return el ? el.innerText.trim() : null;
     })(),
 
-    // 🎯 Ambil luas tanah (integer saja)
+    // ⏳ Batas Penawaran
+    batas_penawaran: (function(){
+        const el = document.querySelectorAll("h6.text-ternary-gray-200")[1];
+        return el ? el.innerText.trim() : null;
+    })(),
+
+    // ⏳ Batas Setor Jaminan
+    batas_setor_jaminan: (function(){
+        const el = document.querySelectorAll("h6.text-ternary-gray-200")[4];
+        return el ? el.innerText.trim() : null;
+    })(),
+
+    bukti_kepemilikan: (function(){
+        // Cari div dengan label "Bukti Kepemilikan"
+        const labelDiv = Array.from(document.querySelectorAll("div.font-bold"))
+            .find(el => el.innerText.trim().toLowerCase() === "bukti kepemilikan");
+
+        if (labelDiv) {
+            // Ambil semua div.text-xs sesudahnya
+            const siblingDivs = [];
+            let next = labelDiv.nextElementSibling;
+            while (next && next.classList.contains("text-xs")) {
+                siblingDivs.push(next.innerText.trim());
+                next = next.nextElementSibling;
+            }
+            return siblingDivs.length ? siblingDivs.join(" | ") : null; // Gabungkan isi
+        }
+        return null;
+    })(),
+
+    pic_vendor: (function(){
+        const teleponDiv = Array.from(document.querySelectorAll("div.text-xs"))
+            .find(el => /Telepon\s*:/i.test(el.innerText));
+        if (teleponDiv) {
+            // Ambil hanya nomor telepon
+            const match = teleponDiv.innerText.match(/Telepon\s*:\s*(.+)/i);
+            return match ? match[1].trim() : null;
+        }
+        return null;
+    })(),
+
+    // 📏 Luas tanah (integer)
     luas_tanah: (function(){
         const div = Array.from(document.querySelectorAll("div.text-xs"))
-                        .find(el => el.textContent.includes("Luas"));
+            .find(el => /Luas/i.test(el.textContent));
         if (div) {
-            const match = div.innerText.match(/Luas:\s*(\d+)/);
+            const match = div.innerText.match(/Luas:\s*(\d+)/i);
             return match ? parseInt(match[1]) : null;
         }
         return null;
     })(),
 
+    // 🗺️ Alamat lengkap
     alamat: (function(){
         const div = Array.from(document.querySelectorAll("div.text-xs"))
-                        .find(el => el.textContent.includes("Alamat"));
-        return div ? div.innerText.trim() : null;
+            .find(el => /Alamat/i.test(el.textContent));
+        return div ? div.innerText.replace(/\s+/g, " ").trim() : null;
     })()
 })
 ');
@@ -285,16 +318,6 @@ $details = json_decode($detailsJson, true);
                         $uangJaminanInt = (int) preg_replace('/[^\d]/', '', $details['uang_jaminan']);
                     }
 
-                    if (!empty($buktiKepemilikan)) {
-                        // ✅ Ambil SHM No + optional pemilik
-                        if (preg_match('/(SHM\s+No\.\s*\d+(\/[^.,]*)?)/i', $buktiKepemilikan, $sertifikatMatch)) {
-                            $buktiKepemilikan = trim($sertifikatMatch[1]);
-                        } else {
-                            // 🧹 Hapus "No:" di akhir jika tidak ada nomor
-                            $buktiKepemilikan = preg_replace('/No:\s*$/i', '', $buktiKepemilikan);
-                            $buktiKepemilikan = trim($buktiKepemilikan);
-                        }
-                    }
                     // 🆕 Parsing alamat ke provinsi, kabupaten/kota, kecamatan/kelurahan
                     $provinsi = null;
                     $kecamatan = null;
@@ -403,6 +426,8 @@ $details = json_decode($detailsJson, true);
                     // 🗄️ INSERT KE DATABASE
                     DB::table('property')->insert([
                     'id_agent' => 'AG001',
+                    'vendor' => $details['penjual'] ?? null, // 🆕 isi vendor dari penjual
+                    'PIC_vendor' => $details['pic_vendor'] ?? null,
                     'judul' => $details['judul'] ?? 'Property Rumah Lelang',
                     'deskripsi' => "Lelang properti dengan luas tanah {$details['luas_tanah']} m2 di {$kabupaten}, {$provinsi}. Sertifikat: " . ($buktiKepemilikan ?? 'Tidak tersedia') . ". Batas penawaran hingga {$details['batas_penawaran']}.",
                     'tipe' => $tipeProperti,
@@ -413,7 +438,7 @@ $details = json_decode($detailsJson, true);
                     'kota' => $kabupaten ?? null,
                     'kecamatan' => $kecamatan ?? null,
                     'kelurahan' => $kelurahanFinal,
-                    'sertifikat' => $buktiKepemilikan ?? null,
+                    'sertifikat' => $details['bukti_kepemilikan'] ?? null,
                     'status' => 'Tersedia',
                     'gambar' => !empty($allImages) ? implode(',', $allImages) : null,
                     'payment' => 'cash',

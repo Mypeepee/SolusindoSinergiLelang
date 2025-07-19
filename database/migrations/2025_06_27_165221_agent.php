@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('email', 100)->nullable();
             $table->string('instagram', 50)->nullable();
             $table->string('facebook', 50)->nullable();
-            $table->date('jadwal')->nullable();
+            $table->date('tanggal_join')->nullable();
             $table->string('picture', 255)->nullable();
             $table->string('kota', 100)->nullable();
             $table->string('status', 20)->default('Aktif');
