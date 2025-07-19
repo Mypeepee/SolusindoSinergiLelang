@@ -82,6 +82,7 @@
             <!-- Form Harga Bidding -->
             <form action="{{ route('agent.closing') }}" method="POST" class="mt-3">
                 @csrf
+                @method('POST')
                 <input type="hidden" name="id_agent" value="{{ $property->id_agent }}">
                 <input type="hidden" name="id_klien" value="{{ $id_klien }}">
                 <input type="hidden" name="id_listing" value="{{ $property->id_listing }}">
@@ -116,6 +117,13 @@
 
 <!-- Script Format Rupiah & Hitung Komisi -->
 <script>
+    new AutoNumeric('#harga_bidding', {
+    digitGroupSeparator: '.',
+    decimalCharacter: ',',
+    decimalPlaces: 0,
+    unformatOnSubmit: true
+});
+
 document.addEventListener('DOMContentLoaded', function () {
     const hargaDeal = {{ $property->harga }};
     const inputBidding = document.getElementById('harga_bidding');

@@ -301,43 +301,56 @@ class AgentAdminController extends Controller
 
     public function agentclosing(Request $request)
 {
-    // Hilangkan titik pada angka ribuan
-    $request->merge([
-        'harga_bidding' => str_replace('.', '', $request->harga_bidding),
-        'harga_deal'    => str_replace('.', '', $request->harga_deal),
-    ]);
-
-    // Validasi input
-    $request->validate([
-        'id_agent' => 'required|string|exists:agent,id_account',
-        'id_klien' => 'required|string|exists:account,id_account',
-        'id_listing' => 'required|integer|exists:property,id_listing',
-        'harga_deal' => 'required|integer|min:1',
-        'harga_bidding' => 'required|integer|min:1|lte:harga_deal', // tidak boleh lebih besar dari harga_deal
-    ]);
-
-    DB::beginTransaction();
-
     try {
-        // Generate ID transaksi unik (contoh: TRX001, TRX002)
+        DB::beginTransaction();
+
+        // ✅ Bersihkan angka ribuan
+        $hargaDeal = (int) str_replace('.', '', $request->harga_deal);
+        $hargaBidding = (int) str_replace('.', '', $request->harga_bidding);
+
+        // ✅ Validasi input manual + cek foreign key exist
+        $request->validate([
+            'id_agent'   => 'required|string|exists:agent,id_agent',
+            'id_klien'   => 'required|string|exists:account,id_account',
+            'id_listing' => 'required|integer|exists:property,id_listing',
+        ]);
+
+        if ($hargaBidding < 1) {
+            return back()->withErrors(['harga_bidding' => 'Harga bidding harus lebih besar dari 0.']);
+        }
+
+        if ($hargaBidding > $hargaDeal) {
+            return back()->withErrors(['harga_bidding' => 'Harga bidding tidak boleh lebih besar dari harga deal.']);
+        }
+
+        // ✅ Ambil id_account dari agent untuk FK di transaction_details
+        $agentAccount = DB::table('agent')
+            ->where('id_agent', $request->id_agent)
+            ->value('id_account');
+
+        if (!$agentAccount) {
+            throw new \Exception("Agent tidak memiliki id_account yang valid.");
+        }
+
+        // ✅ Generate ID transaksi unik (contoh: TRX001, TRX002)
         $lastTransaction = DB::table('transaction')->latest('id_transaction')->first();
         $newIdNumber = $lastTransaction
             ? str_pad((int)substr($lastTransaction->id_transaction, 3) + 1, 3, '0', STR_PAD_LEFT)
             : '001';
         $idTransaction = 'TRX' . $newIdNumber;
 
-        // Hitung selisih & komisi agent
-        $selisih = $request->harga_deal - $request->harga_bidding;
+        // ✅ Hitung selisih & komisi agent
+        $selisih = $hargaDeal - $hargaBidding;
         $komisiAgent = floor($selisih * 0.4);
 
-        // Insert ke tabel transaction
+        // ✅ Insert ke tabel transaction
         DB::table('transaction')->insert([
             'id_transaction'     => $idTransaction,
             'id_agent'           => $request->id_agent,
             'id_klien'           => $request->id_klien,
             'id_listing'         => $request->id_listing,
-            'harga_deal'         => $request->harga_deal,
-            'harga_bidding'      => $request->harga_bidding,
+            'harga_deal'         => $hargaDeal,
+            'harga_bidding'      => $hargaBidding,
             'selisih'            => $selisih,
             'komisi_agent'       => $komisiAgent,
             'status_transaksi'   => 'Closing',
@@ -346,9 +359,9 @@ class AgentAdminController extends Controller
             'tanggal_diupdate'   => now(),
         ]);
 
-        // Insert ke tabel transaction_details
+        // ✅ Insert ke tabel transaction_details
         DB::table('transaction_details')->insert([
-            'id_account'         => $request->id_agent,
+            'id_account'         => $agentAccount, // 👈 FK ke account
             'id_transaction'     => $idTransaction,
             'status_transaksi'   => 'Closing',
             'catatan'            => 'Transaksi berhasil dibuat oleh agent.',
@@ -356,14 +369,36 @@ class AgentAdminController extends Controller
             'tanggal_diupdate'   => now(),
         ]);
 
+        // ✅ Update status property_interests jadi "Closing"
+        DB::table('property_interests')
+            ->where('id_listing', $request->id_listing)
+            ->where('id_klien', $request->id_klien)
+            ->update([
+                'status' => 'Closing',
+                'tanggal_diupdate' => now(),
+            ]);
+
+            // ✅ Update status property jadi "Terjual"
+        DB::table('property')
+        ->where('id_listing', $request->id_listing)
+        ->update([
+            'status'      => 'Terjual',
+            'tanggal_diupdate' => now(),
+        ]);
+
         DB::commit();
 
-        return redirect()->route('dashboard.agent')->with('success', '✅ Transaksi berhasil disimpan!');
-    } catch (\Exception $e) {
+        return redirect()->route('dashboard.agent')
+            ->with('success', '✅ Transaksi berhasil disimpan!');
+    } catch (\Throwable $e) {
         DB::rollBack();
-        dd($e->getMessage()); // debug error
+        // Debug error biar jelas
+        return back()->withErrors(['error' => '❌ Gagal menyimpan transaksi: ' . $e->getMessage()]);
     }
 }
+
+
+
 
 
     public function trackFinalStatus(Request $request)

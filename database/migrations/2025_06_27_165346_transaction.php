@@ -40,7 +40,7 @@ return new class extends Migration
             $table->string('comment', 250)->nullable();
 
             // Foreign keys
-            $table->foreign('id_agent')->references('id_account')->on('agent')->onDelete('cascade');
+            $table->foreign('id_agent')->references('id_agent')->on('agent')->onDelete('cascade');
             $table->foreign('id_klien')->references('id_account')->on('account')->onDelete('cascade');
             $table->foreign('id_listing')->references('id_listing')->on('property')->onDelete('cascade');
 
@@ -58,6 +58,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('transaction');
-        
+
     }
 };
