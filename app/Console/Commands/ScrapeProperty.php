@@ -107,7 +107,7 @@ while (true) {
         ->waitUntilNetworkIdle()
         ->waitForFunction('document.querySelectorAll("a[href*=\"/detail-auction/\"]").length > 0')
         ->userAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/119 Safari/537.36')
-        ->setOption('headless', false) // ⬅️ Debug visual
+        ->setOption('headless', true) // ⬅️ Debug visual
         ->timeout(90)
         ->bodyHtml();
         } catch (\Exception $e) {
@@ -143,7 +143,7 @@ while (true) {
                 // 🔥 MASUK KE DETAIL & SCRAPE GAMBAR
                 try {
                     $browser = \Spatie\Browsershot\Browsershot::url($detailUrl)
-                        ->setOption('headless', false) // 🔥 Non-headless biar lihat proses
+                        ->setOption('headless', true) // 🔥 Non-headless biar lihat proses
                         ->userAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/119 Safari/537.36')
                         ->waitUntilNetworkIdle()
                         ->waitForFunction('document.querySelector("div.scrollbar-hide") !== null', null, 15000)
