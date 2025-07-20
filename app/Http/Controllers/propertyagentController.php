@@ -94,7 +94,7 @@ class propertyagentController extends Controller
         ]);
     }
 
-    
+
     public function showagentindex()
     {
         // Ambil semua data agen dari database
@@ -102,4 +102,76 @@ class propertyagentController extends Controller
         // Kirim data agen ke view
         return view('index', compact('agents'));
     }
+
+    public function updateKTP(Request $request)
+{
+    $request->validate([
+        'cropped_image' => 'required', // pastikan hasil crop ada
+    ]);
+
+    try {
+        // Ambil agent yang login
+        $agent = DB::table('agent')->where('id_account', session('id_account'))->first();
+
+        if (!$agent) {
+            return redirect()->back()->with('error', 'Agent tidak ditemukan.');
+        }
+
+        // Simpan file hasil crop
+        $data = $request->input('cropped_image');
+        $data = str_replace('data:image/jpeg;base64,', '', $data);
+        $data = str_replace(' ', '+', $data);
+        $imageName = 'ktp_' . time() . '.jpg';
+        \Storage::put('public/agent_ktp/' . $imageName, base64_decode($data));
+
+        // Update kolom gambar_ktp
+        DB::table('agent')
+            ->where('id_account', session('id_account'))
+            ->update([
+                'gambar_ktp' => 'agent_ktp/' . $imageName,
+                'tanggal_diupdate' => now()
+            ]);
+
+        return redirect()->back()->with('success', 'KTP berhasil diperbarui.');
+    } catch (\Exception $e) {
+        \Log::error('Update KTP Error: ' . $e->getMessage());
+        return redirect()->back()->with('error', 'Terjadi kesalahan saat memperbarui KTP.');
+    }
+}
+
+public function updateNPWP(Request $request)
+{
+    $request->validate([
+        'cropped_image_npwp' => 'required', // hasil crop wajib ada
+    ]);
+
+    try {
+        $agent = DB::table('agent')->where('id_account', session('id_account'))->first();
+
+        if (!$agent) {
+            return redirect()->back()->with('error', 'Agent tidak ditemukan.');
+        }
+
+        // Simpan file hasil crop
+        $data = $request->input('cropped_image_npwp');
+        $data = str_replace('data:image/jpeg;base64,', '', $data);
+        $data = str_replace(' ', '+', $data);
+        $imageName = 'npwp_' . time() . '.jpg';
+        \Storage::put('public/agent_npwp/' . $imageName, base64_decode($data));
+
+        // Update kolom gambar_npwp
+        DB::table('agent')
+            ->where('id_account', session('id_account'))
+            ->update([
+                'gambar_npwp' => 'agent_npwp/' . $imageName,
+                'tanggal_diupdate' => now()
+            ]);
+
+        return redirect()->back()->with('success', 'NPWP berhasil diperbarui.');
+    } catch (\Exception $e) {
+        \Log::error('Update NPWP Error: ' . $e->getMessage());
+        return redirect()->back()->with('error', 'Terjadi kesalahan saat memperbarui NPWP.');
+    }
+}
+
 }

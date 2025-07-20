@@ -96,45 +96,327 @@
 
             @endif
 
-            {{-- === ROLE: AGENT === --}}
-            @if(session('role') === 'Agent')
-              <div class="card shadow-sm border-0 rounded-4 mb-4">
-                <div class="card-header bg-primary text-white">
-                  <h6 class="mb-0"><i class="bi bi-person-lines-fill me-2"></i>Data Pribadi Agent</h6>
-                </div>
-                <div class="card-body">
-                  <div class="row">
-                    {{-- Gambar KTP --}}
-                    <div class="col-md-6 text-center mb-3">
-                      <h6 class="text-muted mb-2">Foto KTP</h6>
-                      @if(!empty($informasi_klien->gambar_ktp))
-                        <img src="{{ asset('storage/' . $informasi_klien->gambar_ktp) }}"
-                             alt="KTP Agent"
-                             class="img-thumbnail"
-                             style="max-width: 100%; height: auto; object-fit: contain;" />
-                      @else
-                        <p class="text-muted fst-italic">Belum ada gambar KTP.</p>
-                      @endif
-                    </div>
+@if(in_array(session('role'), ['Agent', 'Register', 'Pengosongan']))
+{{-- === KTP === --}}
+<div class="row g-3 mb-4">
+    {{-- === KTP === --}}
+    <div class="col-md-6">
+      <div class="card shadow-sm border-0 rounded-4 h-100">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <h6 class="mb-0"><i class="bi bi-person-vcard me-2"></i>Data KTP</h6>
+          <button class="btn btn-sm btn-secondary-theme" data-bs-toggle="modal" data-bs-target="#modalKTPView">
+            <i class="bi bi-pencil-square me-1"></i>Edit
+          </button>
+        </div>
+        <div class="card-body text-center">
+          @if(!empty($informasi_klien->gambar_ktp))
+            <img src="{{ asset('storage/' . $informasi_klien->gambar_ktp) }}" alt="KTP"
+                 class="img-fluid rounded shadow" style="max-height: 250px; object-fit: contain;">
+          @else
+            <p class="text-muted fst-italic">Belum ada data KTP.</p>
+          @endif
+        </div>
+      </div>
+    </div>
 
-                    {{-- Gambar NPWP --}}
-                    <div class="col-md-6 text-center mb-3">
-                      <h6 class="text-muted mb-2">Foto NPWP</h6>
-                      @if(!empty($informasi_klien->gambar_npwp))
-                        <img src="{{ asset('storage/' . $informasi_klien->gambar_npwp) }}"
-                             alt="NPWP Agent"
-                             class="img-thumbnail"
-                             style="max-width: 100%; height: auto; object-fit: contain;" />
-                      @else
-                        <p class="text-muted fst-italic">Belum ada gambar NPWP.</p>
-                      @endif
-                    </div>
-                  </div>
+    {{-- === NPWP === --}}
+    <div class="col-md-6">
+      <div class="card shadow-sm border-0 rounded-4 h-100">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <h6 class="mb-0"><i class="bi bi-credit-card-2-back me-2"></i>Data NPWP</h6>
+          <button class="btn btn-sm btn-secondary-theme" data-bs-toggle="modal" data-bs-target="#modalNPWPView">
+            <i class="bi bi-pencil-square me-1"></i>Edit
+          </button>
+        </div>
+        <div class="card-body text-center">
+          @if(!empty($informasi_klien->gambar_npwp))
+            <img src="{{ asset('storage/' . $informasi_klien->gambar_npwp) }}" alt="NPWP"
+                 class="img-fluid rounded shadow" style="max-height: 250px; object-fit: contain;">
+          @else
+            <p class="text-muted fst-italic">Belum ada data NPWP.</p>
+          @endif
+        </div>
+      </div>
+    </div>
+  </div>
+@endif
+</div>
+
+{{-- === Modal Edit KTP === --}}
+<div id="modalKTPView" class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modalKTPViewLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content shadow-lg rounded-4">
+        <form
+          action="{{ route('ktp.update') }}" {{-- Ganti dengan route update sesuai backend --}}
+          method="POST"
+          enctype="multipart/form-data"
+        >
+          @csrf
+          <div class="modal-header bg-secondary text-white">
+            <h5 class="modal-title" id="modalKTPViewLabel">
+              <i class="bi bi-card-image me-2"></i>Edit KTP
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+
+          <div class="modal-body">
+            {{-- Preview Gambar Lama --}}
+            @if(!empty($informasi_klien->gambar_ktp))
+              <div class="mb-3 text-center">
+                <label class="form-label fw-semibold">Gambar KTP Lama:</label>
+                <div class="border rounded p-2">
+                  <img src="{{ asset('storage/' . $informasi_klien->gambar_ktp) }}"
+                       alt="KTP Lama"
+                       class="img-fluid rounded shadow"
+                       style="max-height: 300px; object-fit: contain;">
                 </div>
               </div>
+            @else
+              <p class="text-muted fst-italic">Belum ada gambar KTP sebelumnya.</p>
             @endif
 
+            {{-- Upload Gambar Baru --}}
+            <div class="mb-3">
+              <label for="gambar_ktp" class="form-label fw-semibold">
+                <i class="bi bi-upload me-1"></i>Upload Gambar KTP Baru
+              </label>
+              <input
+                type="file"
+                class="form-control"
+                id="gambar_ktp"
+                name="gambar_ktp"
+                accept="image/*"
+                onchange="previewKTP(event)"
+                required
+              >
+            </div>
+
+            {{-- Preview Cropper --}}
+            <div class="text-center mt-3">
+              <img
+                id="imagePreview"
+                class="img-fluid rounded shadow"
+                style="max-width: 100%; max-height: 400px; display: none;"
+                alt="Preview Gambar KTP"
+              >
+            </div>
+
+            {{-- Hidden input untuk hasil crop --}}
+            <input type="hidden" name="cropped_image" id="cropped_image" value="">
           </div>
+
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-save me-1"></i>Simpan Perubahan
+            </button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+  {{-- === Modal Edit NPWP === --}}
+<div id="modalNPWPView" class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modalNPWPViewLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content shadow-lg rounded-4">
+        <form
+          action="{{ route('agent.updateNPWP') }}" {{-- ✅ Route untuk update NPWP --}}
+          method="POST"
+          enctype="multipart/form-data"
+        >
+          @csrf
+          <div class="modal-header bg-secondary text-white">
+            <h5 class="modal-title" id="modalNPWPViewLabel">
+              <i class="bi bi-card-image me-2"></i>Edit NPWP
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+
+          <div class="modal-body">
+            {{-- Preview Gambar Lama --}}
+            @if(!empty($informasi_klien->gambar_npwp))
+              <div class="mb-3 text-center">
+                <label class="form-label fw-semibold">Gambar NPWP Lama:</label>
+                <div class="border rounded p-2">
+                  <img src="{{ asset('storage/' . $informasi_klien->gambar_npwp) }}"
+                       alt="NPWP Lama"
+                       class="img-fluid rounded shadow"
+                       style="max-height: 300px; object-fit: contain;">
+                </div>
+              </div>
+            @else
+              <p class="text-muted fst-italic">Belum ada gambar NPWP sebelumnya.</p>
+            @endif
+
+            {{-- Upload Gambar Baru --}}
+            <div class="mb-3">
+              <label for="gambar_npwp" class="form-label fw-semibold">
+                <i class="bi bi-upload me-1"></i>Upload Gambar NPWP Baru
+              </label>
+              <input
+                type="file"
+                class="form-control"
+                id="gambar_npwp"
+                name="gambar_npwp"
+                accept="image/*"
+                required
+              >
+            </div>
+
+            {{-- Preview Cropper --}}
+            <div class="text-center mt-3">
+              <img
+                id="imagePreviewNPWP"
+                class="img-fluid rounded shadow"
+                style="max-width: 100%; max-height: 400px; display: none;"
+                alt="Preview Gambar NPWP"
+              >
+            </div>
+
+            {{-- Hidden input untuk hasil crop --}}
+            <input type="hidden" name="cropped_image_npwp" id="cropped_image_npwp" value="">
+          </div>
+
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-save me-1"></i>Simpan Perubahan
+            </button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let cropperNPWP;
+    const inputNPWP = document.getElementById('gambar_npwp');
+    const imageNPWP = document.getElementById('imagePreviewNPWP');
+    const cropActionsIdNPWP = 'cropActionsNPWP';
+
+    function showCropActionsNPWP() {
+      let cropActions = document.getElementById(cropActionsIdNPWP);
+      if (!cropActions) {
+        cropActions = document.createElement('div');
+        cropActions.id = cropActionsIdNPWP;
+        cropActions.style.marginTop = '10px';
+        cropActions.classList.add('d-flex', 'gap-2');
+        inputNPWP.parentNode.appendChild(cropActions);
+
+        const cropBtn = document.createElement('button');
+        cropBtn.type = 'button';
+        cropBtn.className = 'btn btn-primary btn-sm';
+        cropBtn.id = 'cropBtnNPWP';
+        cropBtn.textContent = 'Crop';
+        cropActions.appendChild(cropBtn);
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'btn btn-secondary btn-sm';
+        cancelBtn.id = 'cancelCropBtnNPWP';
+        cancelBtn.textContent = 'Cancel';
+        cropActions.appendChild(cancelBtn);
+
+        cropBtn.addEventListener('click', cropImageNPWP);
+        cancelBtn.addEventListener('click', cancelCropNPWP);
+      }
+      cropActions.style.display = 'flex';
+    }
+
+    function hideCropActionsNPWP() {
+      const cropActions = document.getElementById(cropActionsIdNPWP);
+      if (cropActions) {
+        cropActions.remove();
+      }
+    }
+
+    inputNPWP.addEventListener('change', function (e) {
+      if (e.target.files && e.target.files.length > 0) {
+        const file = e.target.files[0];
+        const url = URL.createObjectURL(file);
+
+        imageNPWP.src = url;
+        imageNPWP.style.display = 'block';
+        showCropActionsNPWP();
+
+        if (cropperNPWP) cropperNPWP.destroy();
+
+        cropperNPWP = new Cropper(imageNPWP, {
+          aspectRatio: NaN,
+          viewMode: 1,
+          autoCropArea: 1,
+          responsive: true,
+          movable: true,
+          zoomable: true,
+          scalable: false,
+          rotatable: false,
+          cropBoxResizable: true,
+          cropBoxMovable: true,
+          minCropBoxWidth: 50,
+          minCropBoxHeight: 50,
+        });
+      }
+    });
+
+    function cropImageNPWP() {
+      if (!cropperNPWP) return;
+
+      const canvas = cropperNPWP.getCroppedCanvas({
+        width: 800,
+        height: 600,
+        fillColor: '#fff',
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high',
+      });
+
+      document.getElementById('cropped_image_npwp').value = canvas.toDataURL('image/jpeg');
+
+      hideCropActionsNPWP();
+      cropperNPWP.destroy();
+      cropperNPWP = null;
+      imageNPWP.style.display = 'none';
+    }
+
+    function cancelCropNPWP() {
+      if (cropperNPWP) {
+        cropperNPWP.destroy();
+        cropperNPWP = null;
+      }
+      imageNPWP.style.display = 'none';
+      hideCropActionsNPWP();
+      inputNPWP.value = null;
+    }
+  </script>
+
+
+  <!-- HIDE NAVBAR ON MODAL -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const navbar = document.querySelector('nav.navbar');
+      const modalKTP = document.getElementById('modalKTPView');
+      const modalNPWP = document.getElementById('modalNPWPView');
+
+      if (modalKTP) {
+        modalKTP.addEventListener('show.bs.modal', function () {
+          navbar.style.display = 'none';
+        });
+        modalKTP.addEventListener('hidden.bs.modal', function () {
+          navbar.style.display = '';
+        });
+      }
+
+      if (modalNPWP) {
+        modalNPWP.addEventListener('show.bs.modal', function () {
+          navbar.style.display = 'none';
+        });
+        modalNPWP.addEventListener('hidden.bs.modal', function () {
+          navbar.style.display = '';
+        });
+      }
+    });
+    </script>
 
 
       <style>

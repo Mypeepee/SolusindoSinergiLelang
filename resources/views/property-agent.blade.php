@@ -49,7 +49,10 @@
                     <div class="team-item rounded overflow-hidden">
                         <div class="position-relative">
                             <a href="{{ route('property.agent', ['agent_id' => $agent->id_agent]) }}">
-                                <img class="img-fluid" src="{{ asset($agent->picture) }}" alt="{{ $agent->nama }}">
+                                <img class="img-fluid"
+     src="{{ $agent->picture ? asset('storage/' . $agent->picture) : asset('images/default-profile.png') }}"
+     alt="{{ $agent->nama }}">
+
                             </a>
                             <!-- Tombol Sosial -->
                             <div class="position-absolute start-50 top-100 translate-middle d-flex align-items-center">

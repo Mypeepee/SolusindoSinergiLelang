@@ -195,6 +195,11 @@ Route::post('/agent/closing', [AgentAdminController::class, 'agentclosing'])->na
 Route::get('/download-surat-kuasa', [SuratKuasaController::class, 'download'])->name('download.suratkuasa');
 Route::post('/update-status-closing', [AgentAdminController::class, 'updateStatusClosing']);
 
+// Route untuk update KTP
+Route::post('/ktp/update', [PropertyagentController::class, 'updateKTP'])->name('ktp.update');
+Route::post('/agent/update-npwp', [PropertyagentController::class, 'updateNPWP'])->name('agent.updateNPWP');
+
+
 
 
 
