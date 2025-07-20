@@ -103,9 +103,9 @@ class AgentAdminController extends Controller
                     'Kuitansi',
                     'Kode Billing',
                     'Kutipan Risalah Lelang',
-                    'Akte Grosse',
-                    'Balik Nama'
-                ])
+                    'Akte Grosse'
+                ]) // ✅ HAPUS "Balik Nama" dari sini
+                ->where('transaction.status_transaksi', '!=', 'Balik Nama') // ✅ FILTER yang sudah selesai
                 ->select(
                     'account.id_account',
                     'account.nama',
@@ -113,8 +113,7 @@ class AgentAdminController extends Controller
                     'property.id_listing',
                     'property.lokasi',
                     'property.harga',
-                    // ✅ Capitalize huruf pertama status
-                    DB::raw("CONCAT(UPPER(LEFT(transaction.status_transaksi, 1)), LOWER(SUBSTRING(transaction.status_transaksi, 2))) as status"),
+                    'transaction.status_transaksi as status',
                     'transaction.tanggal_diupdate'
                 )
                 ->orderBy('transaction.tanggal_diupdate', 'asc')

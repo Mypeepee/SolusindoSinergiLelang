@@ -281,16 +281,6 @@
             </thead>
             <tbody>
                 @forelse ($clientsClosing as $index => $client)
-                @php
-                    $tahap = $client->status;
-                    $progress = match($tahap) {
-                        'Closing' => 0,
-                        'KutipanRisalahLelang' => 33,
-                        'AkteGrosse' => 66,
-                        'BalikNama' => 100,
-                        default => 0
-                    };
-                @endphp
                 <tr id="row-{{ $client->id_account }}-{{ $client->id_listing }}">
                     <td>{{ $index + 1 }}</td>
                     <td><span class="badge bg-light text-dark">{{ $client->id_account }}</span></td>
@@ -331,22 +321,22 @@
                             </button>
                         @elseif ($tahap === 'Kuitansi')
                             <button class="btn btn-sm btn-warning"
-                                onclick="openTahapanModal('{{ $client->id_account }}', '{{ $client->id_listing }}', 'kode_billing')">
+                                onclick="updateProgress('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Kode Billing')">
                                 Input Kode Billing
                             </button>
                         @elseif ($tahap === 'Kode Billing')
                             <button class="btn btn-sm btn-secondary"
-                                onclick="openTahapanModal('{{ $client->id_account }}', '{{ $client->id_listing }}', 'kutipan_risalah_lelang')">
-                                Risalah Lelang
+                                onclick="handleInputRisalahLelang('{{ $client->id_account }}', '{{ $client->id_listing }}')">
+                                Input Risalah Lelang
                             </button>
                         @elseif ($tahap === 'Kutipan Risalah Lelang')
                             <button class="btn btn-sm btn-info"
-                                onclick="openTahapanModal('{{ $client->id_account }}', '{{ $client->id_listing }}', 'akte_grosse')">
+                                onclick="updateProgress('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Akte Grosse')">
                                 Grosse
                             </button>
                         @elseif ($tahap === 'Akte Grosse')
                             <button class="btn btn-sm btn-success"
-                                onclick="openTahapanModal('{{ $client->id_account }}', '{{ $client->id_listing }}', 'balik_nama')">
+                                onclick="updateProgress('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Balik Nama')">
                                 Balik Nama
                             </button>
                         @elseif ($tahap === 'Balik Nama')
@@ -433,6 +423,9 @@
 {{-- JAVASCRIPT --}}
 <script>
 function handleInputKuitansi(id_account, id_listing) {
+    // ⏳ Set tombol loading
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Loading...';
     fetch("{{ url('/update-status-closing') }}", { // ✅ pakai route baru
         method: "POST",
         headers: {
@@ -463,7 +456,63 @@ function handleInputKuitansi(id_account, id_listing) {
     });
 }
 
+function updateProgress(id_account, id_listing, status, callback = null) {
+        // ⏳ Set tombol loading
+        button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Loading...';
+    fetch("{{ url('/update-status-closing') }}", { // ✅ ganti ke route yg update kedua tabel
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ id_account, id_listing, status })
+    }).then(res => res.json())
+    .then(res => {
+        console.log('Response:', res);
+        if (res.success) {
+            location.reload(); // ✅ Reload biar progress ikut naik
+        }
 
+        if (callback) callback();
+    }).catch(err => {
+        console.error('Error:', err);
+    });
+}
+
+function handleInputRisalahLelang(id_account, id_listing) {
+        // ⏳ Set tombol loading
+        button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Loading...';
+    fetch("{{ url('/update-status-closing') }}", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            id_account: id_account,
+            id_listing: id_listing,
+            status: 'Kutipan Risalah Lelang'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // ✅ Buka Google Form untuk Risalah Lelang
+            window.open('https://docs.google.com/forms/d/e/1FAIpQLSedVS9P5oePrsoGub64dx0sH9kT5eYFUk22RlHrtYKWE3jYbQ/viewform', '_blank');
+
+            // ✅ Reload halaman untuk update progress bar
+            location.reload();
+        } else {
+            alert('Gagal update status: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Terjadi error saat update status');
+    });
+}
 
 function formatNumberWithDots(value) {
         const number_string = value.replace(/\D/g, '');
@@ -492,6 +541,9 @@ function formatNumberWithDots(value) {
     }
 
 function updateStatus(id_account, id_listing, status, callback = null) {
+        // ⏳ Set tombol loading
+        button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Loading...';
     fetch("{{ url('/update-status') }}", {
         method: "POST",
         headers: {
