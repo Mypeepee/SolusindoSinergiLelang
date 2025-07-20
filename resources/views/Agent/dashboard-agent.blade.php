@@ -107,7 +107,7 @@
                                                     <th>Lokasi</th>
                                                     <th>Harga</th>
                                                     <th>Progres</th>
-                                                    <th>Status & Aksi</th>
+                                                    <th>Aksi</th>
                                                     <th>Download KTP</th>
                                                 </tr>
                                             </thead>
@@ -258,23 +258,25 @@
                     </div>
                 </div>
         @endif
+
         @if (session('role') === 'Register')
 <div class="card shadow-sm border-0 mb-4">
     <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
         <h5 class="mb-0 fw-semibold text-primary">📋 Register Jobdesk</h5>
     </div>
     <div class="card-body table-responsive">
-        <table class="table align-middle table-hover" id="clientClosingTable">
-            <thead class="table-light">
+        <table class="table align-middle table-hover text-center" id="clientClosingTable">
+            <thead class="table-light align-middle">
                 <tr>
-                    <th>#</th>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Property ID</th>
-                    <th>Lokasi</th>
-                    <th>Harga</th>
-                    <th>Status</th>
-                    <th>Aksi</th>
+                    <th style="width: 40px;">#</th> <!-- ✅ Mepet -->
+                    <th style="width: 80px;">ID</th> <!-- ✅ Mepet -->
+                    <th style="min-width: 180px;">Name</th> <!-- ✅ Lebar untuk nama panjang -->
+                    <th style="width: 100px;">Property ID</th>
+                    <th style="min-width: 200px;">Lokasi</th> <!-- ✅ Lebih lebar -->
+                    <th style="min-width: 120px;">Harga</th>
+                    <th style="min-width: 160px;">Proges</th>
+                    <th style="min-width: 160px;">Aksi</th> <!-- ✅ Lebih lebar -->
+                    <th style="min-width: 160px;">Surat Kuasa</th> <!-- ✅ Lebih lebar -->
                 </tr>
             </thead>
             <tbody>
@@ -282,22 +284,34 @@
                 @php
                     $tahap = $client->status;
                     $progress = match($tahap) {
-                        'closing' => 0,
-                        'kutipan_risalah_lelang' => 33,
-                        'akte_grosse' => 66,
-                        'balik_nama' => 100,
+                        'Closing' => 0,
+                        'KutipanRisalahLelang' => 33,
+                        'AkteGrosse' => 66,
+                        'BalikNama' => 100,
                         default => 0
                     };
                 @endphp
                 <tr id="row-{{ $client->id_account }}-{{ $client->id_listing }}">
                     <td>{{ $index + 1 }}</td>
                     <td><span class="badge bg-light text-dark">{{ $client->id_account }}</span></td>
-                    <td>{{ $client->nama }}</td>
+                    <td class="text-truncate" style="max-width: 220px;">{{ $client->nama }}</td>
                     <td><span class="badge bg-secondary">{{ $client->id_listing }}</span></td>
-                    <td>{{ $client->lokasi }}</td>
+                    <td class="text-truncate" style="max-width: 300px;">{{ $client->lokasi }}</td>
                     <td>Rp {{ number_format($client->harga, 0, ',', '.') }}</td>
-                    <td style="min-width: 160px;">
-                        <div class="progress" style="height: 18px;">
+                    <td>
+                        @php
+                        $tahap = $client->status ?? 'Closing'; // Ambil status dari query
+                        $progress = match($tahap) {
+                            'Closing' => 0,
+                            'Kuitansi' => 20,
+                            'Kode Billing' => 40,
+                            'Kutipan Risalah Lelang' => 60,
+                            'Akte Grosse' => 80,
+                            'Balik Nama' => 100,
+                            default => 0
+                        };
+                    @endphp
+                        <div class="progress" style="height: 14px;">
                             <div class="progress-bar {{ $progress == 100 ? 'bg-success' : 'bg-secondary' }}"
                                 role="progressbar"
                                 style="width: {{ $progress }}%;"
@@ -308,30 +322,49 @@
                             </div>
                         </div>
                     </td>
-                    <td style="min-width: 220px;">
-                        @if ($tahap === 'closing')
+
+                    <td>
+                        @if ($tahap === 'Closing')
                             <button class="btn btn-sm btn-primary"
-                                onclick="openTahapanModal('{{ $client->id_account }}', '{{ $client->id_listing }}', 'kutipan_risalah_lelang')">
-                                Kutipan Risalah
+                                onclick="handleInputKuitansi('{{ $client->id_account }}', '{{ $client->id_listing }}')">
+                                Input Kuitansi
                             </button>
-                        @elseif ($tahap === 'kutipan_risalah_lelang')
+                        @elseif ($tahap === 'Kuitansi')
+                            <button class="btn btn-sm btn-warning"
+                                onclick="openTahapanModal('{{ $client->id_account }}', '{{ $client->id_listing }}', 'kode_billing')">
+                                Input Kode Billing
+                            </button>
+                        @elseif ($tahap === 'Kode Billing')
+                            <button class="btn btn-sm btn-secondary"
+                                onclick="openTahapanModal('{{ $client->id_account }}', '{{ $client->id_listing }}', 'kutipan_risalah_lelang')">
+                                Risalah Lelang
+                            </button>
+                        @elseif ($tahap === 'Kutipan Risalah Lelang')
                             <button class="btn btn-sm btn-info"
                                 onclick="openTahapanModal('{{ $client->id_account }}', '{{ $client->id_listing }}', 'akte_grosse')">
-                                Akte Grosse
+                                Grosse
                             </button>
-                        @elseif ($tahap === 'akte_grosse')
+                        @elseif ($tahap === 'Akte Grosse')
                             <button class="btn btn-sm btn-success"
                                 onclick="openTahapanModal('{{ $client->id_account }}', '{{ $client->id_listing }}', 'balik_nama')">
                                 Balik Nama
                             </button>
+                        @elseif ($tahap === 'Balik Nama')
+                            <span class="text-muted">Selesai</span>
                         @else
                             <span class="text-muted">Selesai</span>
                         @endif
                     </td>
+                    <td>
+                        <a href="{{ route('download.suratkuasa', ['id' => $client->id_account, 'listing' => $client->id_listing]) }}"
+                           class="btn btn-sm btn-outline-primary rounded-pill">
+                            <i class="bi bi-download"></i>
+                        </a>
+                    </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="8" class="text-center text-muted py-4">Belum ada klien closing.</td>
+                    <td colspan="9" class="text-center text-muted py-4">Belum ada klien closing.</td>
                 </tr>
                 @endforelse
             </tbody>
@@ -339,6 +372,8 @@
     </div>
 </div>
 @endif
+
+
 
         @if (session('role') === 'Owner')
         <div class="card shadow-sm border-0 mb-4">
@@ -395,49 +430,40 @@
         </div>
         @endif
 
-
-
-{{-- MODAL CLOSING --}}
-<div class="modal fade" id="closingModal" tabindex="-1" aria-labelledby="closingModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-        <form id="closingForm" class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="closingModalLabel">Konfirmasi Closing</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="modal_id_account">
-                <input type="hidden" id="modal_id_listing">
-                <input type="hidden" id="modal_id_agent">
-                <input type="hidden" id="modal_id_klien">
-                <input type="hidden" id="modal_id_listing">
-
-                <div class="mb-3">
-                    <label for="harga_deal" class="form-label">Harga Deal</label>
-                    <div class="input-group">
-                        <span class="input-group-text">Rp.</span>
-                        <input type="text" class="form-control rupiah-input" id="harga_deal" placeholder="0" required>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label for="harga_bidding" class="form-label">Harga Bidding</label>
-                    <div class="input-group">
-                        <span class="input-group-text">Rp.</span>
-                        <input type="text" class="form-control rupiah-input" id="harga_bidding" placeholder="0" required>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="submit" class="btn btn-success">Submit Closing</button>
-            </div>
-        </form>
-    </div>
-</div>
-
 {{-- JAVASCRIPT --}}
 <script>
+function handleInputKuitansi(id_account, id_listing) {
+    fetch("{{ url('/update-status-closing') }}", { // ✅ pakai route baru
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            id_account: id_account,
+            id_listing: id_listing,
+            status: 'Kuitansi'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // ✅ Buka Google Form di tab baru
+            window.open('https://docs.google.com/forms/d/e/1FAIpQLSedVS9P5oePrsoGub64dx0sH9kT5eYFUk22RlHrtYKWE3jYbQ/viewform', '_blank');
+
+            // ✅ Reload halaman untuk update progress bar
+            location.reload();
+        } else {
+            alert('Gagal update status: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Terjadi error saat update status');
+    });
+}
+
+
 
 function formatNumberWithDots(value) {
         const number_string = value.replace(/\D/g, '');

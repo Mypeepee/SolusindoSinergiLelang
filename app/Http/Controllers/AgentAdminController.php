@@ -95,14 +95,16 @@ class AgentAdminController extends Controller
         }
 
         if ($role === 'Register') {
-            $clientsClosing = DB::table('property_interests')
-                ->join('account', 'property_interests.id_klien', '=', 'account.id_account')
-                ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
-                ->whereIn('property_interests.status', [
-                    'closing',
-                    'kutipan_risalah_lelang',
-                    'akte_grosse',
-                    'balik_nama'
+            $clientsClosing = DB::table('transaction')
+                ->join('account', 'transaction.id_klien', '=', 'account.id_account')
+                ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
+                ->whereIn('transaction.status_transaksi', [
+                    'Closing',
+                    'Kuitansi',
+                    'Kode Billing',
+                    'Kutipan Risalah Lelang',
+                    'Akte Grosse',
+                    'Balik Nama'
                 ])
                 ->select(
                     'account.id_account',
@@ -111,10 +113,11 @@ class AgentAdminController extends Controller
                     'property.id_listing',
                     'property.lokasi',
                     'property.harga',
-                    'property_interests.status',
-                    'property_interests.tanggal_diupdate',
+                    // ✅ Capitalize huruf pertama status
+                    DB::raw("CONCAT(UPPER(LEFT(transaction.status_transaksi, 1)), LOWER(SUBSTRING(transaction.status_transaksi, 2))) as status"),
+                    'transaction.tanggal_diupdate'
                 )
-                ->orderBy('property_interests.tanggal_diupdate', 'asc') // urutkan berdasarkan yang paling lama
+                ->orderBy('transaction.tanggal_diupdate', 'asc')
                 ->get();
         }
 
@@ -459,6 +462,61 @@ class AgentAdminController extends Controller
         return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
     }
 }
+
+public function updateStatusClosing(Request $request)
+{
+    try {
+        $id_account = $request->id_account;
+        $id_listing = $request->id_listing;
+        $status = $request->status;
+
+        // ✅ Update status di tabel transaction
+        $updatedTransaction = DB::table('transaction')
+            ->where('id_klien', $id_account)
+            ->where('id_listing', $id_listing)
+            ->update([
+                'status_transaksi' => $status,
+                'tanggal_diupdate' => now()
+            ]);
+        \Log::info("Transaction updated rows: $updatedTransaction");
+
+        // ✅ Ambil id_transaction
+        $idTransaction = DB::table('transaction')
+            ->where('id_klien', $id_account)
+            ->where('id_listing', $id_listing)
+            ->value('id_transaction');
+
+        if (!$idTransaction) {
+            throw new \Exception("id_transaction tidak ditemukan");
+        }
+
+        // ✅ Ambil semua id_account di transaction_details
+        $transactionDetailAccounts = DB::table('transaction_details')
+            ->where('id_transaction', $idTransaction)
+            ->pluck('id_account');
+
+        \Log::info("Transaction detail accounts: " . json_encode($transactionDetailAccounts));
+
+        // ✅ Update status di transaction_details
+        $updatedDetails = DB::table('transaction_details')
+            ->where('id_transaction', $idTransaction)
+            ->whereIn('id_account', $transactionDetailAccounts)
+            ->update([
+                'status_transaksi' => $status,
+                'tanggal_diupdate' => now()
+            ]);
+
+        \Log::info("Transaction Details updated rows: $updatedDetails");
+
+        return response()->json(['success' => true]);
+
+    } catch (\Exception $e) {
+        \Log::error('updateStatusClosing error: '.$e->getMessage());
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
+
 
 
     public function simpanEarning(Request $request)

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('tipe', 15)->nullable();
             $table->bigInteger('harga')->nullable();
             $table->string('lokasi', 500)->nullable();
-            $table->integer('luas')->nullable();
+            $table->bigInteger('luas')->nullable();
             $table->string('provinsi', 255)->nullable();
             $table->string('kota', 70)->nullable();
             $table->string('kecamatan', 100)->nullable();

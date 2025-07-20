@@ -192,6 +192,12 @@ Route::post('/update-password/{email}', [AuthController::class, 'updatePassword'
 Route::get('/closing/{id_listing}/{id_klien}', [AgentAdminController::class, 'showClosing'])->name('closing.show');
 Route::post('/agent/closing', [AgentAdminController::class, 'agentclosing'])->name('agent.closing');
 
+Route::get('/download-surat-kuasa', [SuratKuasaController::class, 'download'])->name('download.suratkuasa');
+Route::post('/update-status-closing', [AgentAdminController::class, 'updateStatusClosing']);
+
+
+
+
 
 
 

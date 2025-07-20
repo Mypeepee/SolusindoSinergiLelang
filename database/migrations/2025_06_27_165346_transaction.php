@@ -25,6 +25,8 @@ return new class extends Migration
 
             $table->enum('status_transaksi', [
                 'Closing',
+                'Kuitansi',
+                'Kode Billing',
                 'Kutipan Risalah Lelang',
                 'Akte Grosse',
                 'Balik Nama',

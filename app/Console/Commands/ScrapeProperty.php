@@ -196,104 +196,104 @@ while (true) {
             ', null, 15000); // Timeout maksimum 15 detik
 
 
-// 🔥 Ambil semua <img> setelah scroll selesai & stabil
-$imageJson = $browser->evaluate('
-JSON.stringify(
-    Array.from(
-        document.querySelectorAll("div.scrollbar-hide img")
-    ).map(img => img.src)
-    .filter(url => url && url.startsWith("https://file.lelang.go.id/lelang/photo_barang/"))
-)
-');
-$imageUrls = json_decode($imageJson, true);
-$allImages = array_unique(array_filter($imageUrls));
+                    // 🔥 Ambil semua <img> setelah scroll selesai & stabil
+                    $imageJson = $browser->evaluate('
+                    JSON.stringify(
+                        Array.from(
+                            document.querySelectorAll("div.scrollbar-hide img")
+                        ).map(img => img.src)
+                        .filter(url => url && url.startsWith("https://file.lelang.go.id/lelang/photo_barang/"))
+                    )
+                    ');
+                    $imageUrls = json_decode($imageJson, true);
+                    $allImages = array_unique(array_filter($imageUrls));
 
-$detailsJson = $browser->evaluate('
-JSON.stringify({
-    // 🎯 Ambil judul properti
-    judul: (function(){
-        const el = document.querySelector("h3.mb-5.text-2xl.text-ternary-gray-200");
-        return el ? el.innerText.trim() : null;
-    })(),
+                    $detailsJson = $browser->evaluate('
+                    JSON.stringify({
+                        // 🎯 Ambil judul properti
+                        judul: (function(){
+                            const el = document.querySelector("h3.mb-5.text-2xl.text-ternary-gray-200");
+                            return el ? el.innerText.trim() : null;
+                        })(),
 
-    // 💰 Harga +26.8%
-    harga: (function(){
-        const h = document.querySelectorAll("h6.text-primary-500")[0];
-        if (h) {
-            const hargaAsli = parseInt(h.innerText.replace(/[^\d]/g, ""));
-            const hargaMarkup = Math.round(hargaAsli * 1.278); // 🔥 Tambah 27.8%
-            return hargaMarkup;
-        }
-        return null;
-    })(),
+                        // 💰 Harga +26.8%
+                        harga: (function(){
+                            const h = document.querySelectorAll("h6.text-primary-500")[0];
+                            if (h) {
+                                const hargaAsli = parseInt(h.innerText.replace(/[^\d]/g, ""));
+                                const hargaMarkup = Math.round(hargaAsli * 1.278); // 🔥 Tambah 27.8%
+                                return hargaMarkup;
+                            }
+                            return null;
+                        })(),
 
-    // 💵 Uang Jaminan +20%
-    uang_jaminan: (function(){
-        const u = document.querySelectorAll("h6.text-primary-500")[1];
-        if (u) {
-            const jaminanAsli = parseInt(u.innerText.replace(/[^\d]/g, ""));
-            const jaminanMarkup = Math.round(jaminanAsli * 1.2); // 🔥 Tambah 20%
-            return jaminanMarkup;
-        }
-        return null;
-    })(),
+                        // 💵 Uang Jaminan +20%
+                        uang_jaminan: (function(){
+                            const u = document.querySelectorAll("h6.text-primary-500")[1];
+                            if (u) {
+                                const jaminanAsli = parseInt(u.innerText.replace(/[^\d]/g, ""));
+                                const jaminanMarkup = Math.round(jaminanAsli * 1.2); // 🔥 Tambah 20%
+                                return jaminanMarkup;
+                            }
+                            return null;
+                        })(),
 
-    // 👤 Nama penjual
-    penjual: (function(){
-        const el = document.querySelectorAll("h6.text-ternary-gray-200")[0];
-        return el ? el.innerText.trim() : null;
-    })(),
+                        // 👤 Nama penjual
+                        penjual: (function(){
+                            const el = document.querySelectorAll("h6.text-ternary-gray-200")[0];
+                            return el ? el.innerText.trim() : null;
+                        })(),
 
-    // ⏳ Batas Penawaran
-    batas_penawaran: (function(){
-        const el = document.querySelectorAll("h6.text-ternary-gray-200")[1];
-        return el ? el.innerText.trim() : null;
-    })(),
+                        // ⏳ Batas Penawaran
+                        batas_penawaran: (function(){
+                            const el = document.querySelectorAll("h6.text-ternary-gray-200")[1];
+                            return el ? el.innerText.trim() : null;
+                        })(),
 
-    // ⏳ Batas Setor Jaminan
-    batas_setor_jaminan: (function(){
-        const el = document.querySelectorAll("h6.text-ternary-gray-200")[4];
-        return el ? el.innerText.trim() : null;
-    })(),
+                        // ⏳ Batas Setor Jaminan
+                        batas_setor_jaminan: (function(){
+                            const el = document.querySelectorAll("h6.text-ternary-gray-200")[4];
+                            return el ? el.innerText.trim() : null;
+                        })(),
 
-    bukti_kepemilikan: (function(){
-        // Cari div dengan label "Bukti Kepemilikan"
-        const labelDiv = Array.from(document.querySelectorAll("div.font-bold"))
-            .find(el => el.innerText.trim().toLowerCase() === "bukti kepemilikan");
+                        bukti_kepemilikan: (function(){
+                            // Cari div dengan label "Bukti Kepemilikan"
+                            const labelDiv = Array.from(document.querySelectorAll("div.font-bold"))
+                                .find(el => el.innerText.trim().toLowerCase() === "bukti kepemilikan");
 
-        if (labelDiv) {
-            // Ambil semua div.text-xs sesudahnya
-            const siblingDivs = [];
-            let next = labelDiv.nextElementSibling;
-            while (next && next.classList.contains("text-xs")) {
-                siblingDivs.push(next.innerText.trim());
-                next = next.nextElementSibling;
-            }
-            return siblingDivs.length ? siblingDivs.join(" | ") : null; // Gabungkan isi
-        }
-        return null;
-    })(),
+                            if (labelDiv) {
+                                // Ambil semua div.text-xs sesudahnya
+                                const siblingDivs = [];
+                                let next = labelDiv.nextElementSibling;
+                                while (next && next.classList.contains("text-xs")) {
+                                    siblingDivs.push(next.innerText.trim());
+                                    next = next.nextElementSibling;
+                                }
+                                return siblingDivs.length ? siblingDivs.join(" | ") : null; // Gabungkan isi
+                            }
+                            return null;
+                        })(),
 
-    // 📏 Luas tanah (integer)
-    luas_tanah: (function(){
-        const div = Array.from(document.querySelectorAll("div.text-xs"))
-            .find(el => /Luas/i.test(el.textContent));
-        if (div) {
-            const match = div.innerText.match(/Luas:\s*(\d+)/i);
-            return match ? parseInt(match[1]) : null;
-        }
-        return null;
-    })(),
+                        // 📏 Luas tanah (integer)
+                        luas_tanah: (function(){
+                            const div = Array.from(document.querySelectorAll("div.text-xs"))
+                                .find(el => /Luas/i.test(el.textContent));
+                            if (div) {
+                                const match = div.innerText.match(/Luas:\s*(\d+)/i);
+                                return match ? parseInt(match[1]) : null;
+                            }
+                            return null;
+                        })(),
 
-    // 🗺️ Alamat lengkap
-    alamat: (function(){
-        const div = Array.from(document.querySelectorAll("div.text-xs"))
-            .find(el => /Alamat/i.test(el.textContent));
-        return div ? div.innerText.replace(/\s+/g, " ").trim() : null;
-    })()
-})
-');
-$details = json_decode($detailsJson, true);
+                        // 🗺️ Alamat lengkap
+                        alamat: (function(){
+                            const div = Array.from(document.querySelectorAll("div.text-xs"))
+                                .find(el => /Alamat/i.test(el.textContent));
+                            return div ? div.innerText.replace(/\s+/g, " ").trim() : null;
+                        })()
+                    })
+                    ');
+                    $details = json_decode($detailsJson, true);
 
 
 
