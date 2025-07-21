@@ -164,24 +164,24 @@
         <h5 class="mb-3"><i class="bi bi-geo-alt-fill"></i> Domisili</h5>
 
         <div class="mb-3">
-          <label class="form-label">Provinsi</label>
-          <select class="form-select" id="provinsi" name="provinsi" required>
-            <option value="">Pilih Provinsi</option>
-          </select>
+            <label class="form-label">Provinsi</label>
+            <select id="province" class="form-select" required>
+                <option selected disabled>Pilih Provinsi</option>
+            </select>
         </div>
 
         <div class="mb-3">
-          <label class="form-label">Kabupaten/Kota</label>
-          <select class="form-select" id="regency" name="kota" required>
-            <option value="">Pilih Kabupaten/Kota</option>
-          </select>
+            <label class="form-label">Kota / Kabupaten</label>
+            <select id="regency" name="kota" class="form-select" disabled required>
+                <option selected disabled>Pilih Kota/Kabupaten</option>
+            </select>
         </div>
 
         <div class="mb-3">
-          <label class="form-label">Kecamatan</label>
-          <select class="form-select" id="district" name="kecamatan" required>
-            <option value="">Pilih Kecamatan</option>
-          </select>
+            <label class="form-label">Kecamatan</label>
+            <select class="form-select" id="district" name="kecamatan" disabled required>
+                <option selected disabled>Pilih Kecamatan</option>
+            </select>
         </div>
 
         <div class="mb-3">
@@ -224,4 +224,84 @@
       icon.classList.add('bi-eye-slash-fill');
     }
   }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const province = document.getElementById('province');
+    const city = document.getElementById('regency');
+    const district = document.getElementById('district');
+
+    const provinceMap = new Map(); // Provinsi => Set kota
+    const cityMap = new Map();     // Kota => Set kecamatan
+
+    fetch("{{ asset('data/indonesia.json') }}")
+        .then(res => res.json())
+        .then(data => {
+            // Bangun map provinsi => kota dan kota => kecamatan
+            data.forEach(({ province: prov, regency, district: kec }) => {
+                if (!provinceMap.has(prov)) {
+                    provinceMap.set(prov, new Set());
+                }
+                provinceMap.get(prov).add(regency);
+
+                if (!cityMap.has(regency)) {
+                    cityMap.set(regency, new Set());
+                }
+                cityMap.get(regency).add(kec);
+            });
+
+            // Reset & tambahkan placeholder
+            province.innerHTML = '<option selected disabled>Pilih Provinsi</option>';
+
+            // Isi dropdown provinsi
+            [...provinceMap.keys()].sort().forEach(prov => {
+                const option = document.createElement('option');
+                option.value = prov;
+                option.textContent = prov;
+                province.appendChild(option);
+            });
+        });
+
+    // Event: isi kota saat provinsi berubah
+    province.addEventListener('change', function () {
+        const selectedProv = this.value;
+        const kotaSet = provinceMap.get(selectedProv);
+
+        // Reset city dan district
+        city.innerHTML = '<option selected disabled>Pilih Kota/Kabupaten</option>';
+        city.disabled = true;
+        district.innerHTML = '<option selected disabled>Pilih Kecamatan</option>';
+        district.disabled = true;
+
+        if (kotaSet) {
+            [...kotaSet].sort().forEach(kota => {
+                const option = document.createElement('option');
+                option.value = kota;
+                option.textContent = kota;
+                city.appendChild(option);
+            });
+            city.disabled = false;
+        }
+    });
+
+    // Event: isi kecamatan saat kota berubah
+    city.addEventListener('change', function () {
+        const selectedCity = this.value;
+        const kecSet = cityMap.get(selectedCity);
+
+        // Reset district
+        district.innerHTML = '<option selected disabled>Pilih Kecamatan</option>';
+        district.disabled = true;
+
+        if (kecSet) {
+            [...kecSet].sort().forEach(kec => {
+                const option = document.createElement('option');
+                option.value = kec;
+                option.textContent = kec;
+                district.appendChild(option);
+            });
+            district.disabled = false;
+        }
+    });
+});
+    
 </script>

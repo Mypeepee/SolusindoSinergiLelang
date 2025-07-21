@@ -178,6 +178,35 @@ class AgentAdminController extends Controller
         ]);
     }
 
+    public function owner()
+    {
+        $pendingAgents = DB::table('agent')
+            ->join('account', 'agent.id_account', '=', 'account.id_account')
+            ->where('agent.status', 'Pending')
+            ->select(
+                'agent.id_account',
+                'account.username',
+                'account.nama',
+                'account.nomor_telepon'
+            )
+            ->get();
+
+        $pendingClients = DB::table('informasi_klien')
+            ->join('account', 'informasi_klien.id_account', '=', 'account.id_account')
+            ->where('informasi_klien.status_verifikasi', 'Pending')
+            ->select(
+                'informasi_klien.id_account',
+                'account.nama',
+                'account.email',
+                'informasi_klien.gambar_ktp',
+                'informasi_klien.gambar_npwp'
+            )
+            ->get();
+
+
+        return view('Agent.dashboardowner', ['pendingAgents' => $pendingAgents,
+                                            'pendingClients' => $pendingClients]);
+    }
 
     public function storeregister(Request $request)
     {
@@ -615,6 +644,36 @@ public function updateStatusClosing(Request $request)
         $waNumber = '62' . ltrim($account->nomor_telepon, '0');
 
         $message = urlencode('Selamat! Akun Anda telah resmi menjadi agent kami.');
+
+        return redirect()->away("https://wa.me/{$waNumber}?text={$message}");
+    }
+
+    public function verifyClient($id_account)
+    {
+        DB::table('informasi_klien')
+            ->where('id_account', $id_account)
+            ->update(['status_verifikasi' => 'Terverifikasi']);
+
+        // Ambil nomor telepon untuk redirect
+        $account = DB::table('account')->where('id_account', $id_account)->first();
+        $waNumber = '62' . ltrim($account->nomor_telepon, '0');
+
+        $message = urlencode('Selamat! Akun Anda telah terverifikasi.');
+
+        return redirect()->away("https://wa.me/{$waNumber}?text={$message}");
+    }
+
+    public function rejectClient($id_account)
+    {
+        DB::table('informasi_klien')
+            ->where('id_account', $id_account)
+            ->update(['status_verifikasi' => 'Ditolak']);
+
+        // Ambil nomor telepon untuk redirect
+        $account = DB::table('account')->where('id_account', $id_account)->first();
+        $waNumber = '62' . ltrim($account->nomor_telepon, '0');
+
+        $message = urlencode('Maaf, verifikasi akun Anda ditolak.');
 
         return redirect()->away("https://wa.me/{$waNumber}?text={$message}");
     }

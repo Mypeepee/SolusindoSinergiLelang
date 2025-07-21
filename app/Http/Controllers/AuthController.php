@@ -95,10 +95,6 @@ class AuthController extends Controller
             $npwpFileName = $clientData->gambar_npwp;
         }
 
-        // Update role user jadi Pending
-        $user->roles = 'Pending';
-        $user->save();
-
         // Simpan/Update data ke tabel agent
         Agent::updateOrCreate(
             ['id_account' => $user->id_account],
@@ -356,13 +352,11 @@ class AuthController extends Controller
 
     public function registerrequest(Request $request)
     {
-        // Custom error messages
         $messages = [
             'username.unique' => 'Username sudah digunakan, silakan pilih username lain.',
             'email.unique' => 'Email sudah terdaftar, silakan gunakan email lain.',
         ];
 
-        // Validasi data input
         $request->validate([
             'nama' => 'required|string',
             'email' => 'required|email|unique:account,email',
@@ -370,20 +364,21 @@ class AuthController extends Controller
             'nomor_telepon' => 'required|string',
             'username' => 'required|string|unique:account,username',
             'password' => 'required|string|min:5',
-            'kota' => 'required|string',
-            'kecamatan' => 'required|string',
+            'kota' => 'required',
+            'kecamatan' => 'required',
         ], $messages);
 
-        // Buat akun baru
+        // 🧹 Tidak perlu generate id_account di sini
         $customer = Account::create([
             'nama' => $request->nama,
             'email' => $request->email,
             'tanggal_lahir' => $request->tanggal_lahir,
             'nomor_telepon' => $request->nomor_telepon,
             'username' => $request->username,
-            'password' => $request->password, // NOTE: tidak di-bcrypt
+            'password' => $request->password, 
             'kota' => $request->kota,
             'kecamatan' => $request->kecamatan,
+            'roles' => 'User',
         ]);
 
         if (!$customer) {

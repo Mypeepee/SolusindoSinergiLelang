@@ -22,14 +22,9 @@ class Account extends Model
 
     // Sesuaikan $fillable agar match dengan kolom baru
     protected $fillable = [
-        'nama',
-        'kota',
-        'kecamatan',
-        'tanggal_lahir',
-        'nomor_telepon',
-        'email',
-        'username',
-        'password'
+        'id_account', 'nama', 'email', 'tanggal_lahir',
+        'nomor_telepon', 'username', 'password',
+        'provinsi', 'kota', 'kecamatan'
     ];
 
     // Method untuk ambil nomor telepon dari session
@@ -69,5 +64,23 @@ class Account extends Model
         return $this->hasMany(TransactionDetail::class, 'id_account', 'id_account');
     }
 
+    protected static function boot()
+    {
+        parent::boot();
 
+        static::creating(function ($account) {
+            // Ambil id_account terakhir
+            $lastAccount = Account::orderBy('id_account', 'desc')->first();
+
+            if ($lastAccount && preg_match('/^AC(\d+)$/i', $lastAccount->id_account, $matches)) {
+                $lastNumber = (int)$matches[1];
+                $newNumber = $lastNumber + 1;
+            } else {
+                $newNumber = 1; // Kalau belum ada data
+            }
+
+            // Format id_account: AC001, AC002, dst
+            $account->id_account = 'AC' . str_pad($newNumber, 3, '0', STR_PAD_LEFT);
+        });
+    }
 }

@@ -22,7 +22,7 @@ return new class extends Migration
             $table->date('tanggal_join')->nullable();
             $table->string('picture', 255)->nullable();
             $table->string('kota', 100)->nullable();
-            $table->string('status', 20)->default('Aktif');
+            $table->string('status', 20)->default('Pending');
             $table->integer('rating')->nullable();
             $table->string('comment', 250)->nullable();
             $table->integer('jumlah_penjualan')->default(0);

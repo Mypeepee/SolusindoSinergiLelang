@@ -114,6 +114,8 @@ Route::post('/upload-temp', function (Request $request) {
 
 
 Route::get('/dashboard-agent', [AgentAdminController::class, 'index'])->name('dashboard.agent');
+Route::get('/dashboardowner', [AgentAdminController::class, 'owner'])->name('dashboard.owner');
+
 
 Route::get('/property-interest/{id_listing}', [ProductController::class, 'showInterestForm'])->name('property.interest.show');
 Route::post('/property/{id_listing}/interest', [ProductController::class, 'submitInterestForm'])->name('property.interest.submit');
@@ -175,6 +177,8 @@ Route::post('/pengosongan/selesai', [AgentAdminController::class, 'selesaikan'])
 Route::post('/pengosongan/rating', [CartDetailController::class, 'storeRating']);
 
 Route::post('/verify-agent/{id_account}', [AgentAdminController::class, 'verifyAgent'])->name('verify.agent');
+Route::post('/verify-client/{id_account}', [AgentAdminController::class, 'verifyClient'])->name('verify.client');
+Route::post('/reject-client/{id_account}', [AgentAdminController::class, 'rejectClient'])->name('reject.client');
 
 Route::post('/agent/update-profile-picture', [AuthController::class, 'updateProfilePicture'])->name('agent.updateProfilePicture');
 

@@ -138,10 +138,17 @@
                             Cookie::get('role') === 'Agent' ||
                             Cookie::get('role') === 'Register'
                         )
-                            <a href="{{ route('dashboard.agent') }}" 
-                            class="nav-item nav-link {{ Request::is('dashboard/agent*') ? 'active' : '' }}">
-                                Dashboard
-                            </a>
+                            @if(session('role') === 'Owner')
+                                <a href="{{ route('dashboard.owner') }}" 
+                                    class="nav-item nav-link {{ Request::is('dashboard/owner*') ? 'active' : '' }}">
+                                    Dashboard
+                                </a>
+                            @else
+                                <a href="{{ route('dashboard.agent') }}" 
+                                    class="nav-item nav-link {{ Request::is('dashboard/agent*') ? 'active' : '' }}">
+                                    Dashboard
+                                </a>
+                            @endif
 
                             @endif
                         @endif
@@ -284,9 +291,6 @@
 
 
                     @endif
-                    <a href="#" class="{{ Request::is('setting*') ? 'active' : '' }}">
-                        <i class="fas fa-cog"></i>
-                    </a>
                 </div>
 
                 <!-- Buttons -->
