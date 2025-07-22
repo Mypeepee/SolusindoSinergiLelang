@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Artisan;
 
 class AgentAdminController extends Controller
 {
@@ -180,6 +181,28 @@ class AgentAdminController extends Controller
 
     public function owner()
     {
+        //property types
+        // Semua tipe properti yang mau ditampilkan
+        $propertyTypes = ['Rumah', 'Gudang', 'Apartemen', 'Tanah', 'Pabrik', 'Hotel dan Villa', 'Ruko', 'Sewa'];
+
+        // Ambil count dari DB per tipe (hanya yang Tersedia)
+        $propertyCounts = DB::table('property')
+            ->selectRaw("LOWER(tipe) as tipe, COUNT(*) as total")
+            ->where('status', 'Tersedia') // hitung hanya properti yang tersedia
+            ->groupBy('tipe')
+            ->pluck('total', 'tipe') // hasilnya array: ['rumah' => 5, 'villa' => 2, ...]
+            ->toArray();
+
+        // Gabungkan semua tipe dengan count-nya
+        $properties = collect($propertyTypes)->map(function ($type) use ($propertyCounts) {
+            $lowerType = strtolower($type);
+            return (object)[
+                'tipe' => $type,
+                'total' => $propertyCounts[$lowerType] ?? 0 // default 0 jika tidak ada
+            ];
+        });
+        
+        //pending agents
         $pendingAgents = DB::table('agent')
             ->join('account', 'agent.id_account', '=', 'account.id_account')
             ->where('agent.status', 'Pending')
@@ -187,10 +210,13 @@ class AgentAdminController extends Controller
                 'agent.id_account',
                 'account.username',
                 'account.nama',
-                'account.nomor_telepon'
+                'account.nomor_telepon',
+                'agent.gambar_ktp',
+                'agent.gambar_npwp'
             )
             ->get();
 
+        //pending clients
         $pendingClients = DB::table('informasi_klien')
             ->join('account', 'informasi_klien.id_account', '=', 'account.id_account')
             ->where('informasi_klien.status_verifikasi', 'Pending')
@@ -203,9 +229,73 @@ class AgentAdminController extends Controller
             )
             ->get();
 
+        //progress agent
+        $clients = DB::table('property_interests')
+            ->join('account', 'property_interests.id_klien', '=', 'account.id_account')
+            ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
+            ->leftJoin('informasi_klien', 'account.id_account', '=', 'informasi_klien.id_account')
+            ->whereNotIn(DB::raw('LOWER(TRIM(property_interests.status))'), ['closing', 'balik_nama', 'akte_grosse', 'gagal']) // cek lowercase dan trim
+            ->select(
+                'account.id_account',
+                'account.nama',
+                'account.nomor_telepon',
+                'property.id_listing',
+                'property.id_agent',
+                'property.lokasi',
+                'property.harga',
+                'property_interests.status',
+                'informasi_klien.gambar_ktp'
+            )
+            ->get();
+
+        // progress register
+        $clientsClosing = DB::table('transaction')
+                ->join('account', 'transaction.id_klien', '=', 'account.id_account')
+                ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
+                ->whereIn('transaction.status_transaksi', [
+                    'Closing',
+                    'Kuitansi',
+                    'Kode Billing',
+                    'Kutipan Risalah Lelang',
+                    'Akte Grosse'
+                ]) // ✅ HAPUS "Balik Nama" dari sini
+                ->where('transaction.status_transaksi', '!=', 'Balik Nama') // ✅ FILTER yang sudah selesai
+                ->select(
+                    'account.id_account',
+                    'account.nama',
+                    'account.nomor_telepon',
+                    'property.id_listing',
+                    'property.lokasi',
+                    'property.harga',
+                    'transaction.status_transaksi as status',
+                    'transaction.tanggal_diupdate'
+                )
+                ->orderBy('transaction.tanggal_diupdate', 'asc')
+                ->get();
+
+        // progress pengosongan
+
+        // performance
+        $performanceAgents = DB::table('agent')
+            ->leftJoin('property', 'agent.id_agent', '=', 'property.id_agent')
+            ->leftJoin('transaction', 'agent.id_agent', '=', 'transaction.id_agent')
+            ->select(
+                'agent.id_agent',
+                'agent.nama',
+                'agent.jumlah_penjualan',
+                'agent.status',
+                DB::raw('COUNT(DISTINCT property.id_listing) as jumlah_listing'),
+                DB::raw('SUM(transaction.komisi_agent) as total_komisi')
+            )
+            ->groupBy('agent.id_agent', 'agent.nama', 'agent.jumlah_penjualan')
+            ->get();
 
         return view('Agent.dashboardowner', ['pendingAgents' => $pendingAgents,
-                                            'pendingClients' => $pendingClients]);
+                                            'pendingClients' => $pendingClients,
+                                            'clients' => $clients,
+                                            'clientsClosing' => $clientsClosing,
+                                            'performanceAgents' => $performanceAgents,
+                                            'properties' => $properties ]);
     }
 
     public function storeregister(Request $request)
@@ -331,106 +421,109 @@ class AgentAdminController extends Controller
     }
 
     public function agentclosing(Request $request)
-{
-    try {
-        DB::beginTransaction();
+    {
+        try {
+            DB::beginTransaction();
 
-        // ✅ Bersihkan angka ribuan
-        $hargaDeal = (int) str_replace('.', '', $request->harga_deal);
-        $hargaBidding = (int) str_replace('.', '', $request->harga_bidding);
+            // ✅ Bersihkan angka ribuan
+            $hargaDeal = (int) str_replace('.', '', $request->harga_deal);
+            $hargaBidding = (int) str_replace('.', '', $request->harga_bidding);
 
-        // ✅ Validasi input manual + cek foreign key exist
-        $request->validate([
-            'id_agent'   => 'required|string|exists:agent,id_agent',
-            'id_klien'   => 'required|string|exists:account,id_account',
-            'id_listing' => 'required|integer|exists:property,id_listing',
-        ]);
+            // ✅ Validasi input manual + cek foreign key exist
+            $request->validate([
+                'id_agent'   => 'required|string|exists:agent,id_agent',
+                'id_klien'   => 'required|string|exists:account,id_account',
+                'id_listing' => 'required|integer|exists:property,id_listing',
+            ]);
 
-        if ($hargaBidding < 1) {
-            return back()->withErrors(['harga_bidding' => 'Harga bidding harus lebih besar dari 0.']);
-        }
+            if ($hargaBidding < 1) {
+                return back()->withErrors(['harga_bidding' => 'Harga bidding harus lebih besar dari 0.']);
+            }
 
-        if ($hargaBidding > $hargaDeal) {
-            return back()->withErrors(['harga_bidding' => 'Harga bidding tidak boleh lebih besar dari harga deal.']);
-        }
+            if ($hargaBidding > $hargaDeal) {
+                return back()->withErrors(['harga_bidding' => 'Harga bidding tidak boleh lebih besar dari harga deal.']);
+            }
 
-        // ✅ Ambil id_account dari agent untuk FK di transaction_details
-        $agentAccount = DB::table('agent')
-            ->where('id_agent', $request->id_agent)
-            ->value('id_account');
+            // ✅ Ambil id_account dari agent untuk FK di transaction_details
+            $agentAccount = DB::table('agent')
+                ->where('id_agent', $request->id_agent)
+                ->value('id_account');
 
-        if (!$agentAccount) {
-            throw new \Exception("Agent tidak memiliki id_account yang valid.");
-        }
+            if (!$agentAccount) {
+                throw new \Exception("Agent tidak memiliki id_account yang valid.");
+            }
 
-        // ✅ Generate ID transaksi unik (contoh: TRX001, TRX002)
-        $lastTransaction = DB::table('transaction')->latest('id_transaction')->first();
-        $newIdNumber = $lastTransaction
-            ? str_pad((int)substr($lastTransaction->id_transaction, 3) + 1, 3, '0', STR_PAD_LEFT)
-            : '001';
-        $idTransaction = 'TRX' . $newIdNumber;
+            // ✅ Generate ID transaksi unik (contoh: TRX001, TRX002)
+            $lastTransaction = DB::table('transaction')->latest('id_transaction')->first();
+            $newIdNumber = $lastTransaction
+                ? str_pad((int)substr($lastTransaction->id_transaction, 3) + 1, 3, '0', STR_PAD_LEFT)
+                : '001';
+            $idTransaction = 'TRX' . $newIdNumber;
 
-        // ✅ Hitung selisih & komisi agent
-        $selisih = $hargaDeal - $hargaBidding;
-        $komisiAgent = floor($selisih * 0.4);
+            // ✅ Hitung selisih & komisi agent
+            $selisih = $hargaDeal - $hargaBidding;
+            $komisiAgent = floor($selisih * 0.4);
 
-        // ✅ Insert ke tabel transaction
-        DB::table('transaction')->insert([
-            'id_transaction'     => $idTransaction,
-            'id_agent'           => $request->id_agent,
-            'id_klien'           => $request->id_klien,
-            'id_listing'         => $request->id_listing,
-            'harga_deal'         => $hargaDeal,
-            'harga_bidding'      => $hargaBidding,
-            'selisih'            => $selisih,
-            'komisi_agent'       => $komisiAgent,
-            'status_transaksi'   => 'Closing',
-            'tanggal_transaksi'  => now()->toDateString(),
-            'tanggal_dibuat'     => now(),
-            'tanggal_diupdate'   => now(),
-        ]);
+            // ✅ Insert ke tabel transaction
+            DB::table('transaction')->insert([
+                'id_transaction'     => $idTransaction,
+                'id_agent'           => $request->id_agent,
+                'id_klien'           => $request->id_klien,
+                'id_listing'         => $request->id_listing,
+                'harga_deal'         => $hargaDeal,
+                'harga_bidding'      => $hargaBidding,
+                'selisih'            => $selisih,
+                'komisi_agent'       => $komisiAgent,
+                'status_transaksi'   => 'Closing',
+                'tanggal_transaksi'  => now()->toDateString(),
+                'tanggal_dibuat'     => now(),
+                'tanggal_diupdate'   => now(),
+            ]);
 
-        // ✅ Insert ke tabel transaction_details
-        DB::table('transaction_details')->insert([
-            'id_account'         => $agentAccount, // 👈 FK ke account
-            'id_transaction'     => $idTransaction,
-            'status_transaksi'   => 'Closing',
-            'catatan'            => 'Transaksi berhasil dibuat oleh agent.',
-            'tanggal_dibuat'     => now(),
-            'tanggal_diupdate'   => now(),
-        ]);
+            // ✅ Insert ke tabel transaction_details
+            DB::table('transaction_details')->insert([
+                'id_account'         => $agentAccount, // 👈 FK ke account
+                'id_transaction'     => $idTransaction,
+                'status_transaksi'   => 'Closing',
+                'catatan'            => 'Transaksi berhasil dibuat oleh agent.',
+                'tanggal_dibuat'     => now(),
+                'tanggal_diupdate'   => now(),
+            ]);
 
-        // ✅ Update status property_interests jadi "Closing"
-        DB::table('property_interests')
+            // ✅ Update status property_interests jadi "Closing"
+            DB::table('property_interests')
+                ->where('id_listing', $request->id_listing)
+                ->where('id_klien', $request->id_klien)
+                ->update([
+                    'status' => 'Closing',
+                    'tanggal_diupdate' => now(),
+                ]);
+
+            // ✅ Update status property jadi "Terjual"
+            DB::table('property')
             ->where('id_listing', $request->id_listing)
-            ->where('id_klien', $request->id_klien)
             ->update([
-                'status' => 'Closing',
+                'status'      => 'Terjual',
                 'tanggal_diupdate' => now(),
             ]);
 
-            // ✅ Update status property jadi "Terjual"
-        DB::table('property')
-        ->where('id_listing', $request->id_listing)
-        ->update([
-            'status'      => 'Terjual',
-            'tanggal_diupdate' => now(),
-        ]);
+            // update jumlah penjualan agent + 1
+            DB::table('agent')
+                ->where('id_agent', $agentAccount)
+                ->update([
+                    'jumlah_penjualan' => DB::raw('jumlah_penjualan + 1')
+            ]);
 
-        DB::commit();
+            DB::commit();
 
-        return redirect()->route('dashboard.agent')
-            ->with('success', '✅ Transaksi berhasil disimpan!');
-    } catch (\Throwable $e) {
-        DB::rollBack();
-        // Debug error biar jelas
-        return back()->withErrors(['error' => '❌ Gagal menyimpan transaksi: ' . $e->getMessage()]);
+            return redirect()->route('dashboard.agent')
+                ->with('success', '✅ Transaksi berhasil disimpan!');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            // Debug error biar jelas
+            return back()->withErrors(['error' => '❌ Gagal menyimpan transaksi: ' . $e->getMessage()]);
+        }
     }
-}
-
-
-
-
 
     public function trackFinalStatus(Request $request)
     {
@@ -677,4 +770,27 @@ public function updateStatusClosing(Request $request)
 
         return redirect()->away("https://wa.me/{$waNumber}?text={$message}");
     }
+
+    public function scrape(Request $request)
+    {
+        $tipe = $request->input('tipe'); // Ambil tipe properti dari request
+
+        try {
+            // Jalankan Artisan Command
+            Artisan::call('app:scrape-property', [
+                'kategori' => $tipe
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Scraping untuk tipe {$tipe} telah dimulai."
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
 }

@@ -1,7 +1,74 @@
 @include('template.header')
 
+<style>
+.property-card {
+    cursor: pointer;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    padding: 10px;
+}
+.property-card:hover {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    transform: translateY(-3px);
+}
+.property-card.disabled {
+    pointer-events: none;
+    opacity: 0.5;
+}
+.property-card .action-btn {
+    transition: all 0.3s ease;
+}
+</style>
+
+
 <div class="container-fluid">
-    <h1 class="fw-bold mb-4">📊 Dashboard Owner</h1>
+    <div class="row g-3">
+        @foreach ($properties->chunk(4) as $chunk)
+            <div class="row">
+                @foreach ($chunk as $property)
+                    @php
+                        $tipeFormatted = ucwords($property->tipe);
+                        $isDisabled = $property->total == 0;
+                    @endphp
+
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <div class="card shadow-sm border-0 p-2 property-card {{ $isDisabled ? 'disabled' : '' }}"
+                             data-property="{{ strtolower($property->tipe) }}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <!-- Kiri: Text -->
+                                <div class="text-start">
+                                    <h6 class="fw-semibold mb-1">{{ $tipeFormatted }}</h6>
+                                    <p class="mb-0 {{ $isDisabled ? 'text-muted' : 'fw-bold' }}">
+                                        {{ $property->total }} Asset{{ $property->total != 1 ? 's' : '' }}
+                                    </p>
+                                </div>
+                                <!-- Kanan: Gambar -->
+                                <div>
+                                    <img src="{{ asset('img/' . strtolower($property->tipe) . '.png') }}"
+                                         alt="Icon {{ $tipeFormatted }}"
+                                         class="img-fluid" style="width:40px;height:40px;">
+                                </div>
+                            </div>
+
+                            <!-- Hidden Button (shows on click) -->
+                            <div class="action-btn mt-2 text-center" style="display:none;">
+                                <button 
+                                    class="btn btn-primary btn-sm rounded-pill scrape-btn" 
+                                    data-tipe="{{ $property->tipe }}">
+                                    Scrape {{ $property->tipe }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endforeach
+    </div>
+</div>
+
+
+<div class="container-fluid">
 
     <!-- Tabs Utama -->
     <ul class="nav nav-tabs" id="mainTabs" role="tablist">
@@ -58,26 +125,26 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @forelse ($pendingClients as $index => $client)
+                                        @forelse ($pendingClients as $index => $pclient)
                                             <tr>
                                                 <td>{{ $index + 1 }}</td>
-                                                <td><span class="badge bg-light text-dark">{{ $client->id_account }}</span></td>
-                                                <td>{{ $client->nama }}</td>
-                                                <td>{{ $client->email }}</td>
+                                                <td><span class="badge bg-light text-dark">{{ $pclient->id_account }}</span></td>
+                                                <td>{{ $pclient->nama }}</td>
+                                                <td>{{ $pclient->email }}</td>
                                                 <td>
-                                                    <a href="{{ asset($client->gambar_ktp) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
+                                                    <a href="{{ asset($pclient->gambar_ktp) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
                                                         <i class="fa fa-id-card me-1"></i> Lihat KTP
                                                     </a>
                                                 </td>
                                                 <td>
-                                                    <a href="{{ asset($client->gambar_npwp) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
+                                                    <a href="{{ asset($pclient->gambar_npwp) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
                                                         <i class="fa fa-file-invoice me-1"></i> Lihat NPWP
                                                     </a>
                                                 </td>
                                                 <td style="min-width: 230px;">
                                                     <div class="d-flex flex-wrap gap-2">
                                                         <!-- Form Verifikasi -->
-                                                        <form action="{{ route('verify.client', $client->id_account) }}" method="POST">
+                                                        <form action="{{ route('verify.client', $pclient->id_account) }}" method="POST">
                                                             @csrf
                                                             <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 shadow-sm">
                                                                 <i class="fa fa-check me-1"></i> Verifikasi
@@ -85,7 +152,7 @@
                                                         </form>
 
                                                         <!-- Tombol Tolak -->
-                                                        <form action="{{ route('reject.client', $client->id_account) }}" method="POST">
+                                                        <form action="{{ route('reject.client', $pclient->id_account) }}" method="POST">
                                                             @csrf
                                                             <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-sm">
                                                                 <i class="fa fa-times me-1"></i> Tolak
@@ -121,6 +188,8 @@
                                             <th>Username</th>
                                             <th>Nama Lengkap</th>
                                             <th>No. Telepon</th>
+                                            <th>KTP</th>
+                                            <th>NPWP</th>
                                             <th>Aksi</th>
                                         </tr>
                                     </thead>
@@ -132,6 +201,16 @@
                                                 <td>{{ $agent->username }}</td>
                                                 <td>{{ $agent->nama }}</td>
                                                 <td>+62{{ ltrim($agent->nomor_telepon, '0') }}</td>
+                                                <td>
+                                                    <a href="{{ asset($agent->gambar_ktp) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
+                                                        <i class="fa fa-id-card me-1"></i> Lihat KTP
+                                                    </a>
+                                                </td>
+                                                <td>
+                                                    <a href="{{ asset($agent->gambar_npwp) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
+                                                        <i class="fa fa-file-invoice me-1"></i> Lihat NPWP
+                                                    </a>
+                                                </td>
                                                 <td style="min-width: 230px;">
                                                     <div class="d-flex flex-wrap gap-2">
                                                         <!-- Form Verifikasi -->
@@ -189,9 +268,279 @@
             <div class="tab-content" id="progressSubTabsContent">
                 <div class="tab-pane fade show active" id="progress-agent" role="tabpanel" aria-labelledby="progress-agent-tab">
                     <!-- Isi tabel progress agent di sini -->
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0 fw-semibold text-primary">📋 Daftar Klien Tertarik</h5>
+                        </div>
+                                    <div class="card-body table-responsive">
+                                        <table class="table align-middle table-hover" id="clientTable">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>ID Klien</th>
+                                                    <th>Nama</th>
+                                                    <th>ID Properti</th>
+                                                    <th>ID Agent</th>
+                                                    <th>Lokasi</th>
+                                                    <th>Harga</th>
+                                                    <th>Progres</th>
+                                                    <th>Aksi</th>
+                                                    <th>Download KTP</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @forelse ($clients as $index => $client)
+                                                    @php
+                                                        $status = $client->status;
+                                                        $progress = match($status) {
+                                                            'Pending' => 0,
+                                                            'FollowUp' => 33,
+                                                            'BuyerMeeting' => 66,
+                                                            'Closing', 'Gagal' => 100,
+                                                            default => 0,
+                                                        };
+                                                        $barClass = match($status) {
+                                                            'gagal' => 'bg-danger',
+                                                            'pending' => 'bg-warning',
+                                                            default => 'bg-success',
+                                                        };
+                                                    @endphp
+                                                    <tr id="row-{{ $client->id_account }}-{{ $client->id_listing }}">
+                                                        <td>{{ $index + 1 }}</td>
+                                                        <td><span class="badge bg-light text-dark">{{ $client->id_account }}</span></td>
+                                                        <td>{{ $client->nama }}</td>
+                                                        <td><span class="badge bg-secondary">{{ $client->id_listing }}</span></td>
+                                                        <td>{{ $client->id_agent }}</td>
+                                                        <td>{{ $client->lokasi }}</td>
+                                                        <td>Rp {{ number_format($client->harga, 0, ',', '.') }}</td>
+                                                        <td style="min-width: 160px;">
+                                                            <div class="progress" style="height: 18px;">
+                                                                <div class="progress-bar {{ $barClass }}"
+                                                                    role="progressbar"
+                                                                    style="width: {{ $progress }}%;"
+                                                                    aria-valuenow="{{ $progress }}"
+                                                                    aria-valuemin="0"
+                                                                    aria-valuemax="100">
+                                                                    {{ $progress }}%
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        @php
+                                                            $status = $client->status; // biar konsisten kita nggak ubah case
+                                                        @endphp
+
+                                                        <td style="min-width: 220px;">
+                                                            @if ($status === 'Gagal')
+                                                            <span class="badge bg-danger">GAGAL</span>
+
+                                                            @elseif ($status === 'Pending')
+                                                            @php
+                                                                $pesan = urlencode("Halo {$client->nama}, saya ingin memastikan apakah ada informasi yang bisa saya bantu terkait rumah di {$client->lokasi}?");
+
+                                                            @endphp
+                                                            <a href="https://wa.me/+62{{ $client->nomor_telepon }}?text={{ $pesan }}"
+                                                            class="btn btn-sm btn-success mb-1"
+                                                            target="_blank"
+                                                            onclick="
+                                                                    // Jalankan update status di background
+                                                                    updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'FollowUp');">
+                                                                FollowUp
+                                                            </a>
+
+                                                            @elseif (!$status || $status === null)
+                                                            <a href="https://wa.me/{{ $client->nomor_telepon }}"
+                                                            class="btn btn-sm btn-success mb-1" target="_blank"
+                                                            onclick="updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'FollowUp')">
+                                                                WA
+                                                            </a>
+
+                                                            @elseif ($status === 'FollowUp')
+                                                            @php
+                                                                $alamatProperty = $client->lokasi;
+                                                                $pesan = urlencode(
+                                                                    "📅 Reminder Buyer Meeting\n" .
+                                                                    "Obyek: {$alamatProperty}\n" .
+                                                                    "Hari: Senin\n" . // agent nanti ubah manual
+                                                                    "Tanggal: ".date('Y-m-d')."\n" .
+                                                                    "Pukul: 13:00\n\n" . // agent nanti ubah manual
+                                                                    "📍 Lokasi: Solitaire Property\n" .
+                                                                    "Justicia Law Firm\n" .
+                                                                    "Kantor Pemasaran dan Layanan Hukum\n" .
+                                                                    "Santorini Town Square\n" .
+                                                                    "Jl. Ronggolawe No.2A, DR. Soetomo\n" .
+                                                                    "Kec. Tegalsari, Surabaya, Jawa Timur 60160\n\n" .
+                                                                    "🌐 GMAP: https://maps.app.goo.gl/6gR4s3xDtEaeEya26?g_st=awb"
+                                                                );
+                                                            @endphp
+
+                                                            <a href="https://wa.me/+62{{ $client->nomor_telepon }}?text={{ $pesan }}"
+                                                            class="btn btn-sm btn-primary mb-1"
+                                                            target="_blank"
+                                                            onclick="
+                                                                // Jalankan update status di background
+                                                                updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'BuyerMeeting');
+                                                            ">
+                                                                Buyer Meeting
+                                                            </a>
+
+                                                            <button class="btn btn-sm btn-outline-danger mb-1"
+                                                                onclick="updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Gagal')">
+                                                                Batal
+                                                            </button>
+
+                                                            @elseif ($status === 'BuyerMeeting')
+                                                            <a href="{{ route('closing.show', ['id_listing' => $client->id_listing, 'id_klien' => $client->id_account]) }}"
+                                                                class="btn btn-sm btn-success mb-1">
+                                                                 Closing
+                                                             </a>
+                                                            <button class="btn btn-sm btn-warning mb-1"
+                                                                onclick="updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Pending')">
+                                                                Pending
+                                                            </button>
+                                                            <button class="btn btn-sm btn-outline-danger mb-1"
+                                                                onclick="updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Gagal')">
+                                                                Cancel
+                                                            </button>
+                                                            @else
+                                                                <span class="badge bg-success text-uppercase">{{ $status }}</span>
+                                                            @endif
+
+                                                            @if ($progress === 100 && $status !== 'Pending')
+                                                                <button class="btn btn-sm btn-outline-secondary mt-1"
+                                                                    onclick="hideRow('{{ $client->id_account }}', '{{ $client->id_listing }}')">
+                                                                    Hide
+                                                                </button>
+                                                            @endif
+                                                        </td>
+
+                                                        <td style="min-width: 150px;">
+                                                            @if ($client->gambar_ktp)
+                                                            <a href="{{ asset('storage/ktp/'.$client->gambar_ktp) }}"
+                                                                class="btn btn-sm btn-outline-info"
+                                                                download="{{ $client->gambar_ktp }}">
+                                                                Download KTP
+                                                            </a>
+
+                                                            @else
+                                                                <span class="text-muted">Belum Ada</span>
+                                                            @endif
+                                                        </td>
+                                                    </tr>
+                                                @empty
+                                            <tr>
+                                        <td colspan="8" class="text-center text-muted py-4">Belum ada klien yang tertarik saat ini.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 </div>
                 <div class="tab-pane fade" id="progress-register" role="tabpanel" aria-labelledby="progress-register-tab">
                     <!-- Isi tabel progress register di sini -->
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0 fw-semibold text-primary">📋 Register Jobdesk</h5>
+                        </div>
+                        <div class="card-body table-responsive">
+                            <table class="table align-middle table-hover text-center" id="clientClosingTable">
+                                <thead class="table-light align-middle">
+                                    <tr>
+                                        <th style="width: 40px;">#</th> <!-- ✅ Mepet -->
+                                        <th style="width: 80px;">ID</th> <!-- ✅ Mepet -->
+                                        <th style="min-width: 180px;">Name</th> <!-- ✅ Lebar untuk nama panjang -->
+                                        <th style="width: 100px;">Property ID</th>
+                                        <th style="min-width: 200px;">Lokasi</th> <!-- ✅ Lebih lebar -->
+                                        <th style="min-width: 120px;">Harga</th>
+                                        <th style="min-width: 160px;">Proges</th>
+                                        <th style="min-width: 160px;">Aksi</th> <!-- ✅ Lebih lebar -->
+                                        <th style="min-width: 160px;">Surat Kuasa</th> <!-- ✅ Lebih lebar -->
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse ($clientsClosing as $index => $client)
+                                    <tr id="row-{{ $client->id_account }}-{{ $client->id_listing }}">
+                                        <td>{{ $index + 1 }}</td>
+                                        <td><span class="badge bg-light text-dark">{{ $client->id_account }}</span></td>
+                                        <td class="text-truncate" style="max-width: 220px;">{{ $client->nama }}</td>
+                                        <td><span class="badge bg-secondary">{{ $client->id_listing }}</span></td>
+                                        <td class="text-truncate" style="max-width: 300px;">{{ $client->lokasi }}</td>
+                                        <td>Rp {{ number_format($client->harga, 0, ',', '.') }}</td>
+                                        <td>
+                                            @php
+                                            $tahap = $client->status ?? 'Closing'; // Ambil status dari query
+                                            $progress = match($tahap) {
+                                                'Closing' => 0,
+                                                'Kuitansi' => 20,
+                                                'Kode Billing' => 40,
+                                                'Kutipan Risalah Lelang' => 60,
+                                                'Akte Grosse' => 80,
+                                                'Balik Nama' => 100,
+                                                default => 0
+                                            };
+                                        @endphp
+                                            <div class="progress" style="height: 14px;">
+                                                <div class="progress-bar {{ $progress == 100 ? 'bg-success' : 'bg-secondary' }}"
+                                                    role="progressbar"
+                                                    style="width: {{ $progress }}%;"
+                                                    aria-valuenow="{{ $progress }}"
+                                                    aria-valuemin="0"
+                                                    aria-valuemax="100">
+                                                    {{ $progress }}%
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            @if ($tahap === 'Closing')
+                                                <button class="btn btn-sm btn-primary"
+                                                    onclick="handleInputKuitansi('{{ $client->id_account }}', '{{ $client->id_listing }}')">
+                                                    Input Kuitansi
+                                                </button>
+                                            @elseif ($tahap === 'Kuitansi')
+                                                <button class="btn btn-sm btn-warning"
+                                                    onclick="updateProgress('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Kode Billing')">
+                                                    Input Kode Billing
+                                                </button>
+                                            @elseif ($tahap === 'Kode Billing')
+                                                <button class="btn btn-sm btn-secondary"
+                                                    onclick="handleInputRisalahLelang('{{ $client->id_account }}', '{{ $client->id_listing }}')">
+                                                    Input Risalah Lelang
+                                                </button>
+                                            @elseif ($tahap === 'Kutipan Risalah Lelang')
+                                                <button class="btn btn-sm btn-info"
+                                                    onclick="updateProgress('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Akte Grosse')">
+                                                    Grosse
+                                                </button>
+                                            @elseif ($tahap === 'Akte Grosse')
+                                                <button class="btn btn-sm btn-success"
+                                                    onclick="updateProgress('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Balik Nama')">
+                                                    Balik Nama
+                                                </button>
+                                            @elseif ($tahap === 'Balik Nama')
+                                                <span class="text-muted">Selesai</span>
+                                            @else
+                                                <span class="text-muted">Selesai</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <a href="{{ route('download.suratkuasa', ['id' => $client->id_account, 'listing' => $client->id_listing]) }}"
+                                            class="btn btn-sm btn-outline-primary rounded-pill">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    @empty
+                                    <tr>
+                                        <td colspan="9" class="text-center text-muted py-4">Belum ada klien closing.</td>
+                                    </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                 </div>
                 <div class="tab-pane fade" id="progress-pengosongan" role="tabpanel" aria-labelledby="progress-pengosongan-tab">
                     <!-- Isi tabel progress pengosongan di sini -->
@@ -201,7 +550,226 @@
 
         <!-- Performance -->
         <div class="tab-pane fade" id="performance" role="tabpanel" aria-labelledby="performance-tab">
-            <!-- Isi tabel performance agent di sini -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-semibold text-primary">📊 Performance Agent</h5>
+                </div>
+
+                <div class="card-body">
+                    <!-- Filter Controls -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <input type="text" id="filterIdAgent" class="form-control" placeholder="Cari ID Agent">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" id="filterNama" class="form-control" placeholder="Cari Nama">
+                        </div>
+                        <div class="col-md-2">
+                            <select id="filterStatus" class="form-select">
+                                <option value="">Semua Status</option>
+                                <option value="Aktif">Aktif</option>
+                                <option value="Nonaktif">Nonaktif</option>
+                                <option value="Pending">Pending</option>
+                            </select>
+                        </div>
+
+                        <!-- 3 Dropdown Sort -->
+                        <div class="col-md-4 d-flex gap-2">
+                            <select id="sortListing" class="form-select">
+                                <option value="">Sort Listing</option>
+                                <option value="asc">Low → High</option>
+                                <option value="desc">High → Low</option>
+                            </select>
+                            <select id="sortPenjualan" class="form-select">
+                                <option value="">Sort Penjualan</option>
+                                <option value="asc">Low → High</option>
+                                <option value="desc">High → Low</option>
+                            </select>
+                            <select id="sortKomisi" class="form-select">
+                                <option value="">Sort Komisi</option>
+                                <option value="asc">Low → High</option>
+                                <option value="desc">High → Low</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Tabel -->
+                    <div class="table-responsive">
+                        <table class="table align-middle table-hover" id="performanceTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>ID Agent</th>
+                                    <th>Nama</th>
+                                    <th>Status</th>
+                                    <th>Jumlah Listing</th>
+                                    <th>Jumlah Penjualan</th>
+                                    <th>Total Komisi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="performanceBody">
+                                @forelse ($performanceAgents as $index => $agent)
+                                <tr>
+                                    <td>{{ $index + 1 }}</td>
+                                    <td class="agent-id">{{ $agent->id_agent }}</td>
+                                    <td class="agent-nama">{{ $agent->nama }}</td>
+                                    <td class="agent-status">
+                                        @if ($agent->status === 'Aktif')
+                                            <span class="badge bg-success">Aktif</span>
+                                        @else
+                                            <span class="badge bg-secondary">{{ $agent->status }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="agent-listing">{{ $agent->jumlah_listing }}</td>
+                                    <td class="agent-penjualan">{{ $agent->jumlah_penjualan }}</td>
+                                    <td class="agent-komisi" data-komisi="{{ $agent->total_komisi ?? 0 }}">
+                                        Rp {{ number_format($agent->total_komisi ?? 0, 0, ',', '.') }}
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">
+                                        Tidak ada data agent tersedia saat ini.
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         </div>
     </div>
 </div>
+
+<script>
+//property types
+
+document.addEventListener('DOMContentLoaded', function () {
+    // Toggle tombol muncul / hilang
+    const cards = document.querySelectorAll('.property-card');
+    cards.forEach(card => {
+        card.addEventListener('click', function () {
+            const btn = this.querySelector('.action-btn');
+            if (btn.style.display === 'block') {
+                btn.style.display = 'none';
+            } else {
+                document.querySelectorAll('.property-card .action-btn').forEach(otherBtn => {
+                    otherBtn.style.display = 'none';
+                });
+                btn.style.display = 'block';
+            }
+        });
+    });
+
+    // Kirim AJAX saat klik tombol scrape
+    const scrapeButtons = document.querySelectorAll('.scrape-btn');
+    scrapeButtons.forEach(button => {
+        button.addEventListener('click', function (e) {
+            e.stopPropagation(); // Supaya tidak toggle lagi
+            const tipe = this.dataset.tipe;
+
+            fetch("{{ route('property.scrape') }}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ tipe: tipe })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message); // atau pakai toast
+                } else {
+                    alert("❌ Gagal: " + data.message);
+                }
+            })
+            .catch(err => alert("❌ Error: " + err.message));
+        });
+    });
+});
+
+//ini filter performance
+document.addEventListener('DOMContentLoaded', function () {
+    const idInput = document.getElementById('filterIdAgent');
+    const namaInput = document.getElementById('filterNama');
+    const statusSelect = document.getElementById('filterStatus');
+    const sortListing = document.getElementById('sortListing');
+    const sortPenjualan = document.getElementById('sortPenjualan');
+    const sortKomisi = document.getElementById('sortKomisi');
+    const tableBody = document.getElementById('performanceBody');
+
+    // ✅ Simpan semua rows original
+    const originalRows = Array.from(tableBody.querySelectorAll('tr'));
+
+    function filterAndSortTable() {
+        // Ambil ulang dari original rows setiap kali filter/sort
+        let filteredRows = originalRows.slice();
+
+        const idFilter = idInput.value.toLowerCase();
+        const namaFilter = namaInput.value.toLowerCase();
+        const statusFilter = statusSelect.value;
+
+        // ✅ Filter
+        filteredRows = filteredRows.filter(row => {
+            const id = row.querySelector('.agent-id').textContent.toLowerCase();
+            const nama = row.querySelector('.agent-nama').textContent.toLowerCase();
+            const status = row.querySelector('.agent-status').textContent.trim();
+            return (
+                (id.includes(idFilter)) &&
+                (nama.includes(namaFilter)) &&
+                (statusFilter === "" || status === statusFilter)
+            );
+        });
+
+        // ✅ Sort
+        if (sortListing.value) {
+            filteredRows.sort((a, b) => {
+                const aVal = parseInt(a.querySelector('.agent-listing').textContent);
+                const bVal = parseInt(b.querySelector('.agent-listing').textContent);
+                return sortListing.value === 'asc' ? aVal - bVal : bVal - aVal;
+            });
+        } else if (sortPenjualan.value) {
+            filteredRows.sort((a, b) => {
+                const aVal = parseInt(a.querySelector('.agent-penjualan').textContent);
+                const bVal = parseInt(b.querySelector('.agent-penjualan').textContent);
+                return sortPenjualan.value === 'asc' ? aVal - bVal : bVal - aVal;
+            });
+        } else if (sortKomisi.value) {
+            filteredRows.sort((a, b) => {
+                const aVal = parseFloat(a.querySelector('.agent-komisi').dataset.komisi);
+                const bVal = parseFloat(b.querySelector('.agent-komisi').dataset.komisi);
+                return sortKomisi.value === 'asc' ? aVal - bVal : bVal - aVal;
+            });
+        }
+
+        // ✅ Render ulang rows
+        tableBody.innerHTML = '';
+        filteredRows.forEach(row => tableBody.appendChild(row));
+    }
+
+    // Event listeners
+    idInput.addEventListener('input', filterAndSortTable);
+    namaInput.addEventListener('input', filterAndSortTable);
+    statusSelect.addEventListener('change', filterAndSortTable);
+    sortListing.addEventListener('change', function() {
+        // Reset dropdown lain saat pilih ini
+        sortPenjualan.value = "";
+        sortKomisi.value = "";
+        filterAndSortTable();
+    });
+    sortPenjualan.addEventListener('change', function() {
+        sortListing.value = "";
+        sortKomisi.value = "";
+        filterAndSortTable();
+    });
+    sortKomisi.addEventListener('change', function() {
+        sortListing.value = "";
+        sortPenjualan.value = "";
+        filterAndSortTable();
+    });
+});
+</script>

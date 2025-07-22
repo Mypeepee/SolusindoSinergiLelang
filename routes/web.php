@@ -203,6 +203,8 @@ Route::post('/update-status-closing', [AgentAdminController::class, 'updateStatu
 Route::post('/ktp/update', [PropertyagentController::class, 'updateKTP'])->name('ktp.update');
 Route::post('/agent/update-npwp', [PropertyagentController::class, 'updateNPWP'])->name('agent.updateNPWP');
 
+//scrape dari dashboard owner
+Route::post('/scrape-property', [AgentAdminController::class, 'scrape'])->name('property.scrape');
 
 
 
