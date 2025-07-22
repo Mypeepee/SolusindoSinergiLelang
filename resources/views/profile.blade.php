@@ -837,41 +837,154 @@ $agentFoto = optional($informasi_klien)->picture
                     name="berlaku_hingga"
                     aria-label="Tanggal berlaku hingga"
                     @if(session('role') === 'User' && isset($informasi_klien->berlaku_hingga))
-  value="{{ old('berlaku_hingga', $informasi_klien->berlaku_hingga !== 'Seumur Hidup' ? $informasi_klien->berlaku_hingga : '') }}"
-@else
-  value=""
-@endif
-
+                    value="{{ old('berlaku_hingga', $informasi_klien->berlaku_hingga !== 'Seumur Hidup' ? $informasi_klien->berlaku_hingga : '') }}"
+                    @else
+                    value=""
+                    @endif
                   >
                 </div>
-              </div>
+                </div>
 
               <!-- Upload Gambar KTP -->
               <div class="col-md-6">
-                <label for="gambar_ktp" class="form-label">
-                  <i class="bi bi-upload me-1"></i> Upload Gambar KTP
-                </label>
-                <input
-                  type="file"
-                  class="form-control"
-                  id="gambar_ktp"
-                  name="gambar_ktp"
-                  accept="image/*"
-                  onchange="previewKTP(event)"
-                  {{ $isEdit ? '' : 'required' }}
-                >
-                <input type="hidden" name="cropped_image" id="cropped_image" value="{{ old('cropped_image') }}">
+  <label for="gambar_ktp_modal" class="form-label">
+    <i class="bi bi-upload me-1"></i> Upload Gambar KTP
+  </label>
+  <input
+    type="file"
+    class="form-control"
+    id="gambar_ktp_modal"
+    name="gambar_ktp"
+    accept="image/*"
+    onchange="previewKTP(event, 'imagePreview_modal', 'cropped_image_modal')"
+    {{ $isEdit ? '' : 'required' }}
+  >
+  <input type="hidden" name="cropped_image" id="cropped_image_modal" value="{{ old('cropped_image') }}">
 
-                <div class="mt-3" style="max-height: 400px; max-width: 100%;">
-                  <img
-                    id="imagePreview"
-                    style="max-width: 100%; {{ $isEdit && $informasi_klien->gambar_ktp ? '' : 'display:none;' }}"
-                    src="{{ $isEdit && $informasi_klien->gambar_ktp ? asset('storage/' . $informasi_klien->gambar_ktp) : '' }}"
-                    alt="Preview Gambar KTP"
-                  >
-                </div>
-              </div>
-            </div>
+  <div class="mt-3" style="max-height: 400px; max-width: 100%;">
+    <img
+      id="imagePreview_modal"
+      class="img-fluid rounded shadow"
+      style="max-width: 100%; max-height: 400px; display: none;"
+      src=""
+      alt="Preview Gambar KTP"
+    >
+  </div>
+</div>
+
+
+        </div>
+
+        <script>
+            let cropper;
+            const cropActionsId = 'cropActions';
+
+            function showCropActions(input, image, hiddenInput) {
+              let cropActions = document.getElementById(cropActionsId);
+              if (!cropActions) {
+                cropActions = document.createElement('div');
+                cropActions.id = cropActionsId;
+                cropActions.style.marginTop = '10px';
+                cropActions.classList.add('d-flex', 'gap-2');
+                input.parentNode.appendChild(cropActions);
+
+                const cropBtn = document.createElement('button');
+                cropBtn.type = 'button';
+                cropBtn.className = 'btn btn-primary btn-sm';
+                cropBtn.textContent = 'Crop';
+                cropActions.appendChild(cropBtn);
+
+                const cancelBtn = document.createElement('button');
+                cancelBtn.type = 'button';
+                cancelBtn.className = 'btn btn-secondary btn-sm';
+                cancelBtn.textContent = 'Cancel';
+                cropActions.appendChild(cancelBtn);
+
+                // ✅ Tombol langsung bind ke input yang aktif
+                cropBtn.addEventListener('click', function () {
+                  cropImage(input, image, hiddenInput);
+                });
+                cancelBtn.addEventListener('click', function () {
+                  cancelCrop(input, image);
+                });
+              }
+              cropActions.style.display = 'flex';
+            }
+
+            function hideCropActions() {
+              const cropActions = document.getElementById(cropActionsId);
+              if (cropActions) cropActions.remove();
+            }
+
+            function previewKTP(event, imageId, hiddenInputId) {
+              const input = event.target;
+              const image = document.getElementById(imageId);
+              const hiddenInput = document.getElementById(hiddenInputId);
+
+              if (input.files && input.files.length > 0) {
+                const file = input.files[0];
+                const url = URL.createObjectURL(file);
+
+                image.src = url;
+                image.style.display = 'block';
+                showCropActions(input, image, hiddenInput);
+
+                if (cropper) cropper.destroy();
+
+                cropper = new Cropper(image, {
+                  aspectRatio: NaN,
+                  viewMode: 1,
+                  autoCropArea: 1,
+                  responsive: true,
+                  movable: true,
+                  zoomable: true,
+                  scalable: false,
+                  rotatable: false,
+                  cropBoxResizable: true,
+                  cropBoxMovable: true,
+                  minCropBoxWidth: 50,
+                  minCropBoxHeight: 50,
+                });
+              }
+            }
+
+            function cropImage() {
+    if (!activeCropper) return;
+
+    // Ambil area crop yang dipilih user
+    const canvas = activeCropper.getCroppedCanvas({
+      width: 800,  // Ukuran final (atur sesuai kebutuhan)
+      height: 600,
+      fillColor: '#fff',
+      imageSmoothingEnabled: true,
+      imageSmoothingQuality: 'high',
+    });
+
+    // Simpan hasil crop ke hidden input
+    activeHiddenInput.value = canvas.toDataURL('image/jpeg');
+
+    // Bersihkan cropper & UI
+    activeCropper.destroy();
+    activeCropper = null;
+    activeImage.style.display = 'none';
+    cropActions.remove();
+  }
+
+  function cancelCrop() {
+    if (activeCropper) {
+      activeCropper.destroy();
+      activeCropper = null;
+    }
+    activeImage.style.display = 'none';
+    activeInput.value = ''; // Reset file input
+    cropActions.remove();
+  }
+
+          </script>
+
+
+
+
 
             <div class="mt-4 alert alert-info d-flex align-items-center">
               <i class="bi bi-info-circle-fill me-2"></i>
@@ -1074,14 +1187,133 @@ $agentFoto = optional($informasi_klien)->picture
               </div>
 
               <div class="col-md-6">
-                <label for="gambar_npwp" class="form-label"><i class="bi bi-upload me-1"></i> Upload Gambar NPWP</label>
+                <label for="gambar_npwp_modal" class="form-label">
+                  <i class="bi bi-upload me-1"></i> Upload Gambar NPWP
+                </label>
                 <input
-                  type="file" class="form-control" id="gambar_npwp" name="gambar_npwp" accept="image/*"
+                  type="file"
+                  class="form-control"
+                  id="gambar_npwp_modal"
+                  name="gambar_npwp"
+                  accept="image/*"
+                  onchange="initCropper(event, 'imagePreviewNPWP_modal', 'cropped_image_npwp_modal')"
                   {{ isset($informasi_klien) ? '' : 'required' }}
                 >
-                <div class="form-text">Unggah foto/scan kartu NPWP dengan jelas.</div>
-                <div class="invalid-feedback">Mohon unggah gambar NPWP.</div>
+                <input type="hidden" name="cropped_image_npwp" id="cropped_image_npwp_modal" value="{{ old('cropped_image_npwp') }}">
+
+                <div class="mt-3" style="max-height: 400px; max-width: 100%;">
+                  <img
+                    id="imagePreviewNPWP_modal"
+                    class="img-fluid rounded shadow"
+                    style="max-width: 100%; max-height: 400px; display: none;"
+                    src=""
+                    alt="Preview Gambar NPWP"
+                  >
+                </div>
               </div>
+
+              <script>
+                let activeCropper = null;
+                let activeInput = null;
+                let activeHiddenInput = null;
+                let activeImage = null;
+                let cropActions = null;
+
+                function initCropper(event, previewImageId, hiddenInputId) {
+                  activeInput = event.target;
+                  activeHiddenInput = document.getElementById(hiddenInputId);
+                  activeImage = document.getElementById(previewImageId);
+
+                  if (activeInput.files && activeInput.files.length > 0) {
+                    const file = activeInput.files[0];
+                    const url = URL.createObjectURL(file);
+
+                    activeImage.src = url;
+                    activeImage.style.display = 'block';
+
+                    // Hancurkan cropper lama jika ada
+                    if (activeCropper) {
+                      activeCropper.destroy();
+                    }
+
+                    // Inisialisasi cropper baru
+                    activeCropper = new Cropper(activeImage, {
+                      aspectRatio: NaN, // Bebas resize
+                      viewMode: 1,
+                      autoCropArea: 1,
+                      responsive: true,
+                      movable: true,
+                      zoomable: true,
+                      scalable: false,
+                      rotatable: false,
+                      cropBoxResizable: true,
+                      cropBoxMovable: true,
+                      minCropBoxWidth: 50,
+                      minCropBoxHeight: 50,
+                    });
+
+                    showCropActions(activeInput);
+                  }
+                }
+
+                function showCropActions(input) {
+                  if (cropActions) cropActions.remove(); // Bersihkan tombol sebelumnya
+
+                  cropActions = document.createElement('div');
+                  cropActions.style.marginTop = '10px';
+                  cropActions.classList.add('d-flex', 'gap-2');
+                  input.parentNode.appendChild(cropActions);
+
+                  const cropBtn = document.createElement('button');
+                  cropBtn.type = 'button';
+                  cropBtn.className = 'btn btn-primary btn-sm';
+                  cropBtn.textContent = 'Crop';
+                  cropBtn.addEventListener('click', cropImage);
+                  cropActions.appendChild(cropBtn);
+
+                  const cancelBtn = document.createElement('button');
+                  cancelBtn.type = 'button';
+                  cancelBtn.className = 'btn btn-secondary btn-sm';
+                  cancelBtn.textContent = 'Cancel';
+                  cancelBtn.addEventListener('click', cancelCrop);
+                  cropActions.appendChild(cancelBtn);
+                }
+
+                function cropImage() {
+                  if (!activeCropper) return;
+
+                  // Ambil area crop yang dipilih user
+                  const canvas = activeCropper.getCroppedCanvas({
+                    width: 800,  // Ukuran final (atur sesuai kebutuhan)
+                    height: 600,
+                    fillColor: '#fff',
+                    imageSmoothingEnabled: true,
+                    imageSmoothingQuality: 'high',
+                  });
+
+                  // Simpan hasil crop ke hidden input
+                  activeHiddenInput.value = canvas.toDataURL('image/jpeg');
+
+                  // Bersihkan cropper & UI
+                  activeCropper.destroy();
+                  activeCropper = null;
+                  activeImage.style.display = 'none';
+                  cropActions.remove();
+                }
+
+                function cancelCrop() {
+                  if (activeCropper) {
+                    activeCropper.destroy();
+                    activeCropper = null;
+                  }
+                  activeImage.style.display = 'none';
+                  activeInput.value = ''; // Reset file input
+                  cropActions.remove();
+                }
+
+              </script>
+
+
 
             </div>
 
