@@ -22,18 +22,39 @@ use Illuminate\Support\Facades\Storage;
 class AuthController extends Controller
 {
     public function showJoinAgentForm()
-    {
-        $id_account = Session::get('id_account') ?? $_COOKIE['id_account'] ?? null;
+{
+    $id_account = trim(Session::get('id_account') ?? $_COOKIE['id_account'] ?? null);
 
-        if (!$id_account) {
-            return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
-        }
-
-        $user = DB::table('account')->where('id_account', $id_account)->first();
-        $informasi_klien = DB::table('informasi_klien')->where('id_account', $id_account)->first();
-
-        return view('register-agent', compact('user', 'informasi_klien'));
+    if (!$id_account) {
+        return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
     }
+
+    $user = DB::table('account')->where('id_account', $id_account)->first();
+    $informasi_klien = DB::table('informasi_klien')->where('id_account', $id_account)->first();
+
+    // ✅ Cari agent berdasarkan id_account
+    $agent = DB::table('agent')
+        ->whereRaw('LOWER(TRIM(id_account)) = ?', [strtolower($id_account)])
+        ->first();
+
+    $isPending = false;
+    $isRejected = false;
+
+    if ($agent) {
+        if (strtolower($agent->status) === 'pending') {
+            $isPending = true;
+        } elseif (strtolower($agent->status) === 'approved') {
+            // ✅ Kalau sudah disetujui, suruh login ulang
+            return redirect()->route('login')->with('success', 'Akun Anda sudah disetujui sebagai agen. Silakan login ulang.');
+        } elseif (strtolower($agent->status) === 'rejected') {
+            $isRejected = true;
+        }
+    }
+
+    return view('register-agent', compact('user', 'informasi_klien', 'isPending', 'isRejected'));
+}
+
+
 
     public function registerAgent(Request $request)
     {
@@ -116,12 +137,10 @@ class AuthController extends Controller
             ]
         );
 
-        // Kosongkan session agar user login ulang
-        session()->flush();
+        return redirect('/join-agent')->with('success', 'Pendaftaran agen berhasil. Menunggu verifikasi dari Owner.');
 
-        return redirect()->back()->with('success', 'Pendaftaran agen berhasil. Menunggu verifikasi dari Owner.');
     }
-    
+
     public function updateProfilePicture(Request $request)
     {
         $request->validate([
@@ -375,7 +394,7 @@ class AuthController extends Controller
             'tanggal_lahir' => $request->tanggal_lahir,
             'nomor_telepon' => $request->nomor_telepon,
             'username' => $request->username,
-            'password' => $request->password, 
+            'password' => $request->password,
             'kota' => $request->kota,
             'kecamatan' => $request->kecamatan,
             'roles' => 'User',

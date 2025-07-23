@@ -14,6 +14,7 @@ class Agent extends Model
     protected $table = 'agent';
     protected $primaryKey = 'id_agent';
     public $incrementing = false;
+    protected $keyType = 'string';
     protected $fillable = [
         'id_account',
         'id_agent',
@@ -35,7 +36,7 @@ class Agent extends Model
         'gambar_ktp',
         'gambar_npwp',
     ];
-    
+
     // Agent dan Account (One to One)
     public function account(): BelongsTo
     {
@@ -52,6 +53,18 @@ class Agent extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class, 'id_agent', 'id_agent');
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            // Auto-generate id_agent seperti AG001, AG002, dst.
+            $lastAgent = Agent::orderBy('id_agent', 'desc')->first();
+            $lastNumber = $lastAgent ? intval(substr($lastAgent->id_agent, 2)) : 0;
+            $model->id_agent = 'AG' . str_pad($lastNumber + 1, 3, '0', STR_PAD_LEFT);
+        });
     }
 
 
