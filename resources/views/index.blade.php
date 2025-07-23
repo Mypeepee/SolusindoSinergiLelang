@@ -281,8 +281,8 @@
                         <p class="mb-4">Banyak yang ragu membeli rumah lewat lelang karena dianggap rumit dan bermasalah. Padahal, lelang bisa menjadi cara efektif mendapatkan properti dengan harga di bawah nilai pasar. Proses lelang kini transparan dan mudah diikuti, terutama dengan bantuan agen profesional seperti kami yang khusus menangani pembelian properti lelang, membeli rumah lewat lelang menjadi langkah cerdas dan aman untuk investasi properti Anda.</p>
                         <p><i class="fa fa-check text-primary me-3"></i>Sah Secara Hukum untuk Menjual Asset Lelang</p>
                         <p><i class="fa fa-check text-primary me-3"></i>Motto Kami adalah Duduk - Diam - Ambil Dokumen</p>
-                        <p><i class="fa fa-check text-primary me-3"></i>Mempunyai 51 Ribu Database Listing</p>
-                        <p><i class="fa fa-check text-primary me-3"></i>Tingkat kemenangan kami 100%</p>
+                        <p><i class="fa fa-check text-primary me-3"></i>Mempunyai lebih dari 100 ribu listing diseluruh Indonesia</p>
+                        <p><i class="fa fa-check text-primary me-3"></i>Garansi 100% serah terima kunci</p>
                         <a class="btn btn-primary py-3 px-5 mt-3" href="{{ url('/about') }}">Baca selengkapnya</a>
                     </div>
                 </div>
@@ -412,22 +412,22 @@
        <div class="service">
         <div class="container">
             <div class="section-header text-center">
-                <p>Our Services</p>
-                <h2>We Provide Services</h2>
+                <p>Layanan Kami</p>
+                <h2>Kami Menyediakan Berbagai Layanan</h2>
             </div>
             <div class="row">
                 <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.1s">
                     <div class="service-item">
                         <div class="service-img">
-                            <img src="img/BalaiLelangIMG.jpg" alt="Image">
+                            <img src="img/BalaiLelang.png" alt="Image">
                             <div class="service-overlay">
                                 <p>
-                                    Kami menyediakan layanan balai lelang yang berfokus pada penjualan aset tidak bergerak, Melalui proses lelang yang transparan dan kompetitif, Kami membantu Anda mendapatkan harga terbaik, Kami juga membantu Anda untuk mendapatkan properti yang diinginkan dengan harga yang lebih bersaing.
+                                    Kami menyediakan layanan <strong>pendaftaran lelang</strong> untuk berbagai keperluan, baik <strong>lelang sukarela</strong> maupun <strong>lelang hak tanggungan</strong>. Dengan dukungan tim profesional, kami memastikan proses berjalan secara <strong>transparan</strong>, <strong>efisien</strong>, dan sesuai dengan ketentuan hukum yang berlaku.
                                 </p>
                             </div>
                         </div>
                         <div class="service-text">
-                            <h3>Balai Lelang</h3>
+                            <h3>Pendaftaran Asset Lelang</h3>
                             <a class="btn" href="img/service-1.jpg" data-lightbox="service"></a>
                         </div>
                     </div>
@@ -435,15 +435,16 @@
                 <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.2s">
                     <div class="service-item">
                         <div class="service-img">
-                            <img src="img/service-2.jpg" alt="Image">
+                            <img src="img/PengurusanDokumen.png" alt="Image">
                             <div class="service-overlay">
                                 <p>
-                                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus nec pretium mi. Curabitur facilisis ornare velit non vulputate. Aliquam metus tortor, auctor id gravida condimentum, viverra quis sem.
+                                    Kami menyediakan layanan <strong>pengurusan dokumen</strong> properti dengan biaya yang jauh lebih terjangkau dan proses yang lebih cepat dibandingkan notaris. <br><br>
+                                    Didukung oleh tim profesional dan prosedur yang sesuai hukum, kami memastikan seluruh dokumen penting Anda selesai dengan <strong>cepat, aman, dan tanpa ribet</strong>. Serahkan semua kepada kami, Anda hanya perlu duduk tenang hingga dokumen resmi atas nama Anda selesai.
                                 </p>
                             </div>
                         </div>
                         <div class="service-text">
-                            <h3>Eksekusi Pengosongan</h3>
+                            <h3>Pengurusan Dokumen</h3>
                             <a class="btn" href="img/service-2.jpg" data-lightbox="service"></a>
                         </div>
                     </div>
@@ -451,64 +452,17 @@
                 <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.3s">
                     <div class="service-item">
                         <div class="service-img">
-                            <img src="img/service-3.jpg" alt="Image">
+                            <img src="img/EksekusiPengosongan.png" alt="Image">
                             <div class="service-overlay">
                                 <p>
-                                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus nec pretium mi. Curabitur facilisis ornare velit non vulputate. Aliquam metus tortor, auctor id gravida condimentum, viverra quis sem.
+                                    Kami menjamin <strong>serah terima kunci</strong> dengan proses pengosongan yang legal, aman, dan sesuai ketentuan hukum. Dengan rekam jejak <strong>100% sukses</strong>, Anda cukup duduk tenang—semua akan kami urus hingga properti siap digunakan.
                                 </p>
+
                             </div>
                         </div>
                         <div class="service-text">
-                            <h3>Kurator Kepailitan</h3>
+                            <h3>Eksekusi Pengosongan Asset</h3>
                             <a class="btn" href="img/service-3.jpg" data-lightbox="service"></a>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.4s">
-                    <div class="service-item">
-                        <div class="service-img">
-                            <img src="img/service-4.jpg" alt="Image">
-                            <div class="service-overlay">
-                                <p>
-                                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus nec pretium mi. Curabitur facilisis ornare velit non vulputate. Aliquam metus tortor, auctor id gravida condimentum, viverra quis sem.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="service-text">
-                            <h3>Tax Lawyer</h3>
-                            <a class="btn" href="img/service-4.jpg" data-lightbox="service"></a>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.5s">
-                    <div class="service-item">
-                        <div class="service-img">
-                            <img src="img/service-5.jpg" alt="Image">
-                            <div class="service-overlay">
-                                <p>
-                                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus nec pretium mi. Curabitur facilisis ornare velit non vulputate. Aliquam metus tortor, auctor id gravida condimentum, viverra quis sem.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="service-text">
-                            <h3>Legal Consultant</h3>
-                            <a class="btn" href="img/service-5.jpg" data-lightbox="service"></a>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.6s">
-                    <div class="service-item">
-                        <div class="service-img">
-                            <img src="img/service-6.jpg" alt="Image">
-                            <div class="service-overlay">
-                                <p>
-                                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus nec pretium mi. Curabitur facilisis ornare velit non vulputate. Aliquam metus tortor, auctor id gravida condimentum, viverra quis sem.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="service-text">
-                            <h3>Kantor Advokat</h3>
-                            <a class="btn" href="img/service-6.jpg" data-lightbox="service"></a>
                         </div>
                     </div>
                 </div>
@@ -693,61 +647,68 @@
                     <div class="card wow fadeInLeft" data-wow-delay="0.1s">
                         <div class="card-header">
                             <a class="card-link collapsed" data-toggle="collapse" href="#collapseOne">
-                                Apakah lelang sangat aman?
+                                Apakah ada biaya tersembunyi di akhir?
                             </a>
                         </div>
                         <div id="collapseOne" class="collapse" data-parent="#accordion-1">
                             <div class="card-body">
-                                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus nec pretium mi. Curabitur facilisis ornare velit non.
+                                Tidak ada biaya tersembunyi. Harga yang tertera sudah mencakup <strong>harga properti</strong>, <strong>biaya pengosongan</strong>, dan <strong>biaya pengurusan dokumen</strong> seperti <strong>Pajak BPHTB (Bea Perolehan Hak atas Tanah dan Bangunan)</strong>, <strong>biaya lelang</strong>, <strong>biaya balik nama sertifikat</strong>, dan <strong>biaya administrasi lainnya</strong>. <br><br>
+                                <strong>Catatan:</strong> <strong>Tunggakan utilitas</strong> (listrik, air, dan lainnya) apabila ada, <strong>tidak termasuk</strong> dalam harga dan menjadi tanggung jawab pembeli.
                             </div>
                         </div>
                     </div>
                     <div class="card wow fadeInLeft" data-wow-delay="0.2s">
                         <div class="card-header">
                             <a class="card-link collapsed" data-toggle="collapse" href="#collapseTwo">
-                                Lorem ipsum dolor sit amet?
+                                Apakah saya bisa survei properti sebelum membeli?
                             </a>
                         </div>
                         <div id="collapseTwo" class="collapse" data-parent="#accordion-1">
                             <div class="card-body">
-                                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus nec pretium mi. Curabitur facilisis ornare velit non.
+                                Ya, Anda dapat melakukan <strong>survei properti</strong> terlebih dahulu untuk memastikan <strong>lokasi</strong> dan <strong>kondisi dari sisi luar</strong>. <br><br>
+                                Kami menyarankan hal ini agar Anda mendapatkan gambaran tentang <strong>lingkungan sekitar</strong>, <strong>akses jalan</strong>, dan <strong>fasilitas umum</strong> di area tersebut. Kebijakan ini juga diterapkan untuk menjaga <strong>keamanan</strong> dan <strong>kenyamanan penghuni sebelumnya</strong> hingga proses <strong>pengosongan</strong> selesai. <br><br>
+                                Setelah pembayaran dan <strong>proses administrasi</strong> diselesaikan, Anda akan mendapatkan <strong>akses penuh ke properti</strong>.
                             </div>
                         </div>
                     </div>
                     <div class="card wow fadeInLeft" data-wow-delay="0.3s">
                         <div class="card-header">
                             <a class="card-link collapsed" data-toggle="collapse" href="#collapseThree">
-                                Lorem ipsum dolor sit amet?
+                                Apakah saya bisa beli properti ini secara KPR?
                             </a>
                         </div>
                         <div id="collapseThree" class="collapse" data-parent="#accordion-1">
                             <div class="card-body">
-                                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus nec pretium mi. Curabitur facilisis ornare velit non.
+                                Pengajuan pembelian properti ini melalui <strong>KPR (Kredit Pemilikan Rumah)</strong> sangat bergantung pada kebijakan masing-masing <strong>bank</strong>. Namun, berdasarkan pengalaman kami, sebagian besar bank <strong>tidak menerima</strong pembiayaan KPR untuk properti hasil lelang atau sejenisnya. <br><br>
+                                Untuk memastikan proses yang lebih cepat dan <strong>aman secara hukum</strong>, kami menyarankan metode pembayaran secara <strong>tunai (cash)</strong>. Hal ini membantu mempercepat proses balik nama sertifikat dan serah terima properti tanpa hambatan administrasi dari pihak ketiga.
                             </div>
                         </div>
                     </div>
                     <div class="card wow fadeInLeft" data-wow-delay="0.4s">
                         <div class="card-header">
                             <a class="card-link collapsed" data-toggle="collapse" href="#collapseFour">
-                                Lorem ipsum dolor sit amet?
+                                Bagaimana kekuatan hukum dokumen lelang dibandingkan jual beli biasa?
                             </a>
                         </div>
                         <div id="collapseFour" class="collapse" data-parent="#accordion-1">
                             <div class="card-body">
-                                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus nec pretium mi. Curabitur facilisis ornare velit non.
+                                Dari sisi <strong>legalitas</strong>, pembelian properti melalui <strong>lelang</strong> adalah salah satu proses <strong>paling kuat dan aman</strong> di Indonesia. Sebagai pemenang lelang, Anda mendapatkan <strong>kepastian hukum yang dijamin langsung oleh negara</strong> melalui peraturan perundang-undangan yang berlaku. <br><br>
+                                Semua dokumen, termasuk <strong>Berita Acara Lelang (BAL)</strong> dan <strong>Risalah Lelang</strong>, memiliki kekuatan hukum yang lebih tinggi dibanding akta jual beli di hadapan notaris/PPAT. Dengan demikian, tidak ada pihak lain yang bisa menggugat kepemilikan Anda setelah proses lelang selesai.
                             </div>
                         </div>
                     </div>
                     <div class="card wow fadeInLeft" data-wow-delay="0.5s">
                         <div class="card-header">
                             <a class="card-link collapsed" data-toggle="collapse" href="#collapseFive">
-                                Lorem ipsum dolor sit amet?
+                                Bagaimana jika pemilik lama tidak mau keluar dari rumah?
                             </a>
                         </div>
                         <div id="collapseFive" class="collapse" data-parent="#accordion-1">
                             <div class="card-body">
-                                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus nec pretium mi. Curabitur facilisis ornare velit non.
+                                Anda tidak perlu khawatir mengenai proses <strong>pengosongan rumah</strong>. Sebagai klien, Anda cukup <strong>duduk tenang</strong> dan menerima <strong>dokumen kepemilikan resmi</strong> setelah semua tahapan selesai. <br><br>
+                                Seluruh proses, mulai dari <strong>pengurusan dokumen legal</strong> hingga <strong>pengosongan properti</strong>, akan ditangani sepenuhnya oleh tim kami sesuai prosedur hukum yang berlaku. Kami memastikan properti dalam kondisi <strong>siap serah terima</strong> tanpa hambatan.
                             </div>
+
                         </div>
                     </div>
                 </div>
@@ -757,61 +718,79 @@
                     <div class="card wow fadeInRight" data-wow-delay="0.1s">
                         <div class="card-header">
                             <a class="card-link collapsed" data-toggle="collapse" href="#collapseSix">
-                                Lorem ipsum dolor sit amet?
+                                Apakah saya mendapatkan bukti resmi sebagai pemenang lelang?
                             </a>
                         </div>
                         <div id="collapseSix" class="collapse" data-parent="#accordion-2">
                             <div class="card-body">
-                                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus nec pretium mi. Curabitur facilisis ornare velit non.
+                                Ya, sebagai pemenang lelang Anda akan menerima <strong>Risalah Lelang</strong> dan <strong>Berita Acara Lelang (BAL)</strong> dari Kantor Pelayanan Kekayaan Negara dan Lelang (KPKNL). <br><br>
+                                Kedua dokumen ini memiliki <strong>kekuatan hukum yang sah</strong> dan diakui negara sebagai dasar kepemilikan properti. Dengan dokumen tersebut, hak Anda sebagai pemilik <strong>tidak dapat diganggu gugat</strong> oleh pihak manapun.
                             </div>
                         </div>
                     </div>
                     <div class="card wow fadeInRight" data-wow-delay="0.2s">
                         <div class="card-header">
                             <a class="card-link collapsed" data-toggle="collapse" href="#collapseSeven">
-                                Lorem ipsum dolor sit amet?
+                                Apakah saya bisa menempati properti sebelum dokumen selesai?
                             </a>
                         </div>
                         <div id="collapseSeven" class="collapse" data-parent="#accordion-2">
                             <div class="card-body">
-                                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus nec pretium mi. Curabitur facilisis ornare velit non.
+                                Demi menjaga <strong>kepastian hukum</strong> dan menghindari risiko sengketa, properti hanya dapat ditempati setelah seluruh <strong>proses administrasi dan balik nama sertifikat</strong> selesai. <br><br>
+                                Kami memastikan semua tahapan berjalan cepat dan lancar agar Anda segera dapat <strong>menempati properti</strong> dengan <strong>status kepemilikan yang aman</strong>.
                             </div>
                         </div>
                     </div>
                     <div class="card wow fadeInRight" data-wow-delay="0.3s">
                         <div class="card-header">
                             <a class="card-link collapsed" data-toggle="collapse" href="#collapseEight">
-                                Lorem ipsum dolor sit amet?
+                                Berapa lama proses serah terima setelah lelang?
                             </a>
                         </div>
                         <div id="collapseEight" class="collapse" data-parent="#accordion-2">
                             <div class="card-body">
-                                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus nec pretium mi. Curabitur facilisis ornare velit non.
+                                Proses <strong>serah terima properti</strong> sangat bergantung pada kondisi saat lelang:
+                                <ul>
+                                    <li>Jika properti <strong>sudah kosong</strong>, maka Anda dapat <strong>menempati rumah segera</strong> setelah <strong>balik nama sertifikat</strong> selesai.</li>
+                                    <li>Jika properti masih ditempati, proses <strong>pengosongan</strong> biasanya memerlukan waktu sekitar <strong>3–6 bulan</strong> sesuai prosedur hukum yang berlaku.</li>
+                                </ul>
+                                Tim kami akan mengurus seluruh <strong>proses administrasi</strong> dan memastikan properti dalam kondisi <strong>siap huni</strong> dengan kepemilikan yang <strong>aman dan sah</strong> atas nama Anda.
                             </div>
+
                         </div>
                     </div>
                     <div class="card wow fadeInRight" data-wow-delay="0.4s">
                         <div class="card-header">
                             <a class="card-link collapsed" data-toggle="collapse" href="#collapseNine">
-                                Lorem ipsum dolor sit amet?
+                                Apakah hasil lelang bisa dibatalkan oleh pihak manapun?
                             </a>
                         </div>
                         <div id="collapseNine" class="collapse" data-parent="#accordion-2">
                             <div class="card-body">
-                                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus nec pretium mi. Curabitur facilisis ornare velit non.
+                                Tidak. Setelah Anda dinyatakan sebagai <strong>pemenang lelang</strong>, hasil lelang bersifat <strong>final dan mengikat secara hukum</strong>. Dokumen resmi seperti <strong>Risalah Lelang</strong> dan <strong>Berita Acara Lelang (BAL)</strong> memiliki <strong>kekuatan eksekutorial</strong> yang diakui negara. <br><br>
+                                Dengan demikian, tidak ada pihak manapun yang dapat <strong>membatalkan atau menggugat hasil lelang</strong> setelah proses selesai.
                             </div>
+
                         </div>
                     </div>
                     <div class="card wow fadeInRight" data-wow-delay="0.5s">
                         <div class="card-header">
                             <a class="card-link collapsed" data-toggle="collapse" href="#collapseTen">
-                                Lorem ipsum dolor sit amet?
+                                Bagaimana perlindungan hukum saya sebagai pemenang lelang?
                             </a>
                         </div>
                         <div id="collapseTen" class="collapse" data-parent="#accordion-2">
                             <div class="card-body">
-                                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus nec pretium mi. Curabitur facilisis ornare velit non.
+                                Sebagai <strong>pemenang lelang</strong>, hak kepemilikan Anda dilindungi penuh oleh hukum. Dokumen resmi seperti <strong>Risalah Lelang</strong> dan <strong>Berita Acara Lelang (BAL)</strong> yang dikeluarkan oleh <strong>Kantor Pelayanan Kekayaan Negara dan Lelang (KPKNL)</strong> memiliki <strong>kekuatan eksekutorial</strong> yang sah di mata hukum. <br><br>
+                                Perlindungan hukum ini diatur dalam:
+                                <ul>
+                                    <li><strong>Undang-Undang Nomor 5 Tahun 1960</strong> tentang Pokok Agraria</li>
+                                    <li><strong>Peraturan Menteri Keuangan RI Nomor 213/PMK.06/2020</strong> tentang Petunjuk Pelaksanaan Lelang</li>
+                                    <li><strong>Herzien Inlandsch Reglement (HIR) Pasal 224</strong> yang mengatur eksekusi hasil lelang</li>
+                                </ul>
+                                Dengan dasar hukum tersebut, kepemilikan Anda <strong>tidak dapat dibatalkan atau digugat oleh pihak manapun</strong>. Anda mendapatkan <strong>kepastian hukum 100%</strong> sebagai pemilik sah properti.
                             </div>
+
                         </div>
                     </div>
                 </div>

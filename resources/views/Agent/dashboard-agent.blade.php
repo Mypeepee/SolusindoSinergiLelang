@@ -423,8 +423,7 @@
 {{-- JAVASCRIPT --}}
 <script>
 function handleInputKuitansi(id_account, id_listing) {
-    // ⏳ Set tombol loading
-    button.disabled = true;
+
     button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Loading...';
     fetch("{{ url('/update-status-closing') }}", { // ✅ pakai route baru
         method: "POST",
@@ -457,8 +456,7 @@ function handleInputKuitansi(id_account, id_listing) {
 }
 
 function updateProgress(id_account, id_listing, status, callback = null) {
-        // ⏳ Set tombol loading
-        button.disabled = true;
+
     button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Loading...';
     fetch("{{ url('/update-status-closing') }}", { // ✅ ganti ke route yg update kedua tabel
         method: "POST",
@@ -481,8 +479,7 @@ function updateProgress(id_account, id_listing, status, callback = null) {
 }
 
 function handleInputRisalahLelang(id_account, id_listing) {
-        // ⏳ Set tombol loading
-        button.disabled = true;
+
     button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Loading...';
     fetch("{{ url('/update-status-closing') }}", {
         method: "POST",
@@ -541,9 +538,8 @@ function formatNumberWithDots(value) {
     }
 
 function updateStatus(id_account, id_listing, status, callback = null) {
-        // ⏳ Set tombol loading
-        button.disabled = true;
-    button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Loading...';
+
+
     fetch("{{ url('/update-status') }}", {
         method: "POST",
         headers: {

@@ -222,9 +222,6 @@
                                                         <i class="fa fa-chart-line me-2"></i>Analisa market
                                                       </a>
                                                 </li>
-                                                <li class="nav-item">
-                                                  <a class="nav-link" data-bs-toggle="tab" href="#features-tab-5">Iusto ut expedita aut</a>
-                                                </li>
                                               </ul>
                                             </div>
                                             <div class="col-lg-9 mt-4 mt-lg-0">
@@ -456,18 +453,7 @@
 
 
 
-                                                <div class="tab-pane" id="features-tab-5">
-                                                  <div class="row">
-                                                    <div class="col-lg-8 details order-2 order-lg-1">
-                                                      <h3>Est eveniet ipsam sindera pad rone matrelat sando reda</h3>
-                                                      <p class="fst-italic">Omnis blanditiis saepe eos autem qui sunt debitis porro quia.</p>
-                                                      <p>Exercitationem nostrum omnis. Ut reiciendis repudiandae minus. Omnis recusandae ut non quam ut quod eius qui. Ipsum quia odit vero atque qui quibusdam amet. Occaecati sed est sint aut vitae molestiae voluptate vel</p>
-                                                    </div>
-                                                    <div class="col-lg-4 text-center order-1 order-lg-2">
-                                                      <img src="assets/img/tabs/tab-5.png" alt="" class="img-fluid">
-                                                    </div>
-                                                  </div>
-                                                </div>
+
                                               </div>
                                             </div>
                                           </div>

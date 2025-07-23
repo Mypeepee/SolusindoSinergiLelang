@@ -27,11 +27,14 @@ class HomeController extends Controller
             ];
         });
 
-        // Ambil 6 properti random dengan status "Tersedia"
-        $hotListings = Property::where('status', 'Tersedia')
-            ->inRandomOrder()
-            ->take(6)
-            ->get();
+// Ambil 6 properti random dengan status "Tersedia" dan ada gambar
+$hotListings = Property::where('status', 'Tersedia')
+    ->whereNotNull('gambar')       // ✅ pastikan kolom gambar tidak null
+    ->where('gambar', '!=', '')    // ✅ pastikan kolom gambar tidak kosong
+    ->inRandomOrder()
+    ->take(6)
+    ->get();
+
 
         // Ambil testimonial terakhir dengan rating
         $testimonials = DB::table('transaction')

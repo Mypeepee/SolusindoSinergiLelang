@@ -68,7 +68,9 @@ class productController extends Controller
         $city = $request->input('kota'); // Ambil input kota
 
         // Mulai query properti
-        $query = Property::where('status', 'available');
+        $query = Property::where('status', 'available')
+        ->whereNotNull('gambar') // ✅ hanya properti yang punya gambar
+        ->where('gambar', '!=', '');
 
         // Cek dan tambahkan filter harga jika ada
         if (!is_null($minPrice) && $minPrice !== '') {
@@ -100,7 +102,9 @@ class productController extends Controller
     public function index(Request $request)
     {
         // Filter properti dengan status available
-        $query = Property::where('status', 'available');
+        $query = Property::where('status', 'available')
+        ->whereNotNull('gambar') // ✅ hanya properti yang punya gambar
+        ->where('gambar', '!=', '');
 
         // Jika ada filter tipe, gunakan filter itu
         if ($request->has('tipe') && !empty($request->input('tipe'))) {

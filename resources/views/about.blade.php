@@ -34,9 +34,8 @@
                         <p class="mb-4">Banyak yang ragu membeli rumah lewat lelang karena dianggap rumit dan bermasalah. Padahal, lelang bisa menjadi cara efektif mendapatkan properti dengan harga di bawah nilai pasar. Proses lelang kini transparan dan mudah diikuti, terutama dengan bantuan agen profesional seperti kami yang khusus menangani pembelian properti lelang, membeli rumah lewat lelang menjadi langkah cerdas dan aman untuk investasi properti Anda.</p>
                         <p><i class="fa fa-check text-primary me-3"></i>Sah Secara Hukum untuk Menjual Asset Lelang</p>
                         <p><i class="fa fa-check text-primary me-3"></i>Motto Kami adalah Duduk - Diam - Ambil Dokumen</p>
-                        <p><i class="fa fa-check text-primary me-3"></i>Mempunyai Lebih Dari 100 Ribu Database Listing</p>
-                        <p><i class="fa fa-check text-primary me-3"></i>Garansi Serah Terima Asset Kurang dari 1 Tahun</p>
-                        <p><i class="fa fa-check text-primary me-3"></i>Tingkat kemenangan kami 100%</p>
+                        <p><i class="fa fa-check text-primary me-3"></i>Mempunyai lebih dari 100 ribu listing diseluruh Indonesia</p>
+                        <p><i class="fa fa-check text-primary me-3"></i>Garansi 100% serah terima kunci</p>
                     </div>
                 </div>
             </div>
