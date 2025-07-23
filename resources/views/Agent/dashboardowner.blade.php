@@ -19,6 +19,7 @@
 .property-card .action-btn {
     transition: all 0.3s ease;
 }
+
 </style>
 
 
@@ -222,11 +223,12 @@
                                                         </form>
 
                                                         <!-- Tombol Tolak -->
-                                                        <a href="https://wa.me/62{{ ltrim($agent->nomor_telepon, '0') }}?text={{ urlencode('Maaf, pendaftaran Anda sebagai agent ditolak. Silakan lengkapi data dan ajukan ulang.') }}"
-                                                        class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-sm"
-                                                        target="_blank">
-                                                            <i class="fa fa-times me-1"></i> Tolak
-                                                        </a>
+                                                        <form action="{{ route('reject.agent', $agent->id_account) }}" method="POST">
+                                                            @csrf
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-sm">
+                                                                <i class="fa fa-times me-1"></i> Tolak
+                                                            </button>
+                                                        </form>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -283,9 +285,9 @@
                                                     <th>ID Agent</th>
                                                     <th>Lokasi</th>
                                                     <th>Harga</th>
-                                                    <th>Progres</th>
-                                                    <th>Aksi</th>
-                                                    <th>Download KTP</th>
+                                                    <th>Progress</th>
+                                                    <th>Status</th>
+                                                    <th>Detail</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -328,102 +330,14 @@
                                                         @php
                                                             $status = $client->status; // biar konsisten kita nggak ubah case
                                                         @endphp
-
-                                                        <td style="min-width: 220px;">
-                                                            @if ($status === 'Gagal')
-                                                            <span class="badge bg-danger">GAGAL</span>
-
-                                                            @elseif ($status === 'Pending')
-                                                            @php
-                                                                $pesan = urlencode("Halo {$client->nama}, saya ingin memastikan apakah ada informasi yang bisa saya bantu terkait rumah di {$client->lokasi}?");
-
-                                                            @endphp
-                                                            <a href="https://wa.me/+62{{ $client->nomor_telepon }}?text={{ $pesan }}"
-                                                            class="btn btn-sm btn-success mb-1"
-                                                            target="_blank"
-                                                            onclick="
-                                                                    // Jalankan update status di background
-                                                                    updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'FollowUp');">
-                                                                FollowUp
-                                                            </a>
-
-                                                            @elseif (!$status || $status === null)
-                                                            <a href="https://wa.me/{{ $client->nomor_telepon }}"
-                                                            class="btn btn-sm btn-success mb-1" target="_blank"
-                                                            onclick="updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'FollowUp')">
-                                                                WA
-                                                            </a>
-
-                                                            @elseif ($status === 'FollowUp')
-                                                            @php
-                                                                $alamatProperty = $client->lokasi;
-                                                                $pesan = urlencode(
-                                                                    "📅 Reminder Buyer Meeting\n" .
-                                                                    "Obyek: {$alamatProperty}\n" .
-                                                                    "Hari: Senin\n" . // agent nanti ubah manual
-                                                                    "Tanggal: ".date('Y-m-d')."\n" .
-                                                                    "Pukul: 13:00\n\n" . // agent nanti ubah manual
-                                                                    "📍 Lokasi: Solitaire Property\n" .
-                                                                    "Justicia Law Firm\n" .
-                                                                    "Kantor Pemasaran dan Layanan Hukum\n" .
-                                                                    "Santorini Town Square\n" .
-                                                                    "Jl. Ronggolawe No.2A, DR. Soetomo\n" .
-                                                                    "Kec. Tegalsari, Surabaya, Jawa Timur 60160\n\n" .
-                                                                    "🌐 GMAP: https://maps.app.goo.gl/6gR4s3xDtEaeEya26?g_st=awb"
-                                                                );
-                                                            @endphp
-
-                                                            <a href="https://wa.me/+62{{ $client->nomor_telepon }}?text={{ $pesan }}"
-                                                            class="btn btn-sm btn-primary mb-1"
-                                                            target="_blank"
-                                                            onclick="
-                                                                // Jalankan update status di background
-                                                                updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'BuyerMeeting');
-                                                            ">
-                                                                Buyer Meeting
-                                                            </a>
-
-                                                            <button class="btn btn-sm btn-outline-danger mb-1"
-                                                                onclick="updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Gagal')">
-                                                                Batal
-                                                            </button>
-
-                                                            @elseif ($status === 'BuyerMeeting')
-                                                            <a href="{{ route('closing.show', ['id_listing' => $client->id_listing, 'id_klien' => $client->id_account]) }}"
-                                                                class="btn btn-sm btn-success mb-1">
-                                                                 Closing
-                                                             </a>
-                                                            <button class="btn btn-sm btn-warning mb-1"
-                                                                onclick="updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Pending')">
-                                                                Pending
-                                                            </button>
-                                                            <button class="btn btn-sm btn-outline-danger mb-1"
-                                                                onclick="updateStatus('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Gagal')">
-                                                                Cancel
-                                                            </button>
-                                                            @else
-                                                                <span class="badge bg-success text-uppercase">{{ $status }}</span>
-                                                            @endif
-
-                                                            @if ($progress === 100 && $status !== 'Pending')
-                                                                <button class="btn btn-sm btn-outline-secondary mt-1"
-                                                                    onclick="hideRow('{{ $client->id_account }}', '{{ $client->id_listing }}')">
-                                                                    Hide
+                                                        <td>{{ $client->status }}</td>
+                                                        <td>
+                                                            <form action="{{ route('dashboard.detail', ['id_listing' => $client->id_listing, 'id_account' => $client->id_account]) }}" method="GET">
+                                                                @csrf
+                                                                <button type="submit" class="btn btn-sm bg-secondary text-white rounded-pill px-3 shadow-sm">
+                                                                    Detail
                                                                 </button>
-                                                            @endif
-                                                        </td>
-
-                                                        <td style="min-width: 150px;">
-                                                            @if ($client->gambar_ktp)
-                                                            <a href="{{ asset('storage/ktp/'.$client->gambar_ktp) }}"
-                                                                class="btn btn-sm btn-outline-info"
-                                                                download="{{ $client->gambar_ktp }}">
-                                                                Download KTP
-                                                            </a>
-
-                                                            @else
-                                                                <span class="text-muted">Belum Ada</span>
-                                                            @endif
+                                                            </form>
                                                         </td>
                                                     </tr>
                                                 @empty

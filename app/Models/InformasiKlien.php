@@ -22,6 +22,8 @@ class InformasiKlien extends Model
         'tanggal_diupdate',
     ];
 
+    protected $table = 'informasi_klien'; // 👈 force pakai tabel singular
+
     // InformasiKlien dan Account (One to One)
     public function account(): BelongsTo
     {

@@ -177,6 +177,7 @@ Route::post('/pengosongan/selesai', [AgentAdminController::class, 'selesaikan'])
 Route::post('/pengosongan/rating', [CartDetailController::class, 'storeRating']);
 
 Route::post('/verify-agent/{id_account}', [AgentAdminController::class, 'verifyAgent'])->name('verify.agent');
+Route::post('/reject-agent/{id_account}', [AgentAdminController::class, 'rejectAgent'])->name('reject.agent');
 Route::post('/verify-client/{id_account}', [AgentAdminController::class, 'verifyClient'])->name('verify.client');
 Route::post('/reject-client/{id_account}', [AgentAdminController::class, 'rejectClient'])->name('reject.client');
 
@@ -202,6 +203,10 @@ Route::post('/update-status-closing', [AgentAdminController::class, 'updateStatu
 // Route untuk update KTP
 Route::post('/ktp/update', [PropertyagentController::class, 'updateKTP'])->name('ktp.update');
 Route::post('/agent/update-npwp', [PropertyagentController::class, 'updateNPWP'])->name('agent.updateNPWP');
+
+//  detail dashboard
+Route::get('/dashboard/detail/{id_listing}/{id_account}', [AgentAdminController::class, 'dashboardDetail'])->name('dashboard.detail');
+Route::post('/dashboard/detail/{id_listing}/{id_account}/update-status', [AgentAdminController::class, 'updateOwner'])->name('dashboard.updateOwner');
 
 //scrape dari dashboard owner
 Route::post('/scrape-property', [AgentAdminController::class, 'scrape'])->name('property.scrape');

@@ -3,9 +3,14 @@
 namespace App\Http\Controllers;
 
 use Carbon\Carbon;
-use Illuminate\Http\Request;
+use App\Models\Account;
 
+use App\Models\Transaction;
+use Illuminate\Http\Request;
+use App\Models\InformasiKlien;
+use App\Models\PropertyInterest;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Artisan;
 
 class AgentAdminController extends Controller
@@ -741,6 +746,22 @@ public function updateStatusClosing(Request $request)
         return redirect()->away("https://wa.me/{$waNumber}?text={$message}");
     }
 
+    public function rejectAgent($id_account)
+    {
+        // Update status di tabel agent menjadi 'Aktif'
+        DB::table('agent')
+            ->where('id_account', $id_account)
+            ->update(['status' => 'Ditolak']);
+
+        // Ambil nomor telepon untuk redirect
+        $account = DB::table('account')->where('id_account', $id_account)->first();
+        $waNumber = '62' . ltrim($account->nomor_telepon, '0');
+
+        $message = urlencode('Selamat! Akun Anda telah resmi menjadi agent kami.');
+
+        return redirect()->away("https://wa.me/{$waNumber}?text={$message}");
+    }
+
     public function verifyClient($id_account)
     {
         DB::table('informasi_klien')
@@ -770,6 +791,199 @@ public function updateStatusClosing(Request $request)
 
         return redirect()->away("https://wa.me/{$waNumber}?text={$message}");
     }
+
+    public function dashboardDetail($id_listing, $id_account)
+    {
+        $property = DB::table('property')->where('id_listing', $id_listing)->first();
+
+        if (!$property) {
+            return redirect()->route('dashboard.owner')->with('error', 'Properti tidak ditemukan.');
+        }
+
+        $client = null;
+        $statusTransaksi = null;
+        $progressType = null;
+
+        $transaction = Transaction::where('id_listing', $id_listing)
+            ->where('id_klien', $id_account)
+            ->first();
+
+        if ($transaction) {
+            $statusTransaksi = $transaction->status_transaksi;
+
+            if (in_array($statusTransaksi, ['Closing', 'Kuitansi', 'Kode Billing', 'Kutipan Risalah Lelang', 'Akte Grosse', 'Balik Nama'])) {
+                $progressType = 'register';
+            } elseif (in_array($statusTransaksi, ['Balik Nama', 'Eksekusi Pengosongan', 'Selesai'])) {
+                $progressType = 'pengosongan';
+            }
+        } else {
+            $propertyInterest = PropertyInterest::where('id_listing', $id_listing)
+                ->where('id_klien', $id_account)
+                ->first();
+
+            if ($propertyInterest) {
+                $statusTransaksi = $propertyInterest->status;
+                $progressType = 'agent';
+            }
+        }
+
+
+        // Ambil data klien
+        if ($id_account) {
+            $account = Account::where('id_account', $id_account)->first();
+            $informasi = InformasiKlien::where('id_account', $id_account)->first();
+
+            $client = (object)[
+                'id_account'    => $id_account,
+                'nama'          => $account->nama ?? '-',
+                'nomor_telepon' => $account->nomor_telepon ?? '-',
+                'gambar_ktp'    => $informasi->gambar_ktp ?? null,
+                'gambar_npwp'   => $informasi->gambar_npwp ?? null,
+            ];
+        }
+
+        return view('Agent.detail', [
+            'property'         => $property,
+            'client'           => $client,
+            'statusTransaksi'  => $statusTransaksi,
+            'progressType'     => $progressType,
+        ]);
+    }
+
+    public function updateOwner(Request $request, $id_listing, $id_account)
+    {
+        $request->validate([
+            'status' => 'required|string',
+            'buyer_meeting_datetime' => 'nullable|date',
+            'harga_bidding' => 'nullable|numeric'
+        ]);
+
+        $status = $request->status;
+
+        // ✅ Kalau Closing → lakukan proses tambahan
+        if ($status === 'Closing') {
+            try {
+                DB::beginTransaction();
+
+                // Ambil data property
+                $property = DB::table('property')->where('id_listing', $id_listing)->first();
+                if (!$property) {
+                    throw new \Exception('Property tidak ditemukan.');
+                }
+
+                // Ambil data agent dari property
+                $idAgent = $property->id_agent;
+                $hargaDeal = (int) $property->harga;
+
+                // Ambil id_account agent yang login
+                $idAccountAgent = Auth::user()->id_account;
+                
+                // Harga bidding dari request
+                $hargaBidding = (int) str_replace('.', '', $request->harga_bidding);
+                if ($hargaBidding < 1) {
+                    return back()->withErrors(['harga_bidding' => 'Harga bidding harus lebih besar dari 0.']);
+                }
+                if ($hargaBidding > $hargaDeal) {
+                    return back()->withErrors(['harga_bidding' => 'Harga bidding tidak boleh lebih besar dari harga deal.']);
+                }
+
+                // Generate ID transaksi unik (TRX001, TRX002)
+                $lastTransaction = DB::table('transaction')->latest('id_transaction')->first();
+                $newIdNumber = $lastTransaction
+                    ? str_pad((int)substr($lastTransaction->id_transaction, 3) + 1, 3, '0', STR_PAD_LEFT)
+                    : '001';
+                $idTransaction = 'TRX' . $newIdNumber;
+
+                // Hitung selisih & komisi agent
+                $selisih = $hargaDeal - $hargaBidding;
+                $komisiAgent = floor($selisih * 0.4);
+
+                // Insert ke tabel transaction
+                DB::table('transaction')->insert([
+                    'id_transaction'     => $idTransaction,
+                    'id_agent'           => $idAgent,
+                    'id_klien'           => $id_account,
+                    'id_listing'         => $id_listing,
+                    'harga_deal'         => $hargaDeal,
+                    'harga_bidding'      => $hargaBidding,
+                    'selisih'            => $selisih,
+                    'komisi_agent'       => $komisiAgent,
+                    'status_transaksi'   => 'Closing',
+                    'tanggal_transaksi'  => now()->toDateString(),
+                    'tanggal_dibuat'     => now(),
+                    'tanggal_diupdate'   => now(),
+                ]);
+
+                // Insert ke transaction_details
+                DB::table('transaction_details')->insert([
+                    'id_account'         => $idAccountAgent,
+                    'id_transaction'     => $idTransaction,
+                    'status_transaksi'   => 'Closing',
+                    'catatan'            => 'Transaksi berhasil dibuat oleh agent.',
+                    'tanggal_dibuat'     => now(),
+                    'tanggal_diupdate'   => now(),
+                ]);
+
+                // Update status di property_interests
+                DB::table('property_interests')
+                    ->where('id_listing', $id_listing)
+                    ->where('id_klien', $id_account)
+                    ->update([
+                        'status'            => 'Closing',
+                        'tanggal_diupdate'  => now(),
+                    ]);
+
+                // Update status di property
+                DB::table('property')
+                    ->where('id_listing', $id_listing)
+                    ->update([
+                        'status'            => 'Terjual',
+                        'tanggal_diupdate'  => now(),
+                    ]);
+
+                // Tambah jumlah penjualan agent
+                DB::table('agent')
+                    ->where('id_agent', $idAgent)
+                    ->update([
+                        'jumlah_penjualan' => DB::raw('jumlah_penjualan + 1'),
+                    ]);
+
+                DB::commit();
+
+                return redirect()->back()->with('success', '✅ Transaksi Closing berhasil disimpan!');
+            } catch (\Throwable $e) {
+                DB::rollBack();
+                return back()->withErrors(['error' => '❌ Gagal Closing: ' . $e->getMessage()]);
+            }
+        }
+
+        // ✅ Kalau status lain → jalankan logika biasa
+        if (in_array($status, ['Pending', 'FollowUp', 'BuyerMeeting', 'Gagal'])) {
+            // Progress Agent → property_interests
+            PropertyInterest::where('id_listing', $id_listing)
+                ->where('id_klien', $id_account)
+                ->update(['status' => $status]);
+
+            // Kalau BuyerMeeting → update tanggal di property
+            if ($status === 'BuyerMeeting' && $request->buyer_meeting_datetime) {
+                DB::table('property')->where('id_listing', $id_listing)
+                    ->update(['tanggal_buyer_meeting' => $request->buyer_meeting_datetime]);
+            }
+
+        } elseif (in_array($status, [
+            'Kuitansi', 'Kode Billing', 'Kutipan Risalah Lelang',
+            'Akte Grosse', 'Balik Nama', 'Eksekusi Pengosongan', 'Selesai'
+        ])) {
+            // Progress Register/Pengosongan → transaction
+            Transaction::where('id_listing', $id_listing)
+                ->where('id_klien', $id_account)
+                ->update(['status_transaksi' => $status]);
+        }
+
+        return redirect()->back()->with('success', 'Status berhasil diperbarui.');
+    }
+
+
 
     public function scrape(Request $request)
     {

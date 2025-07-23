@@ -24,6 +24,8 @@ class Transaction extends Model
         'rating',
         'comment',
     ];
+    
+    protected $table = 'transaction'; // 👈 force pakai tabel singular
 
     // Transaction dan Agent (Many to One)
     public function agent(): BelongsTo
