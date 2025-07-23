@@ -146,12 +146,14 @@
                                 </div>
 
 
-                                <a href="{{ $property->agent && $property->agent->nomor_telepon ?
-                                    'https://wa.me/62' . ltrim($property->agent->nomor_telepon, '0') : '#' }}"
-                                    class="btn btn-primary py-3 px-4 me-2"
-                                    {{ $property->agent && $property->agent->nomor_telepon ? '' : 'onclick="return false;"' }}>
-                                    <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
+                                <a href="{{ $property->agent && $property->agent->nomor_telepon
+                                    ? 'https://wa.me/62' . ltrim($property->agent->nomor_telepon, '0') . '?text=' . urlencode('Halo ' . $property->agent->nama . ', saya melihat property "' . $property->lokasi . '" di website. Bisa minta info lebih lengkap tentang property tersebut?')
+                                    : '#' }}"
+                                   class="btn btn-primary py-3 px-4 me-2"
+                                   {{ $property->agent && $property->agent->nomor_telepon ? '' : 'onclick="return false;"' }}>
+                                   <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
                                 </a>
+
 
                                 <!-- Button Ikuti Lelang -->
                                 @if (Session::has('id_account') || Cookie::has('id_account'))
