@@ -18,6 +18,10 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
+use Google\Service\Drive\Permission; // pastikan ini ditambahkan
+use Google\Client;
+use Illuminate\Support\Facades\Http;
+
 
 class AuthController extends Controller
 {
@@ -409,6 +413,7 @@ class AuthController extends Controller
         return redirect('/login')->with('success', 'Registrasi berhasil, silakan login.');
     }
 
+
     public function save(Request $request)
     {
         $request->validate([
@@ -431,15 +436,55 @@ class AuthController extends Controller
             'tanggal_diupdate' => now(),
         ];
 
-        // Decode base64 cropped image dan simpan
+        // Upload gambar KTP ke Google Drive
         if ($request->filled('cropped_image')) {
             $base64Image = $request->input('cropped_image');
             $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $base64Image));
             $filename = 'ktp_' . uniqid() . '.jpg';
-            Storage::disk('public')->put("ktp/{$filename}", $imageData);
-            $data['gambar_ktp'] = "ktp/{$filename}";
+
+            // Simpan file ke temp path
+            $tempDir = storage_path('app/temp');
+            if (!file_exists($tempDir)) {
+                mkdir($tempDir, 0755, true);
+            }
+            $tempPath = $tempDir . "/{$filename}";
+            file_put_contents($tempPath, $imageData);
+
+            // Ambil access token dari GdriveController
+            $accessToken = app(\App\Http\Controllers\GdriveController::class)->token();
+
+            // Upload ke Google Drive
+            $response = Http::withToken($accessToken)
+    ->attach(
+        'metadata',
+        json_encode([
+            'name' => $filename,
+            'parents' => [config('services.google.folder_id')],
+        ]),
+        'metadata.json'
+    )
+    ->attach('file', file_get_contents($tempPath), $filename)
+    ->post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart');
+
+            if ($response->successful()) {
+                $fileId = json_decode($response->body())->id;
+
+                // Buat publik (opsional)
+                Http::withToken($accessToken)
+                    ->post("https://www.googleapis.com/drive/v3/files/{$fileId}/permissions", [
+                        'role' => 'reader',
+                        'type' => 'anyone',
+                    ]);
+
+                // Simpan ID dan URL publik
+                $data['gambar_ktp'] = $fileId;
+            }
+
+            // Hapus file sementara
+            unlink($tempPath);
         }
 
+        // Simpan ke database
         $id_account = session('id_account');
         $existing = DB::table('informasi_klien')->where('id_account', $id_account)->first();
 
@@ -452,7 +497,7 @@ class AuthController extends Controller
         }
 
         return redirect()->route('profile', ['id_account' => $id_account])
-            ->with('success', 'Data KTP berhasil disimpan!');
+            ->with('success', 'Data KTP berhasil disimpan dan diunggah ke Google Drive!');
     }
 
 

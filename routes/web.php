@@ -19,6 +19,9 @@ use App\Http\Controllers\propertytypeController;
 use App\Http\Controllers\propertyagentController;
 use App\Http\Controllers\propertydetailController;
 
+
+
+
 Route::get('/', [HomeController::class, 'Home'])->name('home');
 
 
