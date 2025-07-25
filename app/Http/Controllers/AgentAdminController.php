@@ -816,6 +816,17 @@ public function updateStatusClosing(Request $request)
             } elseif (in_array($statusTransaksi, ['Balik Nama', 'Eksekusi Pengosongan', 'Selesai'])) {
                 $progressType = 'pengosongan';
             }
+
+            // Ambil catatan dari transaction_details
+            $transactionNotes = DB::table('transaction_details')
+                ->join('account', 'transaction_details.id_account', '=', 'account.id_account')
+                ->where('transaction_details.id_transaction', $transaction->id_transaction)
+                ->orderByDesc('transaction_details.tanggal_dibuat')
+                ->select(
+                    'transaction_details.*',
+                    'account.nama as account_name'
+                )
+                ->get();
         } else {
             $propertyInterest = PropertyInterest::where('id_listing', $id_listing)
                 ->where('id_klien', $id_account)
@@ -847,6 +858,7 @@ public function updateStatusClosing(Request $request)
             'client'           => $client,
             'statusTransaksi'  => $statusTransaksi,
             'progressType'     => $progressType,
+            'transactionNotes' => $transactionNotes,
         ]);
     }
 
@@ -855,29 +867,28 @@ public function updateStatusClosing(Request $request)
         $request->validate([
             'status' => 'required|string',
             'buyer_meeting_datetime' => 'nullable|date',
-            'harga_bidding' => 'nullable|numeric'
         ]);
-
+    
         $status = $request->status;
-
+        
         // ✅ Kalau Closing → lakukan proses tambahan
         if ($status === 'Closing') {
             try {
                 DB::beginTransaction();
-
+                
                 // Ambil data property
                 $property = DB::table('property')->where('id_listing', $id_listing)->first();
                 if (!$property) {
                     throw new \Exception('Property tidak ditemukan.');
                 }
-
+                
                 // Ambil data agent dari property
                 $idAgent = $property->id_agent;
                 $hargaDeal = (int) $property->harga;
-
-                // Ambil id_account agent yang login
-                $idAccountAgent = Auth::user()->id_account;
                 
+                // Ambil id_account agent yang login
+                $idAccountAgent = 'AC001';
+
                 // Harga bidding dari request
                 $hargaBidding = (int) str_replace('.', '', $request->harga_bidding);
                 if ($hargaBidding < 1) {
@@ -886,7 +897,7 @@ public function updateStatusClosing(Request $request)
                 if ($hargaBidding > $hargaDeal) {
                     return back()->withErrors(['harga_bidding' => 'Harga bidding tidak boleh lebih besar dari harga deal.']);
                 }
-
+                
                 // Generate ID transaksi unik (TRX001, TRX002)
                 $lastTransaction = DB::table('transaction')->latest('id_transaction')->first();
                 $newIdNumber = $lastTransaction
@@ -919,7 +930,7 @@ public function updateStatusClosing(Request $request)
                     'id_account'         => $idAccountAgent,
                     'id_transaction'     => $idTransaction,
                     'status_transaksi'   => 'Closing',
-                    'catatan'            => 'Transaksi berhasil dibuat oleh agent.',
+                    'catatan'            => 'Transaksi berhasil dibuat oleh owner.',
                     'tanggal_dibuat'     => now(),
                     'tanggal_diupdate'   => now(),
                 ]);

@@ -370,6 +370,7 @@
                                         <th style="min-width: 160px;">Proges</th>
                                         <th style="min-width: 160px;">Aksi</th> <!-- ✅ Lebih lebar -->
                                         <th style="min-width: 160px;">Surat Kuasa</th> <!-- ✅ Lebih lebar -->
+                                        <th style="min-width: 160px;">Detail</th> 
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -443,6 +444,14 @@
                                             class="btn btn-sm btn-outline-primary rounded-pill">
                                                 <i class="bi bi-download"></i>
                                             </a>
+                                        </td>
+                                        <td>
+                                            <form action="{{ route('dashboard.detail', ['id_listing' => $client->id_listing, 'id_account' => $client->id_account]) }}" method="GET">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm bg-secondary text-white rounded-pill px-3 shadow-sm">
+                                                    Detail
+                                                </button>
+                                            </form>
                                         </td>
                                     </tr>
                                     @empty
