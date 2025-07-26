@@ -44,44 +44,47 @@
         </div>
         <div class="row g-4">
             @foreach ($agents as $agent)
-                @if (!request('agent_name') || str_contains(strtolower($agent->nama), strtolower(request('agent_name'))))
-                <div class="col-lg-3 col-md-4 wow fadeInUp">
-                    <div class="team-item rounded overflow-hidden">
-                        <div class="position-relative">
-                            <a href="{{ route('property.agent', ['agent_id' => $agent->id_agent]) }}">
-                                <img class="img-fluid"
-     src="{{ $agent->picture ? asset('storage/' . $agent->picture) : asset('images/default-profile.png') }}"
-     alt="{{ $agent->nama }}">
-
-                            </a>
-                            <!-- Tombol Sosial -->
-                            <div class="position-absolute start-50 top-100 translate-middle d-flex align-items-center">
-                                @if($agent->facebook)
-                                    <a class="btn btn-square mx-1" href="https://{{ $agent->facebook }}" target="_blank">
-                                        <i class="fab fa-facebook-f"></i>
-                                    </a>
-                                @endif
-                                @if($agent->nomor_telepon)
-                                    <a class="btn btn-square mx-1" href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $agent->nomor_telepon) }}" target="_blank">
-                                        <i class="fab fa-whatsapp"></i>
-                                    </a>
-                                @endif
-                                @if($agent->instagram)
-                                    <a class="btn btn-square mx-1" href="https://instagram.com/{{ ltrim($agent->instagram, '@') }}" target="_blank">
-                                        <i class="fab fa-instagram"></i>
-                                    </a>
-                                @endif
-                            </div>
-                        </div>
-                        <div class="text-center p-4 mt-2">
-                            <a href="{{ route('property.agent', ['agent_id' => $agent->id_agent]) }}" class="text-dark text-decoration-none">
-                                <h5 class="fw-bold mb-0">{{ $agent->nama }}</h5>
-                            </a>
-                        </div>
-                    </div>
+    @if (!request('agent_name') || str_contains(strtolower($agent->nama), strtolower(request('agent_name'))))
+    <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+        <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden">
+            <a href="{{ route('property.agent', ['agent_id' => $agent->id_agent]) }}">
+                <div class="ratio ratio-1x1 bg-light overflow-hidden">
+                    <img class="w-100 h-100 object-fit-cover"
+                         src="{{ $agent->picture ? 'https://drive.google.com/thumbnail?id=' . $agent->picture : asset('images/default-profile.png') }}"
+                         alt="{{ $agent->nama }}">
                 </div>
-                @endif
-            @endforeach
+            </a>
+
+            <div class="text-center p-3">
+                <h6 class="fw-bold mb-2">{{ $agent->nama }}</h6>
+                <div class="d-flex justify-content-center gap-2">
+                    @if($agent->facebook)
+                        <a class="btn btn-sm btn-outline-primary rounded-circle" href="https://{{ $agent->facebook }}" target="_blank">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                    @endif
+                    @if($agent->nomor_telepon)
+                        <a class="btn btn-sm btn-outline-success rounded-circle" href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $agent->nomor_telepon) }}" target="_blank">
+                            <i class="fab fa-whatsapp"></i>
+                        </a>
+                    @endif
+                    @if($agent->instagram)
+                        <a class="btn btn-sm btn-outline-danger rounded-circle" href="https://instagram.com/{{ ltrim($agent->instagram, '@') }}" target="_blank">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+@endforeach
+<style>
+.object-fit-cover {
+    object-fit: cover;
+    object-position: center;
+}
+    </style>
         </div>
     </div>
 </div>
