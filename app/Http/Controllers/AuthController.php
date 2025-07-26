@@ -58,92 +58,138 @@ class AuthController extends Controller
     return view('register-agent', compact('user', 'informasi_klien', 'isPending', 'isRejected'));
 }
 
-
-
-    public function registerAgent(Request $request)
-    {
-        $request->validate([
-            'id_account' => 'required|string|exists:account,id_account',
-            'nama' => 'required|string|max:100',
-            'deskripsi' => 'nullable|string|max:2200',
-            'nomor_telepon' => 'required|string|max:15',
-            'email' => 'nullable|email|max:100',
-            'instagram' => 'nullable|string|max:50',
-            'facebook' => 'nullable|string|max:50',
-            'lokasi_kerja' => 'required|string|max:100',
-            'kota' => 'nullable|string|max:100',
-            'picture' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'cropped_image_ktp' => 'nullable|string',
-            'cropped_image_npwp' => 'nullable|string',
-            'cropped_profile_image' => 'nullable|string',
+public function getOrCreateFolder($folderName, $parentFolderId, $accessToken)
+{
+    $query = "name='{$folderName}' and mimeType='application/vnd.google-apps.folder' and '{$parentFolderId}' in parents and trashed=false";
+    $searchResponse = Http::withToken($accessToken)
+        ->get('https://www.googleapis.com/drive/v3/files', [
+            'q' => $query,
+            'fields' => 'files(id, name)',
         ]);
 
-        $user = Account::where('id_account', $request->id_account)->first();
-        if (!$user) {
-            return redirect()->route('register')->with('error', 'Akun tidak ditemukan.');
-        }
+    $files = $searchResponse->json('files');
 
-        // Ambil data informasi_klien (jika ada)
-        $clientData = DB::table('informasi_klien')->where('id_account', $user->id_account)->first();
-
-        // === FOTO PROFIL AGEN ===
-        $picturePath = null;
-
-        if ($request->hasFile('picture')) {
-            $picturePath = $request->file('picture')->store('data_agent', 'public');
-        } elseif ($request->filled('cropped_profile_image')) {
-            $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->cropped_profile_image));
-            $fileName = 'data_agent/agent_' . Str::random(10) . '.jpg';
-            file_put_contents(storage_path('app/public/' . $fileName), $imageData);
-            $picturePath = $fileName;
-        }
-
-        // === KTP ===
-        $ktpFileName = null;
-        if ($request->filled('cropped_image_ktp')) {
-            $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->cropped_image_ktp));
-            $ktpFileName = 'data_agent/ktp_' . Str::random(10) . '.jpg';
-            file_put_contents(storage_path('app/public/' . $ktpFileName), $imageData);
-        } elseif ($clientData && $clientData->gambar_ktp) {
-            $ktpFileName = $clientData->gambar_ktp;
-        } else {
-            return back()->withErrors(['cropped_image_ktp' => 'Gambar KTP wajib diunggah.']);
-        }
-
-        // === NPWP ===
-        $npwpFileName = null;
-        if ($request->filled('cropped_image_npwp')) {
-            $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->cropped_image_npwp));
-            $npwpFileName = 'data_agent/npwp_' . Str::random(10) . '.jpg';
-            file_put_contents(storage_path('app/public/' . $npwpFileName), $imageData);
-        } elseif ($clientData && $clientData->gambar_npwp) {
-            $npwpFileName = $clientData->gambar_npwp;
-        }
-
-        // Simpan/Update data ke tabel agent
-        Agent::updateOrCreate(
-            ['id_account' => $user->id_account],
-            [
-                'id_account' => $user->id_account,
-                'nama' => $request->nama,
-                'email' => $request->email ?? $user->email,
-                'deskripsi' => $request->deskripsi,
-                'nomor_telepon' => $request->nomor_telepon,
-                'instagram' => $request->instagram,
-                'facebook' => $request->facebook,
-                'kota' => $request->lokasi_kerja,
-                'status' => 'Pending',
-                'picture' => $picturePath,
-                'gambar_ktp' => $ktpFileName,
-                'gambar_npwp' => $npwpFileName,
-                'tanggal_dibuat' => now(),
-                'tanggal_diupdate' => now(),
-            ]
-        );
-
-        return redirect('/join-agent')->with('success', 'Pendaftaran agen berhasil. Menunggu verifikasi dari Owner.');
-
+    if (!empty($files)) {
+        return $files[0]['id'];
     }
+
+    $createResponse = Http::withToken($accessToken)
+        ->post('https://www.googleapis.com/drive/v3/files', [
+            'name' => $folderName,
+            'mimeType' => 'application/vnd.google-apps.folder',
+            'parents' => [$parentFolderId],
+        ]);
+
+    return $createResponse->json('id');
+}
+
+
+public function registerAgent(Request $request)
+{
+    $request->validate([
+        'id_account' => 'required|string|exists:account,id_account',
+        'nama' => 'required|string|max:100',
+        'deskripsi' => 'nullable|string|max:2200',
+        'nomor_telepon' => 'required|string|max:15',
+        'email' => 'nullable|email|max:100',
+        'instagram' => 'nullable|string|max:50',
+        'facebook' => 'nullable|string|max:50',
+        'lokasi_kerja' => 'required|string|max:100',
+        'kota' => 'nullable|string|max:100',
+        'picture' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+        'cropped_image_ktp' => 'nullable|string',
+        'cropped_image_npwp' => 'nullable|string',
+        'cropped_profile_image' => 'nullable|string',
+    ]);
+
+    $user = Account::where('id_account', $request->id_account)->first();
+    if (!$user) {
+        return redirect()->route('register')->with('error', 'Akun tidak ditemukan.');
+    }
+
+    $accessToken = app(\App\Http\Controllers\GdriveController::class)->token();
+    $parentFolderId = '1u8faFug3GV3lB6y0L2TbwEX48IPAUtiQ'; // ID folder Data_Agent
+    $folderName = \Str::slug($request->nama, '_');
+    $targetFolderId = $this->getOrCreateFolder($folderName, $parentFolderId, $accessToken);
+
+    // === UPLOAD GDRIVE FUNCTION ===
+    $uploadToDrive = function ($base64Data, $prefix) use ($targetFolderId, $accessToken) {
+        $filename = $prefix . '_' . \Str::uuid() . '.jpg';
+        $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $base64Data));
+
+        $tempPath = storage_path("app/temp/{$filename}");
+        file_put_contents($tempPath, $imageData);
+
+        $response = Http::withToken($accessToken)
+            ->attach('metadata', json_encode([
+                'name' => $filename,
+                'parents' => [$targetFolderId],
+            ]), 'metadata.json')
+            ->attach('file', file_get_contents($tempPath), $filename)
+            ->post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart');
+
+        unlink($tempPath);
+
+        if ($response->successful()) {
+            $fileId = $response->json('id');
+
+            Http::withToken($accessToken)
+                ->post("https://www.googleapis.com/drive/v3/files/{$fileId}/permissions", [
+                    'role' => 'reader',
+                    'type' => 'anyone',
+                ]);
+
+            return $fileId;
+        }
+
+        return null;
+    };
+
+    $ktpFileId = $request->filled('cropped_image_ktp')
+        ? $uploadToDrive($request->cropped_image_ktp, 'ktp')
+        : DB::table('informasi_klien')->where('id_account', $user->id_account)->value('gambar_ktp');
+
+    if (!$ktpFileId) {
+        return back()->withErrors(['cropped_image_ktp' => 'Gambar KTP wajib diunggah.']);
+    }
+
+    $npwpFileId = $request->filled('cropped_image_npwp')
+        ? $uploadToDrive($request->cropped_image_npwp, 'npwp')
+        : DB::table('informasi_klien')->where('id_account', $user->id_account)->value('gambar_npwp');
+
+    $profileFileId = null;
+    if ($request->hasFile('picture')) {
+        $path = $request->file('picture')->store('temp');
+        $base64 = base64_encode(Storage::get($path));
+        $profileFileId = $uploadToDrive("data:image/jpeg;base64," . $base64, 'agent');
+        Storage::delete($path);
+    } elseif ($request->filled('cropped_profile_image')) {
+        $profileFileId = $uploadToDrive($request->cropped_profile_image, 'agent');
+    }
+
+    Agent::updateOrCreate(
+        ['id_account' => $user->id_account],
+        [
+            'id_account' => $user->id_account,
+            'nama' => $request->nama,
+            'email' => $request->email ?? $user->email,
+            'deskripsi' => $request->deskripsi,
+            'nomor_telepon' => $request->nomor_telepon,
+            'instagram' => $request->instagram,
+            'facebook' => $request->facebook,
+            'kota' => $request->lokasi_kerja,
+            'status' => 'Pending',
+            'picture' => $profileFileId,
+            'gambar_ktp' => $ktpFileId,
+            'gambar_npwp' => $npwpFileId,
+            'tanggal_dibuat' => now(),
+            'tanggal_diupdate' => now(),
+        ]
+    );
+
+    return redirect('/join-agent')->with('success', 'Pendaftaran agen berhasil. Menunggu verifikasi dari Owner.');
+}
+
 
     public function updateProfilePicture(Request $request)
     {
@@ -414,32 +460,7 @@ class AuthController extends Controller
     }
 
 
-    public function getOrCreateFolder($folderName, $parentFolderId, $accessToken)
-{
-    // Cek apakah folder sudah ada
-    $query = "name='{$folderName}' and mimeType='application/vnd.google-apps.folder' and '{$parentFolderId}' in parents and trashed=false";
-    $searchResponse = Http::withToken($accessToken)
-        ->get('https://www.googleapis.com/drive/v3/files', [
-            'q' => $query,
-            'fields' => 'files(id, name)',
-        ]);
 
-    $files = $searchResponse->json('files');
-
-    if (!empty($files)) {
-        return $files[0]['id'];
-    }
-
-    // Jika tidak ada, buat folder baru
-    $createResponse = Http::withToken($accessToken)
-        ->post('https://www.googleapis.com/drive/v3/files', [
-            'name' => $folderName,
-            'mimeType' => 'application/vnd.google-apps.folder',
-            'parents' => [$parentFolderId],
-        ]);
-
-    return $createResponse->json('id');
-}
 
 
 public function save(Request $request)

@@ -110,10 +110,10 @@
           </button>
         </div>
         <div class="card-body text-center">
-          @if(!empty($informasi_klien->gambar_ktp))
-            <img src="{{ asset('storage/' . $informasi_klien->gambar_ktp) }}" alt="KTP"
-            class="img-thumbnail me-4" style="max-height: 250px; object-fit: contain;">
-          @else
+            @if (!empty($informasi_klien) && !empty($informasi_klien->gambar_ktp))
+  <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_ktp }}" alt="KTP"
+       class="img-thumbnail me-4" style="max-height: 250px; object-fit: contain;">
+@else
             <p class="text-muted fst-italic">Belum ada data KTP.</p>
           @endif
         </div>
@@ -130,10 +130,10 @@
           </button>
         </div>
         <div class="card-body text-center">
-          @if(!empty($informasi_klien->gambar_npwp))
-            <img src="{{ asset('storage/' . $informasi_klien->gambar_npwp) }}" alt="NPWP"
-                 class="img-thumbnail me-4" style="max-height: 250px; object-fit: contain;">
-          @else
+            @if (!empty($informasi_klien) && !empty($informasi_klien->gambar_npwp))
+            <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_npwp }}" alt="NPWP"
+         class="img-thumbnail me-4" style="max-height: 250px; object-fit: contain;">
+        @else
             <p class="text-muted fst-italic">Belum ada data NPWP.</p>
           @endif
         </div>
@@ -166,7 +166,7 @@
               <div class="mb-3 text-center">
                 <label class="form-label fw-semibold">Gambar KTP Lama:</label>
                 <div class="border rounded p-2">
-                  <img src="{{ asset('storage/' . $informasi_klien->gambar_ktp) }}"
+                  <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_ktp }}"
                        alt="KTP Lama"
                        class="img-fluid rounded shadow"
                        style="max-height: 300px; object-fit: contain;">
@@ -241,7 +241,7 @@
               <div class="mb-3 text-center">
                 <label class="form-label fw-semibold">Gambar NPWP Lama:</label>
                 <div class="border rounded p-2">
-                  <img src="{{ asset('storage/' . $informasi_klien->gambar_npwp) }}"
+                  <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_npwp }}"
                        alt="NPWP Lama"
                        class="img-fluid rounded shadow"
                        style="max-height: 300px; object-fit: contain;">
@@ -344,12 +344,19 @@
 
           <div class="modal-body">
             <div class="text-center mb-3 " id="previewContainer" style="display: block;">
-                <img
-                  id="profilePreview"
-                  src="{{ optional($informasi_klien)->picture ? asset('storage/' . $informasi_klien->picture) : asset('img/default-profile.jpg') }}"
-                  class="shadow"
-                  style="width: 180px; height: 180px; object-fit: cover; margin: 0 auto;"
-                />
+                @php
+    $pictureId = ($user->roles === 'Agent' && !empty($informasi_klien->picture)) ? $informasi_klien->picture : null;
+@endphp
+
+<img
+    id="profilePreview"
+    src="{{ $pictureId ? 'https://drive.google.com/thumbnail?id=' . $pictureId : asset('img/default-profile.jpg') }}"
+    alt="Foto Profil"
+    class="shadow"
+    style="width: 180px; height: 180px; object-fit: cover; margin: 0 auto;"
+/>
+
+
                 <div id="profileCropActions" class="d-flex justify-content-center gap-2 mt-2"></div>
               </div>
 
@@ -389,16 +396,17 @@
                 {{-- Foto Profil Agent --}}
                 <div class="col-md-5 text-center">
                     @php
-$agentFoto = optional($informasi_klien)->picture
-    ? asset('storage/' . $informasi_klien->picture)
-    : asset('img/default-profile.jpg');
-@endphp
+                    $agentFoto = !empty($agent->picture)
+                        ? asset('storage/' . $agent->picture)
+                        : asset('img/default-profile.jpg');
+                    @endphp
+
 
 <div class="position-relative d-inline-block">
-  <img src="{{ $agentFoto }}"
-       alt="Foto Agent"
-       class="img-fluid shadow"
-       style="width: 200px; height: 200px; object-fit: cover;">
+    <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->picture }}"
+    alt="Foto Agent"
+    class="img-fluid shadow"
+    style="width: 200px; height: 200px; object-fit: cover;">
 
   <button type="button"
           class="btn btn-sm btn-light border position-absolute top-0 end-0 m-1"

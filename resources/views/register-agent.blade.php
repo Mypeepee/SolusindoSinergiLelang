@@ -301,14 +301,16 @@
 
                 @if($croppedKTP)
                     <div class="mb-2">
-                        <img src="{{ $croppedKTP }}" alt="Preview KTP" class="img-thumbnail" style="width: 100%; max-width: 250px; object-fit: contain;" />
+                        <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_ktp }}" alt="KTP"
+                        class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
                         <div class="form-text text-muted">Gambar KTP telah diunggah.</div>
                         <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="resetKTP()">Ganti KTP</button>
                     </div>
                     <input type="hidden" name="cropped_image_ktp" value="{{ $croppedKTP }}">
                 @elseif(isset($informasi_klien) && $informasi_klien->gambar_ktp)
                     <div class="mb-2">
-                        <img src="{{ asset('storage/' . $informasi_klien->gambar_ktp) }}" alt="Preview KTP" class="img-thumbnail" style="width: 100%; max-width: 250px; object-fit: contain;" />
+                        <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_ktp }}" alt="KTP"
+                        class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
                         <div class="form-text text-muted">Data KTP Anda sudah tersedia.</div>
                         <a href="{{ route('profile', ['id_account' => $user->id_account]) }}" class="btn btn-sm btn-outline-primary mt-2">Ganti KTP</a>
                     </div>
@@ -327,14 +329,16 @@
 
                 @if(isset($informasi_klien) && $informasi_klien->gambar_npwp && empty(old('cropped_image_npwp')))
                     <div class="mb-2">
-                        <img src="{{ asset('storage/' . $informasi_klien->gambar_npwp) }}" alt="Preview NPWP" class="img-thumbnail" style="width: 100%; max-width: 250px; object-fit: contain;" />
+                        <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_npwp }}" alt="NPWP"
+                        class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
                         <div class="form-text text-muted">Data NPWP Anda sudah tersedia.</div>
                         <a href="{{ route('profile', ['id_account' => $user->id_account]) }}" class="btn btn-sm btn-outline-primary mt-2">Ganti NPWP</a>
                     </div>
                 @else
                     <div>
                         <input type="file" id="gambar_npwp" accept="image/*" class="form-control mb-2">
-                        <img id="imagePreviewNPWP" class="img-fluid rounded d-none" style="max-height: 300px;">
+                        <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_npwp }}" alt="NPWP"
+                        class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
                         <input type="hidden" name="cropped_image_npwp" id="cropped_image_npwp">
                     </div>
                 @endif
