@@ -280,6 +280,26 @@ class AgentAdminController extends Controller
                 ->get();
 
         // progress pengosongan
+        $clientsPengosongan = DB::table('transaction')
+        ->join('account', 'transaction.id_klien', '=', 'account.id_account')
+        ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
+        ->whereIn('transaction.status_transaksi', [
+            'Balik Nama',
+            'Eksekusi Pengosongan',
+            'Selesai',
+        ]) 
+        ->select(
+            'account.id_account',
+            'account.nama',
+            'account.nomor_telepon',
+            'property.id_listing',
+            'property.lokasi',
+            'property.harga',
+            'transaction.status_transaksi as status',
+            'transaction.tanggal_diupdate'
+        )
+        ->orderBy('transaction.tanggal_diupdate', 'asc')
+        ->get();
 
         // performance
         $performanceAgents = DB::table('agent')
@@ -300,6 +320,7 @@ class AgentAdminController extends Controller
                                             'pendingClients' => $pendingClients,
                                             'clients' => $clients,
                                             'clientsClosing' => $clientsClosing,
+                                            'clientsPengosongan' => $clientsPengosongan,
                                             'performanceAgents' => $performanceAgents,
                                             'properties' => $properties ]);
     }
@@ -812,7 +833,7 @@ public function updateStatusClosing(Request $request)
         if ($transaction) {
             $statusTransaksi = $transaction->status_transaksi;
 
-            if (in_array($statusTransaksi, ['Closing', 'Kuitansi', 'Kode Billing', 'Kutipan Risalah Lelang', 'Akte Grosse', 'Balik Nama'])) {
+            if (in_array($statusTransaksi, ['Closing', 'Kuitansi', 'Kode Billing', 'Kutipan Risalah Lelang', 'Akte Grosse'])) {
                 $progressType = 'register';
             } elseif (in_array($statusTransaksi, ['Balik Nama', 'Eksekusi Pengosongan', 'Selesai'])) {
                 $progressType = 'pengosongan';

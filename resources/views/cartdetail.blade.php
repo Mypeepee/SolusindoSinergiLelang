@@ -51,13 +51,14 @@
                             </span>
                         </div>
                         {{-- Tombol Beri Rating jika Status Selesai --}}
-                        @if ($status === 'selesai' && optional($companyEarnings)->rating === null)
-    <div class="col-auto">
-        <button class="btn btn-warning btn-sm" onclick="bukaModalRating('{{ $interest->id_account }}', '{{ $interest->id_listing }}')">
-            Beri Rating
-        </button>
-    </div>
-@endif
+                        @if ($status === 'Selesai' && (is_null($transactionReview?->rating) || is_null($transactionReview?->comment)))
+                            <div class="col-auto">
+                                <button class="btn btn-warning btn-sm" onclick="bukaModalRating('{{ $interest->id_account ?? session('id_account') }}', '{{ $interest->id_listing ?? $property->id_listing }}')">
+                                    Beri Rating
+                                </button>
+                            </div>
+                        @endif
+
 
                     </div>
 

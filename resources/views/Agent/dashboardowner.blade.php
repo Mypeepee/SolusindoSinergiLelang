@@ -363,13 +363,12 @@
                                     <tr>
                                         <th style="width: 40px;">#</th> <!-- ✅ Mepet -->
                                         <th style="width: 80px;">ID</th> <!-- ✅ Mepet -->
-                                        <th style="min-width: 180px;">Name</th> <!-- ✅ Lebar untuk nama panjang -->
+                                        <th style="min-width: 180px;">Nama</th> <!-- ✅ Lebar untuk nama panjang -->
                                         <th style="width: 100px;">Property ID</th>
                                         <th style="min-width: 200px;">Lokasi</th> <!-- ✅ Lebih lebar -->
                                         <th style="min-width: 120px;">Harga</th>
-                                        <th style="min-width: 160px;">Proges</th>
-                                        <th style="min-width: 160px;">Aksi</th> <!-- ✅ Lebih lebar -->
-                                        <th style="min-width: 160px;">Surat Kuasa</th> <!-- ✅ Lebih lebar -->
+                                        <th style="min-width: 160px;">Progess</th>
+                                        <th>Status</th>
                                         <th style="min-width: 160px;">Detail</th> 
                                     </tr>
                                 </thead>
@@ -406,12 +405,7 @@
                                                 </div>
                                             </div>
                                         </td>
-                                        <td>
-                                            <a href="{{ route('download.suratkuasa', ['id' => $client->id_account, 'listing' => $client->id_listing]) }}"
-                                            class="btn btn-sm btn-outline-primary rounded-pill">
-                                                <i class="bi bi-download"></i>
-                                            </a>
-                                        </td>
+                                        <td>{{ $client->status }}</td>
                                         <td>
                                             <form action="{{ route('dashboard.detail', ['id_listing' => $client->id_listing, 'id_account' => $client->id_account]) }}" method="GET">
                                                 @csrf
@@ -434,6 +428,80 @@
                 </div>
                 <div class="tab-pane fade" id="progress-pengosongan" role="tabpanel" aria-labelledby="progress-pengosongan-tab">
                     <!-- Isi tabel progress pengosongan di sini -->
+                    <div class="orders mt-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-truck me-2 text-warning"></i> Progress Pengosongan</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover" id="pengosonganTable">
+                                        <thead class="table-light align-middle">
+                                            <tr>
+                                                <th>#</th>
+                                                <th>ID</th>
+                                                <th>Nama</th>
+                                                <th>Property ID</th>
+                                                <th>Lokasi</th>
+                                                <th>Harga</th>
+                                                <th>Progress</th>
+                                                <th>Status</th>
+                                                <th>Detail</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @php $now = \Carbon\Carbon::now(); @endphp
+                                            @forelse ($clientsPengosongan as $client)
+                                                @if ($client->status === 'Balik Nama' || $client->status === 'Eksekusi Pengosongan' || $client->status === 'Selesai')
+                                                    @php
+                                                        $tahap = $client->status ?? 'Balik Nama'; // Ambil status dari query
+                                                        $progress = match($tahap) {
+                                                            'Balik Nama' => 0,
+                                                            'Eksekusi Pengosongan' => 50,
+                                                            'Selesai' => 100,
+                                                            default => 0
+                                                        };
+                                                        $progressColor = match($client->status) {
+                                                            'balik_nama' => 'bg-secondary',
+                                                            'eksekusi_pengosongan' => 'bg-warning',
+                                                            'closing' => 'bg-success',
+                                                            default => 'bg-light'
+                                                        };
+                                                    @endphp
+                                                    <tr id="row-{{ $client->id_account }}-{{ $client->id_listing }}">
+                                                        <td>{{ $index + 1 }}</td>
+                                                        <td>{{ $client->id_account }}</td>
+                                                        <td>{{ $client->nama }}</td>
+                                                        <td>{{ $client->id_listing }}</td>
+                                                        <td>{{ $client->lokasi }}</td>
+                                                        <td>Rp {{ number_format($client->harga, 0, ',', '.') }}</td>
+                                                        <td>
+                                                            <div class="progress" style="height: 20px;">
+                                                                <div class="progress-bar {{ $progressColor }}" style="width: {{ $progress }}%;">
+                                                                    {{ $progress }}%
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td>{{ $client->status }}</td>
+                                                        <td>
+                                                            <form action="{{ route('dashboard.detail', ['id_listing' => $client->id_listing, 'id_account' => $client->id_account]) }}" method="GET">
+                                                                @csrf
+                                                                <button type="submit" class="btn btn-sm bg-secondary text-white rounded-pill px-3 shadow-sm">
+                                                                    Detail
+                                                                </button>
+                                                            </form>
+                                                        </td>
+                                                    </tr>
+                                                @endif
+                                            @empty
+                                                <tr>
+                                                    <td colspan="8" class="text-center text-muted py-4">Tidak ada data pengosongan.</td>
+                                                </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>  
                 </div>
             </div>
         </div>
