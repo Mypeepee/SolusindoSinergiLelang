@@ -191,33 +191,70 @@ public function registerAgent(Request $request)
 }
 
 
-    public function updateProfilePicture(Request $request)
-    {
-        $request->validate([
-            'cropped_profile_image' => 'nullable|string',
-        ]);
+public function updateProfilePicture(Request $request)
+{
+    $request->validate([
+        'cropped_profile_image' => 'nullable|string',
+    ]);
 
-        $id_account = session('id_account');
-        $agent = Agent::where('id_account', $id_account)->first();
+    $id_account = session('id_account');
+    $agent = Agent::where('id_account', $id_account)->first();
 
-        if (!$agent) {
-            return back()->with('error', 'Data agent tidak ditemukan.');
-        }
-
-        // Jika pakai base64 dari cropper
-        if ($request->filled('cropped_profile_image')) {
-            $base64Image = $request->cropped_profile_image;
-            $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $base64Image));
-            $filename = 'data_agent/' . uniqid('agent_') . '.jpg';
-
-            Storage::disk('public')->put($filename, $imageData);
-            $agent->picture = $filename;
-        }
-
-        $agent->save();
-
-        return redirect()->route('profile', ['id_account' => $id_account])->with('success', 'Foto profil berhasil diperbarui.');
+    if (!$agent) {
+        return back()->with('error', 'Data agent tidak ditemukan.');
     }
+
+    // Jika pakai base64 dari cropper
+    if ($request->filled('cropped_profile_image')) {
+        $accessToken = app(\App\Http\Controllers\GdriveController::class)->token();
+        $parentFolderId = '1u8faFug3GV3lB6y0L2TbwEX48IPAUtiQ'; // ID Data_Agent
+        $folderName = \Str::slug($agent->nama, '_');
+        $targetFolderId = $this->getOrCreateFolder($folderName, $parentFolderId, $accessToken);
+
+        // Hapus gambar lama di Drive jika itu ID
+        if (!empty($agent->picture) && strlen($agent->picture) < 100) {
+            Http::withToken($accessToken)->delete("https://www.googleapis.com/drive/v3/files/{$agent->picture}");
+        }
+
+        // Siapkan gambar baru
+        $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->cropped_profile_image));
+        $filename = 'agent_profile_' . \Str::uuid() . '.jpg';
+        $tempPath = storage_path("app/temp/{$filename}");
+        file_put_contents($tempPath, $imageData);
+
+        // Upload ke Drive
+        $upload = Http::withToken($accessToken)
+            ->attach('metadata', json_encode([
+                'name' => $filename,
+                'parents' => [$targetFolderId],
+            ]), 'metadata.json')
+            ->attach('file', file_get_contents($tempPath), $filename)
+            ->post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart');
+
+        if (file_exists($tempPath)) {
+            unlink($tempPath);
+        }
+
+        if ($upload->successful()) {
+            $fileId = $upload->json('id');
+
+            // Set permission publik
+            Http::withToken($accessToken)
+                ->post("https://www.googleapis.com/drive/v3/files/{$fileId}/permissions", [
+                    'role' => 'reader',
+                    'type' => 'anyone',
+                ]);
+
+            // Simpan ID file ke kolom picture
+            $agent->picture = $fileId;
+        }
+    }
+
+    $agent->save();
+
+    return redirect()->route('profile', ['id_account' => $id_account])
+        ->with('success', 'Foto profil berhasil diperbarui.');
+}
 
     // public function registerAgent(Request $request)
     // {

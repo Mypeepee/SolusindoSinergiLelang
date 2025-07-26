@@ -886,6 +886,79 @@ function cancelCropKTP() {
               </div>
 
               <script>
+                let cropper;
+                const input = document.getElementById('profileImageInput');
+                const image = document.getElementById('profilePreview');
+                const previewContainer = document.getElementById('previewContainer');
+                const hiddenInput = document.getElementById('croppedProfileImage');
+                const actionContainer = document.getElementById('profileCropActions');
+
+                input.addEventListener('change', function (e) {
+                  const file = e.target.files[0];
+                  if (!file) return;
+
+                  const url = URL.createObjectURL(file);
+                  image.src = url;
+                  image.style.display = 'block';
+                  previewContainer.style.display = 'block';
+
+                  if (cropper) cropper.destroy();
+
+                  cropper = new Cropper(image, {
+                    aspectRatio: 1, // Kotak
+                    viewMode: 1,
+                    autoCropArea: 1,
+                    responsive: true,
+                  });
+
+                  // Tampilkan tombol aksi crop
+                  renderCropButtons();
+                });
+
+                function renderCropButtons() {
+                  actionContainer.innerHTML = '';
+
+                  const cropBtn = document.createElement('button');
+                  cropBtn.type = 'button';
+                  cropBtn.className = 'btn btn-primary btn-sm';
+                  cropBtn.textContent = 'Crop';
+                  cropBtn.onclick = function () {
+                    const canvas = cropper.getCroppedCanvas({
+                      width: 500,
+                      height: 500,
+                      imageSmoothingEnabled: true,
+                      imageSmoothingQuality: 'high',
+                    });
+
+                    const base64 = canvas.toDataURL('image/jpeg');
+                    hiddenInput.value = base64;
+                    image.src = base64;
+
+                    cropper.destroy();
+                    cropper = null;
+                    actionContainer.innerHTML = '';
+                  };
+
+                  const cancelBtn = document.createElement('button');
+                  cancelBtn.type = 'button';
+                  cancelBtn.className = 'btn btn-secondary btn-sm';
+                  cancelBtn.textContent = 'Cancel';
+                  cancelBtn.onclick = function () {
+                    cropper.destroy();
+                    cropper = null;
+                    input.value = '';
+                    image.src = '';
+                    previewContainer.style.display = 'none';
+                    actionContainer.innerHTML = '';
+                  };
+
+                  actionContainer.appendChild(cropBtn);
+                  actionContainer.appendChild(cancelBtn);
+                }
+              </script>
+
+
+              <script>
                 let activeCropper = null;
                 let activeInput = null;
                 let activeHiddenInput = null;
