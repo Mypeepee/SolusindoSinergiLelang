@@ -309,7 +309,7 @@
                     <input type="hidden" name="cropped_image_ktp" value="{{ $croppedKTP }}">
                 @elseif(isset($informasi_klien) && $informasi_klien->gambar_ktp)
                     <div class="mb-2">
-                        <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_ktp }}" alt="KTP"
+                        <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_ }}" alt="KTP"
                         class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
                         <div class="form-text text-muted">Data KTP Anda sudah tersedia.</div>
                         <a href="{{ route('profile', ['id_account' => $user->id_account]) }}" class="btn btn-sm btn-outline-primary mt-2">Ganti KTP</a>
@@ -432,14 +432,16 @@
 
                         @if($croppedKTP)
                             <div class="mb-2">
-                                <img src="{{ $croppedKTP }}" alt="Preview KTP" class="img-thumbnail" style="width: 100%; max-width: 250px; object-fit: contain;" />
+                                <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_ktp }}" alt="KTP"
+                class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
                                 <div class="form-text text-muted">Gambar KTP telah diunggah.</div>
                                 <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="resetKTP()">Ganti KTP</button>
                             </div>
                             <input type="hidden" name="cropped_image_ktp" value="{{ $croppedKTP }}">
                         @elseif(isset($informasi_klien) && $informasi_klien->gambar_ktp)
                             <div class="mb-2">
-                                <img src="{{ asset('storage/' . $informasi_klien->gambar_ktp) }}" alt="Preview KTP" class="img-thumbnail" style="width: 100%; max-width: 250px; object-fit: contain;" />
+                                <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_ktp }}" alt="KTP"
+                class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
                                 <div class="form-text text-muted">Data KTP Anda sudah tersedia.</div>
                                 <a href="{{ route('profile', ['id_account' => $user->id_account]) }}" class="btn btn-sm btn-outline-primary mt-2">Ganti KTP</a>
                             </div>
@@ -458,7 +460,8 @@
 
                         @if(isset($informasi_klien) && $informasi_klien->gambar_npwp && empty(old('cropped_image_npwp')))
                             <div class="mb-2">
-                                <img src="{{ asset('storage/' . $informasi_klien->gambar_npwp) }}" alt="Preview NPWP" class="img-thumbnail" style="width: 100%; max-width: 250px; object-fit: contain;" />
+                                <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_npwp }}" alt="NPWP"
+                class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
                                 <div class="form-text text-muted">Data NPWP Anda sudah tersedia.</div>
                                 <a href="{{ route('profile', ['id_account' => $user->id_account]) }}" class="btn btn-sm btn-outline-primary mt-2">Ganti NPWP</a>
                             </div>
@@ -475,7 +478,9 @@
                         <label for="profileImageInput" class="form-label">Foto Profil (opsional)</label>
                         <input type="file" name="profile_image_input" id="profileImageInput" class="form-control" accept="image/*">
                         <div id="previewContainer" class="mt-2" style="display: none;">
-                            <img id="profilePreview" class="img-fluid rounded-circle" style="width: 150px;" />
+                            <!-- Gambar profil persegi -->
+<img id="profilePreview" class="img-fluid rounded" style="width: 150px;" />
+
                         </div>
                         <input type="hidden" name="cropped_profile_image" id="croppedProfileImage">
                     </div>
@@ -632,43 +637,24 @@
     function cropImage() {
   if (!cropper) return;
 
-  const squareCanvas = cropper.getCroppedCanvas({
+  const canvas = cropper.getCroppedCanvas({
     width: 300,
     height: 300,
     imageSmoothingEnabled: true,
     imageSmoothingQuality: 'high',
   });
 
-  // Buat canvas bulat
-  const circleCanvas = document.createElement('canvas');
-  const size = 300;
-  circleCanvas.width = size;
-  circleCanvas.height = size;
-  const ctx = circleCanvas.getContext('2d');
+  const base64 = canvas.toDataURL('image/jpeg');
 
-  // Buat lingkaran mask
-  ctx.beginPath();
-  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2, true);
-  ctx.closePath();
-  ctx.clip();
-
-  // Gambar hasil crop ke canvas bulat
-  ctx.drawImage(squareCanvas, 0, 0, size, size);
-
-  const base64 = circleCanvas.toDataURL('image/jpeg');
+  // Set hasil crop ke input hidden dan preview
   document.getElementById('croppedProfileImage').value = base64;
   image.src = base64;
 
   cropper.destroy();
   cropper = null;
   hideCropActions();
+}
 
-      document.getElementById('croppedProfileImage').value = canvas.toDataURL('image/jpeg');
-      image.src = canvas.toDataURL('image/jpeg'); // Ganti preview
-      cropper.destroy();
-      cropper = null;
-      hideCropActions();
-    }
 
     function cancelCrop() {
       if (cropper) {

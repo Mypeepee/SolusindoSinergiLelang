@@ -355,8 +355,6 @@
     class="shadow"
     style="width: 180px; height: 180px; object-fit: cover; margin: 0 auto;"
 />
-
-
                 <div id="profileCropActions" class="d-flex justify-content-center gap-2 mt-2"></div>
               </div>
 

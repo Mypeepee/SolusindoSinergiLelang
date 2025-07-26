@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 use App\Models\Agent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+
 
 class propertyagentController extends Controller
 {
@@ -103,75 +105,153 @@ class propertyagentController extends Controller
         return view('index', compact('agents'));
     }
 
+    private function getOrCreateFolder($folderName, $parentFolderId, $accessToken)
+{
+    // Cek apakah folder dengan nama yang sama sudah ada
+    $query = "name='{$folderName}' and mimeType='application/vnd.google-apps.folder' and '{$parentFolderId}' in parents and trashed=false";
+    $search = Http::withToken($accessToken)->get('https://www.googleapis.com/drive/v3/files', [
+        'q' => $query,
+        'fields' => 'files(id, name)',
+    ]);
+
+    $files = $search->json('files');
+    if (!empty($files)) {
+        return $files[0]['id']; // Folder sudah ada
+    }
+
+    // Jika belum ada, buat folder baru
+    $create = Http::withToken($accessToken)->post('https://www.googleapis.com/drive/v3/files', [
+        'name' => $folderName,
+        'mimeType' => 'application/vnd.google-apps.folder',
+        'parents' => [$parentFolderId],
+    ]);
+
+    return $create->json('id');
+}
+
+
     public function updateKTP(Request $request)
-{
-    $request->validate([
-        'cropped_image' => 'required', // pastikan hasil crop ada
-    ]);
+    {
+        $request->validate([
+            'cropped_image' => 'required',
+        ]);
 
-    try {
-        // Ambil agent yang login
-        $agent = DB::table('agent')->where('id_account', session('id_account'))->first();
+        try {
+            $agent = DB::table('agent')->where('id_account', session('id_account'))->first();
+            if (!$agent) {
+                return redirect()->back()->with('error', 'Agent tidak ditemukan.');
+            }
 
-        if (!$agent) {
-            return redirect()->back()->with('error', 'Agent tidak ditemukan.');
+            $accessToken = app(\App\Http\Controllers\GdriveController::class)->token();
+            $parentFolderId = '1u8faFug3GV3lB6y0L2TbwEX48IPAUtiQ';
+            $folderName = \Str::slug($agent->nama ?? $agent->id_account, '_');
+            $targetFolderId = $this->getOrCreateFolder($folderName, $parentFolderId, $accessToken);
+
+            // Hapus gambar lama di Drive jika ada
+            if (!empty($agent->gambar_ktp)) {
+                Http::withToken($accessToken)->delete("https://www.googleapis.com/drive/v3/files/{$agent->gambar_ktp}");
+            }
+
+            // Simpan file baru ke Drive
+            $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->cropped_image));
+            $filename = 'ktp_' . \Str::uuid() . '.jpg';
+            $tempPath = storage_path("app/temp/{$filename}");
+            file_put_contents($tempPath, $imageData);
+
+            $response = Http::withToken($accessToken)
+                ->attach('metadata', json_encode([
+                    'name' => $filename,
+                    'parents' => [$targetFolderId],
+                ]), 'metadata.json')
+                ->attach('file', file_get_contents($tempPath), $filename)
+                ->post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart');
+
+            unlink($tempPath);
+
+            if ($response->successful()) {
+                $fileId = $response->json('id');
+
+                // Set akses publik
+                Http::withToken($accessToken)
+                    ->post("https://www.googleapis.com/drive/v3/files/{$fileId}/permissions", [
+                        'role' => 'reader',
+                        'type' => 'anyone',
+                    ]);
+
+                DB::table('agent')->where('id_account', $agent->id_account)->update([
+                    'gambar_ktp' => $fileId,
+                    'tanggal_diupdate' => now()
+                ]);
+            }
+
+            return redirect()->back()->with('success', 'KTP berhasil diperbarui.');
+        } catch (\Exception $e) {
+            \Log::error('Update KTP Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat memperbarui KTP.');
         }
-
-        // Simpan file hasil crop
-        $data = $request->input('cropped_image');
-        $data = str_replace('data:image/jpeg;base64,', '', $data);
-        $data = str_replace(' ', '+', $data);
-        $imageName = 'ktp_' . time() . '.jpg';
-        \Storage::put('public/agent_ktp/' . $imageName, base64_decode($data));
-
-        // Update kolom gambar_ktp
-        DB::table('agent')
-            ->where('id_account', session('id_account'))
-            ->update([
-                'gambar_ktp' => 'agent_ktp/' . $imageName,
-                'tanggal_diupdate' => now()
-            ]);
-
-        return redirect()->back()->with('success', 'KTP berhasil diperbarui.');
-    } catch (\Exception $e) {
-        \Log::error('Update KTP Error: ' . $e->getMessage());
-        return redirect()->back()->with('error', 'Terjadi kesalahan saat memperbarui KTP.');
     }
-}
 
-public function updateNPWP(Request $request)
-{
-    $request->validate([
-        'cropped_image_npwp' => 'required', // hasil crop wajib ada
-    ]);
 
-    try {
-        $agent = DB::table('agent')->where('id_account', session('id_account'))->first();
+    public function updateNPWP(Request $request)
+    {
+        $request->validate([
+            'cropped_image_npwp' => 'required',
+        ]);
 
-        if (!$agent) {
-            return redirect()->back()->with('error', 'Agent tidak ditemukan.');
+        try {
+            $agent = DB::table('agent')->where('id_account', session('id_account'))->first();
+            if (!$agent) {
+                return redirect()->back()->with('error', 'Agent tidak ditemukan.');
+            }
+
+            $accessToken = app(\App\Http\Controllers\GdriveController::class)->token();
+            $parentFolderId = '1u8faFug3GV3lB6y0L2TbwEX48IPAUtiQ';
+            $folderName = \Str::slug($agent->nama ?? $agent->id_account, '_');
+            $targetFolderId = $this->getOrCreateFolder($folderName, $parentFolderId, $accessToken);
+
+            // Hapus gambar lama di Drive jika ada
+            if (!empty($agent->gambar_npwp)) {
+                Http::withToken($accessToken)->delete("https://www.googleapis.com/drive/v3/files/{$agent->gambar_npwp}");
+            }
+
+            // Simpan file baru ke Drive
+            $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->cropped_image_npwp));
+            $filename = 'npwp_' . \Str::uuid() . '.jpg';
+            $tempPath = storage_path("app/temp/{$filename}");
+            file_put_contents($tempPath, $imageData);
+
+            $response = Http::withToken($accessToken)
+                ->attach('metadata', json_encode([
+                    'name' => $filename,
+                    'parents' => [$targetFolderId],
+                ]), 'metadata.json')
+                ->attach('file', file_get_contents($tempPath), $filename)
+                ->post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart');
+
+            unlink($tempPath);
+
+            if ($response->successful()) {
+                $fileId = $response->json('id');
+
+                // Set akses publik
+                Http::withToken($accessToken)
+                    ->post("https://www.googleapis.com/drive/v3/files/{$fileId}/permissions", [
+                        'role' => 'reader',
+                        'type' => 'anyone',
+                    ]);
+
+                DB::table('agent')->where('id_account', $agent->id_account)->update([
+                    'gambar_npwp' => $fileId,
+                    'tanggal_diupdate' => now()
+                ]);
+            }
+
+            return redirect()->back()->with('success', 'NPWP berhasil diperbarui.');
+        } catch (\Exception $e) {
+            \Log::error('Update NPWP Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat memperbarui NPWP.');
         }
-
-        // Simpan file hasil crop
-        $data = $request->input('cropped_image_npwp');
-        $data = str_replace('data:image/jpeg;base64,', '', $data);
-        $data = str_replace(' ', '+', $data);
-        $imageName = 'npwp_' . time() . '.jpg';
-        \Storage::put('public/agent_npwp/' . $imageName, base64_decode($data));
-
-        // Update kolom gambar_npwp
-        DB::table('agent')
-            ->where('id_account', session('id_account'))
-            ->update([
-                'gambar_npwp' => 'agent_npwp/' . $imageName,
-                'tanggal_diupdate' => now()
-            ]);
-
-        return redirect()->back()->with('success', 'NPWP berhasil diperbarui.');
-    } catch (\Exception $e) {
-        \Log::error('Update NPWP Error: ' . $e->getMessage());
-        return redirect()->back()->with('error', 'Terjadi kesalahan saat memperbarui NPWP.');
     }
-}
+
 
 }
