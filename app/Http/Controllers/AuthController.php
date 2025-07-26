@@ -414,35 +414,67 @@ class AuthController extends Controller
     }
 
 
-    public function save(Request $request)
-    {
-        $request->validate([
-            'nik' => 'required',
-            'jenis_kelamin' => 'required',
-            'pekerjaan' => 'required',
-            'alamat' => 'required',
-            'berlaku_hingga' => 'nullable|string',
-            'cropped_image' => 'required|string',
+    public function getOrCreateFolder($folderName, $parentFolderId, $accessToken)
+{
+    // Cek apakah folder sudah ada
+    $query = "name='{$folderName}' and mimeType='application/vnd.google-apps.folder' and '{$parentFolderId}' in parents and trashed=false";
+    $searchResponse = Http::withToken($accessToken)
+        ->get('https://www.googleapis.com/drive/v3/files', [
+            'q' => $query,
+            'fields' => 'files(id, name)',
         ]);
 
-        $data = [
-            'nik' => $request->nik,
-            'jenis_kelamin' => $request->jenis_kelamin,
-            'pekerjaan' => $request->pekerjaan,
-            'alamat' => $request->alamat,
-            'berlaku_hingga' => $request->has('seumur_hidup')
-                ? 'Seumur Hidup'
-                : $request->berlaku_hingga,
-            'tanggal_diupdate' => now(),
-        ];
+    $files = $searchResponse->json('files');
 
-        // Upload gambar KTP ke Google Drive
-        if ($request->filled('cropped_image')) {
+    if (!empty($files)) {
+        return $files[0]['id'];
+    }
+
+    // Jika tidak ada, buat folder baru
+    $createResponse = Http::withToken($accessToken)
+        ->post('https://www.googleapis.com/drive/v3/files', [
+            'name' => $folderName,
+            'mimeType' => 'application/vnd.google-apps.folder',
+            'parents' => [$parentFolderId],
+        ]);
+
+    return $createResponse->json('id');
+}
+
+
+public function save(Request $request)
+{
+    $request->validate([
+        'nik' => 'required',
+        'jenis_kelamin' => 'required',
+        'pekerjaan' => 'required',
+        'alamat' => 'required',
+        'berlaku_hingga' => 'nullable|string',
+        'cropped_image' => 'required|string',
+    ]);
+
+    $id_account = session('id_account');
+
+    $data = [
+        'nik' => $request->nik,
+        'jenis_kelamin' => $request->jenis_kelamin,
+        'pekerjaan' => $request->pekerjaan,
+        'alamat' => $request->alamat,
+        'berlaku_hingga' => $request->has('seumur_hidup')
+            ? 'Seumur Hidup'
+            : $request->berlaku_hingga,
+        'tanggal_diupdate' => now(),
+    ];
+
+    $existing = DB::table('informasi_klien')->where('id_account', $id_account)->first();
+
+    // Upload ke Google Drive
+    if ($request->filled('cropped_image')) {
+        try {
             $base64Image = $request->input('cropped_image');
             $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $base64Image));
-            $filename = 'ktp_' . uniqid() . '.jpg';
+            $filename = 'ktp_' . \Str::uuid() . '.jpg';
 
-            // Simpan file ke temp path
             $tempDir = storage_path('app/temp');
             if (!file_exists($tempDir)) {
                 mkdir($tempDir, 0755, true);
@@ -450,189 +482,348 @@ class AuthController extends Controller
             $tempPath = $tempDir . "/{$filename}";
             file_put_contents($tempPath, $imageData);
 
-            // Ambil access token dari GdriveController
             $accessToken = app(\App\Http\Controllers\GdriveController::class)->token();
+            $parentFolderId = config('services.google.folder_id');
 
-            // Upload ke Google Drive
+            // ✅ Ambil nama klien dari table `account`
+            $namaKlien = DB::table('account')->where('id_account', $id_account)->value('nama') ?? $id_account;
+            $folderName = \Str::slug($namaKlien, '_'); // Contoh: "Jimmy Gunawan" -> "jimmy_gunawan"
+
+            // Buat folder berdasarkan nama klien
+            $targetFolderId = $this->getOrCreateFolder($folderName, $parentFolderId, $accessToken);
+
+            // Upload file ke Google Drive
             $response = Http::withToken($accessToken)
-    ->attach(
-        'metadata',
-        json_encode([
-            'name' => $filename,
-            'parents' => [config('services.google.folder_id')],
-        ]),
-        'metadata.json'
-    )
-    ->attach('file', file_get_contents($tempPath), $filename)
-    ->post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart');
+                ->attach(
+                    'metadata',
+                    json_encode([
+                        'name' => $filename,
+                        'parents' => [$targetFolderId], // folder berdasarkan nama
+                    ]),
+                    'metadata.json'
+                )
+                ->attach('file', file_get_contents($tempPath), $filename)
+                ->post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart');
 
-            if ($response->successful()) {
-                $fileId = json_decode($response->body())->id;
+            if ($response->successful() && $response->json('id')) {
+                $fileId = $response->json('id');
 
-                // Buat publik (opsional)
+                // Jadikan publik
                 Http::withToken($accessToken)
                     ->post("https://www.googleapis.com/drive/v3/files/{$fileId}/permissions", [
                         'role' => 'reader',
                         'type' => 'anyone',
                     ]);
 
-                // Simpan ID dan URL publik
                 $data['gambar_ktp'] = $fileId;
             }
 
-            // Hapus file sementara
-            unlink($tempPath);
-        }
-
-        // Simpan ke database
-        $id_account = session('id_account');
-        $existing = DB::table('informasi_klien')->where('id_account', $id_account)->first();
-
-        if ($existing) {
-            DB::table('informasi_klien')->where('id_account', $id_account)->update($data);
-        } else {
-            $data['id_account'] = $id_account;
-            $data['tanggal_dibuat'] = now();
-            DB::table('informasi_klien')->insert($data);
-        }
-
-        return redirect()->route('profile', ['id_account' => $id_account])
-            ->with('success', 'Data KTP berhasil disimpan dan diunggah ke Google Drive!');
-    }
-
-
-    public function editKtp(Request $request)
-    {
-        $id_account = session('id_account');
-
-        $request->validate([
-            'nik' => 'required|string|max:50',
-            'alamat' => 'required|string',
-            'jenis_kelamin' => 'required|string|in:Laki-laki,Perempuan',
-            'pekerjaan' => 'nullable|string|max:100',
-            'berlaku_hingga' => 'nullable|date',
-            'seumur_hidup' => 'nullable',
-            'cropped_image' => 'nullable|string',
-        ]);
-
-        $berlakuHingga = $request->has('seumur_hidup') ? 'Seumur Hidup' : $request->berlaku_hingga;
-
-        $data = [
-            'nik' => $request->nik,
-            'alamat' => $request->alamat,
-            'jenis_kelamin' => $request->jenis_kelamin,
-            'pekerjaan' => $request->pekerjaan,
-            'berlaku_hingga' => $berlakuHingga,
-            'tanggal_diupdate' => now(),
-        ];
-
-        if ($request->filled('cropped_image')) {
-            $base64Image = $request->cropped_image;
-
-            if (preg_match('/^data:image\/(\w+);base64,/', $base64Image)) {
-                $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $base64Image));
-                $fileName = 'ktp/' . uniqid() . '.jpg';
-                Storage::disk('public')->put($fileName, $imageData);
-                $data['gambar_ktp'] = $fileName;
+            // Hapus sementara
+            if (file_exists($tempPath)) {
+                unlink($tempPath);
             }
+
+        } catch (\Exception $e) {
+            \Log::error('Gagal upload ke Google Drive: ' . $e->getMessage());
         }
-
-        DB::table('informasi_klien')
-            ->where('id_account', $id_account)
-            ->update($data);
-
-        return redirect()->route('profile', ['id_account' => $id_account])
-            ->with('success', 'Data KTP berhasil diperbarui!');
     }
 
-    // NPWP
-    public function saveNPWP(Request $request)
-    {
-        $request->validate([
-            'nomor_npwp' => 'required|string|max:30',
-            'cropped_image_npwp' => 'nullable|string',
-            // 'gambar_npwp' => 'nullable|image|max:2048', // bisa diabaikan karena pakai cropped_image_npwp
-        ]);
-
-        $data = [
-            'nomor_npwp' => $request->nomor_npwp,
-            'tanggal_diupdate' => now(),
-        ];
-
-        if ($request->filled('cropped_image_npwp')) {
-            // Decode base64
-            $imageData = $request->cropped_image_npwp;
-            list($type, $imageData) = explode(';', $imageData);
-            list(, $imageData) = explode(',', $imageData);
-            $imageData = base64_decode($imageData);
-
-            // Buat nama file unik di folder npwp
-            $fileName = 'npwp/' . uniqid() . '.jpg';
-
-            // Simpan file di disk public
-            Storage::disk('public')->put($fileName, $imageData);
-
-            // Simpan path ke DB
-            $data['gambar_npwp'] = $fileName;
-        }
-
-        $id_account = session('id_account');
-        $existing = DB::table('informasi_klien')->where('id_account', $id_account)->first();
-
-        if ($existing) {
-            DB::table('informasi_klien')->where('id_account', $id_account)->update($data);
-        } else {
-            $data['id_account'] = $id_account;
-            $data['tanggal_dibuat'] = now();
-
-            // Isi kolom wajib lainnya yang belum diisi
-            $data['nik'] = ''; // atau 'BELUM-DIISI', tergantung skema kamu
-
-            DB::table('informasi_klien')->insert($data);
-        }
-
-
-        return redirect()->route('profile', ['id_account' => $id_account])
-            ->with('success', 'Data NPWP berhasil disimpan!');
+    // Simpan data
+    if ($existing) {
+        DB::table('informasi_klien')->where('id_account', $id_account)->update($data);
+    } else {
+        $data['id_account'] = $id_account;
+        $data['tanggal_dibuat'] = now();
+        DB::table('informasi_klien')->insert($data);
     }
 
-    public function editNpwp(Request $request)
-    {
-        $id_account = session('id_account');
+    return redirect()->route('profile', ['id_account' => $id_account])
+        ->with('success', 'Data KTP berhasil disimpan dan diunggah ke Google Drive!');
+}
 
-        $request->validate([
-            'nomor_npwp' => 'required|string|max:30',
-            'cropped_image_npwp' => 'nullable|string',
-        ]);
 
-        $data = [
-            'nomor_npwp' => $request->nomor_npwp,
-            'tanggal_diupdate' => now(),
-        ];
+public function editKtp(Request $request)
+{
+    $id_account = session('id_account');
 
-        if ($request->filled('cropped_image_npwp')) {
-            // Decode base64
-            $imageData = $request->cropped_image_npwp;
-            list($type, $imageData) = explode(';', $imageData);
-            list(, $imageData) = explode(',', $imageData);
-            $imageData = base64_decode($imageData);
+    $request->validate([
+        'nik' => 'required|string|max:50',
+        'alamat' => 'required|string',
+        'jenis_kelamin' => 'required|string|in:Laki-laki,Perempuan',
+        'pekerjaan' => 'nullable|string|max:100',
+        'berlaku_hingga' => 'nullable|date',
+        'seumur_hidup' => 'nullable',
+        'cropped_image' => 'nullable|string',
+    ]);
 
-            // Buat nama file unik di folder npwp
-            $fileName = 'npwp/' . uniqid() . '.jpg';
+    $berlakuHingga = $request->has('seumur_hidup') ? 'Seumur Hidup' : $request->berlaku_hingga;
 
-            // Simpan file di disk public
-            Storage::disk('public')->put($fileName, $imageData);
+    $data = [
+        'nik' => $request->nik,
+        'alamat' => $request->alamat,
+        'jenis_kelamin' => $request->jenis_kelamin,
+        'pekerjaan' => $request->pekerjaan,
+        'berlaku_hingga' => $berlakuHingga,
+        'tanggal_diupdate' => now(),
+    ];
 
-            // Simpan path ke DB
-            $data['gambar_npwp'] = $fileName;
+    // Ambil data lama dari DB
+    $existing = DB::table('informasi_klien')->where('id_account', $id_account)->first();
+
+    if ($request->filled('cropped_image')) {
+        try {
+            $base64Image = $request->cropped_image;
+            $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $base64Image));
+            $filename = 'ktp_' . \Str::uuid() . '.jpg';
+
+            $tempDir = storage_path('app/temp');
+            if (!file_exists($tempDir)) {
+                mkdir($tempDir, 0755, true);
+            }
+            $tempPath = $tempDir . "/{$filename}";
+            file_put_contents($tempPath, $imageData);
+
+            $accessToken = app(\App\Http\Controllers\GdriveController::class)->token();
+            $parentFolderId = config('services.google.folder_id');
+
+            // Folder berdasarkan nama atau fallback ke ID
+// Ambil nama dari tabel account
+$namaKlien = DB::table('account')->where('id_account', $id_account)->value('nama') ?? $id_account;
+$folderName = \Str::slug($namaKlien, '_');
+$targetFolderId = $this->getOrCreateFolder($folderName, $parentFolderId, $accessToken);
+
+
+            // Hapus file lama di Google Drive
+            if (!empty($existing->gambar_ktp)) {
+                Http::withToken($accessToken)
+                    ->delete("https://www.googleapis.com/drive/v3/files/{$existing->gambar_ktp}");
+            }
+
+            // Upload file baru ke folder user
+            $response = Http::withToken($accessToken)
+                ->attach(
+                    'metadata',
+                    json_encode([
+                        'name' => $filename,
+                        'parents' => [$targetFolderId],
+                    ]),
+                    'metadata.json'
+                )
+                ->attach('file', file_get_contents($tempPath), $filename)
+                ->post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart');
+
+            if ($response->successful() && $response->json('id')) {
+                $fileId = $response->json('id');
+
+                // Set akses publik
+                Http::withToken($accessToken)
+                    ->post("https://www.googleapis.com/drive/v3/files/{$fileId}/permissions", [
+                        'role' => 'reader',
+                        'type' => 'anyone',
+                    ]);
+
+                $data['gambar_ktp'] = $fileId;
+            }
+
+            if (file_exists($tempPath)) {
+                unlink($tempPath);
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Gagal edit file KTP di Google Drive: ' . $e->getMessage());
         }
+    }
 
-        DB::table('informasi_klien')
+    DB::table('informasi_klien')
         ->where('id_account', $id_account)
         ->update($data);
 
-        return redirect()->route('profile', ['id_account' => $id_account])->with('success', 'Data NPWP berhasil diperbarui!');
+    return redirect()->route('profile', ['id_account' => $id_account])
+        ->with('success', 'Data KTP berhasil diperbarui!');
+}
+
+
+
+    // NPWP
+    public function saveNPWP(Request $request)
+{
+    $request->validate([
+        'nomor_npwp' => 'required|string|max:30',
+        'cropped_image_npwp' => 'nullable|string',
+    ]);
+
+    $data = [
+        'nomor_npwp' => $request->nomor_npwp,
+        'tanggal_diupdate' => now(),
+    ];
+
+    $id_account = session('id_account');
+    $existing = DB::table('informasi_klien')->where('id_account', $id_account)->first();
+
+    if ($request->filled('cropped_image_npwp')) {
+        try {
+            $base64Image = $request->input('cropped_image_npwp');
+            $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $base64Image));
+            $filename = 'npwp_' . \Str::uuid() . '.jpg';
+
+            // Simpan sementara
+            $tempDir = storage_path('app/temp');
+            if (!file_exists($tempDir)) {
+                mkdir($tempDir, 0755, true);
+            }
+            $tempPath = $tempDir . "/{$filename}";
+            file_put_contents($tempPath, $imageData);
+
+            $accessToken = app(\App\Http\Controllers\GdriveController::class)->token();
+            $parentFolderId = config('services.google.folder_id');
+
+            // Nama folder dari nama klien atau ID
+// Ambil nama dari tabel account
+$namaKlien = DB::table('account')->where('id_account', $id_account)->value('nama') ?? $id_account;
+$folderName = \Str::slug($namaKlien, '_');
+$targetFolderId = $this->getOrCreateFolder($folderName, $parentFolderId, $accessToken);
+
+
+            // Upload ke folder milik klien
+            $response = Http::withToken($accessToken)
+                ->attach(
+                    'metadata',
+                    json_encode([
+                        'name' => $filename,
+                        'parents' => [$targetFolderId],
+                    ]),
+                    'metadata.json'
+                )
+                ->attach('file', file_get_contents($tempPath), $filename)
+                ->post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart');
+
+            if ($response->successful() && $response->json('id')) {
+                $fileId = $response->json('id');
+
+                // Set akses publik
+                Http::withToken($accessToken)
+                    ->post("https://www.googleapis.com/drive/v3/files/{$fileId}/permissions", [
+                        'role' => 'reader',
+                        'type' => 'anyone',
+                    ]);
+
+                $data['gambar_npwp'] = $fileId;
+            }
+
+            if (file_exists($tempPath)) {
+                unlink($tempPath);
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Gagal upload NPWP ke Google Drive: ' . $e->getMessage());
+        }
     }
+
+    if ($existing) {
+        DB::table('informasi_klien')->where('id_account', $id_account)->update($data);
+    } else {
+        $data['id_account'] = $id_account;
+        $data['tanggal_dibuat'] = now();
+        $data['nik'] = ''; // atau default placeholder
+        DB::table('informasi_klien')->insert($data);
+    }
+
+    return redirect()->route('profile', ['id_account' => $id_account])
+        ->with('success', 'Data NPWP berhasil disimpan dan diunggah ke Google Drive!');
+}
+
+
+
+public function editNpwp(Request $request)
+{
+    $id_account = session('id_account');
+
+    $request->validate([
+        'nomor_npwp' => 'required|string|max:30',
+        'cropped_image_npwp' => 'nullable|string',
+    ]);
+
+    $data = [
+        'nomor_npwp' => $request->nomor_npwp,
+        'tanggal_diupdate' => now(),
+    ];
+
+    $existing = DB::table('informasi_klien')->where('id_account', $id_account)->first();
+
+    if ($request->filled('cropped_image_npwp')) {
+        try {
+            $base64Image = $request->input('cropped_image_npwp');
+            $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $base64Image));
+            $filename = 'npwp_' . \Str::uuid() . '.jpg';
+
+            $tempDir = storage_path('app/temp');
+            if (!file_exists($tempDir)) {
+                mkdir($tempDir, 0755, true);
+            }
+            $tempPath = $tempDir . "/{$filename}";
+            file_put_contents($tempPath, $imageData);
+
+            $accessToken = app(\App\Http\Controllers\GdriveController::class)->token();
+            $parentFolderId = config('services.google.folder_id');
+
+            // Gunakan nama klien atau id_account sebagai nama folder
+// Ambil nama dari tabel account
+$namaKlien = DB::table('account')->where('id_account', $id_account)->value('nama') ?? $id_account;
+$folderName = \Str::slug($namaKlien, '_');
+$targetFolderId = $this->getOrCreateFolder($folderName, $parentFolderId, $accessToken);
+
+
+            // Hapus file lama jika ada
+            if (!empty($existing->gambar_npwp)) {
+                Http::withToken($accessToken)
+                    ->delete("https://www.googleapis.com/drive/v3/files/{$existing->gambar_npwp}");
+            }
+
+            // Upload file baru ke folder user
+            $response = Http::withToken($accessToken)
+                ->attach(
+                    'metadata',
+                    json_encode([
+                        'name' => $filename,
+                        'parents' => [$targetFolderId],
+                    ]),
+                    'metadata.json'
+                )
+                ->attach('file', file_get_contents($tempPath), $filename)
+                ->post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart');
+
+            if ($response->successful() && $response->json('id')) {
+                $fileId = $response->json('id');
+
+                // Jadikan file publik
+                Http::withToken($accessToken)
+                    ->post("https://www.googleapis.com/drive/v3/files/{$fileId}/permissions", [
+                        'role' => 'reader',
+                        'type' => 'anyone',
+                    ]);
+
+                $data['gambar_npwp'] = $fileId;
+            }
+
+            // Hapus file lokal sementara
+            if (file_exists($tempPath)) {
+                unlink($tempPath);
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Gagal upload NPWP ke Google Drive: ' . $e->getMessage());
+        }
+    }
+
+    // Update DB
+    DB::table('informasi_klien')
+        ->where('id_account', $id_account)
+        ->update($data);
+
+    return redirect()->route('profile', ['id_account' => $id_account])
+        ->with('success', 'Data NPWP berhasil diperbarui dan diunggah ke Google Drive!');
+}
+
 
     // Rekening
     public function saveRekening(Request $request)

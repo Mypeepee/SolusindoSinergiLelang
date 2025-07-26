@@ -27,8 +27,8 @@
                 <div class="card-body">
                   @if(!empty($informasi_klien->gambar_ktp))
                     <div class="d-flex align-items-center">
-                      <img src="{{ asset('storage/' . $informasi_klien->gambar_ktp) }}" alt="KTP"
-                           class="img-thumbnail me-4" style="width: 150px; height: auto; object-fit: contain;" />
+                        <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_ktp }}" alt="KTP"
+                        class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
                       <div>
                         <p class="mb-1"><strong>NIK:</strong> {{ $informasi_klien->nik }}</p>
                         <p class="mb-1"><strong>Jenis Kelamin:</strong> {{ ucfirst($informasi_klien->jenis_kelamin) }}</p>
@@ -53,8 +53,9 @@
                 <div class="card-body">
                   @if(!empty($informasi_klien->gambar_npwp))
                     <div class="d-flex align-items-center">
-                      <img src="{{ asset('storage/' . $informasi_klien->gambar_npwp) }}" alt="NPWP"
-                           class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
+                        <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_npwp }}" alt="NPWP"
+                        class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
+
                       <div>
                         <p class="mb-1"><strong>Nomor NPWP:</strong></p>
                         <p class="fs-5">{{ $informasi_klien->nomor_npwp }}</p>
