@@ -406,39 +406,6 @@
                                                 </div>
                                             </div>
                                         </td>
-
-                                        <td>
-                                            @if ($tahap === 'Closing')
-                                                <button class="btn btn-sm btn-primary"
-                                                    onclick="handleInputKuitansi('{{ $client->id_account }}', '{{ $client->id_listing }}')">
-                                                    Input Kuitansi
-                                                </button>
-                                            @elseif ($tahap === 'Kuitansi')
-                                                <button class="btn btn-sm btn-warning"
-                                                    onclick="updateProgress('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Kode Billing')">
-                                                    Input Kode Billing
-                                                </button>
-                                            @elseif ($tahap === 'Kode Billing')
-                                                <button class="btn btn-sm btn-secondary"
-                                                    onclick="handleInputRisalahLelang('{{ $client->id_account }}', '{{ $client->id_listing }}')">
-                                                    Input Risalah Lelang
-                                                </button>
-                                            @elseif ($tahap === 'Kutipan Risalah Lelang')
-                                                <button class="btn btn-sm btn-info"
-                                                    onclick="updateProgress('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Akte Grosse')">
-                                                    Grosse
-                                                </button>
-                                            @elseif ($tahap === 'Akte Grosse')
-                                                <button class="btn btn-sm btn-success"
-                                                    onclick="updateProgress('{{ $client->id_account }}', '{{ $client->id_listing }}', 'Balik Nama')">
-                                                    Balik Nama
-                                                </button>
-                                            @elseif ($tahap === 'Balik Nama')
-                                                <span class="text-muted">Selesai</span>
-                                            @else
-                                                <span class="text-muted">Selesai</span>
-                                            @endif
-                                        </td>
                                         <td>
                                             <a href="{{ route('download.suratkuasa', ['id' => $client->id_account, 'listing' => $client->id_listing]) }}"
                                             class="btn btn-sm btn-outline-primary rounded-pill">

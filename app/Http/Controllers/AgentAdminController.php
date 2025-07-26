@@ -11,6 +11,7 @@ use App\Models\InformasiKlien;
 use App\Models\PropertyInterest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Artisan;
 
 class AgentAdminController extends Controller
@@ -887,7 +888,7 @@ public function updateStatusClosing(Request $request)
                 $hargaDeal = (int) $property->harga;
                 
                 // Ambil id_account agent yang login
-                $idAccountAgent = 'AC001';
+                $idAccountAgent = session('id_account') ?? Cookie::get('id_account');
 
                 // Harga bidding dari request
                 $hargaBidding = (int) str_replace('.', '', $request->harga_bidding);
@@ -985,10 +986,31 @@ public function updateStatusClosing(Request $request)
             'Kuitansi', 'Kode Billing', 'Kutipan Risalah Lelang',
             'Akte Grosse', 'Balik Nama', 'Eksekusi Pengosongan', 'Selesai'
         ])) {
-            // Progress Register/Pengosongan → transaction
-            Transaction::where('id_listing', $id_listing)
+            $transaction = Transaction::where('id_listing', $id_listing)
                 ->where('id_klien', $id_account)
-                ->update(['status_transaksi' => $status]);
+                ->first();
+            
+            $idAccountAgent = session('id_account') ?? Cookie::get('id_account');
+            
+            // Progress Register/Pengosongan → transaction
+            DB::table('transaction')
+            ->where('id_listing', $id_listing)
+            ->where('id_klien', $id_account)
+            ->update([
+                'status_transaksi' => $status,
+                'tanggal_diupdate' => now(),
+            ]);
+
+            DB::table('transaction_details')->insert([
+                'id_account'         => $idAccountAgent,
+                'id_transaction'     => $transaction->id_transaction,
+                'status_transaksi'   => $status,
+                'catatan'            => $request->input('comment'),
+                'tanggal_dibuat'     => now(),
+                'tanggal_diupdate'   => now(),
+            ]);
+
+
         }
 
         return redirect()->back()->with('success', 'Status berhasil diperbarui.');

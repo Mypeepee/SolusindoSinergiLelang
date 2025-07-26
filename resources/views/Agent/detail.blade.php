@@ -166,7 +166,7 @@
                                 <!-- Notes -->
                                 <div class="mb-3">
                                     <label for="message-box" class="form-label fw-semibold">Catatan Admin:</label>
-                                    <textarea id="message-box" name="comment" class="form-control" rows="4" placeholder="Tambahkan catatan di sini..."></textarea>
+                                    <textarea id="message-box" name="comment" class="form-control" rows="4">Perkiraan __ hari lagi selesai</textarea>
                                 </div>
                             @endif
 
@@ -282,6 +282,18 @@
                 function formatRupiah(angka) {
                     return angka.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
                 }
+            }
+
+            if (['Kuitansi', 'Kutipan Risalah Lelang'].includes(selected)) {
+                dynamicSection.innerHTML += `
+                    <div class="mb-3">
+                        <a href="https://docs.google.com/forms/d/e/1FAIpQLSedVS9P5oePrsoGub64dx0sH9kT5eYFUk22RlHrtYKWE3jYbQ/viewform" 
+                        target="_blank" 
+                        class="btn btn-outline-primary w-100">
+                            <i class="bi bi-journal-text me-1"></i> Input ${selected}
+                        </a>
+                    </div>
+                `;
             }
         });
     });
