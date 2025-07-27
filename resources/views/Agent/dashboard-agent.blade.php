@@ -237,12 +237,11 @@
 
                                                         <td style="min-width: 150px;">
                                                             @if ($client->gambar_ktp)
-                                                            <a href="{{ asset('storage/ktp/'.$client->gambar_ktp) }}"
-                                                                class="btn btn-sm btn-outline-info"
-                                                                download="{{ $client->gambar_ktp }}">
-                                                                Download KTP
-                                                            </a>
-
+                                                                <a href="{{ route('download.ktp', $client->gambar_ktp) }}"
+                                                                   class="btn btn-sm btn-outline-info"
+                                                                   download>
+                                                                   Download KTP
+                                                                </a>
                                                             @else
                                                                 <span class="text-muted">Belum Ada</span>
                                                             @endif

@@ -141,13 +141,13 @@
             {{-- Gambar KTP di kanan --}}
             <div class="white-text flex-shrink-0 mt-4 mt-md-0" style="max-width: 200px;">
                 @if(isset($clientData) && !empty($clientData->gambar_ktp))
-                    <img
-                    src="{{ asset('storage/' . $clientData->gambar_ktp) }}"
-                        alt="Foto KTP"
-                        class="img-fluid rounded shadow-sm border"
-                        style="aspect-ratio: 5 / 3; object-fit: contain; width: 100%;"
-                        loading="lazy"
-                    >
+                <img
+                src="https://drive.google.com/thumbnail?id={{ $clientData->gambar_ktp }}"
+                alt="Foto KTP"
+                class="img-fluid rounded shadow-sm border"
+                style="aspect-ratio: 5 / 3; object-fit: contain; width: 100%;"
+                loading="lazy"
+            />
                     @else
                     <div class="text-center text-muted fst-italic" style="height: 150px; line-height: 150px;">
                         Tidak ada gambar KTP
@@ -183,13 +183,14 @@
         </div>
         <div class="col-md-4 text-center text-md-end mt-3 mt-md-0">
             @if (!empty($clientData->gambar_npwp))
-                <img
-                    src="{{ asset('storage/' . $clientData->gambar_npwp) }}"
-                    alt="Foto NPWP"
-                    class="img-fluid rounded shadow-sm border"
-                    style="max-width: 100%; height: auto; object-fit: contain;"
-                    loading="lazy"
-                >
+            <img
+            src="https://drive.google.com/thumbnail?id={{ $clientData->gambar_npwp }}"
+            alt="Foto NPWP"
+            class="img-fluid rounded shadow-sm border"
+            style="max-width: 100%; height: auto; object-fit: contain;"
+            loading="lazy"
+        />
+
             @else
                 <p class="text-muted fst-italic">Belum ada gambar NPWP.</p>
             @endif

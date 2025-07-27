@@ -214,7 +214,8 @@ Route::post('/dashboard/detail/{id_listing}/{id_account}/update-status', [AgentA
 //scrape dari dashboard owner
 Route::post('/scrape-property', [AgentAdminController::class, 'scrape'])->name('property.scrape');
 
-
+//download
+Route::get('/download/ktp/{id}', [App\Http\Controllers\DownloadController::class, 'downloadKTP'])->name('download.ktp');
 
 
 
