@@ -1,4 +1,6 @@
 <!-- Redesigned Add Property Page -->
+<script src="https://unpkg.com/browser-image-compression/dist/browser-image-compression.js"></script>
+
 @include('template.header')
 <section class="container my-5">
 <div class="container mt-5 mb-5 p-4 bg-white rounded shadow-sm" style="max-width: 900px;">
@@ -27,8 +29,8 @@
                     $steps = [
                         ['id' => 'step1', 'label' => 'Info Umum', 'icon' => 'bi-info-circle'],
                         ['id' => 'step2', 'label' => 'Lokasi', 'icon' => 'bi-geo-alt'],
-                        ['id' => 'step3', 'label' => 'Spesifikasi', 'icon' => 'bi-sliders'],
-                        ['id' => 'step4', 'label' => 'Gambar', 'icon' => 'bi-images'],
+                        // ['id' => 'step3', 'label' => 'Spesifikasi', 'icon' => 'bi-sliders'],
+                        ['id' => 'step3', 'label' => 'Gambar', 'icon' => 'bi-images'],
                     ];
                 @endphp
 
@@ -52,80 +54,103 @@
     </div>
     <div class="tab-content" id="wizardContent">
                 <!-- Step 1: Info Umum -->
-        <div class="tab-pane fade show active" id="step1" role="tabpanel">
-            <div class="card shadow-sm rounded-4 p-4">
-                <h5 class="mb-4 fw-semibold text-orange">
-                    <i class="bi bi-info-circle me-2 text-orange"></i> Informasi Umum
-                </h5>
+                <div class="tab-pane fade show active" id="step1" role="tabpanel">
+                    <div class="card shadow-sm rounded-4 p-4">
+                        <h5 class="mb-4 fw-semibold text-orange">
+                            <i class="bi bi-info-circle me-2 text-orange"></i> Informasi Umum
+                        </h5>
 
-                <div class="row g-3">
-                    <!-- Judul & Harga dalam 1 row -->
-                    <div class="row g-3">
-                        <!-- Judul -->
-                        <div class="col-md-6">
-                            <label class="form-label">Judul Properti <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-pencil-square"></i></span>
-                                <input type="text" class="form-control" id="judul" name="judul" value="{{ old('judul') }}" required>
-                            </div>
-                        </div>
-
-                        <!-- Harga -->
-                        <div class="col-md-6">
-                            <label class="form-label">Harga <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-cash-stack"></i></span>
-                                <input type="text" class="form-control" id="harga" name="harga" value="{{ old('harga') }}">
-                            </div>
-                        </div>
-                    </div>
-
-
-                    <div class="row g-3 align-items-end">
-                        <!-- Kiri: Tipe Properti (Full) -->
-                        <div class="col-md-6">
-                            <label class="form-label">Tipe Properti <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-house-door"></i></span>
-                                <select name="tipe" class="form-select" required>
-                                    <option value="">Pilih tipe</option>
-                                    @foreach(['rumah', 'hotel dan villa', 'pabrik', 'ruko', 'tanah', 'gudang', 'apartemen', 'sewa'] as $type)
-                                    <option value="{{ $type }}" {{ old('tipe') == $type ? 'selected' : '' }}>{{ ucfirst($type) }}</option>
-                                @endforeach
-                                </select>
-                            </div>
-                        </div>
-
-
-                        <!-- Kanan bawah: Metode Pembayaran -->
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold">
-                                <i class="bi bi-wallet2 me-2"></i> Metode Pembayaran
-                            </label>
-                            <div class="d-flex gap-3 mt-1">
-                                @foreach(['cash', 'kpr'] as $pay)
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="checkbox" name="payment[]" id="payment_{{ $pay }}" value="{{ $pay }}" {{ in_array($pay, old('payment', explode(',', $property->payment ?? ''))) ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="payment_{{ $pay }}">{{ strtoupper($pay) }}</label>
+                        <div class="row g-3">
+                            <!-- Judul & Harga dalam 1 row -->
+                            <div class="row g-3">
+                                <!-- Judul -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Judul Properti <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-pencil-square"></i></span>
+                                        <input type="text" class="form-control" id="judul" name="judul" value="{{ old('judul') }}" required>
                                     </div>
-                                @endforeach
+                                </div>
+
+                                <!-- Harga -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Harga <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-cash-stack"></i></span>
+                                        <input type="text" class="form-control" id="harga" name="harga" value="{{ old('harga') }}">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row g-3">
+                                <!-- Luas Tanah -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Luas Tanah (m²)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-fullscreen"></i></span>
+                                        <input type="number" class="form-control" id="luas_tanah" name="luas_tanah" value="{{ old('luas_tanah') }}" required>
+                                    </div>
+                                </div>
+
+                                <!-- Jenis Sertifikat -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Jenis Sertifikat</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-file-earmark-text"></i></span>
+                                        <select name="sertifikat" class="form-select">
+                                            <option value="">Pilih Sertifikat</option>
+                                            @foreach(['SHM', 'HGB', 'AJB', 'Girik', 'Hak Pakai'] as $sertif)
+                                                <option value="{{ $sertif }}" {{ old('sertifikat') == $sertif ? 'selected' : '' }}>{{ $sertif }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row g-3 align-items-end">
+                                <!-- Tipe Properti -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Tipe Properti <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-house-door"></i></span>
+                                        <select name="tipe" class="form-select" required>
+                                            <option value="">Pilih tipe</option>
+                                            @foreach(['rumah', 'hotel dan villa', 'pabrik', 'ruko', 'tanah', 'gudang', 'apartemen', 'sewa'] as $type)
+                                                <option value="{{ $type }}" {{ old('tipe') == $type ? 'selected' : '' }}>{{ ucfirst($type) }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Metode Pembayaran -->
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">
+                                        <i class="bi bi-wallet2 me-2"></i> Metode Pembayaran
+                                    </label>
+                                    <div class="d-flex gap-3 mt-1">
+                                        @foreach(['cash', 'kpr'] as $pay)
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="checkbox" name="payment[]" id="payment_{{ $pay }}" value="{{ $pay }}" {{ in_array($pay, old('payment', explode(',', $property->payment ?? ''))) ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="payment_{{ $pay }}">{{ strtoupper($pay) }}</label>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Deskripsi -->
+                            <div class="col-12">
+                                <label class="form-label">Deskripsi <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-card-text"></i></span>
+                                    <textarea class="form-control" id="deskripsi" name="deskripsi" rows="3" required>{{ old('deskripsi') }}</textarea>
+                                </div>
+                                <div class="text-end"><small><span id="charCount">{{ strlen(old('deskripsi')) }}</span>/2200</small></div>
                             </div>
                         </div>
-                    </div>
-
-
-                    <!-- Deskripsi -->
-                    <div class="col-12">
-                        <label class="form-label">Deskripsi <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="bi bi-card-text"></i></span>
-                            <textarea class="form-control" id="deskripsi" name="deskripsi" rows="3" required>{{ old('deskripsi') }}</textarea>
-                        </div>
-                        <div class="text-end"><small><span id="charCount">{{ strlen(old('deskripsi')) }}</span>/2200</small></div>
                     </div>
                 </div>
-            </div>
-        </div>
+
 
 
         <!-- Step 2: Lokasi -->
@@ -199,7 +224,7 @@
         </div>
 
         <!-- Step 3: Spesifikasi -->
-        <div class="tab-pane fade" id="step3" role="tabpanel">
+        {{-- <div class="tab-pane fade" id="step3" role="tabpanel">
             <div class="card shadow-sm rounded-4 p-4">
                 <h5 class="mb-4 fw-semibold text-orange">
                     <i class="bi bi-building text-orange me-2"></i> Spesifikasi Properti
@@ -287,28 +312,28 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div> --}}
 
 
-        </div>
-        <div class="tab-pane fade" id="step4" role="tabpanel">
-            <div class="card p-4">
-                            <!-- Dropzone Upload -->
-                <div class="col-md-12">
-                    <label for="gambar" class="form-label fw-semibold">
-                        <i class="bi bi-images me-1"></i> Unggah Gambar
-                    </label>
+        <div class="tab-pane fade" id="step3" role="tabpanel">
+            <div class="card shadow-sm rounded-4 p-4">
+                 <!-- Dropzone Upload -->
+<div class="col-md-12">
+    <label for="gambar" class="form-label fw-semibold">
+        <i class="bi bi-images me-1"></i> Unggah Gambar
+    </label>
 
-                    <div id="dropzone" class="border rounded-3 p-4 text-center bg-light" style="cursor: pointer;">
-                        <i class="bi bi-cloud-arrow-up fs-1 text-primary"></i>
-                        <p class="mb-1">Tarik & Lepas gambar ke sini</p>
-                        <small class="text-muted">Atau klik untuk memilih gambar (bisa lebih dari satu)</small>
-                        <input type="file" id="gambar" name="gambar[]" multiple accept="image/*" style="display: none;" required>
-                    </div>
+    <div id="dropzone" class="border rounded-3 p-4 text-center bg-light" style="cursor: pointer;">
+        <i class="bi bi-cloud-arrow-up fs-1 text-primary"></i>
+        <p class="mb-1">Tarik & Lepas gambar ke sini</p>
+        <small class="text-muted">Atau klik untuk memilih gambar (bisa lebih dari satu)</small>
+        <input type="file" id="gambar" name="gambar[]" multiple accept="image/*" style="display: none;" required>
+    </div>
 
-                    <!-- Preview -->
-                    <div id="previewContainer" class="mt-3 d-flex flex-wrap gap-3"></div>
-                </div>
+    <!-- Preview Gambar -->
+    <div id="previewContainer" class="mt-3 d-flex flex-wrap gap-3"></div>
+</div>
+
             </div>
             <div class="mt-4">
                 <button type="submit" class="btn btn-primary w-100 py-2">
@@ -499,3 +524,145 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const inputHarga = document.getElementById('harga');
+
+        // Format angka saat diketik
+        inputHarga.addEventListener('input', function (e) {
+            const value = this.value.replace(/\D/g, ''); // Hapus semua non-digit
+            const formatted = new Intl.NumberFormat('id-ID').format(value); // Format ribuan Indonesia
+            this.value = formatted;
+        });
+
+        // Saat submit form, ubah jadi angka mentah (misalnya 2000000)
+        inputHarga.form.addEventListener('submit', function () {
+            inputHarga.value = inputHarga.value.replace(/\./g, ''); // Hapus titik
+        });
+    });
+    </script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const dropzone = document.getElementById('dropzone');
+        const input = document.getElementById('gambar'); // input[type="file"] multiple
+        let compressedFiles = [];
+
+        // === Klik Dropzone untuk trigger input file ===
+        dropzone.addEventListener('click', () => input.click());
+
+        // === Drag n Drop Styling ===
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('border-primary', 'bg-white');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('border-primary', 'bg-white');
+        });
+
+        // === Handle Drop Files ===
+        dropzone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('border-primary', 'bg-white');
+            const files = e.dataTransfer.files;
+            await handleFiles(files);
+        });
+
+        // === Handle Manual File Input ===
+        input.addEventListener('change', async () => {
+            await handleFiles(input.files);
+        });
+
+        // === Fungsi utama kompres dan ganti input ===
+        async function handleFiles(files) {
+            compressedFiles = [];
+
+            for (const file of files) {
+                if (!file.type.startsWith('image/')) continue;
+
+                let compressed = file;
+
+                // Hanya kompres jika size > 500 KB
+                if (file.size > 500000) {
+                    const options = {
+                        maxSizeMB: 1,
+                        maxWidthOrHeight: 1920,
+                        useWebWorker: true,
+                    };
+                    try {
+                        compressed = await imageCompression(file, options);
+                    } catch (error) {
+                        console.error('Gagal kompres:', error);
+                    }
+                }
+
+                compressedFiles.push(compressed);
+            }
+
+            // Gantikan input files dengan versi terkompresi
+            const dataTransfer = new DataTransfer();
+            compressedFiles.forEach(f => dataTransfer.items.add(f));
+            input.files = dataTransfer.files;
+
+            console.log('Gambar siap dikirim:', [...input.files].map(f => f.name));
+        }
+    });
+    </script>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const dropzone = document.getElementById('dropzone');
+        const input = document.getElementById('gambar');
+        const previewContainer = document.getElementById('previewContainer');
+
+        // Klik untuk buka dialog file
+        dropzone.addEventListener('click', () => input.click());
+
+        // Drag over
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('border-primary', 'bg-white');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('border-primary', 'bg-white');
+        });
+
+        // Handle drop
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('border-primary', 'bg-white');
+
+            const files = e.dataTransfer.files;
+            input.files = files;
+
+            previewImages(files);
+        });
+
+        // Handle file input change
+        input.addEventListener('change', (e) => {
+            previewImages(e.target.files);
+        });
+
+        function previewImages(files) {
+            previewContainer.innerHTML = ''; // Reset
+            Array.from(files).forEach(file => {
+                if (!file.type.startsWith('image/')) return;
+
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.classList.add('rounded', 'border');
+                    img.style.width = '120px';
+                    img.style.height = '120px';
+                    img.style.objectFit = 'cover';
+                    previewContainer.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+    });
+    </script>
+

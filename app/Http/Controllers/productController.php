@@ -16,6 +16,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use App\Helpers\GoogleDriveUploader;
+use Illuminate\Support\Facades\Http;
 
 
 class productController extends Controller
@@ -225,99 +226,127 @@ class productController extends Controller
 
 //     return back()->with('success', 'Property added successfully!');
 // }
+private function getOrCreateFolder($folderName, $parentId, $accessToken)
+{
+    $search = Http::withToken($accessToken)->get('https://www.googleapis.com/drive/v3/files', [
+        'q' => "mimeType='application/vnd.google-apps.folder' and name='{$folderName}' and '{$parentId}' in parents and trashed=false",
+        'fields' => 'files(id, name)',
+    ]);
+
+    if ($search->successful() && count($search['files']) > 0) {
+        return $search['files'][0]['id'];
+    }
+
+    $create = Http::withToken($accessToken)->post('https://www.googleapis.com/drive/v3/files', [
+        'name' => $folderName,
+        'mimeType' => 'application/vnd.google-apps.folder',
+        'parents' => [$parentId],
+    ]);
+
+    return $create->json('id');
+}
 
     //pake laravel storage
     public function store(Request $request)
-    {
+{
+    $request->merge([
+        'harga' => str_replace('.', '', $request->harga)
+    ]);
 
-        $request->merge([
-            'harga' => str_replace('.', '', $request->harga)
-        ]);
+    $request->validate([
+        'judul' => 'required|string|max:100',
+        'tipe' => 'required|string|max:15',
+        'deskripsi' => 'required|string|max:2200',
+        'harga' => 'required|numeric|min:0',
+        'lokasi' => 'required|string|max:100',
+        'provinsi' => 'required|string|max:50',
+        'kota' => 'required|string|max:50',
+        'kelurahan' => 'required|string|max:50',
+        'sertifikat' => 'required|string|max:50',
+        'gambar' => 'required|array|min:1',
+        'gambar.*' => 'image|mimes:jpeg,png,jpg|max:8192',
+        'luas_tanah' => 'required|integer|min:0',
+        'payment' => 'nullable|array',
+        'cover_image_index' => 'nullable|string',
+    ]);
 
-        $request->validate([
-            'judul' => 'required|string|max:100',
-            'tipe' => 'required|string|max:15',
-            'deskripsi' => 'required|string|max:2200',
-            'kamar_tidur' => 'required|integer|min:0',
-            'kamar_mandi' => 'required|integer|min:0',
-            'harga' => 'required|numeric|min:0',
-            'lokasi' => 'required|string|max:100',
-            'provinsi' => 'required|string|max:50',
-            'kota' => 'required|string|max:50',
-            'kelurahan' => 'required|string|max:50',
-            'sertifikat' => 'required|string|max:50',
-            'lantai' => 'required|integer|min:0',
-            'orientation' => 'required|string|max:15',
-            'gambar' => 'required|array|min:1',
-            'gambar.*' => 'image|mimes:jpeg,png,jpg|max:8192',
-            'luas_tanah' => 'required|integer|min:0',
-            'luas_bangunan' => 'required|integer|min:0',
-            'payment' => 'nullable|array',
-            'cover_image_index' => 'nullable|string',
-        ]);
+    $id_account = session('id_account');
+    $agent = Agent::where('id_account', $id_account)->first();
+    if (!$agent) return back()->withErrors(['agent' => 'Data agent tidak ditemukan.']);
 
-        $imageUrls = [];
-        $coverIndex = $request->input('cover_image_index');
+    $accessToken = app(\App\Http\Controllers\GdriveController::class)->token();
+    $rootFolderId = '1yMtRi1DbiINlGSFzHzGj-MT8f7C-UANJ';
+    $folderKota = $this->getOrCreateFolder($request->kota, $rootFolderId, $accessToken);
+    $folderAlamat = $this->getOrCreateFolder($request->lokasi, $folderKota, $accessToken);
 
-        if ($request->hasFile('gambar')) {
-            foreach ($request->file('gambar') as $index => $file) {
-                $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $filePath = $file->storeAs('property-images', $fileName, 'public');
+    $gambarUrls = [];
+    $coverIndex = $request->input('cover_image_index');
 
-                // Gantilah kode di bawah ini dengan path relatif
-                $url = '/storage/' . $filePath;
+    foreach ($request->file('gambar') as $index => $file) {
+        $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+        $tempPath = $file->storeAs('temp', $fileName);
+        $tempFullPath = storage_path('app/' . $tempPath);
 
-                if ((string) $index === $coverIndex) {
-                    array_unshift($imageUrls, $url);
-                } else {
-                    $imageUrls[] = $url;
-                }
+        $response = Http::withToken($accessToken)
+            ->attach('metadata', json_encode([
+                'name' => $fileName,
+                'parents' => [$folderAlamat],
+            ]), 'metadata.json')
+            ->attach('file', file_get_contents($tempFullPath), $fileName)
+            ->post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart');
+
+        Storage::delete($tempPath);
+
+        if ($response->successful()) {
+            $fileId = $response->json('id');
+
+            Http::withToken($accessToken)->post("https://www.googleapis.com/drive/v3/files/{$fileId}/permissions", [
+                'role' => 'reader',
+                'type' => 'anyone',
+            ]);
+
+            $thumbUrl = 'https://drive.google.com/thumbnail?id=' . $fileId;
+
+            if ((string) $index === $coverIndex) {
+                array_unshift($gambarUrls, $thumbUrl);
+            } else {
+                $gambarUrls[] = $thumbUrl;
             }
-        } else {
-            return back()->withInput()->withErrors(['gambar' => 'Minimal satu gambar wajib diunggah']);
         }
-
-        $imageString = implode(',', $imageUrls);
-        $paymentString = implode(',', $request->input('payment', []));
-
-        // Ambil data agen
-        $id_account = session('id_account');
-        $agent = Agent::where('id_account', $id_account)->first();
-
-        if (!$agent || !$agent->id_account) {
-            return back()->withInput()->withErrors(['agent' => 'Data agent tidak ditemukan atau tidak valid']);
-        }
-        // Simpan properti
-        $property = Property::create([
-            'judul' => $request->judul,
-            'tipe' => $request->tipe,
-            'deskripsi' => $request->deskripsi,
-            'kamar_tidur' => $request->kamar_tidur,
-            'kamar_mandi' => $request->kamar_mandi,
-            'harga' => $request->harga,
-            'lokasi' => $request->lokasi,
-            'provinsi' => $request->provinsi,
-            'kota' => $request->kota,
-            'kelurahan' => $request->kelurahan,
-            'sertifikat' => $request->sertifikat,
-            'lantai' => $request->lantai,
-            'orientation' => $request->orientation,
-            'status' => 'Tersedia',
-            'gambar' => $imageString,
-            'luas_tanah' => $request->luas_tanah,
-            'luas_bangunan' => $request->luas_bangunan,
-            'payment' => $paymentString,
-            'id_agent' => $id_account,
-        ]);
-        // Tambahkan dd di sini untuk debug
-        DB::table('listingan_agent')->insert([
-            'agent_id' => $agent->id_account,
-            'property_id' => $property->id_listing,
-
-        ]);
-
-        return redirect()->route('agent.properties')->with('success', 'Properti berhasil ditambahkan!');
     }
+
+    $imageString = implode(',', $gambarUrls);
+    $paymentString = implode(',', $request->input('payment', []));
+
+    $uangJaminan = (int) ($request->harga * 0.2);
+    $batasJaminan = now()->addDays(30);
+    $batasPenawaran = now()->addDays(31);
+
+    $property = Property::create([
+        'judul' => $request->judul,
+        'tipe' => $request->tipe,
+        'vendor' => 'Balai Lelang Solusindo Surabaya',
+        'deskripsi' => $request->deskripsi,
+        'harga' => $request->harga,
+        'lokasi' => $request->lokasi,
+        'provinsi' => $request->provinsi,
+        'kota' => $request->kota,
+        'kelurahan' => $request->kelurahan,
+        'sertifikat' => $request->sertifikat,
+        'status' => 'Tersedia',
+        'gambar' => $imageString,
+        'luas' => $request->luas_tanah + $request->luas_bangunan,
+        'payment' => $paymentString,
+        'uang_jaminan' => $uangJaminan,
+        'batas_akhir_jaminan' => $batasJaminan,
+        'batas_akhir_penawaran' => $batasPenawaran,
+        'vendor' => 'Balai Lelang Solusindo Surabaya',
+        'id_agent' => $agent->id_agent,
+    ]);
+    return redirect()->route('agent.properties')->with('success', 'Properti berhasil ditambahkan!');
+}
+
+
 
     public function create()
     {

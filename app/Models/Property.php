@@ -16,26 +16,28 @@ class Property extends Model
     protected $table = 'property';
     protected $primaryKey = 'id_listing';
     protected $fillable = [
-        'tipe',
+        'id_agent',
+        'vendor',
         'judul',
         'deskripsi',
-        'kamar_tidur',
-        'kamar_mandi',
+        'tipe',
         'harga',
         'lokasi',
+        'luas',
         'provinsi',
         'kota',
+        'kecamatan',
         'kelurahan',
         'sertifikat',
-        'orientation',
         'status',
         'gambar',
-        'luas_tanah',
-        'luas_bangunan',
         'payment',
-        'lantai',
-        'id_agent',
+        'uang_jaminan',
+        'batas_akhir_jaminan',
+        'batas_akhir_penawaran',
+        'tanggal_buyer_meeting',
     ];
+
 
     public function getAgentPhone()
     {
