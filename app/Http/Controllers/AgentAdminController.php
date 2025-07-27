@@ -207,7 +207,7 @@ class AgentAdminController extends Controller
                 'total' => $propertyCounts[$lowerType] ?? 0 // default 0 jika tidak ada
             ];
         });
-        
+
         //pending agents
         $pendingAgents = DB::table('agent')
             ->join('account', 'agent.id_account', '=', 'account.id_account')
@@ -287,7 +287,7 @@ class AgentAdminController extends Controller
             'Balik Nama',
             'Eksekusi Pengosongan',
             'Selesai',
-        ]) 
+        ])
         ->select(
             'account.id_account',
             'account.nama',
@@ -890,24 +890,24 @@ public function updateStatusClosing(Request $request)
             'status' => 'required|string',
             'buyer_meeting_datetime' => 'nullable|date',
         ]);
-    
+
         $status = $request->status;
-        
+
         // ✅ Kalau Closing → lakukan proses tambahan
         if ($status === 'Closing') {
             try {
                 DB::beginTransaction();
-                
+
                 // Ambil data property
                 $property = DB::table('property')->where('id_listing', $id_listing)->first();
                 if (!$property) {
                     throw new \Exception('Property tidak ditemukan.');
                 }
-                
+
                 // Ambil data agent dari property
                 $idAgent = $property->id_agent;
                 $hargaDeal = (int) $property->harga;
-                
+
                 // Ambil id_account agent yang login
                 $idAccountAgent = session('id_account') ?? Cookie::get('id_account');
 
@@ -919,7 +919,7 @@ public function updateStatusClosing(Request $request)
                 if ($hargaBidding > $hargaDeal) {
                     return back()->withErrors(['harga_bidding' => 'Harga bidding tidak boleh lebih besar dari harga deal.']);
                 }
-                
+
                 // Generate ID transaksi unik (TRX001, TRX002)
                 $lastTransaction = DB::table('transaction')->latest('id_transaction')->first();
                 $newIdNumber = $lastTransaction
@@ -1010,9 +1010,9 @@ public function updateStatusClosing(Request $request)
             $transaction = Transaction::where('id_listing', $id_listing)
                 ->where('id_klien', $id_account)
                 ->first();
-            
+
             $idAccountAgent = session('id_account') ?? Cookie::get('id_account');
-            
+
             // Progress Register/Pengosongan → transaction
             DB::table('transaction')
             ->where('id_listing', $id_listing)
@@ -1040,25 +1040,21 @@ public function updateStatusClosing(Request $request)
 
 
     public function scrape(Request $request)
-    {
-        $tipe = $request->input('tipe'); // Ambil tipe properti dari request
+{
+    $tipe = $request->input('tipe');
 
-        try {
-            // Jalankan Artisan Command
-            Artisan::call('app:scrape-property', [
-                'kategori' => $tipe
-            ]);
+    try {
+        Artisan::call('app:scrape-property', [
+            'kategori' => $tipe
+        ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => "Scraping untuk tipe {$tipe} telah dimulai."
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json(['message' => 'Scrape berhasil dijalankan.']);
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Gagal menjalankan scrape: ' . $e->getMessage()
+        ], 500);
     }
+}
+
 
 }

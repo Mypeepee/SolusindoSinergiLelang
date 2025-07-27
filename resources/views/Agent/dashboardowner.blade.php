@@ -54,12 +54,45 @@
 
                             <!-- Hidden Button (shows on click) -->
                             <div class="action-btn mt-2 text-center" style="display:none;">
-                                <button 
-                                    class="btn btn-primary btn-sm rounded-pill scrape-btn" 
-                                    data-tipe="{{ $property->tipe }}">
+                                <button
+                                    type="button"
+                                    class="btn btn-primary btn-sm rounded-pill scrape-btn"
+                                    data-tipe="{{ strtolower($property->tipe) }}">
                                     Scrape {{ $property->tipe }}
                                 </button>
                             </div>
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function () {
+                                    document.querySelectorAll('.scrape-btn').forEach(function (btn) {
+                                        btn.addEventListener('click', function () {
+                                            const tipe = this.getAttribute('data-tipe');
+                                            if (!tipe) return;
+
+                                            fetch("{{ route('property.scrape') }}", {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                                },
+                                                body: JSON.stringify({ tipe: tipe })
+                                            })
+                                            .then(response => {
+                                                if (!response.ok) throw new Error("Request gagal");
+                                                return response.json();
+                                            })
+                                            .then(data => {
+                                                alert(data.message);
+                                                location.reload(); // reload data kalau perlu
+                                            })
+                                            .catch(error => {
+                                                alert("Gagal menjalankan scrape: " + error.message);
+                                            });
+                                        });
+                                    });
+                                });
+                                </script>
+
+
                         </div>
                     </div>
                 @endforeach
@@ -133,13 +166,14 @@
                                                 <td>{{ $pclient->nama }}</td>
                                                 <td>{{ $pclient->email }}</td>
                                                 <td>
-                                                    <a href="{{ asset($pclient->gambar_ktp) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
+                                                    <a href="https://drive.google.com/file/d/{{ $pclient->gambar_ktp }}/view" target="_blank" class="btn btn-outline-primary">
                                                         <i class="fa fa-id-card me-1"></i> Lihat KTP
                                                     </a>
+
                                                 </td>
                                                 <td>
-                                                    <a href="{{ asset($pclient->gambar_npwp) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
-                                                        <i class="fa fa-file-invoice me-1"></i> Lihat NPWP
+                                                    <a href="https://drive.google.com/file/d/{{ $pclient->gambar_npwp }}/view" target="_blank" class="btn btn-outline-primary">
+                                                        <i class="fa fa-id-card me-1"></i> Lihat NPWP
                                                     </a>
                                                 </td>
                                                 <td style="min-width: 230px;">
@@ -369,7 +403,7 @@
                                         <th style="min-width: 120px;">Harga</th>
                                         <th style="min-width: 160px;">Progess</th>
                                         <th>Status</th>
-                                        <th style="min-width: 160px;">Detail</th> 
+                                        <th style="min-width: 160px;">Detail</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -501,7 +535,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>  
+                    </div>
                 </div>
             </div>
         </div>
