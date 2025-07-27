@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Kreait\Firebase\Factory;
+use Illuminate\Support\Facades\Http;
+use App\Models\Agent;
 
 use App\Models\User;
 
@@ -193,144 +195,155 @@ class propertydetailController extends Controller
 //         return back()->withErrors(['error' => 'Update failed: ' . $e->getMessage()]);
 //     }
 // }
+private function getOrCreateFolder($name, $parentId, $token)
+{
+    $query = Http::withToken($token)->get('https://www.googleapis.com/drive/v3/files', [
+        'q' => "name='{$name}' and mimeType='application/vnd.google-apps.folder' and '{$parentId}' in parents and trashed=false",
+        'fields' => 'files(id, name)',
+    ]);
+
+    if ($query->successful() && count($query['files']) > 0) {
+        return $query['files'][0]['id'];
+    }
+
+    $create = Http::withToken($token)->post('https://www.googleapis.com/drive/v3/files', [
+        'name' => $name,
+        'mimeType' => 'application/vnd.google-apps.folder',
+        'parents' => [$parentId],
+    ]);
+
+    return $create->json('id');
+}
 
     public function update(Request $request, $id_listing)
-    {
-        // Hilangkan titik pada input harga
-        $request->merge([
-            'harga' => str_replace('.', '', $request->harga)
-        ]);
+{
+    $request->merge([
+        'harga' => str_replace('.', '', $request->harga)
+    ]);
 
-        // Validasi data
-        $request->validate([
-            'judul' => 'required|string|max:100',
-            'tipe' => 'required|string|max:15',
-            'deskripsi' => 'required|string|max:2200',
-            'kamar_tidur' => 'required|integer|min:0',
-            'kamar_mandi' => 'required|integer|min:0',
-            'status' => 'required|string|in:Tersedia,Terjual',
-            'harga' => 'required|numeric|min:0',
-            'lokasi' => 'required|string|max:100',
-            'provinsi' => 'required|string|max:50',
-            'kota' => 'required|string|max:50',
-            'kelurahan' => 'required|string|max:50',
-            'sertifikat' => 'required|string|max:50',
-            'lantai' => 'required|integer|min:0',
-            'orientation' => 'required|string|max:15',
-            'luas_tanah' => 'required|integer|min:0',
-            'luas_bangunan' => 'required|integer|min:0',
-            'payment' => 'nullable|array',
-            'cover_image_index' => 'nullable|string',
-            'gambar.*' => 'nullable|image|mimes:jpeg,png,jpg|max:8192',
-        ]);
+    $request->validate([
+        'judul' => 'required|string|max:100',
+        'tipe' => 'required|string|max:50',
+        'deskripsi' => 'required|string|max:2200',
+        'harga' => 'required|numeric|min:0',
+        'lokasi' => 'required|string|max:100',
+        'provinsi' => 'required|string|max:50',
+        'kota' => 'required|string|max:50',
+        'kelurahan' => 'required|string|max:50',
+        'sertifikat' => 'required|string|max:100',
+        'luas_tanah' => 'required|integer|min:0',
+        'payment' => 'nullable|array',
+        'gambar.*' => 'nullable|image|mimes:jpeg,png,jpg|max:8192',
+        'cover_image_index' => 'nullable|string',
+    ]);
 
-        // Ambil data properti
-        $property = Property::findOrFail($id_listing);
+    $property = Property::findOrFail($id_listing);
 
-        // Proses gambar baru (jika ada)
-        if ($request->hasFile('gambar')) {
-            $imageUrls = [];
-            $coverIndex = $request->input('cover_image_index');
+    $accessToken = app(\App\Http\Controllers\GdriveController::class)->token();
+    $rootFolderId = '1yMtRi1DbiINlGSFzHzGj-MT8f7C-UANJ';
 
-            foreach ($request->file('gambar') as $index => $file) {
-                $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $filePath = $file->storeAs('property-images', $fileName, 'public');
-                $url = '/storage/' . $filePath;
+    // Hapus gambar lama dari Google Drive
+    if ($property->gambar) {
+        $oldThumbs = explode(',', $property->gambar);
+        foreach ($oldThumbs as $thumbUrl) {
+            if (preg_match('/id=([^&]+)/', $thumbUrl, $matches)) {
+                $fileId = $matches[1];
+                Http::withToken($accessToken)->delete("https://www.googleapis.com/drive/v3/files/{$fileId}");
+            }
+        }
+    }
+
+    // Upload gambar baru (jika ada)
+    $gambarUrls = [];
+    if ($request->hasFile('gambar')) {
+        $coverIndex = $request->input('cover_image_index');
+
+        $folderKota = $this->getOrCreateFolder($request->kota, $rootFolderId, $accessToken);
+        $folderAlamat = $this->getOrCreateFolder($request->lokasi, $folderKota, $accessToken);
+
+        foreach ($request->file('gambar') as $index => $file) {
+            $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $tempPath = $file->storeAs('temp', $fileName);
+            $tempFullPath = storage_path('app/' . $tempPath);
+
+            $response = Http::withToken($accessToken)
+                ->attach('metadata', json_encode([
+                    'name' => $fileName,
+                    'parents' => [$folderAlamat],
+                ]), 'metadata.json')
+                ->attach('file', file_get_contents($tempFullPath), $fileName)
+                ->post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart');
+
+            Storage::delete($tempPath);
+
+            if ($response->successful()) {
+                $fileId = $response->json('id');
+
+                Http::withToken($accessToken)->post("https://www.googleapis.com/drive/v3/files/{$fileId}/permissions", [
+                    'role' => 'reader',
+                    'type' => 'anyone',
+                ]);
+
+                $thumbUrl = 'https://drive.google.com/thumbnail?id=' . $fileId;
 
                 if ((string) $index === $coverIndex) {
-                    array_unshift($imageUrls, $url); // jadikan cover
+                    array_unshift($gambarUrls, $thumbUrl);
                 } else {
-                    $imageUrls[] = $url;
+                    $gambarUrls[] = $thumbUrl;
                 }
             }
-
-            $property->gambar = implode(',', $imageUrls); // simpan gambar baru
         }
 
-        // Isi data baru
-        $property->judul = $request->judul;
-        $property->tipe = $request->tipe;
-        $property->deskripsi = $request->deskripsi;
-        $property->kamar_tidur = $request->kamar_tidur;
-        $property->kamar_mandi = $request->kamar_mandi;
-        $property->status = $request->status;
-        $property->harga = $request->harga;
-        $property->lokasi = $request->lokasi;
-        $property->provinsi = $request->provinsi;
-        $property->kota = $request->kota;
-        $property->kelurahan = $request->kelurahan;
-        $property->sertifikat = $request->sertifikat;
-        $property->lantai = $request->lantai;
-        $property->orientation = $request->orientation;
-        $property->luas_tanah = $request->luas_tanah;
-        $property->luas_bangunan = $request->luas_bangunan;
-        $property->payment = implode(',', $request->input('payment', []));
-
-        // Jika status berubah menjadi Terjual, pindah ke sold_property
-        if ($request->status === 'Terjual') {
-            \DB::table('sold_property')->insert([
-                'judul' => $property->judul,
-                'deskripsi' => $property->deskripsi,
-                'tipe' => $property->tipe,
-                'kamar_tidur' => $property->kamar_tidur,
-                'kamar_mandi' => $property->kamar_mandi,
-                'harga' => $property->harga,
-                'lokasi' => $property->lokasi,
-                'lantai' => $property->lantai,
-                'id_agent' => null,
-                'luas_tanah' => $property->luas_tanah,
-                'luas_bangunan' => $property->luas_bangunan,
-                'kota' => $property->kota,
-                'kelurahan' => $property->kelurahan,
-                'sertifikat' => $property->sertifikat,
-                'orientation' => $property->orientation,
-                'status' => 'Terjual',
-                'gambar' => $property->gambar,
-                'payment' => $property->payment,
-                'tanggal_dibuat' => $property->created_at,
-                'tanggal_diupdate' => now(),
-            ]);
-
-            $property->delete();
-
-            return redirect()->route('agent.properties')->with('success', 'Properti telah dipindah ke daftar terjual.');
-        }
-
-        // Simpan perubahan biasa
-        $property->save();
-
-        return redirect()->route('agent.properties')->with('success', 'Properti berhasil diperbarui!');
+        $property->gambar = implode(',', $gambarUrls);
     }
+
+    // Update field lainnya
+    $property->judul = $request->judul;
+    $property->tipe = $request->tipe;
+    $property->deskripsi = $request->deskripsi;
+    $property->harga = $request->harga;
+    $property->lokasi = $request->lokasi;
+    $property->provinsi = $request->provinsi;
+    $property->kota = $request->kota;
+    $property->kelurahan = $request->kelurahan;
+    $property->sertifikat = $request->sertifikat;
+    $property->luas = $request->luas_tanah; // asumsi satuan meter persegi
+    $property->payment = implode(',', $request->input('payment', []));
+
+    $property->save();
+
+    return redirect()->route('agent.properties')->with('success', 'Properti berhasil diperbarui!');
+}
+
 
     public function edit($id)
     {
         $property = Property::findOrFail($id);
 
         // Fetch data from a JSON file for provinces, cities, and districts
-        $lokasiData = json_decode(file_get_contents(public_path('data/indonesia.json')), true);
-        // Extract provinces (keys of the JSON data)
         $data = json_decode(file_get_contents(public_path('data/indonesia.json')), true);
 
-    // Ambil semua provinsi unik
-    $provinces = collect($data)->pluck('province')->unique()->sort()->values();
-    $lokasiJson = json_encode($data);
-    // Ambil kota berdasarkan provinsi yang disimpan di property
-    $cities = collect($data)
-        ->where('province', $property->provinsi)
-        ->pluck('regency')
-        ->unique()
-        ->sort()
-        ->values();
+        // Ambil semua provinsi unik
+        $provinces = collect($data)->pluck('province')->unique()->sort()->values();
+        $lokasiJson = json_encode($data);
 
-    $districts = collect($data)
-        ->where('regency', $property->kota)
-        ->pluck('district')
-        ->unique()
-        ->sort()
-        ->values();
+        // Ambil kota berdasarkan provinsi yang disimpan di property
+        $cities = collect($data)
+            ->where('province', $property->provinsi)
+            ->pluck('regency')
+            ->unique()
+            ->sort()
+            ->values();
 
+        $districts = collect($data)
+            ->where('regency', $property->kota)
+            ->pluck('district')
+            ->unique()
+            ->sort()
+            ->values();
 
         return view('editproperty', compact('property', 'provinces', 'cities', 'districts', 'lokasiJson'));
     }
+
 
 }

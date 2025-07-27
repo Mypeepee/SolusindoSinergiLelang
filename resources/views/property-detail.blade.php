@@ -166,18 +166,19 @@
                                     </a>
                                 @endif
 
-                                <!-- Button Edit Properti -->
                                 @if (Session::has('id_account'))
                                     @php
                                         $loggedInId = Session::get('id_account');
+                                        $loggedInAgentId = \App\Models\Agent::where('id_account', $loggedInId)->value('id_agent');
                                     @endphp
 
-                                    @if ($property->id_agent == $loggedInId) <!-- Cek apakah id_agent sama dengan id_account -->
+                                    @if ($property->id_agent === $loggedInAgentId)
                                         <a href="{{ route('editproperty', $property->id_listing) }}" class="btn btn-warning py-3 px-4">
                                             <i class="fa fa-edit me-2"></i>Edit Properti
                                         </a>
                                     @endif
                                 @endif
+
 
                             </div>
                         </div>

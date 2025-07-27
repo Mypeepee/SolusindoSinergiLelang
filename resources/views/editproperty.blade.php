@@ -28,8 +28,8 @@
                 $steps = [
                     ['id' => 'step1', 'label' => 'Info Umum', 'icon' => 'bi-info-circle'],
                     ['id' => 'step2', 'label' => 'Lokasi', 'icon' => 'bi-geo-alt'],
-                    ['id' => 'step3', 'label' => 'Spesifikasi', 'icon' => 'bi-sliders'],
-                    ['id' => 'step4', 'label' => 'Gambar', 'icon' => 'bi-images'],
+                    // ['id' => 'step3', 'label' => 'Spesifikasi', 'icon' => 'bi-sliders'],
+                    ['id' => 'step3', 'label' => 'Gambar', 'icon' => 'bi-images'],
                 ];
             @endphp
 
@@ -53,6 +53,7 @@
     </div>
 </div>
 
+@php use Illuminate\Support\Str; @endphp
     <div class="tab-content" id="wizardContent">
 <!-- Step 1: Info Umum -->
 <div class="tab-pane fade show active" id="step1" role="tabpanel">
@@ -85,7 +86,7 @@
 
 
             <div class="row g-3 align-items-end">
-                <!-- Kiri: Tipe Properti (Full) -->
+                <!-- Tipe Properti -->
                 <div class="col-md-6">
                     <label class="form-label">Tipe Properti <span class="text-danger">*</span></label>
                     <div class="input-group">
@@ -93,7 +94,10 @@
                         <select name="tipe" class="form-select" required>
                             <option value="">Pilih tipe</option>
                             @foreach(['rumah','villa','pabrik','ruko','tanah','gudang','apartemen','sewa'] as $type)
-                                <option value="{{ $type }}" {{ old('tipe', $property->tipe) == $type ? 'selected' : '' }}>{{ ucfirst($type) }}</option>
+                            <option value="{{ $type }}"
+                            {{ str_contains(strtolower(old('tipe', $property->tipe ?? '')), strtolower($type)) ? 'selected' : '' }}>
+                            {{ ucfirst($type) }}
+                        </option>
                             @endforeach
                         </select>
                     </div>
@@ -123,6 +127,36 @@
                                 <label class="form-check-label" for="payment_{{ $pay }}">{{ strtoupper($pay) }}</label>
                             </div>
                         @endforeach
+                    </div>
+                </div>
+            </div>
+
+            <!-- Luas Tanah & Sertifikat -->
+            <div class="row g-3 mt-2">
+                <!-- Luas Tanah -->
+                <div class="col-md-6">
+                    <label class="form-label">Luas Tanah (m²) <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-fullscreen"></i></span>
+                        <input type="number" class="form-control" id="luas_tanah" name="luas_tanah"
+                            value="{{ old('luas_tanah', $property->luas ?? '') }}" required>
+                    </div>
+                </div>
+
+                <!-- Sertifikat -->
+                <div class="col-md-6">
+                    <label class="form-label">Jenis Sertifikat <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-file-earmark-text"></i></span>
+                        <select name="sertifikat" class="form-select" required>
+                            <option value="">Pilih Sertifikat</option>
+                            @foreach(['SHM', 'HGB', 'AJB', 'Girik', 'Hak Pakai'] as $sertif)
+                                <option value="{{ $sertif }}"
+                                    {{ Str::startsWith(old('sertifikat', $property->sertifikat ?? ''), $sertif) ? 'selected' : '' }}>
+                                    {{ $sertif }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
                 </div>
             </div>
@@ -222,10 +256,8 @@
     </div>
 </div>
 
-
-
 <!-- Step 3: Spesifikasi -->
-<div class="tab-pane fade" id="step3" role="tabpanel">
+{{-- <div class="tab-pane fade" id="step3" role="tabpanel">
     <div class="card shadow-sm rounded-4 p-4">
         <h5 class="mb-4 fw-semibold text-orange">
             <i class="bi bi-building text-orange me-2"></i> Spesifikasi Properti
@@ -314,11 +346,11 @@
             </div>
         </div>
     </div>
-</div>
+</div> --}}
 
 
 
-        <div class="tab-pane fade" id="step4" role="tabpanel">
+        <div class="tab-pane fade" id="step3" role="tabpanel">
             <div class="card p-4">
                 <!-- Dropzone Upload -->
                 <div class="col-md-12">

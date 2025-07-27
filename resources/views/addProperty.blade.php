@@ -317,24 +317,25 @@
 
         <div class="tab-pane fade" id="step3" role="tabpanel">
             <div class="card shadow-sm rounded-4 p-4">
-                 <!-- Dropzone Upload -->
-<div class="col-md-12">
-    <label for="gambar" class="form-label fw-semibold">
-        <i class="bi bi-images me-1"></i> Unggah Gambar
-    </label>
+                <!-- Upload Gambar -->
+                <div class="col-md-12">
+                    <label for="gambar" class="form-label fw-semibold">
+                        <i class="bi bi-images me-1"></i> Unggah Gambar
+                    </label>
 
-    <div id="dropzone" class="border rounded-3 p-4 text-center bg-light" style="cursor: pointer;">
-        <i class="bi bi-cloud-arrow-up fs-1 text-primary"></i>
-        <p class="mb-1">Tarik & Lepas gambar ke sini</p>
-        <small class="text-muted">Atau klik untuk memilih gambar (bisa lebih dari satu)</small>
-        <input type="file" id="gambar" name="gambar[]" multiple accept="image/*" style="display: none;" required>
-    </div>
+                    <div id="dropzone" class="border rounded-3 p-4 text-center bg-light" style="cursor: pointer;">
+                        <i class="bi bi-cloud-arrow-up fs-1 text-primary"></i>
+                        <p class="mb-1">Tarik & Lepas gambar ke sini</p>
+                        <small class="text-muted">Atau klik untuk memilih gambar (bisa lebih dari satu)</small>
+                        <input type="file" id="gambar" name="gambar[]" multiple accept="image/*" style="display: none;" required>
+                    </div>
 
-    <!-- Preview Gambar -->
-    <div id="previewContainer" class="mt-3 d-flex flex-wrap gap-3"></div>
-</div>
-
+                    <!-- Preview Gambar -->
+                    <div id="previewContainer" class="mt-3 d-flex flex-wrap gap-3"></div>
+            <input type="hidden" name="cover_new" id="coverNewInput" value="0">
+                </div>
             </div>
+
             <div class="mt-4">
                 <button type="submit" class="btn btn-primary w-100 py-2">
                     <i class="bi bi-plus-circle me-2"></i>Tambah Properti
@@ -541,6 +542,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
     </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const dropzone = document.getElementById('dropzone');
@@ -615,11 +618,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const dropzone = document.getElementById('dropzone');
         const input = document.getElementById('gambar');
         const previewContainer = document.getElementById('previewContainer');
+        const coverInput = document.getElementById('coverNewInput');
 
-        // Klik untuk buka dialog file
+        let selectedFiles = [];
+
         dropzone.addEventListener('click', () => input.click());
 
-        // Drag over
         dropzone.addEventListener('dragover', (e) => {
             e.preventDefault();
             dropzone.classList.add('border-primary', 'bg-white');
@@ -629,40 +633,104 @@ document.addEventListener('DOMContentLoaded', function () {
             dropzone.classList.remove('border-primary', 'bg-white');
         });
 
-        // Handle drop
         dropzone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropzone.classList.remove('border-primary', 'bg-white');
-
-            const files = e.dataTransfer.files;
-            input.files = files;
-
-            previewImages(files);
+            selectedFiles = Array.from(e.dataTransfer.files);
+            renderPreviews();
         });
 
-        // Handle file input change
         input.addEventListener('change', (e) => {
-            previewImages(e.target.files);
+            selectedFiles = Array.from(e.target.files);
+            renderPreviews();
         });
 
-        function previewImages(files) {
-            previewContainer.innerHTML = ''; // Reset
-            Array.from(files).forEach(file => {
+        function renderPreviews() {
+            previewContainer.innerHTML = '';
+            selectedFiles.forEach((file, index) => {
                 if (!file.type.startsWith('image/')) return;
 
                 const reader = new FileReader();
                 reader.onload = function (e) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'position-relative';
+                    wrapper.style.width = '240px';
+                    wrapper.style.height = '240px';
+                    wrapper.dataset.index = index;
+
                     const img = document.createElement('img');
                     img.src = e.target.result;
-                    img.classList.add('rounded', 'border');
-                    img.style.width = '120px';
-                    img.style.height = '120px';
+                    img.className = 'img-thumbnail rounded';
+                    img.style.width = '100%';
+                    img.style.height = '100%';
                     img.style.objectFit = 'cover';
-                    previewContainer.appendChild(img);
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.type = 'button';
+                    deleteBtn.innerHTML = '<i class="bi bi-x"></i>';
+                    deleteBtn.className = 'btn btn-danger btn-sm position-absolute';
+                    deleteBtn.style.top = '6px';
+                    deleteBtn.style.right = '6px';
+                    deleteBtn.style.width = '28px';
+                    deleteBtn.style.height = '28px';
+                    deleteBtn.style.borderRadius = '50%';
+                    deleteBtn.style.padding = '0';
+                    deleteBtn.title = 'Hapus';
+
+                    deleteBtn.onclick = () => {
+                        selectedFiles.splice(index, 1);
+                        updateInputFiles();
+                        renderPreviews();
+                    };
+
+                    const coverBtn = document.createElement('button');
+                    coverBtn.type = 'button';
+                    coverBtn.innerHTML = '<i class="bi bi-star me-1"></i> Cover';
+                    coverBtn.className = 'btn btn-outline-secondary btn-sm position-absolute';
+                    coverBtn.style.bottom = '6px';
+                    coverBtn.style.right = '6px';
+                    coverBtn.style.padding = '4px 10px';
+                    coverBtn.style.borderRadius = '20px';
+                    coverBtn.style.fontSize = '12px';
+                    coverBtn.style.background = 'rgba(255, 255, 255, 0.85)';
+                    coverBtn.style.color = '#333';
+                    coverBtn.style.backdropFilter = 'blur(2px)';
+                    coverBtn.style.boxShadow = '0 0 4px rgba(0,0,0,0.1)';
+                    coverBtn.setAttribute('data-cover-btn', 'true');
+
+                    coverBtn.onclick = () => {
+                        previewContainer.querySelectorAll('[data-cover-btn]').forEach(btn => {
+                            btn.classList.remove('btn-success');
+                            btn.classList.add('btn-outline-secondary');
+                            btn.innerHTML = '<i class="bi bi-star me-1"></i> Cover';
+                            btn.style.background = 'rgba(255, 255, 255, 0.85)';
+                            btn.style.color = '#333';
+                        });
+
+                        coverBtn.classList.remove('btn-outline-secondary');
+                        coverBtn.classList.add('btn-success');
+                        coverBtn.innerHTML = '<i class="bi bi-star-fill me-1"></i> Cover';
+                        coverBtn.style.background = '';
+                        coverBtn.style.color = '';
+
+                        coverInput.value = index;
+                    };
+
+                    wrapper.appendChild(img);
+                    wrapper.appendChild(deleteBtn);
+                    wrapper.appendChild(coverBtn);
+                    previewContainer.appendChild(wrapper);
                 };
                 reader.readAsDataURL(file);
             });
         }
+
+        function updateInputFiles() {
+            const dataTransfer = new DataTransfer();
+            selectedFiles.forEach(file => dataTransfer.items.add(file));
+            input.files = dataTransfer.files;
+        }
     });
     </script>
+
 
