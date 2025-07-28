@@ -147,7 +147,8 @@ class AgentAdminController extends Controller
                 ->orderBy('transaction.tanggal_diupdate', 'asc')
                 ->get();
         }
-
+        $salesData = $salesData ?? [];
+        $transactions = $transactions ?? [];
         // Siapkan label bulan
 $labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -193,6 +194,8 @@ return view('Agent.dashboard-agent', [
     'clients' => $clients,
     'clientsClosing' => $clientsClosing,
     'clientsPengosongan' => $clientsPengosongan,
+    'salesData' => json_encode($salesData),         // <--- dijamin ada
+    'transactions' => json_encode($transactions),
     'labels' => $labels,
     'revenue' => $revenue,
     'transactions' => $transactions,
