@@ -321,14 +321,34 @@ class AgentAdminController extends Controller
             )
             ->groupBy('agent.id_agent', 'agent.nama', 'agent.jumlah_penjualan')
             ->get();
+        
+        //grafik
+        $monthlyData = DB::table('transaction')
+            ->selectRaw("DATE_TRUNC('month', tanggal_dibuat) as bulan, SUM(harga_deal) as total_pendapatan, COUNT(*) as total_transaksi")
+            ->groupByRaw("DATE_TRUNC('month', tanggal_dibuat)")
+            ->orderByRaw("DATE_TRUNC('month', tanggal_dibuat)")
+            ->get();
 
+        $labels = $monthlyData->map(fn($d) => \Carbon\Carbon::parse($d->bulan)->isoFormat('MMM YYYY'));
+        $revenue = $monthlyData->pluck('total_pendapatan');
+        $transactions = $monthlyData->pluck('total_transaksi');
+
+        //piechart
+        $statusCounts = PropertyInterest::select('status', DB::raw('count(*) as total'))
+            ->groupBy('status')
+            ->pluck('total', 'status');
+            
         return view('Agent.dashboardowner', ['pendingAgents' => $pendingAgents,
                                             'pendingClients' => $pendingClients,
                                             'clients' => $clients,
                                             'clientsClosing' => $clientsClosing,
                                             'clientsPengosongan' => $clientsPengosongan,
                                             'performanceAgents' => $performanceAgents,
-                                            'properties' => $properties ]);
+                                            'properties' => $properties,
+                                            'labels' => $labels,
+                                            'revenue' => $revenue,
+                                            'transactions' => $transactions,
+                                            'statusCounts' => $statusCounts ]);
     }
 
     public function storeregister(Request $request)

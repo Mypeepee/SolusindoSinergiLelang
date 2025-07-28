@@ -19,7 +19,6 @@
 .property-card .action-btn {
     transition: all 0.3s ease;
 }
-
 </style>
 
 
@@ -30,17 +29,16 @@
                 @foreach ($chunk as $property)
                     @php
                         $tipeFormatted = ucwords($property->tipe);
-                        $isDisabled = $property->total == 0;
                     @endphp
 
                     <div class="col-lg-3 col-md-6 mb-3">
-                        <div class="card shadow-sm border-0 p-2 property-card {{ $isDisabled ? 'disabled' : '' }}"
+                        <div class="card shadow-sm border-0 p-2 property-card"
                              data-property="{{ strtolower($property->tipe) }}">
                             <div class="d-flex justify-content-between align-items-center">
                                 <!-- Kiri: Text -->
                                 <div class="text-start">
                                     <h6 class="fw-semibold mb-1">{{ $tipeFormatted }}</h6>
-                                    <p class="mb-0 {{ $isDisabled ? 'text-muted' : 'fw-bold' }}">
+                                    <p class="mb-0">
                                         {{ $property->total }} Asset{{ $property->total != 1 ? 's' : '' }}
                                     </p>
                                 </div>
@@ -631,10 +629,46 @@
                 </div>
             </div>
         </div>
-
         </div>
     </div>
 </div>
+
+<div class="container-fluid px-3 mt-4">
+    <div class="row">
+        <!-- Grafik Transaksi (kiri) -->
+        <div class="col-md-6">
+            <div class="card shadow-sm rounded mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color: #f4511e;">
+                    <span><i class="bi bi-graph-up-arrow me-2"></i> Grafik Transaksi</span>
+                    <select id="chartToggle" class="form-select form-select-sm w-auto">
+                        <option value="revenue">Pendapatan</option>
+                        <option value="transactions">Jumlah Transaksi</option>
+                    </select>
+                </div>
+                <div class="card-body">
+                    <canvas id="dashboardChart" height="160"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Placeholder chart lain (kanan) -->
+        <div class="col-md-6">
+            <div class="card shadow-sm rounded mb-4 h-100">
+                <div class="card-body d-flex align-items-center justify-content-center text-muted">
+                    <div>
+                        <h6 class="text-center mb-3">Distribusi Status Minat</h6>
+                        <canvas id="statusPieChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
 //property types
@@ -764,4 +798,93 @@ document.addEventListener('DOMContentLoaded', function () {
         filterAndSortTable();
     });
 });
+
+//grafik
+    const labels = {!! json_encode($labels) !!};
+    const revenueData = {!! json_encode($revenue) !!};
+    const transactionData = {!! json_encode($transactions) !!};
+
+    const ctx = document.getElementById('dashboardChart').getContext('2d');
+    let chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Pendapatan',
+                data: revenueData,
+                fill: false,
+                borderColor: '#f15b2a',
+                tension: 0.3,
+                pointBackgroundColor: '#f15b2a'
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: (value) => 'Rp ' + value.toLocaleString()
+                    }
+                }
+            }
+        }
+    });
+
+    document.getElementById('chartToggle').addEventListener('change', function () {
+        const mode = this.value;
+        if (mode === 'revenue') {
+            chartInstance.data.datasets[0].label = 'Pendapatan';
+            chartInstance.data.datasets[0].data = revenueData;
+            chartInstance.data.datasets[0].borderColor = '#f15b2a';
+            chartInstance.options.scales.y.ticks.callback = (val) => 'Rp ' + val.toLocaleString();
+        } else {
+            chartInstance.data.datasets[0].label = 'Jumlah Transaksi';
+            chartInstance.data.datasets[0].data = transactionData;
+            chartInstance.data.datasets[0].borderColor = '#0d6efd';
+            chartInstance.options.scales.y.ticks.callback = (val) => val;
+        }
+        chartInstance.update();
+    });
+
+    // Pie Chart Data (dari controller)
+    const statusData = {!! json_encode($statusCounts) !!};
+
+    const pieLabels = Object.keys(statusData);
+    const pieValues = Object.values(statusData);
+
+    const pieColors = [
+        '#f15b2a', '#007bff', '#28a745', '#ffc107', '#6f42c1', '#dc3545', '#17a2b8'
+    ];
+
+    const pieCtx = document.getElementById('statusPieChart').getContext('2d');
+    new Chart(pieCtx, {
+        type: 'pie',
+        data: {
+            labels: pieLabels,
+            datasets: [{
+                data: pieValues,
+                backgroundColor: pieColors.slice(0, pieLabels.length),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            return `${label}: ${value}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
 </script>
