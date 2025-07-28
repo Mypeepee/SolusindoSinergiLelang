@@ -447,7 +447,7 @@ private function getOrCreateFolder($folderName, $parentId, $accessToken)
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        $wonStatuses = ['selesai'];
+        $wonStatuses = ['Selesai'];
 
         $wonProperties = DB::table('property_interests')
         ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
@@ -456,7 +456,7 @@ private function getOrCreateFolder($folderName, $parentId, $accessToken)
         ->select('property.*')
         ->get();
 
-    $closingStatuses = ['closing', 'kutipan_risalah_lelang', 'akte_grosse', 'balik_nama'];
+    $closingStatuses = ['Closing', 'Kutipan Risalah Lelang', 'Akte Grosse', 'Balik Nama'];
 
     $closingProperties = DB::table('property_interests')
         ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')

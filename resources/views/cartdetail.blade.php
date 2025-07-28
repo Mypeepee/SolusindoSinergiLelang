@@ -252,13 +252,13 @@ function kirimRating() {
         </div>
 
         @php
-    $status = $interest->status ?? null;
+    $status = $status ?? null;
 
     $stepStatus = [
-        1 => ['followup', 'buyer_meeting'],
-        2 => ['closing', 'kutipan_risalah_lelang', 'akte_grosse'],
-        3 => ['eksekusi_pengosongan'],
-        4 => ['selesai'],
+        1 => ['FollowUp', 'BuyerMeeting'],
+        2 => ['Closing', 'Kuitansi', 'Kode Billing', 'Kutipan Risalah Lelang', 'Akte Grosse', 'Balik Nama'],
+        3 => ['Eksekusi Pengosongan'],
+        4 => ['Selesai'],
     ];
 
     $currentStep = 0;
@@ -363,13 +363,7 @@ function kirimRating() {
         </div>
     </section>
 </div>
-
-
-
-
-
-
-    </div>
+</div>
 </section>
 
 @include('template.footer')
