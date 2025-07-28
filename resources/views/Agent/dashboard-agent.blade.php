@@ -249,97 +249,102 @@
 @endif
 
 @if (session('role') === 'Pengosongan')
-<div class="orders mt-5">
-    <div class="row">
-        <div class="col-xl-12">
-            <div class="card">
-                <div class="card-body">
-                    <h4 class="box-title">Pengosongan Property</h4>
-                </div>
-                <div class="card-body--">
-                    <div class="table-stats order-table ov-h">
-                        <table class="table" id="pengosonganTable">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>ID</th>
-                                    <th>Name</th>
-                                    <th>Property ID</th>
-                                    <th>Lokasi</th>
-                                    <th>Harga</th>
-                                    <th>Progress</th>
-                                    <th>Status</th>
-                                    <th>Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @php $now = \Carbon\Carbon::now(); @endphp
-                                @forelse ($clientsPengosongan as $client)
-                                    @if ($client->status === 'balik_nama' || $client->status === 'eksekusi_pengosongan')
-                                        @php
-                                            $daysLeft = null;
-                                            $start = \Carbon\Carbon::parse($client->updated_at);
-                                            $end = $start->copy()->addDays(7);
-                                            $totalDays = $start->diffInDays($end);
-                                            $remainingDays = max(0, $now->diffInDays($end, false));
-                                            $progress = 100 - (($remainingDays / $totalDays) * 100);
-                                        @endphp
-                                        <tr id="row-{{ $client->id_account }}-{{ $client->id_listing }}">
-                                            <td class="serial">•</td>
-                                            <td>{{ $client->id_account }}</td>
-                                            <td>{{ $client->nama }}</td>
-                                            <td>{{ $client->id_listing }}</td>
-                                            <td>{{ $client->lokasi }}</td>
-                                            <td>Rp {{ number_format($client->harga, 0, ',', '.') }}</td>
-                                            <td>
-                                                @php
-                                                    $status = $client->status;
-                                                    $progress = 0;
-                                                    $progressColor = 'bg-secondary';
+<style>
+    .table thead th:nth-child(5),
+    .table tbody td:nth-child(5) {
+        width: 200px;
+    }
 
-                                                    if ($status === 'balik_nama') {
-                                                        $progress = 25;
-                                                        $progressColor = 'bg-secondary';
-                                                    } elseif ($status === 'eksekusi_pengosongan') {
-                                                        $progress = 50;
-                                                        $progressColor = 'bg-warning';
-                                                    } elseif ($status === 'closing') {
-                                                        $progress = 100;
-                                                        $progressColor = 'bg-success';
-                                                    }
-                                                @endphp
-                                                <div class="progress" style="height: 20px;">
-                                                    <div class="progress-bar {{ $progressColor }}" style="width: {{ $progress }}%;">
-                                                        {{ $progress }}%
-                                                    </div>
-                                                </div>
-                                            </td>
+    .table thead th:nth-child(6),
+    .table tbody td:nth-child(6) {
+        width: 180px;
+    }
 
-                                            <td>{{ $client->status }}</td>
-                                            <td>
-                                                <form action="{{ route('dashboard.detail', ['id_listing' => $client->id_listing, 'id_account' => $client->id_account]) }}" method="GET">
-                                                    @csrf
-                                                    <button type="submit" class="btn btn-sm bg-secondary text-white rounded-pill px-3 shadow-sm">
-                                                        Detail
-                                                    </button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                    @endif
-                                @empty
-                                <tr>
-                                    <td colspan="8" class="text-center">Tidak ada data pengosongan.</td>
-                                </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
+    .table td,
+    .table th {
+        vertical-align: middle;
+    }
+</style>
+
+<div class="card shadow-sm border-0 mb-4 mt-5">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-semibold text-primary">📦 Daftar Pengosongan Properti</h5>
+    </div>
+    <div class="card-body table-responsive">
+        <table class="table align-middle table-hover" id="pengosonganTable">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>ID Klien</th>
+                    <th>Nama</th>
+                    <th>ID Properti</th>
+                    <th>Lokasi</th>
+                    <th>Harga</th>
+                    <th>Progress</th>
+                    <th>Status</th>
+                    <th>Detail</th>
+                </tr>
+            </thead>
+            <tbody>
+                @php $now = \Carbon\Carbon::now(); @endphp
+                @forelse ($clientsPengosongan as $index => $client)
+                    @if ($client->status === 'Balik Nama' || $client->status === 'Eksekusi Pengosongan')
+                        @php
+                            $status = $client->status;
+                            $progress = match($status) {
+                                'Balik Nama' => 25,
+                                'Eksekusi Pengosongan' => 50,
+                                'Selesai' => 100,
+                                default => 0,
+                            };
+                            $barClass = match($status) {
+                                'Balik Nama' => 'bg-secondary',
+                                'Eksekusi Pengosongan' => 'bg-warning',
+                                'Selesai' => 'bg-success',
+                                default => 'bg-secondary',
+                            };
+                        @endphp
+                        <tr id="row-{{ $client->id_account }}-{{ $client->id_listing }}">
+                            <td>{{ $index + 1 }}</td>
+                            <td><span class="badge bg-light text-dark">{{ $client->id_account }}</span></td>
+                            <td>{{ $client->nama }}</td>
+                            <td><span class="badge bg-secondary">{{ $client->id_listing }}</span></td>
+                            <td>{{ $client->lokasi }}</td>
+                            <td>Rp {{ number_format($client->harga, 0, ',', '.') }}</td>
+                            <td style="min-width: 160px;">
+                                <div class="progress" style="height: 18px;">
+                                    <div class="progress-bar {{ $barClass }}"
+                                        role="progressbar"
+                                        style="width: {{ $progress }}%;"
+                                        aria-valuenow="{{ $progress }}"
+                                        aria-valuemin="0"
+                                        aria-valuemax="100">
+                                        {{ $progress }}%
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ $client->status }}</td>
+                            <td>
+                                <form action="{{ route('dashboard.detail', ['id_listing' => $client->id_listing, 'id_account' => $client->id_account]) }}" method="GET">
+                                    @csrf
+                                    <button type="submit" class="btn btn-sm bg-secondary text-white rounded-pill px-3 shadow-sm">
+                                        Detail
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    @endif
+                @empty
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-4">Belum ada data pengosongan.</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
     </div>
 </div>
 @endif
+
 <div class="card shadow-sm border-0 mb-4">
     <div class="row">
         <!-- Line Chart -->
