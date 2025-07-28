@@ -1,5 +1,5 @@
 @include('template.header')
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <!-- /#header -->
         <!-- Content -->
         <div class="content">
@@ -170,7 +170,8 @@
                         </table>
                     </div>
                 </div>
-        @endif
+                @endif
+
 
         @if (session('role') === 'Register')
 <div class="card shadow-sm border-0 mb-4">
@@ -246,7 +247,136 @@
     </div>
 </div>
 @endif
+<div class="card shadow-sm border-0 mb-4">
+    <div class="row">
+        <!-- Line Chart -->
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="card-title m-0">Grafik Tahunan</h5>
+                        <select id="chartToggle" class="form-select form-select-sm w-auto">
+                            <option value="revenue">Total Sales</option>
+                            <option value="transactions">Jumlah Transaksi</option>
+                        </select>
+                    </div>
+                    <div style="position: relative; height:400px;">
+                        <canvas id="dashboardChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
 
+        <!-- Pie Chart -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">Status Klien</h5>
+                    <div style="position: relative; height:400px;">
+                        <canvas id="statusPieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Data dari Controller
+const labels = {!! json_encode($labels) !!};
+const revenueData = {!! json_encode($revenue) !!};
+const transactionData = {!! json_encode($transactions) !!};
+const statusData = {!! json_encode($statusCounts) !!};
+
+// Chart Line: Pendapatan vs Transaksi
+const ctx = document.getElementById('dashboardChart').getContext('2d');
+let chartInstance = new Chart(ctx, {
+type: 'line',
+data: {
+labels: labels,
+datasets: [{
+label: 'Penjualan',
+data: revenueData,
+borderColor: '#f15b2a',
+fill: false,
+tension: 0.4,
+pointBackgroundColor: '#f15b2a'
+}]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+scales: {
+y: {
+    beginAtZero: true,
+    ticks: {
+        callback: val => 'Rp ' + val.toLocaleString()
+    }
+}
+},
+plugins: {
+tooltip: { enabled: true },
+legend: { display: true }
+}
+}
+});
+
+document.getElementById('chartToggle').addEventListener('change', function () {
+const mode = this.value;
+if (mode === 'revenue') {
+chartInstance.data.datasets[0].label = 'Penjualan';
+chartInstance.data.datasets[0].data = revenueData;
+chartInstance.data.datasets[0].borderColor = '#f15b2a';
+chartInstance.options.scales.y.ticks.callback = val => 'Rp ' + val.toLocaleString();
+} else {
+chartInstance.data.datasets[0].label = 'Jumlah Transaksi';
+chartInstance.data.datasets[0].data = transactionData;
+chartInstance.data.datasets[0].borderColor = '#0d6efd';
+chartInstance.options.scales.y.ticks.callback = val => val;
+}
+chartInstance.update();
+});
+
+// Pie Chart
+const pieLabels = Object.keys(statusData);
+const pieValues = Object.values(statusData);
+const pieColors = [
+'#f15b2a', '#007bff', '#28a745', '#ffc107', '#6f42c1', '#dc3545', '#17a2b8'
+];
+
+const pieCtx = document.getElementById('statusPieChart').getContext('2d');
+new Chart(pieCtx, {
+type: 'pie',
+data: {
+labels: pieLabels,
+datasets: [{
+data: pieValues,
+backgroundColor: pieColors.slice(0, pieLabels.length),
+borderWidth: 1
+}]
+},
+options: {
+responsive: true,
+plugins: {
+legend: {
+    position: 'bottom'
+},
+tooltip: {
+    callbacks: {
+        label: function (context) {
+            const label = context.label || '';
+            const value = context.raw || 0;
+            return `${label}: ${value}`;
+        }
+    }
+}
+}
+}
+});
+</script>
 @if (session('role') === 'Pengosongan')
 <div class="orders mt-5">
     <div class="row">
@@ -480,51 +610,14 @@ function updateStatus(id_account, id_listing, status, callback = null) {
 }
 
 </script>
-                <!-- Chart.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<div class="row mb-4"> <!-- ✅ Tambahkan mb-4 di sini -->
-    <!-- Yearly Sales Line Chart -->
-    <div class="col-lg-6">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4 class="mb-0">Yearly Sales</h4>
-                    <select id="yearSelector" class="form-select w-auto" onchange="updateChart()">
-                        @foreach (array_keys(json_decode($salesData, true)) as $year)
-                            <option value="{{ $year }}" {{ $year == date('Y') ? 'selected' : '' }}>{{ $year }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            <div style="height: 300px;">
-                <canvas id="sales-chart"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
-    <!-- Client Status Pie Chart -->
-    <div class="col-lg-6">
-        <div class="card h-100">
-            <div class="card-body">
-                <h4 class="mb-3">Client Status</h4>
-                <div style="height: 300px;">
-                    <canvas id="status-piechart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-<!-- Chart.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // === SALES LINE CHART ===
+document.addEventListener('DOMContentLoaded', function () {
+    // Data untuk grafik
     const salesData = {!! $salesData !!};
     const defaultYear = Object.keys(salesData)[0] ?? new Date().getFullYear();
 
-    const ctx = document.getElementById('sales-chart').getContext('2d');
+    const ctx = document.getElementById('sales-chart')?.getContext('2d');
     let chart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -547,27 +640,21 @@ function updateStatus(id_account, id_listing, status, callback = null) {
             scales: {
                 y: {
                     beginAtZero: true,
-                    grid: { drawBorder: true, color: '#ccc' }
-                },
-                x: {
-                    grid: { drawBorder: true, color: '#eee' }
+                    ticks: {
+                        callback: value => 'Rp ' + value.toLocaleString()
+                    }
                 }
-            },
-            plugins: {
-                tooltip: { enabled: true },
-                legend: { display: true }
             }
         }
     });
 
-    function updateChart() {
-        const selectedYear = document.getElementById("yearSelector").value;
-        const newData = salesData[selectedYear] ?? Array(12).fill(0);
-        chart.data.datasets[0].data = newData;
+    document.getElementById("yearSelector")?.addEventListener("change", function () {
+        const year = this.value;
+        chart.data.datasets[0].data = salesData[year] ?? Array(12).fill(0);
         chart.update();
-    }
+    });
 
-    // === CLIENT STATUS PIE CHART ===
+    // Pie Chart untuk status klien
     const statusCounts = {!! json_encode($statusCounts) !!};
 
     const pieLabels = ['Follow Up', 'Pending', 'Buyer Meeting', 'Gagal', 'Closing'];
@@ -579,16 +666,15 @@ function updateStatus(id_account, id_listing, status, callback = null) {
         statusCounts.closing ?? 0
     ];
 
-    // Cek kalau semua data nol
     const total = pieData.reduce((a, b) => a + b, 0);
     const finalData = total === 0 ? [1] : pieData;
     const finalLabels = total === 0 ? ['No Data'] : pieLabels;
     const finalColors = total === 0
         ? ['#ddd']
-        : ['#ffc107', '#17a2b8', '#6f42c1', '#dc3545', '#28a745']; // ungu untuk buyer meeting
+        : ['#ffc107', '#17a2b8', '#6f42c1', '#dc3545', '#28a745'];
 
-    const ctxPie = document.getElementById('status-piechart').getContext('2d');
-    const clientStatusChart = new Chart(ctxPie, {
+    const ctxPie = document.getElementById('status-piechart')?.getContext('2d');
+    new Chart(ctxPie, {
         type: 'pie',
         data: {
             labels: finalLabels,
@@ -612,8 +698,11 @@ function updateStatus(id_account, id_listing, status, callback = null) {
             }
         }
     });
-
+});
 </script>
+
+
+
 
 <!-- Modal Input Catatan -->
 <div class="modal fade" id="tahapanModal" tabindex="-1" aria-hidden="true">

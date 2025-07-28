@@ -24,7 +24,6 @@ class AgentAdminController extends Controller
         $idAgent = null;
 
         if ($role === 'Agent') {
-            // Ambil id_agent berdasarkan id_account
             $idAgent = DB::table('agent')
                 ->where('id_account', $idAccount)
                 ->value('id_agent');
@@ -43,7 +42,13 @@ class AgentAdminController extends Controller
         $clients = collect();
         $clientsClosing = collect();
         $clientsPengosongan = collect();
-        $statusCounts = [];
+        $statusCounts = [
+            'followup' => 0,
+            'pending' => 0,
+            'buyer_meeting' => 0,
+            'gagal' => 0,
+            'closing' => 0,
+        ];
         $pendingAgents = collect();
 
         if ($role === 'Owner') {
@@ -62,7 +67,7 @@ class AgentAdminController extends Controller
                     'kutipan_risalah_lelang',
                     'akte_grosse',
                     'balik_nama'
-                ]) // hanya ambil yang belum selesai
+                ])
                 ->selectRaw("
                     SUM(CASE WHEN property_interests.status = 'FollowUp' THEN 1 ELSE 0 END) as followup,
                     SUM(CASE WHEN property_interests.status = 'pending' THEN 1 ELSE 0 END) as pending,
@@ -81,12 +86,12 @@ class AgentAdminController extends Controller
                 ->distinct('property_interests.id_klien')
                 ->count('property_interests.id_klien');
 
-                $clients = DB::table('property_interests')
+            $clients = DB::table('property_interests')
                 ->join('account', 'property_interests.id_klien', '=', 'account.id_account')
                 ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
                 ->leftJoin('informasi_klien', 'account.id_account', '=', 'informasi_klien.id_account')
                 ->where('property.id_agent', $idAgent)
-                ->whereNotIn(DB::raw('LOWER(TRIM(property_interests.status))'), ['closing', 'balik_nama', 'akte_grosse', 'gagal']) // cek lowercase dan trim
+                ->whereNotIn(DB::raw('LOWER(TRIM(property_interests.status))'), ['closing', 'balik_nama', 'akte_grosse', 'gagal'])
                 ->select(
                     'account.id_account',
                     'account.nama',
@@ -98,7 +103,6 @@ class AgentAdminController extends Controller
                     'informasi_klien.gambar_ktp'
                 )
                 ->get();
-
         }
 
         if ($role === 'Register') {
@@ -106,13 +110,9 @@ class AgentAdminController extends Controller
                 ->join('account', 'transaction.id_klien', '=', 'account.id_account')
                 ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
                 ->whereIn('transaction.status_transaksi', [
-                    'Closing',
-                    'Kuitansi',
-                    'Kode Billing',
-                    'Kutipan Risalah Lelang',
-                    'Akte Grosse'
-                ]) // ✅ HAPUS "Balik Nama" dari sini
-                ->where('transaction.status_transaksi', '!=', 'Balik Nama') // ✅ FILTER yang sudah selesai
+                    'Closing', 'Kuitansi', 'Kode Billing', 'Kutipan Risalah Lelang', 'Akte Grosse'
+                ])
+                ->where('transaction.status_transaksi', '!=', 'Balik Nama')
                 ->select(
                     'account.id_account',
                     'account.nama',
@@ -132,9 +132,7 @@ class AgentAdminController extends Controller
                 ->join('account', 'transaction.id_klien', '=', 'account.id_account')
                 ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
                 ->whereIn('transaction.status_transaksi', [
-                    'Balik Nama',
-                    'Eksekusi Pengosongan',
-                    'Selesai',
+                    'Balik Nama', 'Eksekusi Pengosongan', 'Selesai'
                 ])
                 ->select(
                     'account.id_account',
@@ -150,46 +148,59 @@ class AgentAdminController extends Controller
                 ->get();
         }
 
-        $earnings = DB::table('transaction')
-            ->select(
-                DB::raw('EXTRACT(YEAR FROM tanggal_transaksi) AS year'),
-                DB::raw('EXTRACT(MONTH FROM tanggal_transaksi) AS month'),
-                DB::raw('SUM(selisih) AS total')
-            )
-            ->where('id_agent', $idAgent ?? $idAccount)
-            ->groupByRaw('EXTRACT(YEAR FROM tanggal_transaksi), EXTRACT(MONTH FROM tanggal_transaksi)')
-            ->orderByRaw('EXTRACT(YEAR FROM tanggal_transaksi)')
-            ->orderByRaw('EXTRACT(MONTH FROM tanggal_transaksi)')
-            ->get();
+        // Siapkan label bulan
+$labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-        $salesData = [];
+// Ambil pendapatan & jumlah transaksi
+$earnings = DB::table('transaction')
+    ->select(
+        DB::raw('EXTRACT(YEAR FROM tanggal_transaksi) AS year'),
+        DB::raw('EXTRACT(MONTH FROM tanggal_transaksi) AS month'),
+        DB::raw('SUM(selisih) AS total'),
+        DB::raw('COUNT(*) as total_transaksi')
+    )
+    ->where('id_agent', $idAgent ?? $idAccount)
+    ->groupByRaw('EXTRACT(YEAR FROM tanggal_transaksi), EXTRACT(MONTH FROM tanggal_transaksi)')
+    ->orderByRaw('EXTRACT(YEAR FROM tanggal_transaksi), EXTRACT(MONTH FROM tanggal_transaksi)')
+    ->get();
 
-        foreach ($earnings as $e) {
-            $salesData[$e->year][(int)$e->month - 1] = (int)$e->total;
-        }
+$revenue = array_fill(0, 12, 0);
+$transactions = array_fill(0, 12, 0);
+foreach ($earnings as $e) {
+    $revenue[$e->month - 1] = (int)$e->total;
+    $transactions[$e->month - 1] = (int)$e->total_transaksi;
+}
 
-        foreach ($salesData as $year => $months) {
-            for ($i = 0; $i < 12; $i++) {
-                if (!isset($salesData[$year][$i])) {
-                    $salesData[$year][$i] = 0;
-                }
-            }
-            ksort($salesData[$year]);
-        }
+// Status klien untuk pie chart
+$statusCounts = DB::table('property_interests')
+    ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
+    ->where('property.id_agent', $idAgent)
+    ->selectRaw("
+        SUM(CASE WHEN property_interests.status = 'FollowUp' THEN 1 ELSE 0 END) as followup,
+        SUM(CASE WHEN property_interests.status = 'pending' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN property_interests.status = 'gagal' THEN 1 ELSE 0 END) as gagal,
+        SUM(CASE WHEN property_interests.status = 'buyer_meeting' THEN 1 ELSE 0 END) as buyer_meeting,
+        SUM(CASE WHEN property_interests.status = 'closing' THEN 1 ELSE 0 END) as closing
+    ")
+    ->first();
 
-        return view('Agent.dashboard-agent', [
-            'totalKomisi' => $totalKomisi,
-            'totalSelisih' => $totalSelisih,
-            'jumlahListing' => $jumlahListing,
-            'jumlahClients' => $jumlahClients,
-            'clients' => $clients,
-            'clientsClosing' => $clientsClosing,
-            'clientsPengosongan' => $clientsPengosongan,
-            'salesData' => json_encode($salesData),
-            'statusCounts' => (array)$statusCounts,
-            'pendingAgents' => $pendingAgents,
-        ]);
+// Kirim ke view
+return view('Agent.dashboard-agent', [
+    'totalKomisi' => $totalKomisi,
+    'totalSelisih' => $totalSelisih,
+    'jumlahListing' => $jumlahListing,
+    'jumlahClients' => $jumlahClients,
+    'clients' => $clients,
+    'clientsClosing' => $clientsClosing,
+    'clientsPengosongan' => $clientsPengosongan,
+    'labels' => $labels,
+    'revenue' => $revenue,
+    'transactions' => $transactions,
+    'statusCounts' => (array) $statusCounts,
+    'pendingAgents' => $pendingAgents,
+]);
     }
+
 
     public function owner()
     {
@@ -321,7 +332,7 @@ class AgentAdminController extends Controller
             )
             ->groupBy('agent.id_agent', 'agent.nama', 'agent.jumlah_penjualan')
             ->get();
-        
+
         //grafik
         $monthlyData = DB::table('transaction')
             ->selectRaw("DATE_TRUNC('month', tanggal_dibuat) as bulan, SUM(harga_deal) as total_pendapatan, COUNT(*) as total_transaksi")
@@ -337,7 +348,7 @@ class AgentAdminController extends Controller
         $statusCounts = PropertyInterest::select('status', DB::raw('count(*) as total'))
             ->groupBy('status')
             ->pluck('total', 'status');
-            
+
         return view('Agent.dashboardowner', ['pendingAgents' => $pendingAgents,
                                             'pendingClients' => $pendingClients,
                                             'clients' => $clients,
@@ -884,7 +895,7 @@ public function updateStatusClosing(Request $request)
                 $statusTransaksi = $propertyInterest->status;
                 $progressType = 'agent';
             }
-             
+
             $transactionNotes = collect(); // atau []
         }
 
