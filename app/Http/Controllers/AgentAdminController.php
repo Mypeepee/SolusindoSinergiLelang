@@ -128,19 +128,25 @@ class AgentAdminController extends Controller
         }
 
         if ($role === 'Pengosongan') {
-            $clientsPengosongan = DB::table('property_interests')
-                ->join('account', 'account.id_account', '=', 'property_interests.id_account')
-                ->join('property', 'property.id_listing', '=', 'property_interests.id_listing')
+            $clientsPengosongan = DB::table('transaction')
+                ->join('account', 'transaction.id_klien', '=', 'account.id_account')
+                ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
+                ->whereIn('transaction.status_transaksi', [
+                    'Balik Nama',
+                    'Eksekusi Pengosongan',
+                    'Selesai',
+                ])
                 ->select(
-                    'property_interests.id_account',
+                    'account.id_account',
                     'account.nama',
-                    'property_interests.id_listing',
+                    'account.nomor_telepon',
+                    'property.id_listing',
                     'property.lokasi',
                     'property.harga',
-                    'property_interests.status',
-                    'property_interests.updated_at'
+                    'transaction.status_transaksi as status',
+                    'transaction.tanggal_diupdate'
                 )
-                ->whereIn('property_interests.status', ['balik_nama', 'eksekusi_pengosongan', 'selesai'])
+                ->orderBy('transaction.tanggal_diupdate', 'asc')
                 ->get();
         }
 
@@ -858,6 +864,8 @@ public function updateStatusClosing(Request $request)
                 $statusTransaksi = $propertyInterest->status;
                 $progressType = 'agent';
             }
+             
+            $transactionNotes = collect(); // atau []
         }
 
 
@@ -952,7 +960,7 @@ public function updateStatusClosing(Request $request)
                     'id_account'         => $idAccountAgent,
                     'id_transaction'     => $idTransaction,
                     'status_transaksi'   => 'Closing',
-                    'catatan'            => 'Transaksi berhasil dibuat oleh owner.',
+                    'catatan'            => 'Transaksi berhasil dibuat.',
                     'tanggal_dibuat'     => now(),
                     'tanggal_diupdate'   => now(),
                 ]);

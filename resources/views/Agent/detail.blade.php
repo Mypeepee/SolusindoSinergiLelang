@@ -14,6 +14,17 @@
         </div>
     @endif
 
+{{-- <div class="container-fluid px-4 my-0">
+    <div class="row mb-2">
+        <div class="col-auto">
+            <a href="{{ url()->previous() }}" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm">
+                <i class="bi bi-arrow-left me-1"></i> Kembali
+            </a>
+        </div>
+    </div>
+</div> --}}
+
+
     <div class="container-fluid px-4 my-4">
         <div class="row">
             <!-- LEFT: Detail Lot Lelang -->
