@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Carbon\Carbon;
 use App\Models\Account;
-
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use App\Models\InformasiKlien;
@@ -12,6 +12,7 @@ use App\Models\PropertyInterest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
+use App\Models\Property;
 use Illuminate\Support\Facades\Artisan;
 
 class AgentAdminController extends Controller
@@ -1098,5 +1099,50 @@ public function updateStatusClosing(Request $request)
     }
 }
 
+public function exportByType($tipe)
+{
+    $filename = 'property_' . strtolower($tipe) . '_' . now()->format('Ymd_His') . '.csv';
+
+    $properties = Property::whereRaw('LOWER(tipe) = ?', [strtolower($tipe)])->get();
+
+    $headers = [
+        "Content-type" => "text/csv",
+        "Content-Disposition" => "attachment; filename=$filename",
+        "Pragma" => "no-cache",
+        "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
+        "Expires" => "0"
+    ];
+
+    $columns = [
+        'id_listing',
+        'judul',
+        'tipe',
+        'harga',
+        'lokasi',
+        'luas',
+        'provinsi',
+        'kota',
+        'kecamatan',
+        'status',
+        'batas_akhir_penawaran',
+    ];
+
+    $callback = function () use ($properties, $columns) {
+        $file = fopen('php://output', 'w');
+        fputcsv($file, $columns);
+
+        foreach ($properties as $prop) {
+            $row = [];
+            foreach ($columns as $col) {
+                $row[] = $prop->$col;
+            }
+            fputcsv($file, $row);
+        }
+
+        fclose($file);
+    };
+
+    return response()->stream($callback, 200, $headers);
+}
 
 }

@@ -122,7 +122,7 @@
                     <div class="icon p-2 me-2">
                         <img class="img-fluid" src="{{ asset('img/Logo.png') }}" alt="Icon" style="width: 30px; height: 30px;">
                     </div>
-                    <h3 class="m-0 text-primary">Sinergi Solusindo Lelang</h3>
+                    <h3 class="m-0 text-primary">Solusindo Sinergi Lelang</h3>
                 </a>
                 <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
                     <span class="navbar-toggler-icon"></span>
@@ -139,12 +139,12 @@
                             Cookie::get('role') === 'Register'
                         )
                             @if(session('role') === 'Owner')
-                                <a href="{{ route('dashboard.owner') }}" 
+                                <a href="{{ route('dashboard.owner') }}"
                                     class="nav-item nav-link {{ Request::is('dashboard/owner*') ? 'active' : '' }}">
                                     Dashboard
                                 </a>
                             @else
-                                <a href="{{ route('dashboard.agent') }}" 
+                                <a href="{{ route('dashboard.agent') }}"
                                     class="nav-item nav-link {{ Request::is('dashboard/agent*') ? 'active' : '' }}">
                                     Dashboard
                                 </a>
@@ -160,11 +160,11 @@
                                 Property <i class="fas fa-chevron-down ms-1"></i>
                             </a>
                             <div class="dropdown-menu rounded-0 m-0">
-                                <a href="{{ url('/property-list') }}" 
+                                <a href="{{ url('/property-list') }}"
                                 class="dropdown-item {{ Request::is('property-list') ? 'active bg-orange text-white' : '' }}">
                                     Property List
                                 </a>
-                                <a href="{{ url('/property-agent') }}" 
+                                <a href="{{ url('/property-agent') }}"
                                 class="dropdown-item {{ Request::is('property-agent') ? 'active bg-orange text-white' : '' }}">
                                     Property Agent
                                 </a>
@@ -175,8 +175,8 @@
                         @if (Session::has('id_account') || isset($_COOKIE['id_account']))
                         <ul class="navbar-nav">
                             <li class="nav-item dropdown d-flex align-items-center">
-                                <a class="nav-link dropdown-toggle 
-                                {{ Request::is('profile*') || Request::is('agent/properties*') || Request::is('cart*') ? 'text-orange' : '' }}" 
+                                <a class="nav-link dropdown-toggle
+                                {{ Request::is('profile*') || Request::is('agent/properties*') || Request::is('cart*') ? 'text-orange' : '' }}"
                                 href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                                     <i class="fas fa-user" style="font-size: 1rem;"></i>
                                     <i class="fas fa-chevron-down ms-1"></i>
@@ -184,7 +184,7 @@
 
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                                     <li>
-                                        <a class="dropdown-item {{ Request::is('profile*') ? 'active bg-orange text-white' : '' }}" 
+                                        <a class="dropdown-item {{ Request::is('profile*') ? 'active bg-orange text-white' : '' }}"
                                         href="{{ route('profile', ['id_account' => Session::get('id_account') ?? $_COOKIE['id_account'] ?? '']) }}">
                                             <i class="fa fa-user me-2"></i> Profile
                                         </a>
@@ -197,7 +197,7 @@
                                         Cookie::get('role') === 'Register'
                                     )
                                     <li>
-                                        <a class="dropdown-item {{ Request::is('agent/properties*') ? 'active bg-orange text-white' : '' }}" 
+                                        <a class="dropdown-item {{ Request::is('agent/properties*') ? 'active bg-orange text-white' : '' }}"
                                         href="{{ route('agent.properties') }}">
                                             <i class="fa fa-home me-2"></i> Daftar Listingan Saya
                                         </a>
@@ -208,7 +208,7 @@
                                         Session::get('role') === 'User' || Cookie::get('role') === 'User'
                                     )
                                     <li>
-                                        <a class="dropdown-item {{ Request::is('cart*') ? 'active bg-orange text-white' : '' }}" 
+                                        <a class="dropdown-item {{ Request::is('cart*') ? 'active bg-orange text-white' : '' }}"
                                         href="{{ route('cart.view') }}">
                                             <i class="fa fa-shopping-cart me-2"></i> Status Lelang Saya
                                         </a>

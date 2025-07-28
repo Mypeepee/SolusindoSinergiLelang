@@ -217,6 +217,10 @@ Route::post('/scrape-property', [AgentAdminController::class, 'scrape'])->name('
 //download
 Route::get('/download/ktp/{id}', [App\Http\Controllers\DownloadController::class, 'downloadKTP'])->name('download.ktp');
 
+Route::get('/property', [PropertyListController::class, 'PropertyList'])->name('property-list');
+
+Route::get('/property/export/{tipe}', [AgentAdminController::class, 'exportByType'])->name('property.export');
+
 
 
 

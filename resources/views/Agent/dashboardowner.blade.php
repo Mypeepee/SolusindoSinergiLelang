@@ -50,15 +50,21 @@
                                 </div>
                             </div>
 
-                            <!-- Hidden Button (shows on click) -->
-                            <div class="action-btn mt-2 text-center" style="display:none;">
-                                <button
-                                    type="button"
-                                    class="btn btn-primary btn-sm rounded-pill scrape-btn"
-                                    data-tipe="{{ strtolower($property->tipe) }}">
-                                    Scrape {{ $property->tipe }}
-                                </button>
+                            <div class="action-btn mt-3" style="display: none;">
+                                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                                    <button type="button"
+                                            class="btn btn-warning btn-sm px-3 scrape-btn"
+                                            data-tipe="{{ strtolower($property->tipe) }}">
+                                        <i class="fas fa-database me-1"></i> Scrape
+                                    </button>
+
+                                    <a href="{{ route('property.export', ['tipe' => strtolower($property->tipe)]) }}"
+                                       class="btn btn-outline-primary btn-sm px-3">
+                                        <i class="fas fa-file-csv me-1"></i> Export CSV
+                                    </a>
+                                </div>
                             </div>
+
                             <script>
                                 document.addEventListener('DOMContentLoaded', function () {
                                     document.querySelectorAll('.scrape-btn').forEach(function (btn) {

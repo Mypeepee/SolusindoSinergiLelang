@@ -224,23 +224,25 @@
                             <p>Temukan pilihan properti terbaik mulai dari rumah lelang murah, properti sewa strategis, hingga gudang investasi. Semua ada di sini untuk kebutuhan dan rencana finansialmu.</p>
                         </div>
                     </div>
-                    <div class="col-lg-6 text-start text-lg-end wow slideInRight" data-wow-delay="0.1s">
+                    <div class="col-lg-6 text-start text-lg-end">
                         <ul class="nav nav-pills d-inline-flex justify-content-end mb-5">
                             <li class="nav-item me-2">
-                                <a class="btn btn-outline-primary active" data-bs-toggle="pill" href="#tab-1">Featured</a>
+                                <a class="btn btn-outline-primary {{ request('sort') === null ? 'active' : '' }}"
+                                   href="{{ request()->fullUrlWithQuery(['sort' => null]) }}">Unggulan</a>
                             </li>
                             <li class="nav-item me-2">
-                                <a class="btn btn-outline-primary" data-bs-toggle="pill" href="#tab-2">For Sell</a>
+                                <a class="btn btn-outline-primary {{ request('sort') === 'harga_asc' ? 'active' : '' }}"
+                                   href="{{ request()->fullUrlWithQuery(['sort' => 'harga_asc']) }}">Dari Harga Paling Rendah</a>
                             </li>
                             <li class="nav-item me-0">
-                                <a class="btn btn-outline-primary" data-bs-toggle="pill" href="#tab-3">For Rent</a>
+                                <a class="btn btn-outline-primary {{ request('sort') === 'harga_desc' ? 'active' : '' }}"
+                                   href="{{ request()->fullUrlWithQuery(['sort' => 'harga_desc']) }}">Dari Harga Paling Tinggi</a>
                             </li>
                         </ul>
                     </div>
                 </div>
 
-                <div class="tab-content">
-                    <div id="tab-1" class="tab-pane fade show p-0 active">
+
                         <div class="row g-4">
                             <style>
                                 .property-img-square {
@@ -363,8 +365,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
+
             </div>
         </div>
         <!-- Property List End -->

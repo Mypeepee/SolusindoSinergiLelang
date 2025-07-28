@@ -146,7 +146,7 @@ while (true) {
                         ->setOption('headless', true) // 🔥 Non-headless biar lihat proses
                         ->userAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/119 Safari/537.36')
                         ->waitUntilNetworkIdle()
-                        ->waitForFunction('document.querySelector("div.scrollbar-hide") !== null', null, 15000)
+                        ->waitForFunction('document.querySelector("div.scrollbar-hide") !== null', null, 18000)
                         ->timeout(300); // Timeout lebih lama
 
                     sleep(2); // 🕒 Tunggu halaman stabil
