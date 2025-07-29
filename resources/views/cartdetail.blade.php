@@ -220,7 +220,7 @@ function kirimRating() {
             <dt class="col-sm-4 text-muted fw-semibold">Cara Penawaran</dt>
             <dd class="col-sm-8">Tanpa Kehadiran, Open Bidding</dd>
 
-            <dt class="col-sm-4 text-muted fw-semibold">Nilai Limit</dt>
+            <dt class="col-sm-4 text-muted fw-semibold">Harga Property</dt>
             <dd class="col-sm-8 text-primary fw-bold fs-5">Rp {{ number_format($property->harga, 0, ',', '.') }}</dd>
         </dl>
 
@@ -309,8 +309,12 @@ function kirimRating() {
                     ],
                     2 => [
                         'title' => 'Pengurusan Dokumen',
-                        'duration' => '1 - 7 Hari',
-                        'tasks' => ['Proses balik nama sertifikat agar hak kepemilikan resmi dialihkan.', 'Penerbitan Akta Jual Beli (AJB) sebagai bukti transaksi sah.', 'Pengurusan pajak PPh dan BPHTB sesuai ketentuan hukum yang berlaku.'],
+                        'duration' => '3 - 5 Minggu',
+                        'tasks' => [
+                                        'Proses balik nama sertifikat agar hak kepemilikan resmi dialihkan.',
+                                        'Penerbitan Kutipan Risalah Lelang (KRL) sebagai bukti transaksi sah.',
+                                        'Pengurusan pajak PPh dan BPHTB sesuai ketentuan hukum yang berlaku.',
+                                    ],
                         'desc' => 'Tahap administratif yang memastikan legalitas dan keabsahan transaksi serta kepemilikan aset terjamin.',
                         'icon' => 'bi-file-earmark-text-fill',
                     ],

@@ -13,7 +13,7 @@ use App\Http\Controllers\AgentAdminController;
 use App\Http\Controllers\CartDetailController;
 use App\Http\Controllers\testimonialController;
 use App\Http\Controllers\propertylistController;
-
+use App\Http\Controllers\DownloadController;
 
 use App\Http\Controllers\propertytypeController;
 use App\Http\Controllers\propertyagentController;
@@ -215,8 +215,8 @@ Route::post('/dashboard/detail/{id_listing}/{id_account}/update-status', [AgentA
 Route::post('/scrape-property', [AgentAdminController::class, 'scrape'])->name('property.scrape');
 
 //download
-Route::get('/download/ktp/{id}', [App\Http\Controllers\DownloadController::class, 'downloadKTP'])->name('download.ktp');
-
+Route::get('/download/ktp/{id}', [DownloadController::class, 'downloadKTP'])->name('download.ktp');
+Route::get('/download/npwp/{id}', [DownloadController::class, 'downloadNPWP'])->name('download.npwp');
 Route::get('/property', [PropertyListController::class, 'PropertyList'])->name('property-list');
 
 Route::get('/property/export/{tipe}', [AgentAdminController::class, 'exportByType'])->name('property.export');

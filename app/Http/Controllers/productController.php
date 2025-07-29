@@ -429,12 +429,12 @@ private function getOrCreateFolder($folderName, $parentId, $accessToken)
         $joinedProperties = DB::table('property_interests')
         ->join('property', 'property.id_listing', '=', 'property_interests.id_listing')
         ->where('property_interests.id_klien', $id_account)  // ganti id_account jadi id_klien
-        ->select('property.*')
+        ->select('property.*', 'property_interests.status as interest_status')
         ->get();
 
 
         // Pagination manual
-        $perPage = 6;
+        $perPage = 18;
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
         $collection = collect($joinedProperties);
         $currentItems = $collection->slice(($currentPage - 1) * $perPage)->values();

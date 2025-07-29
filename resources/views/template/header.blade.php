@@ -162,11 +162,11 @@
                             <div class="dropdown-menu rounded-0 m-0">
                                 <a href="{{ url('/property-list') }}"
                                 class="dropdown-item {{ Request::is('property-list') ? 'active bg-orange text-white' : '' }}">
-                                    Property List
+                                    List Property
                                 </a>
                                 <a href="{{ url('/property-agent') }}"
                                 class="dropdown-item {{ Request::is('property-agent') ? 'active bg-orange text-white' : '' }}">
-                                    Property Agent
+                                    Agent Kami
                                 </a>
                             </div>
                         </div>
@@ -218,7 +218,10 @@
                                     <li>
                                         <form action="{{ route('logout') }}" method="POST" style="display:inline;">
                                             @csrf
-                                            <button type="submit" class="dropdown-item">Logout</button>
+                                            <button type="submit" class="dropdown-item d-flex align-items-center">
+                                                <i class="fa fa-sign-out-alt me-2"></i> Logout
+                                            </button>
+
                                         </form>
                                     </li>
                                 </ul>
@@ -301,7 +304,7 @@
                         Cookie::get('role') === 'Agent' ||
                         Cookie::get('role') === 'Register'
                     )
-                        <a href="{{ route('property.create') }}" class="btn btn-add-property">Add Property</a>
+                        <a href="{{ route('property.create') }}" class="btn btn-add-property">Tambah Property</a>
                     @elseif (
                         Session::get('role') === 'User' || Cookie::get('role') === 'User' ||
                         Session::get('role') === 'Pending' || Cookie::get('role') === 'Pending'

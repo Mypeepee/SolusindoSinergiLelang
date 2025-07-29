@@ -1115,7 +1115,10 @@ public function exportByType($tipe)
 
     $columns = [
         'id_listing',
+        'id_agent',
+        'vendor',
         'judul',
+        'deskripsi',
         'tipe',
         'harga',
         'lokasi',
@@ -1123,18 +1126,34 @@ public function exportByType($tipe)
         'provinsi',
         'kota',
         'kecamatan',
+        'kelurahan',
+        'sertifikat',
         'status',
+        'gambar',
+        'payment',
+        'uang_jaminan',
+        'batas_akhir_jaminan',
         'batas_akhir_penawaran',
+        'tanggal_buyer_meeting',
+        'tanggal_dibuat',
+        'tanggal_diupdate',
     ];
 
     $callback = function () use ($properties, $columns) {
         $file = fopen('php://output', 'w');
-        fputcsv($file, $columns);
+        fputcsv($file, $columns); // Header
 
         foreach ($properties as $prop) {
             $row = [];
             foreach ($columns as $col) {
-                $row[] = $prop->$col;
+                $value = $prop->$col;
+
+                // Format tanggal ke format manusia jika perlu
+                if ($value instanceof \Carbon\Carbon) {
+                    $value = $value->format('Y-m-d');
+                }
+
+                $row[] = $value;
             }
             fputcsv($file, $row);
         }
@@ -1144,5 +1163,6 @@ public function exportByType($tipe)
 
     return response()->stream($callback, 200, $headers);
 }
+
 
 }

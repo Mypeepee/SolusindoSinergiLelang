@@ -186,14 +186,14 @@ while (true) {
                                 stableTime = 0;
                                 lastCount = currentCount;
                             }
-                            if (stableTime >= 2000) { // ✅ stabil selama 2 detik
+                            if (stableTime >= 2500) { // ✅ stabil selama 2 detik
                                 clearInterval(interval);
                                 resolve(true);
                             }
                         }, checkInterval);
                     });
                 })()
-            ', null, 15000); // Timeout maksimum 15 detik
+            ', null, 18000); // Timeout maksimum 15 detik
 
 
                     // 🔥 Ambil semua <img> setelah scroll selesai & stabil

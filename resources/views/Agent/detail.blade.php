@@ -81,9 +81,9 @@
                                 $fotoUtama = $fotoArray[0] ?? 'default.jpg';
                             @endphp
                             <div class="flex-grow-1">
-                                <img src="{{ $fotoUtama }}" 
-                                    alt="Foto Properti" 
-                                    class="img-fluid rounded shadow-sm w-100" 
+                                <img src="{{ $fotoUtama }}"
+                                    alt="Foto Properti"
+                                    class="img-fluid rounded shadow-sm w-100"
                                     style="max-height: 300px; object-fit: cover;">
                             </div>
                         </div>
@@ -105,21 +105,20 @@
 
                         <div class="d-flex gap-2 mt-3">
                             @if ($client->gambar_ktp)
-                            <a href="{{ asset('storage/ktp/' . $client->gambar_ktp) }}" 
-                            class="btn btn-sm btn-primary rounded-pill shadow-sm w-50" 
-                            download>
-                                Download KTP
-                            </a>
+                            <a href="{{ route('download.ktp', $client->gambar_ktp) }}"
+                                   class="btn btn-sm btn-primary rounded-pill shadow-sm w-50">
+                                    Download KTP
+                                </a>
                             @endif
 
                             @if ($client->gambar_npwp)
-                            <a href="{{ asset('storage/npwp/' . $client->gambar_npwp) }}" 
-                            class="btn btn-sm btn-primary rounded-pill shadow-sm w-50" 
-                            download>
-                                Download NPWP
-                            </a>
+                            <a href="{{ route('download.npwp', $client->gambar_npwp) }}"
+                                   class="btn btn-sm btn-primary rounded-pill shadow-sm w-50">
+                                    Download NPWP
+                                </a>
                             @endif
                         </div>
+
                     </div>
                 </div>
                 @endif
@@ -202,7 +201,7 @@
                                 <li class="list-group-item">
                                     <div class="text-muted small">{{ \Carbon\Carbon::parse($note->tanggal_dibuat)->format('M d, Y h:i A') }}</div>
                                     <div class="fw-semibold">
-                                        <span class="text-secondary">{{ $note->status_transaksi }}</span> - {{ $note->catatan }} 
+                                        <span class="text-secondary">{{ $note->status_transaksi }}</span> - {{ $note->catatan }}
                                         <span class="text-muted">({{ $note->account_name }})</span>
                                     </div>
 
@@ -298,8 +297,8 @@
             if (['Kuitansi', 'Kutipan Risalah Lelang'].includes(selected)) {
                 dynamicSection.innerHTML += `
                     <div class="mb-3">
-                        <a href="https://docs.google.com/forms/d/e/1FAIpQLSedVS9P5oePrsoGub64dx0sH9kT5eYFUk22RlHrtYKWE3jYbQ/viewform" 
-                        target="_blank" 
+                        <a href="https://docs.google.com/forms/d/e/1FAIpQLSedVS9P5oePrsoGub64dx0sH9kT5eYFUk22RlHrtYKWE3jYbQ/viewform"
+                        target="_blank"
                         class="btn btn-outline-primary w-100">
                             <i class="bi bi-journal-text me-1"></i> Input ${selected}
                         </a>
