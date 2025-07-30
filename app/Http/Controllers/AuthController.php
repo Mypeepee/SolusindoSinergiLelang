@@ -204,49 +204,43 @@ public function updateProfilePicture(Request $request)
         return back()->with('error', 'Data agent tidak ditemukan.');
     }
 
-    // Jika pakai base64 dari cropper
     if ($request->filled('cropped_profile_image')) {
         $accessToken = app(\App\Http\Controllers\GdriveController::class)->token();
         $parentFolderId = '1u8faFug3GV3lB6y0L2TbwEX48IPAUtiQ'; // ID Data_Agent
         $folderName = \Str::slug($agent->nama, '_');
         $targetFolderId = $this->getOrCreateFolder($folderName, $parentFolderId, $accessToken);
 
-        // Hapus gambar lama di Drive jika itu ID
+        // Hapus gambar lama jika berupa file ID (panjang pendek jadi indikator)
         if (!empty($agent->picture) && strlen($agent->picture) < 100) {
             Http::withToken($accessToken)->delete("https://www.googleapis.com/drive/v3/files/{$agent->picture}");
         }
 
-        // Siapkan gambar baru
+        // Siapkan data gambar dari base64 (langsung di-memory, tanpa file temp)
         $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $request->cropped_profile_image));
         $filename = 'agent_profile_' . \Str::uuid() . '.jpg';
-        $tempPath = storage_path("app/temp/{$filename}");
-        file_put_contents($tempPath, $imageData);
 
-        // Upload ke Drive
+        // Upload ke Google Drive
         $upload = Http::withToken($accessToken)
             ->attach('metadata', json_encode([
                 'name' => $filename,
                 'parents' => [$targetFolderId],
             ]), 'metadata.json')
-            ->attach('file', file_get_contents($tempPath), $filename)
+            ->attach('file', $imageData, $filename)
             ->post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart');
-
-        if (file_exists($tempPath)) {
-            unlink($tempPath);
-        }
 
         if ($upload->successful()) {
             $fileId = $upload->json('id');
 
-            // Set permission publik
+            // Set file agar bisa diakses publik
             Http::withToken($accessToken)
                 ->post("https://www.googleapis.com/drive/v3/files/{$fileId}/permissions", [
                     'role' => 'reader',
                     'type' => 'anyone',
                 ]);
 
-            // Simpan ID file ke kolom picture
             $agent->picture = $fileId;
+        } else {
+            return back()->with('error', 'Gagal mengunggah foto ke Google Drive.');
         }
     }
 
@@ -255,6 +249,7 @@ public function updateProfilePicture(Request $request)
     return redirect()->route('profile', ['id_account' => $id_account])
         ->with('success', 'Foto profil berhasil diperbarui.');
 }
+
 
     // public function registerAgent(Request $request)
     // {
