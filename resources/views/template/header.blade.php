@@ -123,7 +123,7 @@
                         <img src="{{ asset('img/Logo.png') }}" alt="Icon"
                             style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                     </div>
-                    <h4 class="m-0 text-primary">Solusindo Sinergi Lelang</h3>
+                    <h5 class="m-0 text-primary">Solusindo Sinergi Lelang</h3>
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
                     <span class="navbar-toggler-icon"></span>
