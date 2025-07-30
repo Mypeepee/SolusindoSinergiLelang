@@ -77,22 +77,98 @@
 
 
 
-<!-- Search Start -->
-<form action="{{ route('property.list') }}#property-list-section" method="GET">
-    <div class="container-fluid bg-primary mb-5 wow fadeIn" data-wow-delay="0.1s" style="padding: 35px;">
+<!-- Tombol baru (UI konsisten seperti desktop) -->
+<button type="button" class="btn btn-dark w-100 py-3 d-md-none mb-3 fw-semibold" data-bs-toggle="modal" data-bs-target="#filterModal">
+    🔍 Filter Pencarian
+</button>
+
+
+<!-- Modal Filter (Fullscreen on small screens) -->
+<div class="modal fade" id="filterModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen-sm-down">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Filter Pencarian</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form action="{{ route('property.list') }}#property-list-section" method="GET">
+                <div class="modal-body">
+                    <div class="container">
+                        <div class="row g-2">
+                            <!-- Harga Minimum -->
+                            <div class="col-12">
+                                <input type="text" name="min_price" id="min_price" class="form-control border-0 py-3" placeholder="Harga Minimum">
+                            </div>
+
+                            <!-- Harga Maksimum -->
+                            <div class="col-12">
+                                <input type="text" name="max_price" id="max_price" class="form-control border-0 py-3" placeholder="Harga Maksimum">
+                            </div>
+
+                            <!-- Tipe Properti -->
+                            <div class="col-12">
+                                <select name="property_type" class="form-select border-0 py-3">
+                                    <option selected disabled>Tipe Property</option>
+                                    <option value="Lelang">Lelang</option>
+                                    <option value="rumah">Rumah</option>
+                                    <option value="hotel dan villa">Villa</option>
+                                    <option value="apartemen">Apartemen</option>
+                                    <option value="gudang">Gudang</option>
+                                    <option value="tanah">Tanah</option>
+                                    <option value="ruko">Ruko</option>
+                                    <option value="sewa">Sewa</option>
+                                </select>
+                            </div>
+
+                            <!-- Provinsi -->
+                            <div class="col-12">
+                                <select id="province" name="province" class="form-select border-0 py-3">
+                                    <option selected disabled>Pilih Provinsi</option>
+                                </select>
+                            </div>
+
+                            <!-- Kota -->
+                            <div class="col-12">
+                                <select id="city" class="form-select border-0 py-3" disabled>
+                                    <option selected disabled>Pilih Kota/Kabupaten</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="selected-cities" class="mt-3 d-flex flex-wrap gap-2"></div>
+                    </div>
+                </div>
+
+                <div class="modal-footer flex-column">
+                    <input type="hidden" name="selected_city_values" id="selected-city-values">
+
+                    <!-- Tombol Search -->
+                    <button type="submit" class="btn btn-dark w-100 py-3 mb-2">
+                        Search
+                    </button>
+
+                    <!-- Tombol Close -->
+                    <button type="button" class="btn btn-secondary w-100 py-3" data-bs-dismiss="modal">
+                        Close
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Desktop View Original Search Form (Visible Only on md and Up) -->
+<div class="container-fluid bg-primary mb-5 wow fadeIn d-none d-md-block" data-wow-delay="0.1s" style="padding: 35px;">
+    <form action="{{ route('property.list') }}#property-list-section" method="GET">
         <div class="container">
             <div class="row g-2">
-                <!-- Harga Minimum -->
                 <div class="col-md-2">
-                    <input type="text" name="min_price" id="min_price" class="form-control border-0 py-3" placeholder="Harga Minimum">
+                    <input type="text" name="min_price" class="form-control border-0 py-3" placeholder="Harga Minimum">
                 </div>
-
-                <!-- Harga Maksimum -->
                 <div class="col-md-2">
-                    <input type="text" name="max_price" id="max_price" class="form-control border-0 py-3" placeholder="Harga Maksimum">
+                    <input type="text" name="max_price" class="form-control border-0 py-3" placeholder="Harga Maksimum">
                 </div>
-
-                <!-- Tipe Properti -->
                 <div class="col-md-2">
                     <select name="property_type" class="form-select border-0 py-3">
                         <option selected disabled>Tipe Property</option>
@@ -106,38 +182,29 @@
                         <option value="sewa">Sewa</option>
                     </select>
                 </div>
-
-                <!-- Provinsi -->
                 <div class="col-md-2">
-                    <select id="province" name="province" class="form-select border-0 py-3">
+                    <select id="province-desktop" name="province" class="form-select border-0 py-3">
                         <option selected disabled>Pilih Provinsi</option>
                     </select>
                 </div>
-
-                <!-- Kota -->
                 <div class="col-md-2">
-                    <select id="city" class="form-select border-0 py-3" disabled>
+                    <select id="city-desktop" class="form-select border-0 py-3" disabled>
                         <option selected disabled>Pilih Kota/Kabupaten</option>
                     </select>
                 </div>
-
-                <!-- Tombol Search -->
                 <div class="col-md-2">
                     <button type="submit" class="btn btn-dark border-0 w-100 py-3">Search</button>
                 </div>
             </div>
-            <div id="selected-cities" class="mt-2 d-flex flex-wrap gap-2"></div>
+            <div id="selected-cities-desktop" class="mt-2 d-flex flex-wrap gap-2"></div>
+            <input type="hidden" name="selected_city_values" id="selected-city-values-desktop">
         </div>
-    </div>
+    </form>
+</div>
 
-    <!-- Input Hidden Kota[] -->
-    <input type="hidden" name="selected_city_values" id="selected-city-values">
-</form>
-<!-- Search End -->
-
-<!-- Styling Tag Kota -->
+<!-- Styling Tag Kota (Tetap Berlaku di Modal dan Desktop) -->
 <style>
-    #selected-cities {
+    #selected-cities, #selected-cities-desktop {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
@@ -162,17 +229,23 @@
         margin-left: 8px;
         color: red;
     }
-
 </style>
+
 
 <!-- Script -->
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const province = document.getElementById('province');
-        const city = document.getElementById('city');
+        const provinceMobile = document.getElementById('province');
+        const cityMobile = document.getElementById('city');
         const selectedCities = document.getElementById('selected-cities');
         const selectedCityValues = document.getElementById('selected-city-values');
         const selectedCityList = [];
+
+        const provinceDesktop = document.getElementById('province-desktop');
+        const cityDesktop = document.getElementById('city-desktop');
+        const selectedCitiesDesktop = document.getElementById('selected-cities-desktop');
+        const selectedCityValuesDesktop = document.getElementById('selected-city-values-desktop');
+        const selectedCityListDesktop = [];
 
         let provinceMap = new Map(); // Map provinsi => Set kota
 
@@ -190,79 +263,99 @@
                     provinceMap.get(prov).add(regency);
                 });
 
-                // Isi dropdown provinsi
+                // Populate both dropdowns
                 for (let prov of provinceMap.keys()) {
-                    province.innerHTML += `<option value="${prov}">${prov}</option>`;
+                    provinceMobile.innerHTML += `<option value="${prov}">${prov}</option>`;
+                    provinceDesktop.innerHTML += `<option value="${prov}">${prov}</option>`;
                 }
 
-                province.addEventListener('change', function () {
-                    const selected = this.value;
-                    const citySet = provinceMap.get(selected);
+                // Mobile - provinsi change
+                provinceMobile.addEventListener('change', function () {
+                    updateCityDropdown(this.value, cityMobile);
+                });
 
-                    city.disabled = false;
-                    city.innerHTML = '<option selected disabled>Pilih Kota/Kabupaten</option>';
-
-                    citySet.forEach(c => {
-                        const cleanedValue = c.replace(/^Kota\s|^Kabupaten\s/, '');
-                        city.innerHTML += `<option value="${cleanedValue}">${c}</option>`;
-                    });
+                // Desktop - provinsi change
+                provinceDesktop.addEventListener('change', function () {
+                    updateCityDropdown(this.value, cityDesktop);
                 });
             });
 
-        // Saat kota dipilih
-        city.addEventListener('change', function () {
-            const selectedCity = this.value;
+        function updateCityDropdown(selected, targetCityDropdown) {
+            const citySet = provinceMap.get(selected);
 
+            targetCityDropdown.disabled = false;
+            targetCityDropdown.innerHTML = '<option selected disabled>Pilih Kota/Kabupaten</option>';
+
+            citySet.forEach(c => {
+                const cleanedValue = c.replace(/^Kota\s|^Kabupaten\s/, '');
+                targetCityDropdown.innerHTML += `<option value="${cleanedValue}">${c}</option>`;
+            });
+        }
+
+        // Mobile - pilih kota
+        cityMobile.addEventListener('change', function () {
+            const selectedCity = this.value;
             if (!selectedCityList.includes(selectedCity)) {
                 selectedCityList.push(selectedCity);
-                renderSelectedCities();
+                renderSelectedCities(selectedCities, selectedCityValues, selectedCityList);
+            }
+        });
+
+        // Desktop - pilih kota
+        cityDesktop.addEventListener('change', function () {
+            const selectedCity = this.value;
+            if (!selectedCityListDesktop.includes(selectedCity)) {
+                selectedCityListDesktop.push(selectedCity);
+                renderSelectedCities(selectedCitiesDesktop, selectedCityValuesDesktop, selectedCityListDesktop);
             }
         });
 
         // Render tag kota
-        function renderSelectedCities() {
-            selectedCities.innerHTML = '';
-
-            selectedCityList.forEach(city => {
+        function renderSelectedCities(container, hiddenInput, cityList) {
+            container.innerHTML = '';
+            cityList.forEach(city => {
                 const tag = document.createElement('div');
                 tag.className = 'city-tag';
                 tag.innerHTML = `${city} <span class="remove-tag" data-city="${city}">&times;</span>`;
-                selectedCities.appendChild(tag);
+                container.appendChild(tag);
             });
-
-            selectedCityValues.value = selectedCityList.join(',');
+            hiddenInput.value = cityList.join(',');
         }
 
-        // Remove tag
+        // Remove tag - mobile
         selectedCities.addEventListener('click', function (e) {
             if (e.target.classList.contains('remove-tag')) {
                 const cityToRemove = e.target.dataset.city;
                 const index = selectedCityList.indexOf(cityToRemove);
                 if (index > -1) {
                     selectedCityList.splice(index, 1);
-                    renderSelectedCities();
+                    renderSelectedCities(selectedCities, selectedCityValues, selectedCityList);
                 }
             }
         });
 
-        // Format harga
-        function formatRupiah(input) {
-            let angka = input.value.replace(/\D/g, '');
-            input.value = angka.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-        }
-
-        const minPriceInput = document.getElementById('min_price');
-        const maxPriceInput = document.getElementById('max_price');
-
-        minPriceInput.addEventListener('input', function () {
-            formatRupiah(this);
+        // Remove tag - desktop
+        selectedCitiesDesktop.addEventListener('click', function (e) {
+            if (e.target.classList.contains('remove-tag')) {
+                const cityToRemove = e.target.dataset.city;
+                const index = selectedCityListDesktop.indexOf(cityToRemove);
+                if (index > -1) {
+                    selectedCityListDesktop.splice(index, 1);
+                    renderSelectedCities(selectedCitiesDesktop, selectedCityValuesDesktop, selectedCityListDesktop);
+                }
+            }
         });
 
-        maxPriceInput.addEventListener('input', function () {
-            formatRupiah(this);
+        // Format harga (semua min_price dan max_price yang ditemukan)
+        document.querySelectorAll('#min_price, #max_price').forEach(input => {
+            input.addEventListener('input', function () {
+                let angka = this.value.replace(/\D/g, '');
+                this.value = angka.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            });
         });
     });
-</script>
+    </script>
+
 
 
 
