@@ -1,23 +1,105 @@
 @include('template.header')
-        <!-- Header Start -->
-        <div class="container-fluid header bg-white p-0">
-            <div class="row g-0 align-items-center flex-column-reverse flex-md-row">
-                <div class="col-md-6 p-5 mt-lg-5">
-                    <h1 class="display-5 animated fadeIn mb-4">Tentang Kami</h1>
-                        <nav aria-label="breadcrumb animated fadeIn">
-                        <ol class="breadcrumb text-uppercase">
-                            <li class="breadcrumb-item"><a href="#">Home</a></li>
-                            <li class="breadcrumb-item"><a href="#">Halaman</a></li>
-                            <li class="breadcrumb-item text-body active" aria-current="page">Tentang Kami</li>
-                        </ol>
-                    </nav>
-                </div>
-                <div class="col-md-6 animated fadeIn">
-                    <img class="img-fluid" src="img/header.jpg" alt="">
-                </div>
-            </div>
+<!-- Header Start -->
+<style>
+    .header-banner {
+        position: relative;
+        width: 100%;
+        height: 80vh;
+        background: url('{{ asset('img/header.jpg') }}') center center / cover no-repeat;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+
+    .header-banner::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background-color: rgba(0, 0, 0, 0.5); /* overlay supaya teks terlihat */
+        z-index: 1;
+    }
+
+    .header-content {
+        position: relative;
+        z-index: 2;
+        text-align: center;
+        color: white;
+        padding: 0 15px;
+    }
+
+    .header-content h1 {
+        font-size: 3rem;
+        font-weight: bold;
+        color: white; /* judul putih */
+    }
+
+    .breadcrumb-custom {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
+
+    .breadcrumb-custom a {
+        color: white; /* link putih */
+        text-decoration: none;
+    }
+
+    .breadcrumb-custom span.active {
+        color: #FF5722; /* warna merah untuk active */
+        font-weight: 700;
+    }
+
+    .breadcrumb-divider {
+        color: white;
+    }
+
+    @media (max-width: 768px) {
+        .header-banner {
+            height: 60vh;
+        }
+
+        .header-content h1 {
+            font-size: 2rem;
+        }
+
+        .breadcrumb-custom {
+            font-size: 0.85rem;
+        }
+    }
+
+    body {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+    }
+
+    .navbar {
+        z-index: 9999;
+    }
+</style>
+
+<div class="header-banner">
+    <div class="header-content">
+        <h1 class="mb-3">Tentang Kami</h1>
+        <div class="breadcrumb-custom">
+            <a href="/">HOME</a>
+            <span class="breadcrumb-divider">/</span>
+            <a href="#">HALAMAN</a>
+            <span class="breadcrumb-divider">/</span>
+            <span class="active">TENTANG KAMI</span>
         </div>
-        <!-- Header End -->
+    </div>
+</div>
+<!-- Header End -->
+
+
+
+
 
 
         <!-- About Start -->
@@ -54,6 +136,12 @@
 
 .facts .border {
     border-color: rgba(255, 255, 255, .1) !important;
+}
+@media (max-width: 768px) {
+  .hero-image {
+    max-height: 250px;
+    object-fit: cover;
+  }
 }
 
 </style>

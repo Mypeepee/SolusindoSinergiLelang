@@ -1,23 +1,102 @@
 @include('template.header')
-
 <!-- Header Start -->
-<div class="container-fluid header bg-white p-0">
-    <div class="row g-0 align-items-center flex-column-reverse flex-md-row">
-        <div class="col-md-6 p-5 mt-lg-5">
-            <h1 class="display-5 animated fadeIn mb-4">Agent Kami</h1>
-            <nav aria-label="breadcrumb animated fadeIn">
-                <ol class="breadcrumb text-uppercase">
-                    <li class="breadcrumb-item"><a href="{{ url('/') }}">Home</a></li>
-                    <li class="breadcrumb-item text-body active" aria-current="page">Agent Kami</li>
-                </ol>
-            </nav>
-        </div>
-        <div class="col-md-6 animated fadeIn">
-            <img class="img-fluid" src="{{ asset('img/header.jpg') }}" alt="">
+<style>
+    .header-banner {
+        position: relative;
+        width: 100%;
+        height: 80vh;
+        background: url('{{ asset('img/header.jpg') }}') center center / cover no-repeat;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+
+    .header-banner::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background-color: rgba(0, 0, 0, 0.5); /* Overlay gelap */
+        z-index: 1;
+    }
+
+    .header-content {
+        position: relative;
+        z-index: 2;
+        text-align: center;
+        color: white;
+        padding: 0 15px;
+    }
+
+    .header-content h1 {
+        font-size: 3rem;
+        font-weight: bold;
+        color: white;
+    }
+
+    .breadcrumb-custom {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
+
+    .breadcrumb-custom a {
+        color: white;
+        text-decoration: none;
+    }
+
+    .breadcrumb-custom span.active {
+        color: #FF5722;
+        font-weight: 700;
+    }
+
+    .breadcrumb-divider {
+        color: white;
+    }
+
+    @media (max-width: 768px) {
+        .header-banner {
+            height: 60vh;
+        }
+
+        .header-content h1 {
+            font-size: 2rem;
+        }
+
+        .breadcrumb-custom {
+            font-size: 0.85rem;
+        }
+    }
+
+    body {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+    }
+
+    .navbar {
+        z-index: 9999;
+    }
+</style>
+
+<div class="header-banner">
+    <div class="header-content">
+        <h1 class="mb-3">Agent Kami</h1>
+        <div class="breadcrumb-custom">
+            <a href="/">HOME</a>
+            <span class="breadcrumb-divider">/</span>
+            <a href="#">PROPERTY</a>
+            <span class="breadcrumb-divider">/</span>
+            <span class="active">AGENT KAMI</span>
         </div>
     </div>
 </div>
 <!-- Header End -->
+
 
 <!-- Search Agent Name -->
 <form action="{{ route('property.agent') }}#agent-list-section" method="GET">

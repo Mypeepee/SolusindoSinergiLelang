@@ -110,12 +110,12 @@
                             <div class="col-12">
                                 <select name="property_type" class="form-select border-0 py-3">
                                     <option selected disabled>Tipe Property</option>
-                                    <option value="Lelang">Lelang</option>
                                     <option value="rumah">Rumah</option>
-                                    <option value="hotel dan villa">Villa</option>
-                                    <option value="apartemen">Apartemen</option>
                                     <option value="gudang">Gudang</option>
+                                    <option value="apartemen">Apartemen</option>
                                     <option value="tanah">Tanah</option>
+                                    <option value="pabrik">Pabrik</option>
+                                    <option value="hotel dan villa">Hotel dan Villa</option>
                                     <option value="ruko">Ruko</option>
                                     <option value="sewa">Sewa</option>
                                 </select>
@@ -172,12 +172,12 @@
                 <div class="col-md-2">
                     <select name="property_type" class="form-select border-0 py-3">
                         <option selected disabled>Tipe Property</option>
-                        <option value="Lelang">Lelang</option>
                         <option value="rumah">Rumah</option>
-                        <option value="hotel dan villa">Villa</option>
-                        <option value="apartemen">Apartemen</option>
                         <option value="gudang">Gudang</option>
+                        <option value="apartemen">Apartemen</option>
                         <option value="tanah">Tanah</option>
+                        <option value="pabrik">Pabrik</option>
+                        <option value="hotel dan villa">Hotel dan Villa</option>
                         <option value="ruko">Ruko</option>
                         <option value="sewa">Sewa</option>
                     </select>
