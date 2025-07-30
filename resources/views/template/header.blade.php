@@ -118,7 +118,7 @@
         <!-- Navbar Start -->
         <div id="mainNavbar" class="container-fluid nav-bar bg-white">
             <nav class="navbar navbar-expand-lg bg-white navbar-light py-0 px-4">
-                <a href="{{ url('/') }}" class="navbar-brand d-flex align-items-center text-center">
+                <a href="{{ url('/') }}" class="navbar-brand d-flex align-items-center">
                     <div class="icon p-0 me-2 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
                         <img src="{{ asset('img/Logo.png') }}" alt="Icon"
                             style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
@@ -132,21 +132,24 @@
                     .navbar {
                         padding-top: 0.5rem;
                         padding-bottom: 0.5rem;
+                        align-items: center; /* ⬅ penting agar isi sejajar */
                     }
 
-                    .navbar-brand img {
-                        border-radius: 50%;
+                    .navbar-brand {
+                        display: flex;
+                        align-items: center;
+                        gap: 0.5rem;
                     }
 
                     .navbar-toggler {
+                        margin-left: auto;
                         border: none;
                         outline: none;
                         padding: 0.4rem 0.6rem;
-                        margin-left: auto;
                     }
 
-                    @media (max-width: 992px) {
-                        .navbar-brand span {
+                    @media (max-width: 768px) {
+                        .navbar-brand h5 {
                             font-size: 1rem;
                         }
                     }
