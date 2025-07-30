@@ -285,7 +285,7 @@
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li>
                                         <a class="dropdown-item {{ Request::is('profile*') ? 'active bg-orange text-white' : '' }}"
-                                           href="{{ route('profile', ['id_account' => $id_account]) }}">
+                                        href="{{ route('profile', ['id_account' => Session::get('id_account') ?? $_COOKIE['id_account'] ?? '']) }}">
                                             <i class="fa fa-user me-2"></i> Profile
                                         </a>
                                     </li>

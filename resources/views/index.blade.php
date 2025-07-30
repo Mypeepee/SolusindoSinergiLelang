@@ -4,29 +4,69 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
 <style>
-    /* Hilangkan jarak antara navbar & carousel */
+    /* Pastikan carousel tampil penuh */
     #carousel {
-        margin-top: -50px; /* geser carousel naik */
+        margin-top: 0 !important;
+    }
+
+    .carousel-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .carousel,
+    .carousel-inner,
+    .carousel-item {
+        height: 80vh; /* Default tinggi carousel */
+    }
+
+    .carousel-caption {
+        bottom: 15%;
+        z-index: 10;
+    }
+
+    @media (max-width: 768px) {
+        .carousel,
+        .carousel-inner,
+        .carousel-item {
+            height: 60vh; /* lebih pendek untuk mobile */
+        }
+
+        .carousel-caption h1 {
+            font-size: 1.3rem;
+        }
+
+        .carousel-caption p {
+            font-size: 0.9rem;
+        }
+
+        .carousel-caption .btn {
+            padding: 0.6rem 1.2rem;
+            font-size: 0.9rem;
+        }
     }
 
     body {
-        padding-top: 0 !important; /* jika ada header fixed hilangkan padding body */
+        padding-top: 0 !important;
     }
 
     .navbar {
-        z-index: 9999; /* pastikan navbar di atas carousel */
+        z-index: 9999;
     }
 </style>
 
+
 <!-- Carousel Start -->
-<div id="carousel" class="carousel slide mt-0 pt-0" data-ride="carousel" style="margin-top: -50px;">
+<div id="carousel" class="carousel slide" data-bs-ride="carousel">
     <div class="carousel-inner">
         <div class="carousel-item active">
-            <img src="img/carousel1.jpg" alt="Carousel Image" style="width:100%; height:auto;">
-            <div class="carousel-caption">
-                <p class="animated fadeInRight">Temukan Rumah Sempurna</p>
-                <h1 class="animated fadeInLeft">Untuk Tinggal Bersama Keluarga Anda</h1>
-                <a href="{{ url('/property-list') }}" class="btn btn-primary py-3 px-5 me-3 animated fadeIn">
+            <img src="{{ asset('img/carousel1.jpg') }}" alt="Carousel Image">
+            <div class="carousel-caption d-flex flex-column align-items-center justify-content-center h-100 text-center px-3">
+
+                <p class="animated fadeInRight text-white mb-2">Temukan Rumah Sempurna</p>
+                <h1 class="animated fadeInLeft text-white mb-4">Untuk Tinggal Bersama Keluarga Anda</h1>
+                <a href="{{ url('/property-list') }}" class="btn btn-primary py-3 px-5 animated fadeIn">
                     Explore Lebih Lanjut
                 </a>
             </div>
@@ -34,6 +74,7 @@
     </div>
 </div>
 <!-- Carousel End -->
+
 
 
 <!-- Search Start -->
