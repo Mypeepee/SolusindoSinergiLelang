@@ -297,14 +297,19 @@
 
                                     </li>
 
-                                    @if (in_array($role, ['Agent', 'Register']))
+                                    @php
+                                        $role = Session::get('role') ?? ($_COOKIE['role'] ?? null);
+                                    @endphp
+
+                                    @if ($role && in_array($role, ['Agent', 'Register']))
                                         <li>
                                             <a class="dropdown-item {{ Request::is('agent/properties*') ? 'active bg-orange text-white' : '' }}"
-                                               href="{{ route('agent.properties') }}">
+                                            href="{{ route('agent.properties') }}">
                                                 <i class="fa fa-home me-2"></i> Daftar Listingan Saya
                                             </a>
                                         </li>
                                     @endif
+
 
                                     @if ($role === 'User')
                                         <li>
