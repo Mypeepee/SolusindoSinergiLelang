@@ -9,7 +9,7 @@
     <meta content="" name="description">
 
     <!-- Favicon -->
-    <link href="img/favicon.ico" rel="icon">
+    <link rel="icon" type="image/png" href="{{ asset('img/Logo.png') }}">
 
     <!-- Google Web Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -229,38 +229,53 @@
                         </ul>
 
                         @else
-                        <!-- Guest User Dropdown -->
-                       <ul class="navbar-nav">
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle {{ Request::is('login') || Request::is('register') ? 'active text-orange' : '' }}"
-                                href="#"
-                                id="navbarDropdown"
-                                role="button"
-                                data-bs-toggle="dropdown">
-                                    <i class="fas fa-user" style="font-size: 1rem;"></i>
-                                    <i class="fas fa-chevron-down ms-1"></i>
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                    <li>
-                                        <a class="dropdown-item {{ Request::is('login') ? 'active bg-orange text-white' : '' }}"
-                                        href="{{ url('/login') }}">
-                                            Login
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item {{ Request::is('register') ? 'active bg-orange text-white' : '' }}"
-                                        href="{{ url('/register') }}">
-                                            Register
-                                        </a>
-                                    </li>
-                                </ul>
-                            </li>
-                        </ul>
+                            <!-- Guest User Dropdown -->
+                            <ul class="navbar-nav">
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle {{ Request::is('login') || Request::is('register') ? 'active text-orange' : '' }}"
+                                    href="#"
+                                    id="navbarDropdown"
+                                    role="button"
+                                    data-bs-toggle="dropdown">
+                                        <i class="fas fa-user" style="font-size: 1rem;"></i>
+                                        <i class="fas fa-chevron-down ms-1"></i>
+                                    </a>
+                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                        <li>
+                                            <a class="dropdown-item {{ Request::is('login') ? 'active bg-orange text-white' : '' }}"
+                                            href="{{ url('/login') }}">
+                                                Login
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item {{ Request::is('register') ? 'active bg-orange text-white' : '' }}"
+                                            href="{{ url('/register') }}">
+                                                Register
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        @endif
+                        <!-- Buttons -->
+                        @if (Session::has('id_account') || Cookie::has('id_account'))
+                            @if (
+                                Session::get('role') === 'Agent' ||
+                                Session::get('role') === 'Register' ||
+                                Cookie::get('role') === 'Agent' ||
+                                Cookie::get('role') === 'Register'
+                            )
+                                <a href="{{ route('property.create') }}" class="btn btn-add-property">Tambah Property</a>
+                            @elseif (
+                                Session::get('role') === 'User' || Cookie::get('role') === 'User' ||
+                                Session::get('role') === 'Pending' || Cookie::get('role') === 'Pending'
+                            )
+                                <a href="{{ url('/join-agent') }}" class="btn btn-add-property">Bergabung Jadi Agent</a>
+                            @endif
                         @endif
                     </div>
                 </div>
-
-                <!-- Icon Notif & Settings -->
+                {{-- <!-- Icon Notif & Settings -->
                 <div class="icon-actions">
                     @if (
                         Session::get('role') === 'Agent' ||
@@ -294,25 +309,7 @@
 
 
                     @endif
-                </div>
-
-                <!-- Buttons -->
-                @if (Session::has('id_account') || Cookie::has('id_account'))
-                    @if (
-                        Session::get('role') === 'Agent' ||
-                        Session::get('role') === 'Register' ||
-                        Cookie::get('role') === 'Agent' ||
-                        Cookie::get('role') === 'Register'
-                    )
-                        <a href="{{ route('property.create') }}" class="btn btn-add-property">Tambah Property</a>
-                    @elseif (
-                        Session::get('role') === 'User' || Cookie::get('role') === 'User' ||
-                        Session::get('role') === 'Pending' || Cookie::get('role') === 'Pending'
-                    )
-                        <a href="{{ url('/join-agent') }}" class="btn btn-add-property">Bergabung Jadi Agent</a>
-                    @endif
-                @endif
-
+                </div> --}}
             </nav>
         </div>
         <!-- Navbar End -->
