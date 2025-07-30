@@ -119,14 +119,38 @@
         <div id="mainNavbar" class="container-fluid nav-bar bg-white">
             <nav class="navbar navbar-expand-lg bg-white navbar-light py-0 px-4">
                 <a href="{{ url('/') }}" class="navbar-brand d-flex align-items-center text-center">
-                    <div class="icon p-2 me-2">
-                        <img class="img-fluid" src="{{ asset('img/Logo.png') }}" alt="Icon" style="width: 30px; height: 30px;">
+                    <div class="icon p-0 me-2 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                        <img src="{{ asset('img/Logo.png') }}" alt="Icon"
+                            style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                     </div>
-                    <h3 class="m-0 text-primary">Solusindo Sinergi Lelang</h3>
+                    <h4 class="m-0 text-primary">Solusindo Sinergi Lelang</h3>
                 </a>
-                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
                     <span class="navbar-toggler-icon"></span>
                 </button>
+                <style>
+                    .navbar {
+                        padding-top: 0.5rem;
+                        padding-bottom: 0.5rem;
+                    }
+
+                    .navbar-brand img {
+                        border-radius: 50%;
+                    }
+
+                    .navbar-toggler {
+                        border: none;
+                        outline: none;
+                        padding: 0.4rem 0.6rem;
+                        margin-left: auto;
+                    }
+
+                    @media (max-width: 992px) {
+                        .navbar-brand span {
+                            font-size: 1rem;
+                        }
+                    }
+                </style>
                 <div class="collapse navbar-collapse" id="navbarCollapse">
                     <div class="navbar-nav ms-auto">
                         @if (Session::has('id_account') || Cookie::has('id_account'))
