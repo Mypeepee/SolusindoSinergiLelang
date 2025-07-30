@@ -18,42 +18,66 @@
                 <div class="bg-light rounded p-3">
                     <div class="bg-white rounded p-4" style="border: 1px dashed rgba(0, 185, 142, .3)">
                         <div class="row g-5 align-items-center">
+                            <!-- Swiper CSS -->
                             <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.css" />
+
                             <div class="col-lg-6 wow fadeIn">
-
-                                <!-- Swiper CSS -->
-                                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.css" />
-
-                                <div id="propertyCarousel" class="carousel slide" data-bs-ride="carousel">
-                                    <div class="swiper mySwiperMain">
+                                <!-- Aspect Ratio Box -->
+                                <div class="position-relative">
+                                    <div class="swiper mySwiperMain rounded overflow-hidden">
                                         <div class="swiper-wrapper">
                                             @foreach(explode(',', $property->gambar) as $index => $image)
                                                 <div class="swiper-slide">
-                                                    <img src="{{ $image }}" alt="Property Image" class="rounded w-100">
+                                                    <div class="img-wrapper">
+                                                        <img src="{{ $image }}" alt="Property Image">
+                                                    </div>
                                                 </div>
                                             @endforeach
                                         </div>
+
+                                        <!-- Custom Buttons -->
+                                        <!-- Arrow Left -->
+                                        <button id="prevBtn" class="carousel-control-prev custom-btn" type="button">
+                                            <span class="custom-btn-icon">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="2" width="24" height="24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                                                </svg>
+                                            </span>
+                                        </button>
+
+                                        <!-- Arrow Right -->
+                                        <button id="nextBtn" class="carousel-control-next custom-btn" type="button">
+                                            <span class="custom-btn-icon">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="2" width="24" height="24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </span>
+                                        </button>
                                     </div>
 
-                                    <!-- Bootstrap Next/Prev Buttons (Custom UI) -->
-                                    <button id="prevBtn" class="carousel-control-prev custom-btn" type="button">
-                                        <span class="custom-btn-icon">&larr;</span>
-                                        <span class="visually-hidden">Previous</span>
-                                    </button>
-                                    <button id="nextBtn" class="carousel-control-next custom-btn" type="button">
-                                        <span class="custom-btn-icon">&rarr;</span>
-                                        <span class="visually-hidden">Next</span>
-                                    </button>
-
                                     <style>
-                                    /* Custom Button Style */
+                                    /* Wrapper to maintain ratio */
+                                    .img-wrapper {
+                                        width: 100%;
+                                        aspect-ratio: 16 / 9;
+                                        overflow: hidden;
+                                        border-radius: 10px;
+                                    }
+
+                                    .img-wrapper img {
+                                        width: 100%;
+                                        height: 100%;
+                                        object-fit: cover;
+                                    }
+
+                                    /* Custom Nav Buttons */
                                     .custom-btn {
                                         position: absolute;
                                         top: 50%;
                                         transform: translateY(-50%);
-                                        width: 45px;
-                                        height: 45px;
-                                        background: rgba(0, 0, 0, 0.5); /* semi-transparent black */
+                                        width: 48px;
+                                        height: 48px;
+                                        background: rgba(0, 0, 0, 0.6); /* lebih gelap */
                                         border-radius: 50%;
                                         display: flex;
                                         justify-content: center;
@@ -62,52 +86,53 @@
                                         cursor: pointer;
                                         z-index: 10;
                                         transition: background 0.3s, transform 0.2s;
+                                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); /* bayangan */
                                     }
 
                                     .custom-btn:hover {
-                                        background: rgba(0, 0, 0, 0.7);
-                                        transform: translateY(-50%) scale(1.1); /* grow a bit on hover */
+                                        background: rgba(0, 0, 0, 0.8);
+                                        transform: translateY(-50%) scale(1.1);
                                     }
 
                                     .custom-btn-icon {
-                                        color: white;
-                                        font-size: 20px;
-                                        font-weight: bold;
-                                        user-select: none;
+                                        width: 24px;
+                                        height: 24px;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
                                     }
 
-                                    #prevBtn {
-                                        left: 10px;
-                                    }
 
-                                    #nextBtn {
-                                        right: 10px;
+
+                                    #prevBtn { left: 16px; }
+                                    #nextBtn { right: 16px; }
+
+                                    @media (max-width: 768px) {
+                                        .img-wrapper {
+                                            aspect-ratio: 4 / 3;
+                                        }
                                     }
                                     </style>
 
+                                    <script src="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.js"></script>
+                                    <script>
+                                        const swiper = new Swiper(".mySwiperMain", {
+                                            loop: true,
+                                            spaceBetween: 10,
+                                        });
+
+                                        document.getElementById('prevBtn').addEventListener('click', (e) => {
+                                            e.preventDefault();
+                                            swiper.slidePrev();
+                                        });
+
+                                        document.getElementById('nextBtn').addEventListener('click', (e) => {
+                                            e.preventDefault();
+                                            swiper.slideNext();
+                                        });
+                                    </script>
+
                                 </div>
-
-                                <!-- Swiper JS -->
-                                <script src="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.js"></script>
-                                <script>
-                                    // Init Swiper
-                                    var swiper = new Swiper(".mySwiperMain", {
-                                        spaceBetween: 10,
-                                        loop: true, // Optional: make it loop
-                                    });
-
-                                    // Hijack Bootstrap buttons to control Swiper
-                                    document.getElementById('prevBtn').addEventListener('click', function(e) {
-                                        e.preventDefault(); // prevent Bootstrap default
-                                        swiper.slidePrev();
-                                    });
-                                    document.getElementById('nextBtn').addEventListener('click', function(e) {
-                                        e.preventDefault();
-                                        swiper.slideNext();
-                                    });
-                                </script>
-
-
                             </div>
 
                             <div class="col-lg-6 wow fadeIn" data-wow-delay="0.5s">
@@ -128,8 +153,8 @@
                                             </div>
                                         </div>
                                     </div>
-
                                 </div>
+
                                 <div class="row mb-5">
                                     <div class="col-md-6 col-lg-4 text-center border-bottom border-top py-3">
                                         <span class="d-inline-block text-black mb-0 caption-text">Luas Tanah</span>
@@ -145,17 +170,14 @@
                                     </div>
                                 </div>
 
-
                                 <a href="{{ $property->agent && $property->agent->nomor_telepon
                                     ? 'https://wa.me/62' . ltrim($property->agent->nomor_telepon, '0') . '?text=' . urlencode('Halo ' . $property->agent->nama . ', saya melihat property "' . $property->lokasi . '" di website. Bisa minta info lebih lengkap tentang property tersebut?')
                                     : '#' }}"
-                                   class="btn btn-primary py-3 px-4 me-2"
-                                   {{ $property->agent && $property->agent->nomor_telepon ? '' : 'onclick="return false;"' }}>
-                                   <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
+                                    class="btn btn-primary py-3 px-4 me-2"
+                                    {{ $property->agent && $property->agent->nomor_telepon ? '' : 'onclick="return false;"' }}>
+                                    <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
                                 </a>
 
-
-                                <!-- Button Ikuti Lelang -->
                                 @if (Session::has('id_account') || Cookie::has('id_account'))
                                     <a href="{{ route('property.interest.show', $property->id_listing) }}" class="btn btn-dark py-3 px-4">
                                         <i class="fa fa-calendar-alt me-2"></i>Ikuti Lelang Ini
@@ -171,17 +193,98 @@
                                         $loggedInId = Session::get('id_account');
                                         $loggedInAgentId = \App\Models\Agent::where('id_account', $loggedInId)->value('id_agent');
                                     @endphp
-
                                     @if ($property->id_agent === $loggedInAgentId)
                                         <a href="{{ route('editproperty', $property->id_listing) }}" class="btn btn-warning py-3 px-4">
                                             <i class="fa fa-edit me-2"></i>Edit Properti
                                         </a>
                                     @endif
                                 @endif
-
-
                             </div>
+
+                            <!-- Swiper JS -->
+                            <script src="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.js"></script>
+                            <script>
+                                const swiper = new Swiper(".mySwiperMain", {
+                                    loop: true,
+                                    spaceBetween: 10,
+                                });
+
+                                document.getElementById('prevBtn').addEventListener('click', function(e) {
+                                    e.preventDefault();
+                                    swiper.slidePrev();
+                                });
+
+                                document.getElementById('nextBtn').addEventListener('click', function(e) {
+                                    e.preventDefault();
+                                    swiper.slideNext();
+                                });
+                            </script>
+
+                            <style>
+                                .aspect-ratio-box {
+                                    position: relative;
+                                    width: 100%;
+                                    padding-top: 56.25%; /* 16:9 */
+                                    overflow: hidden;
+                                    border-radius: 10px;
+                                }
+
+                                .aspect-ratio-box .swiper-slide img {
+                                    position: absolute;
+                                    top: 0;
+                                    left: 0;
+                                    width: 100%;
+                                    height: 100%;
+                                    object-fit: cover;
+                                }
+
+                                .custom-btn {
+                                    position: absolute;
+                                    top: 50%;
+                                    transform: translateY(-50%);
+                                    width: 40px;
+                                    height: 40px;
+                                    background: rgba(0, 0, 0, 0.5);
+                                    border-radius: 50%;
+                                    display: flex;
+                                    justify-content: center;
+                                    align-items: center;
+                                    border: none;
+                                    cursor: pointer;
+                                    z-index: 10;
+                                }
+
+                                .custom-btn-icon {
+                                    color: white;
+                                    font-size: 18px;
+                                    font-weight: bold;
+                                }
+
+                                #prevBtn {
+                                    left: 10px;
+                                }
+
+                                #nextBtn {
+                                    right: 10px;
+                                }
+
+                                @media (max-width: 768px) {
+                                    .aspect-ratio-box {
+                                        padding-top: 66.66%; /* 3:2 for mobile */
+                                    }
+
+                                    .custom-btn {
+                                        width: 35px;
+                                        height: 35px;
+                                    }
+
+                                    .custom-btn-icon {
+                                        font-size: 16px;
+                                    }
+                                }
+                            </style>
                         </div>
+
 
                         <div class="single-property section">
                             <div class="container">
