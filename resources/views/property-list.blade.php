@@ -389,28 +389,25 @@
     <div class="container">
         <div class="row g-0 gx-5 align-items-end">
             <div class="col-lg-6">
-                <div class="text-start mx-auto mb-5 wow slideInLeft" data-wow-delay="0.1s">
+                <div class="text-start mx-auto mb-4 wow slideInLeft" data-wow-delay="0.1s">
                     <h1 class="mb-3">Jelajahi Beragam Tipe Properti</h1>
                     <p>Temukan pilihan properti terbaik mulai dari rumah lelang murah, properti sewa strategis, hingga gudang investasi. Semua ada di sini untuk kebutuhan dan rencana finansialmu.</p>
                 </div>
             </div>
-            <div class="col-lg-6 text-start text-lg-end">
-                <ul class="nav nav-pills d-inline-flex justify-content-end mb-5">
-                    <li class="nav-item me-2">
-                        <a class="btn btn-outline-primary {{ request('sort') === null ? 'active' : '' }}"
-                            href="{{ request()->fullUrlWithQuery(['sort' => null]) }}">Unggulan</a>
-                    </li>
-                    <li class="nav-item me-2">
-                        <a class="btn btn-outline-primary {{ request('sort') === 'harga_asc' ? 'active' : '' }}"
-                            href="{{ request()->fullUrlWithQuery(['sort' => 'harga_asc']) }}">Dari Harga Paling Rendah</a>
-                    </li>
-                    <li class="nav-item me-0">
-                        <a class="btn btn-outline-primary {{ request('sort') === 'harga_desc' ? 'active' : '' }}"
-                            href="{{ request()->fullUrlWithQuery(['sort' => 'harga_desc']) }}">Dari Harga Paling Tinggi</a>
-                    </li>
-                </ul>
+            <div class="col-lg-6">
+                <div class="filter-buttons d-flex flex-wrap justify-content-start justify-content-lg-end gap-2 mb-4">
+                    <a class="btn {{ request('sort') === null ? 'btn-primary' : 'btn-outline-primary' }}"
+                        href="{{ request()->fullUrlWithQuery(['sort' => null]) }}">Unggulan</a>
+
+                    <a class="btn {{ request('sort') === 'harga_asc' ? 'btn-primary' : 'btn-outline-primary' }}"
+                        href="{{ request()->fullUrlWithQuery(['sort' => 'harga_asc']) }}">Dari Harga Paling Rendah</a>
+
+                    <a class="btn {{ request('sort') === 'harga_desc' ? 'btn-primary' : 'btn-outline-primary' }}"
+                        href="{{ request()->fullUrlWithQuery(['sort' => 'harga_desc']) }}">Dari Harga Paling Tinggi</a>
+                </div>
             </div>
         </div>
+
 
         <div class="row g-4">
             <style>
