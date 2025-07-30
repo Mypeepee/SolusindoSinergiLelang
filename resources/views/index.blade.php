@@ -426,93 +426,112 @@
 
 
         <!-- Property List Start -->
-        <div class="container-xxl py-5">
-            <div class="container">
-                <div class="row g-0 gx-5 align-items-end">
-                    <div class="col-lg-6">
-                        <div class="text-start mx-auto mb-5 wow slideInLeft" data-wow-delay="0.1s">
-                            <h1 class="mb-3">Hot Listing Property</h1>
-                            <p>Temukan properti paling diminati di pasaran saat ini!. Jangan lewatkan kesempatan untuk mendapatkan properti terbaik dengan harga terbaik. Bertindaklah cepat dan jadikan salah satu listing istimewa ini milik Anda!</p>
-                        </div>
-                    </div>
-
+<div class="container-xxl py-5">
+    <div class="container">
+        <div class="row g-0 gx-5 align-items-end">
+            <div class="col-lg-6">
+                <div class="text-start mx-auto mb-5 wow slideInLeft" data-wow-delay="0.1s">
+                    <h1 class="mb-3">Hot Listing Property</h1>
+                    <p>Temukan properti paling diminati di pasaran saat ini!. Jangan lewatkan kesempatan untuk mendapatkan properti terbaik dengan harga terbaik. Bertindaklah cepat dan jadikan salah satu listing istimewa ini milik Anda!</p>
                 </div>
-                <div class="tab-content">
-                    <div id="tab-1" class="tab-pane fade show p-0 active">
-                        <div class="row g-4">
+            </div>
+        </div>
 
-                            <!-- Hot Listing Section Start -->
-                            <section id="hot-listing">
-                                <div class="container-xxl py-5">
-                                    <div class="container">
-                                        <div class="row g-4">
-                                            @foreach ($hotListings as $property)
-                                            <div class="col-lg-4 col-md-6 d-flex align-items-stretch">
-                                                <div class="property-item rounded overflow-hidden flex-fill d-flex flex-column">
-                                                    <div class="position-relative overflow-hidden">
-                                                        <style>
-                                                            .property-item img {
-                                                                width: 100%;
-                                                                height: 300px;
-                                                                object-fit: cover;
-                                                                object-position: center;
-                                                            }
-                                                            .property-item {
-                                                                display: flex;
-                                                                flex-direction: column;
-                                                            }
-                                                            .property-item .p-4 {
-                                                                flex-grow: 1; /* supaya bagian konten mengisi ruang yang ada */
-                                                            }
-                                                        </style>
-                                                        <img class="img-fluid" src="{{ explode(',', $property->gambar)[0] }}" alt="Gambar {{ $property->tipe }}">
+        <div class="tab-content">
+            <div id="tab-1" class="tab-pane fade show p-0 active">
+                <div class="row g-4">
 
-                                                        <div class="bg-primary rounded text-white position-absolute start-0 top-0 m-4 py-1 px-3">{{ $property->tipe }}</div>
-                                                        <div class="bg-white rounded-top text-primary position-absolute start-0 bottom-0 mx-4 pt-1 px-3">{{ $property->tipe }}</div>
-                                                    </div>
-                                                    <div class="p-4 pb-0">
-                                                        <h5 class="text-primary mb-3">{{ 'Rp ' . number_format($property->harga, 0, ',', '.') }}</h5>
-                                                        <a class="d-block h5 mb-2" href="{{ route('property-detail', $property->id_listing) }}">
-                                                            {{ \Illuminate\Support\Str::limit($property->deskripsi, 50, '...') }}
-                                                        </a>
-                                                        <p>
-                                                            <i class="fa fa-map-marker-alt text-primary me-2"></i>
-                                                            {{ \Illuminate\Support\Str::limit($property->lokasi, 70, '...') }}
-                                                        </p>
-                                                    </div>
-                                                    <div class="d-flex border-top border-2 border-dashed border-orange">
-                                                        <small class="flex-fill text-center border-end border-dashed py-2">
-                                                            <i class="fa fa-vector-square text-danger me-2"></i>
-                                                            <span class="text-dark">{{ $property->luas }} m²</span>
-                                                        </small>
-                                                        <small class="flex-fill text-center border-end border-dashed py-2">
-                                                            <i class="fa fa-map-marker-alt text-danger me-2"></i>
-                                                            <span class="text-dark text-uppercase">{{ $property->kota }}</span>
-                                                        </small>
-                                                        <small class="flex-fill text-center py-2">
-                                                            <i class="fa fa-calendar-alt text-danger me-2"></i>
-                                                            <span class="text-dark">
-                                                                {{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->format('d M Y') }}
-                                                            </span>
-                                                        </small>
-                                                    </div>
+                    <!-- Hot Listing Section Start -->
+                    <section id="hot-listing">
+                        <div class="container-xxl py-5">
+                            <div class="container">
+                                <div class="row g-4">
+                                    @foreach ($hotListings as $property)
+                                    <div class="col-lg-4 col-md-6 d-flex align-items-stretch">
+                                        <div class="property-item rounded overflow-hidden flex-fill d-flex flex-column shadow-sm hover-shadow">
+                                            <div class="position-relative overflow-hidden">
+                                                <style>
+                                                    .property-item img {
+                                                        width: 100%;
+                                                        height: 300px;
+                                                        object-fit: cover;
+                                                        object-position: center;
+                                                    }
+                                                    .property-item {
+                                                        display: flex;
+                                                        flex-direction: column;
+                                                        transition: all 0.3s ease;
+                                                    }
+                                                    .property-item:hover {
+                                                        transform: translateY(-5px);
+                                                        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+                                                    }
+                                                    .property-item .p-4 {
+                                                        flex-grow: 1;
+                                                        padding: 1.5rem 1rem;
+                                                    }
+                                                    .text-truncate-2 {
+                                                        overflow: hidden;
+                                                        display: -webkit-box;
+                                                        -webkit-line-clamp: 2;
+                                                        -webkit-box-orient: vertical;
+                                                    }
+                                                </style>
+
+                                                <img class="img-fluid" src="{{ explode(',', $property->gambar)[0] }}" alt="Gambar {{ $property->tipe }}">
+
+                                                <!-- Only top-left label -->
+                                                <div class="bg-primary rounded text-white position-absolute start-0 top-0 m-2 py-1 px-3 text-capitalize">
+                                                    {{ $property->tipe }}
                                                 </div>
                                             </div>
-                                            @endforeach
+                                            <div class="p-4 pb-0">
+                                                <h5 class="text-primary mb-3">{{ 'Rp ' . number_format($property->harga, 0, ',', '.') }}</h5>
+                                                <a class="d-block h5 mb-2" href="{{ route('property-detail', $property->id_listing) }}">
+                                                    {{ \Illuminate\Support\Str::limit($property->deskripsi, 50, '...') }}
+                                                </a>
+                                                <p class="text-truncate-2">
+                                                    <i class="fa fa-map-marker-alt text-primary me-2"></i>
+                                                    {{ $property->lokasi }}
+                                                </p>
+                                            </div>
+                                            <div class="d-flex border-top border-1 border-light">
+                                                <small class="flex-fill text-center border-end py-2">
+                                                    <i class="fa fa-vector-square text-danger me-2"></i>
+                                                    <span class="text-dark">{{ $property->luas }} m²</span>
+                                                </small>
+                                                <small class="flex-fill text-center border-end py-2">
+                                                    <i class="fa fa-map-marker-alt text-danger me-2"></i>
+                                                    <span class="text-dark text-uppercase">{{ $property->kota }}</span>
+                                                </small>
+                                                <small class="flex-fill text-center py-2">
+                                                    <i class="fa fa-calendar-alt text-danger me-2"></i>
+                                                    <span class="text-dark">
+                                                        {{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->format('d M Y') }}
+                                                    </span>
+                                                </small>
+                                            </div>
                                         </div>
                                     </div>
+                                    @endforeach
                                 </div>
-                            </section>
-                            <!-- Hot Listing Section End -->
-                            <div class="col-12 text-center">
-                                <a href="{{ url('/property-list') }}" class="btn btn-primary py-3 px-5 me-3 animated fadeIn">Explore Lebih Lanjut</a>
                             </div>
                         </div>
+                    </section>
+                    <!-- Hot Listing Section End -->
+
+                    <div class="col-12 text-center mt-4">
+                        <a href="{{ url('/property-list') }}" class="btn btn-primary py-3 px-5 me-3 animated fadeIn">
+                            Explore Lebih Lanjut
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
-        <!-- Property List End -->
+    </div>
+</div>
+<!-- Property List End -->
+
 
 
         <!-- Call to Action Start -->
