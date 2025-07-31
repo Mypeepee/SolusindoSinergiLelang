@@ -219,85 +219,85 @@
                         </div>
 
                         <!-- User Dropdown -->
-@php
-$idAccount = Session::get('id_account') ?? Cookie::get('id_account');
-$role = Session::get('role') ?? Cookie::get('role');
-@endphp
+                        @php
+                        $idAccount = Session::get('id_account') ?? Cookie::get('id_account');
+                        $role = Session::get('role') ?? Cookie::get('role');
+                        @endphp
 
-@if ($idAccount && in_array($role, ['User', 'Agent', 'Register', 'Owner', 'Pengosongan']))
-<!-- Logged-in User Dropdown -->
-<ul class="navbar-nav">
-    <li class="nav-item dropdown d-flex align-items-center">
-        <a class="nav-link dropdown-toggle {{ Request::is('profile*') || Request::is('agent/properties*') || Request::is('cart*') ? 'text-orange' : '' }}"
-            href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-            <i class="fas fa-user" style="font-size: 1rem;"></i>
-            <i class="fas fa-chevron-down ms-1"></i>
-        </a>
+                        @if ($idAccount && in_array($role, ['User', 'Agent', 'Register', 'Owner', 'Pengosongan']))
+                        <!-- Logged-in User Dropdown -->
+                        <ul class="navbar-nav">
+                            <li class="nav-item dropdown d-flex align-items-center">
+                                <a class="nav-link dropdown-toggle {{ Request::is('profile*') || Request::is('agent/properties*') || Request::is('cart*') ? 'text-orange' : '' }}"
+                                    href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-user" style="font-size: 1rem;"></i>
+                                    <i class="fas fa-chevron-down ms-1"></i>
+                                </a>
 
-        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-            <li>
-                <a class="dropdown-item {{ Request::is('profile*') ? 'active bg-orange text-white' : '' }}"
-                    href="{{ route('profile', ['id_account' => $idAccount]) }}">
-                    <i class="fa fa-user me-2"></i> Profile
-                </a>
-            </li>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                    <li>
+                                        <a class="dropdown-item {{ Request::is('profile*') ? 'active bg-orange text-white' : '' }}"
+                                            href="{{ route('profile', ['id_account' => $idAccount]) }}">
+                                            <i class="fa fa-user me-2"></i> Profile
+                                        </a>
+                                    </li>
 
-            @if (in_array($role, ['Agent', 'Register']))
-                <li>
-                    <a class="dropdown-item {{ Request::is('agent/properties*') ? 'active bg-orange text-white' : '' }}"
-                        href="{{ route('agent.properties') }}">
-                        <i class="fa fa-home me-2"></i> Daftar Listingan Saya
-                    </a>
-                </li>
-            @endif
+                                    @if (in_array($role, ['Agent', 'Register']))
+                                        <li>
+                                            <a class="dropdown-item {{ Request::is('agent/properties*') ? 'active bg-orange text-white' : '' }}"
+                                                href="{{ route('agent.properties') }}">
+                                                <i class="fa fa-home me-2"></i> Daftar Listingan Saya
+                                            </a>
+                                        </li>
+                                    @endif
 
-            @if ($role === 'User')
-                <li>
-                    <a class="dropdown-item {{ Request::is('cart*') ? 'active bg-orange text-white' : '' }}"
-                        href="{{ route('cart.view') }}">
-                        <i class="fa fa-shopping-cart me-2"></i> Status Lelang Saya
-                    </a>
-                </li>
-            @endif
+                                    @if ($role === 'User')
+                                        <li>
+                                            <a class="dropdown-item {{ Request::is('cart*') ? 'active bg-orange text-white' : '' }}"
+                                                href="{{ route('cart.view') }}">
+                                                <i class="fa fa-shopping-cart me-2"></i> Status Lelang Saya
+                                            </a>
+                                        </li>
+                                    @endif
 
-            <li>
-                <form action="{{ route('logout') }}" method="POST" style="display:inline;">
-                    @csrf
-                    <button type="submit" class="dropdown-item d-flex align-items-center">
-                        <i class="fa fa-sign-out-alt me-2"></i> Logout
-                    </button>
-                </form>
-            </li>
-        </ul>
-    </li>
-</ul>
-@else
-<!-- Guest User Dropdown (Login / Register) -->
-<ul class="navbar-nav">
-    <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle {{ Request::is('login') || Request::is('register') ? 'active text-orange' : '' }}"
-            href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-            <i class="fas fa-user" style="font-size: 1rem;"></i>
-            <i class="fas fa-chevron-down ms-1"></i>
-        </a>
+                                    <li>
+                                        <form action="{{ route('logout') }}" method="POST" style="display:inline;">
+                                            @csrf
+                                            <button type="submit" class="dropdown-item d-flex align-items-center">
+                                                <i class="fa fa-sign-out-alt me-2"></i> Logout
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </li>
+                        </ul>
+                        @else
+                        <!-- Guest User Dropdown (Login / Register) -->
+                        <ul class="navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle {{ Request::is('login') || Request::is('register') ? 'active text-orange' : '' }}"
+                                    href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-user" style="font-size: 1rem;"></i>
+                                    <i class="fas fa-chevron-down ms-1"></i>
+                                </a>
 
-        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-            <li>
-                <a class="dropdown-item {{ Request::is('login') ? 'active bg-orange text-white' : '' }}"
-                    href="{{ url('/login') }}">
-                    <i class="fa fa-sign-in-alt me-2"></i> Login
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item {{ Request::is('register') ? 'active bg-orange text-white' : '' }}"
-                    href="{{ url('/register') }}">
-                    <i class="fa fa-user-plus me-2"></i> Register
-                </a>
-            </li>
-        </ul>
-    </li>
-</ul>
-@endif
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                    <li>
+                                        <a class="dropdown-item {{ Request::is('login') ? 'active bg-orange text-white' : '' }}"
+                                            href="{{ url('/login') }}">
+                                            <i class="fa fa-sign-in-alt me-2"></i> Login
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item {{ Request::is('register') ? 'active bg-orange text-white' : '' }}"
+                                            href="{{ url('/register') }}">
+                                            <i class="fa fa-user-plus me-2"></i> Register
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                        </ul>
+                        @endif
 
                         <!-- Buttons -->
                         @if (Session::has('id_account') || Cookie::has('id_account'))
