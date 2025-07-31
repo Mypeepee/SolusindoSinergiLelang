@@ -383,35 +383,38 @@
                                                             </table>
                                                         </div>
 
-                                                        <!-- VERSI MOBILE (STACKED BOX) -->
-                                                        <!-- MOBILE CARD VERSION -->
-                                                        <div class="d-block d-md-none mt-3">
-                                                            <div class="row g-3">
-                                                                <div class="col-12">
-                                                                    <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
-                                                                        <div class="text-uppercase small text-muted mb-1">Harga Properti</div>
-                                                                        <div class="fw-bold text-primary fs-5">Rp {{ number_format($property->harga, 0, ',', '.') }}</div>
-                                                                    </div>
-                                                                </div>
+<!-- MOBILE CARD VERSION -->
+<div class="d-block d-md-none mt-3">
+    <div class="container"> <!-- atau div dengan max-width yang sama dengan tombol -->
+      <div class="row g-3">
+        <div class="col-12">
+          <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
+            <div class="text-uppercase small text-muted mb-1">Harga Properti</div>
+            <div class="fw-bold text-primary fs-5">Rp {{ number_format($property->harga, 0, ',', '.') }}</div>
+          </div>
+        </div>
 
-                                                                <div class="col-12">
-                                                                    <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
-                                                                        <div class="text-uppercase small text-muted mb-1">Biaya Dokumen</div>
-                                                                        <div class="text-secondary">
-                                                                            <span class="fw-semibold text-primary">Rp {{ number_format($property->harga * 0.085, 0, ',', '.') }}</span>
-                                                                            <div class="small text-muted">(8,5% dari harga)</div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
+        <div class="col-12">
+          <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
+            <div class="text-uppercase small text-muted mb-1">Biaya Dokumen</div>
+            <div class="text-secondary">
+              <span class="fw-semibold text-primary">Rp {{ number_format($property->harga * 0.085, 0, ',', '.') }}</span>
+              <div class="small text-muted">(8,5% dari harga)</div>
+            </div>
+          </div>
+        </div>
 
-                                                                <div class="col-12">
-                                                                    <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
-                                                                        <div class="text-uppercase small text-muted mb-1">Biaya Pengosongan</div>
-                                                                        <div class="text-secondary fw-semibold text-primary">Rp {{ number_format($biayaPengosongan, 0, ',', '.') }}</div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
+        <div class="col-12">
+          <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
+            <div class="text-uppercase small text-muted mb-1">Biaya Pengosongan</div>
+            <div class="text-secondary fw-semibold text-primary">Rp {{ number_format($biayaPengosongan, 0, ',', '.') }}</div>
+          </div>
+        </div>
+      </div>
+    </div> <!-- END container -->
+  </div>
+
+
 
 
 
