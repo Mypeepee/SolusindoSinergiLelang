@@ -384,34 +384,48 @@
                                                         </div>
 
                                                         <!-- VERSI MOBILE (STACKED BOX) -->
+                                                        <!-- MOBILE CARD VERSION -->
                                                         <div class="d-block d-md-none mt-3">
-                                                            <div class="p-3 mb-3 rounded-3 shadow-sm border position-relative bg-white">
-                                                                <div class="small text-uppercase text-muted mb-1">Harga Properti</div>
-                                                                <div class="fs-5 fw-bold text-primary">Rp {{ number_format($property->harga, 0, ',', '.') }}</div>
-                                                            </div>
+                                                            <div class="row g-3">
+                                                                <div class="col-12">
+                                                                    <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
+                                                                        <div class="text-uppercase small text-muted mb-1">Harga Properti</div>
+                                                                        <div class="fw-bold text-primary fs-5">Rp {{ number_format($property->harga, 0, ',', '.') }}</div>
+                                                                    </div>
+                                                                </div>
 
-                                                            <div class="p-3 mb-3 rounded-3 shadow-sm border position-relative bg-white">
-                                                                <div class="small text-uppercase text-muted mb-1">Biaya Dokumen</div>
-                                                                <div class="text-secondary">
-                                                                    Rp {{ number_format($property->harga * 0.085, 0, ',', '.') }} <span class="text-muted">(8,5% dari harga)</span>
+                                                                <div class="col-12">
+                                                                    <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
+                                                                        <div class="text-uppercase small text-muted mb-1">Biaya Dokumen</div>
+                                                                        <div class="text-secondary">
+                                                                            <span class="fw-semibold text-primary">Rp {{ number_format($property->harga * 0.085, 0, ',', '.') }}</span>
+                                                                            <div class="small text-muted">(8,5% dari harga)</div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div class="col-12">
+                                                                    <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
+                                                                        <div class="text-uppercase small text-muted mb-1">Biaya Pengosongan</div>
+                                                                        <div class="text-secondary fw-semibold text-primary">Rp {{ number_format($biayaPengosongan, 0, ',', '.') }}</div>
+                                                                    </div>
                                                                 </div>
                                                             </div>
-
-                                                            <div class="p-3 mb-3 rounded-3 shadow-sm border position-relative bg-white">
-                                                                <div class="small text-uppercase text-muted mb-1">Biaya Pengosongan</div>
-                                                                <div class="text-secondary">Rp {{ number_format($biayaPengosongan, 0, ',', '.') }}</div>
-                                                            </div>
                                                         </div>
+
 
 
                                                         <!-- CATATAN -->
-                                                        <div class="alert alert-warning mt-3 rounded-3 shadow-sm border-start border-4 border-warning bg-warning-subtle">
-                                                            <i class="fa fa-info-circle me-2 text-warning"></i>
-                                                            <strong>Catatan:</strong> <br class="d-md-none">
-                                                            <span class="text-dark">
-                                                                Sudah termasuk biaya pengosongan, ditambah biaya-biaya (biaya lelang, biaya balik nama sertifikat, biaya roya, biaya akte grosse, penerimaan negara bukan pajak dan Pajak-Pajak seperti BPHTB dan Pajak Penambahan Nilai), tidak termasuk tunggakan biaya utilitas apabila ada.
-                                                            </span>
+                                                        <div class="d-flex justify-content-center">
+                                                            <div class="alert alert-warning mt-3 rounded-3 shadow-sm border-start border-4 border-warning bg-warning-subtle w-100" style="max-width: 720px;">
+                                                                <i class="fa fa-info-circle me-2 text-warning"></i>
+                                                                <strong>Catatan:</strong> <br class="d-md-none">
+                                                                <span class="text-dark">
+                                                                    Sudah termasuk biaya pengosongan, ditambah biaya-biaya (biaya lelang, biaya balik nama sertifikat, biaya roya, biaya akte grosse, penerimaan negara bukan pajak dan Pajak-Pajak seperti BPHTB dan Pajak Penambahan Nilai), tidak termasuk tunggakan biaya utilitas apabila ada.
+                                                                </span>
+                                                            </div>
                                                         </div>
+
 
                                                     </div>
                                                 </div>
