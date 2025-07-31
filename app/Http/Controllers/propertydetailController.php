@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Storage;
 use Kreait\Firebase\Factory;
 use Illuminate\Support\Facades\Http;
 use App\Models\Agent;
+use Illuminate\Support\Str;
+
 
 use App\Models\User;
 
@@ -95,6 +97,12 @@ class propertydetailController extends Controller
         } else {
             $selisihPersen = "Tidak ada data pembanding di kecamatan/kota ini.";
         }
+        $ogTags = [
+            'og_title' => $property->judul,
+            'og_description' => Str::limit($property->lokasi . ' - ' . strip_tags($property->deskripsi), 150),
+            'og_image' => $property->gambar, // pastikan ini URL gambar full
+            'og_url' => url()->current(),
+        ];
 
         return view("property-detail", compact(
             'property',
@@ -105,7 +113,8 @@ class propertydetailController extends Controller
             'minPricePerM2',
             'maxPricePerM2',
             'medianPricePerM2',
-            'selisihPersen'
+            'selisihPersen',
+            'ogTags'
         ));
     }
 
