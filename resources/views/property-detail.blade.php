@@ -213,7 +213,6 @@
                                         @endif
                                     @endif
                                 </div>
-
                             </div>
 
 
@@ -307,9 +306,9 @@
                                 <div class="row">
                                     <section id="features" class="features section">
                                         <!-- Section Title -->
-                                        <div class="container-xxl py-2" data-aos="fade-up">
+                                        <div class="py-2" data-aos="fade-up">
                                         </div><!-- End Section Title -->
-                                        <div class="container-fluid px-3 px-md-5" data-aos="fade-up" data-aos-delay="100">
+                                        <div class="px-2 px-md-3" data-aos="fade-up" data-aos-delay="100">
                                         <div class="row">
                                             <div class="col-lg-3">
                                               <ul class="nav nav-tabs flex-column">
@@ -368,8 +367,7 @@
                                                             </div>
                                                             <!-- MOBILE CARD VERSION -->
 <!-- MOBILE CARD VERSION -->
-<div class="d-block d-md-none mt-3">
-    <div class="container"> <!-- Ini bikin lebarnya nyesuaiin sama konten atas -->
+<div class="d-block d-md-none mt-3"> <!-- Ini bikin lebarnya nyesuaiin sama konten atas -->
       <div class="row g-3">
         <div class="col-12">
           <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
@@ -393,9 +391,17 @@
           </div>
         </div>
       </div>
-    </div>
   </div>
-
+<!-- CATATAN -->
+<div class="d-flex justify-content-center">
+    <div class="alert alert-warning mt-3 rounded-3 shadow-sm border-start border-4 border-warning bg-warning-subtle w-100" style="max-width: 720px;">
+        <i class="fa fa-info-circle me-2 text-warning"></i>
+        <strong>Catatan:</strong> <br class="d-md-none">
+        <span class="text-dark">
+            Sudah termasuk biaya pengosongan, ditambah biaya-biaya (biaya lelang, biaya balik nama sertifikat, biaya roya, biaya akte grosse, penerimaan negara bukan pajak dan Pajak-Pajak seperti BPHTB dan Pajak Penambahan Nilai), tidak termasuk tunggakan biaya utilitas apabila ada.
+        </span>
+    </div>
+</div>
 
 
                                                         </div>
