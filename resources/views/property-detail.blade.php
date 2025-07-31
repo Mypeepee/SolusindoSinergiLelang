@@ -137,69 +137,85 @@
 
                             <div class="col-lg-6 wow fadeIn" data-wow-delay="0.5s">
                                 <div class="mb-4">
-                                    <h1 class="mb-3">{{ $property->judul }}</h1>
+                                    <h1 class="mb-3 fs-3 fs-md-2 lh-base">{{ $property->judul }}</h1>
 
-                                    <div class="row text-center mb-4">
-                                        <div class="col-6">
+                                    <!-- Harga & Jaminan -->
+                                    <div class="row text-center mb-4 d-flex flex-column flex-sm-row justify-content-between align-items-center">
+                                        <div class="col-12 col-sm-6 mb-2 mb-sm-0">
                                             <div class="text-muted mb-1">Harga</div>
-                                            <div class="fw-bold fs-4 text-secondary">
+                                            <div class="fw-bold fs-5 text-secondary text-break">
                                                 Rp.{{ number_format($property->harga, 0, ',', '.') }}
                                             </div>
                                         </div>
-                                        <div class="col-6">
+                                        <div class="col-12 col-sm-6">
                                             <div class="text-muted mb-1">Uang Jaminan</div>
-                                            <div class="fw-bold fs-4 text-secondary">
+                                            <div class="fw-bold fs-5 text-secondary text-break">
                                                 Rp.{{ number_format($property->uang_jaminan, 0, ',', '.') }}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="row mb-5">
-                                    <div class="col-md-6 col-lg-4 text-center border-bottom border-top py-3">
+                                <!-- Detail Properti -->
+                                <div class="row mb-4">
+                                    <div class="col-md-6 col-lg-4 text-center border-top border-bottom py-3">
                                         <span class="d-inline-block text-black mb-0 caption-text">Luas Tanah</span>
                                         <strong class="d-block">{{ $property->luas }} m<sup>2</sup></strong>
                                     </div>
-                                    <div class="col-md-6 col-lg-4 text-center border-bottom border-top py-3">
+                                    <div class="col-md-6 col-lg-4 text-center border-top border-bottom py-3">
                                         <span class="d-inline-block text-black mb-0 caption-text">Sertifikat</span>
                                         <strong class="d-block">{{ $property->sertifikat }}</strong>
                                     </div>
-                                    <div class="col-md-6 col-lg-4 text-center border-bottom border-top py-3">
+                                    <div class="col-md-6 col-lg-4 text-center border-top border-bottom py-3">
                                         <span class="d-inline-block text-black mb-0 caption-text">Batas Setoran Jaminan</span>
                                         <strong class="d-block">{{ \Carbon\Carbon::parse($property->batas_akhir_jaminan)->format('d M Y') }}</strong>
                                     </div>
                                 </div>
 
-                                <a href="{{ $property->agent && $property->agent->nomor_telepon
-                                    ? 'https://wa.me/62' . ltrim($property->agent->nomor_telepon, '0') . '?text=' . urlencode('Halo ' . $property->agent->nama . ', saya melihat property "' . $property->lokasi . '" di website. Bisa minta info lebih lengkap tentang property tersebut?')
-                                    : '#' }}"
-                                    class="btn btn-primary py-3 px-4 me-2"
-                                    {{ $property->agent && $property->agent->nomor_telepon ? '' : 'onclick="return false;"' }}>
-                                    <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
-                                </a>
-
-                                @if (Session::has('id_account') || Cookie::has('id_account'))
-                                    <a href="{{ route('property.interest.show', $property->id_listing) }}" class="btn btn-dark py-3 px-4">
-                                        <i class="fa fa-calendar-alt me-2"></i>Ikuti Lelang Ini
+                                <div class="d-flex flex-column flex-md-row flex-md-nowrap gap-2 mt-4 justify-content-md-center">
+                                    <!-- Hubungi Agent -->
+                                    <a href="{{ $property->agent && $property->agent->nomor_telepon
+                                        ? 'https://wa.me/62' . ltrim($property->agent->nomor_telepon, '0') . '?text=' . urlencode('Halo ' . $property->agent->nama . ', saya melihat property "' . $property->lokasi . '" di website. Bisa minta info lebih lengkap tentang property tersebut?')
+                                        : '#' }}"
+                                        class="btn btn-danger px-3 py-2 flex-shrink-1"
+                                        style="min-width: 180px;"
+                                        {{ $property->agent && $property->agent->nomor_telepon ? '' : 'onclick="return false;"' }}>
+                                        <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
                                     </a>
-                                @else
-                                    <a href="{{ url('login') }}" class="btn btn-dark py-3 px-4">
-                                        <i class="fa fa-lock me-2"></i>Login untuk Ikut Lelang
-                                    </a>
-                                @endif
 
-                                @if (Session::has('id_account'))
-                                    @php
-                                        $loggedInId = Session::get('id_account');
-                                        $loggedInAgentId = \App\Models\Agent::where('id_account', $loggedInId)->value('id_agent');
-                                    @endphp
-                                    @if ($property->id_agent === $loggedInAgentId)
-                                        <a href="{{ route('editproperty', $property->id_listing) }}" class="btn btn-warning py-3 px-4">
-                                            <i class="fa fa-edit me-2"></i>Edit Properti
+                                    <!-- Ikuti / Login -->
+                                    @if (Session::has('id_account') || Cookie::has('id_account'))
+                                        <a href="{{ route('property.interest.show', $property->id_listing) }}"
+                                           class="btn btn-danger px-3 py-2 flex-shrink-1"
+                                           style="min-width: 180px;">
+                                           <i class="fa fa-calendar-alt me-2"></i>Ikuti Lelang Ini
+                                        </a>
+                                        @else
+                                        <a href="{{ url('login') }}"
+                                           class="btn btn-dark-blue px-3 py-2 flex-shrink-1"
+                                           style="min-width: 180px;">
+                                           <i class="fa fa-lock me-2"></i>Login untuk Ikut Lelang
                                         </a>
                                     @endif
-                                @endif
+
+                                    <!-- Edit -->
+                                    @if (Session::has('id_account'))
+                                        @php
+                                            $loggedInId = Session::get('id_account');
+                                            $loggedInAgentId = \App\Models\Agent::where('id_account', $loggedInId)->value('id_agent');
+                                        @endphp
+                                        @if ($property->id_agent === $loggedInAgentId)
+                                            <a href="{{ route('editproperty', $property->id_listing) }}"
+                                               class="btn btn-warning text-black px-3 py-2 flex-shrink-1"
+                                               style="min-width: 180px;">
+                                               <i class="fa fa-edit me-2"></i>Edit Properti
+                                            </a>
+                                        @endif
+                                    @endif
+                                </div>
+
                             </div>
+
 
                             <!-- Swiper JS -->
                             <script src="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.js"></script>
@@ -333,11 +349,13 @@
                                                 <div class="tab-pane active show" id="features-tab-1">
                                                     <div class="card shadow-sm border-0 p-4 mb-4">
                                                         <h4 class="text-primary">Harga Properti</h4>
-                                                        <div class="table-responsive">
+
+                                                        <!-- TABEL VERSI DESKTOP -->
+                                                        <div class="table-responsive d-none d-md-block">
                                                             <table class="table table-bordered align-middle mt-3">
                                                                 <tbody>
                                                                     <tr>
-                                                                        <th scope="row" class="bg-light">Harga Properti</th>
+                                                                        <th scope="row" class="bg-light w-50">Harga Properti</th>
                                                                         <td><strong class="text-dark">Rp {{ number_format($property->harga, 0, ',', '.') }}</strong></td>
                                                                     </tr>
                                                                     <tr>
@@ -364,11 +382,40 @@
                                                                 </tbody>
                                                             </table>
                                                         </div>
-                                                        <div class="alert alert-warning mt-3">
-                                                            <strong>Catatan:</strong> Sudah termasuk biaya pengosongan, ditambah biaya-biaya (biaya lelang, biaya balik nama sertifikat, biaya roya, biaya akte grosse, penerimaan negara bukan pajak dan Pajak-Pajak seperti BPHTB dan Pajak Penambahan Nilai), tidak termasuk tunggakan biaya utilitas apabila ada
+
+                                                        <!-- VERSI MOBILE (STACKED BOX) -->
+                                                        <div class="d-block d-md-none mt-3">
+                                                            <div class="p-3 mb-3 rounded-3 shadow-sm border position-relative bg-white">
+                                                                <div class="small text-uppercase text-muted mb-1">Harga Properti</div>
+                                                                <div class="fs-5 fw-bold text-primary">Rp {{ number_format($property->harga, 0, ',', '.') }}</div>
+                                                            </div>
+
+                                                            <div class="p-3 mb-3 rounded-3 shadow-sm border position-relative bg-white">
+                                                                <div class="small text-uppercase text-muted mb-1">Biaya Dokumen</div>
+                                                                <div class="text-secondary">
+                                                                    Rp {{ number_format($property->harga * 0.085, 0, ',', '.') }} <span class="text-muted">(8,5% dari harga)</span>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="p-3 mb-3 rounded-3 shadow-sm border position-relative bg-white">
+                                                                <div class="small text-uppercase text-muted mb-1">Biaya Pengosongan</div>
+                                                                <div class="text-secondary">Rp {{ number_format($biayaPengosongan, 0, ',', '.') }}</div>
+                                                            </div>
                                                         </div>
+
+
+                                                        <!-- CATATAN -->
+                                                        <div class="alert alert-warning mt-3 rounded-3 shadow-sm border-start border-4 border-warning bg-warning-subtle">
+                                                            <i class="fa fa-info-circle me-2 text-warning"></i>
+                                                            <strong>Catatan:</strong> <br class="d-md-none">
+                                                            <span class="text-dark">
+                                                                Sudah termasuk biaya pengosongan, ditambah biaya-biaya (biaya lelang, biaya balik nama sertifikat, biaya roya, biaya akte grosse, penerimaan negara bukan pajak dan Pajak-Pajak seperti BPHTB dan Pajak Penambahan Nilai), tidak termasuk tunggakan biaya utilitas apabila ada.
+                                                            </span>
+                                                        </div>
+
                                                     </div>
                                                 </div>
+
                                                 <div class="tab-pane" id="features-tab-2">
                                                     <div class="card shadow-sm border-0 p-4 mb-4">
                                                         <h4 class="text-primary mb-3">Spesifikasi Properti</h4>
