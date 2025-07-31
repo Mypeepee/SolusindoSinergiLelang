@@ -112,6 +112,18 @@
                                             aspect-ratio: 4 / 3;
                                         }
                                     }
+
+                                    .btn-dark-blue {
+                                        background-color: #0d3b66; /* contoh biru donker */
+                                        color: #fff;
+                                        border: none;
+                                    }
+
+                                    .btn-dark-blue:hover {
+                                        background-color: #092c4c;
+                                        color: #fff;
+                                    }
+
                                     </style>
 
                                     <script src="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.js"></script>
@@ -192,10 +204,11 @@
                                         </a>
                                         @else
                                         <a href="{{ url('login') }}"
-                                           class="btn btn-dark-blue px-3 py-2 flex-shrink-1"
-                                           style="min-width: 180px;">
-                                           <i class="fa fa-lock me-2"></i>Login untuk Ikut Lelang
+                                        class="btn btn-dark-blue px-3 py-2 flex-shrink-1"
+                                        style="min-width: 180px;">
+                                        <i class="fa fa-lock me-2"></i>Login untuk Ikut Lelang
                                         </a>
+
                                     @endif
 
                                     <!-- Edit -->
@@ -366,44 +379,44 @@
                                                                 </table>
                                                             </div>
                                                             <!-- MOBILE CARD VERSION -->
-<!-- MOBILE CARD VERSION -->
-<div class="d-block d-md-none mt-3"> <!-- Ini bikin lebarnya nyesuaiin sama konten atas -->
-      <div class="row g-3">
-        <div class="col-12">
-          <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
-            <div class="text-uppercase small text-muted mb-1">Harga Properti</div>
-            <div class="fw-bold text-primary fs-5">Rp {{ number_format($property->harga, 0, ',', '.') }}</div>
-          </div>
-        </div>
-        <div class="col-12">
-          <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
-            <div class="text-uppercase small text-muted mb-1">Biaya Dokumen</div>
-            <div class="text-secondary">
-              <span class="fw-semibold text-primary">Rp {{ number_format($property->harga * 0.085, 0, ',', '.') }}</span>
-              <div class="small text-muted">(8,5% dari harga)</div>
-            </div>
-          </div>
-        </div>
-        <div class="col-12">
-          <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
-            <div class="text-uppercase small text-muted mb-1">Biaya Pengosongan</div>
-            <div class="text-secondary fw-semibold text-primary">Rp {{ number_format($biayaPengosongan, 0, ',', '.') }}</div>
-          </div>
-        </div>
-      </div>
-  </div>
-<!-- CATATAN -->
-<div class="d-flex justify-content-center">
-    <div class="alert alert-warning mt-3 rounded-3 shadow-sm border-start border-4 border-warning bg-warning-subtle w-100" style="max-width: 720px;">
-        <i class="fa fa-info-circle me-2 text-warning"></i>
-        <strong>Catatan:</strong> <br class="d-md-none">
-        <span class="text-dark">
-            Sudah termasuk biaya pengosongan, ditambah biaya-biaya (biaya lelang, biaya balik nama sertifikat, biaya roya, biaya akte grosse, penerimaan negara bukan pajak dan Pajak-Pajak seperti BPHTB dan Pajak Penambahan Nilai), tidak termasuk tunggakan biaya utilitas apabila ada.
-        </span>
-    </div>
-</div>
+                                                            <div class="d-block d-md-none mt-3"> <!-- Ini bikin lebarnya nyesuaiin sama konten atas -->
+                                                                <div class="row g-3">
+                                                                    <div class="col-12">
+                                                                    <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
+                                                                        <div class="text-uppercase small text-muted mb-1">Harga Properti</div>
+                                                                        <div class="text-secondary">
+                                                                            <span class="fw-semibold text-primary">Rp {{ number_format($property->harga, 0, ',', '.') }}</span>
+                                                                        </div>
 
-
+                                                                    </div>
+                                                                    </div>
+                                                                    <div class="col-12">
+                                                                    <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
+                                                                        <div class="text-uppercase small text-muted mb-1">Biaya Dokumen</div>
+                                                                        <div class="text-secondary">
+                                                                        <span class="fw-semibold text-primary">Rp {{ number_format($property->harga * 0.085, 0, ',', '.') }}</span>
+                                                                        <div class="small text-muted">(8,5% dari harga)</div>
+                                                                        </div>
+                                                                    </div>
+                                                                    </div>
+                                                                    <div class="col-12">
+                                                                    <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
+                                                                        <div class="text-uppercase small text-muted mb-1">Biaya Pengosongan</div>
+                                                                        <div class="text-secondary fw-semibold text-primary">Rp {{ number_format($biayaPengosongan, 0, ',', '.') }}</div>
+                                                                    </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <!-- CATATAN -->
+                                                            <div class="d-flex justify-content-center">
+                                                                <div class="alert alert-warning mt-3 rounded-3 shadow-sm border-start border-4 border-warning bg-warning-subtle w-100" style="max-width: 720px;">
+                                                                    <i class="fa fa-info-circle me-2 text-warning"></i>
+                                                                    <strong>Catatan:</strong> <br class="d-md-none">
+                                                                    <span class="text-dark">
+                                                                        Sudah termasuk biaya pengosongan, ditambah biaya-biaya (biaya lelang, biaya balik nama sertifikat, biaya roya, biaya akte grosse, penerimaan negara bukan pajak dan Pajak-Pajak seperti BPHTB dan Pajak Penambahan Nilai), tidak termasuk tunggakan biaya utilitas apabila ada.
+                                                                    </span>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
 
