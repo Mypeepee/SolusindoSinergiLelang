@@ -1,4 +1,3 @@
-@include('template.header')
 @if(isset($ogTags))
     <meta property="og:title" content="{{ $ogTags['og_title'] }}">
     <meta property="og:description" content="{{ $ogTags['og_description'] }}">
@@ -6,6 +5,7 @@
     <meta property="og:url" content="{{ $ogTags['og_url'] }}">
     <meta property="og:type" content="website">
 @endif
+@include('template.header')
 
 @if(session('success'))
     <div class="alert alert-success alert-dismissible fade show position-fixed top-0 end-0 m-3 shadow-lg z-3" role="alert" style="min-width: 300px;">
