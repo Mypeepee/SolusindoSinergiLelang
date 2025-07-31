@@ -305,27 +305,12 @@
                         <div class="single-property section">
                             <div class="container">
                                 <div class="row">
-                                    <div class="col-lg-8">
-                                        <div class="main-image">
-
-                                        </div>
-                                        <div class="main-content">
-                                            <span class="category">{{ $property->tipe }}</span>
-
-                                        </div>
-                                    </div>
-
-
                                     <section id="features" class="features section">
-
                                         <!-- Section Title -->
                                         <div class="container-xxl py-2" data-aos="fade-up">
-
                                         </div><!-- End Section Title -->
-
-                                        <div class="container" data-aos="fade-up" data-aos-delay="100">
-
-                                          <div class="row">
+                                        <div class="container-fluid px-3 px-md-5" data-aos="fade-up" data-aos-delay="100">
+                                        <div class="row">
                                             <div class="col-lg-3">
                                               <ul class="nav nav-tabs flex-column">
                                                 <li class="nav-item mb-2">
@@ -349,43 +334,42 @@
                                                 <div class="tab-pane active show" id="features-tab-1">
                                                     <div class="card shadow-sm border-0 p-4 mb-4">
                                                         <h4 class="text-primary">Harga Properti</h4>
-
                                                         <!-- TABEL VERSI DESKTOP -->
-                                                        <div class="table-responsive d-none d-md-block">
-                                                            <table class="table table-bordered align-middle mt-3">
-                                                                <tbody>
-                                                                    <tr>
-                                                                        <th scope="row" class="bg-light w-50">Harga Properti</th>
-                                                                        <td><strong class="text-dark">Rp {{ number_format($property->harga, 0, ',', '.') }}</strong></td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <th scope="row" class="bg-light">Biaya Dokumen</th>
-                                                                        <td>Rp {{ number_format($property->harga * 0.085, 0, ',', '.') }} (8,5% dari harga)</td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <th scope="row" class="bg-light">Biaya Pengosongan</th>
-                                                                        <td>
-                                                                            @php
-                                                                                $biayaPengosongan = match(true) {
-                                                                                    $property->harga < 500000000 => 100000000,
-                                                                                    $property->harga <= 1500000000 => 125000000,
-                                                                                    $property->harga <= 2500000000 => 175000000,
-                                                                                    $property->harga <= 10000000000 => 225000000,
-                                                                                    $property->harga <= 100000000000 => 375000000,
-                                                                                    $property->harga <= 250000000000 => 525000000,
-                                                                                    default => 1025000000
-                                                                                };
-                                                                            @endphp
-                                                                            Rp {{ number_format($biayaPengosongan, 0, ',', '.') }}
-                                                                        </td>
-                                                                    </tr>
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-
+                                                            <div class="table-responsive d-none d-md-block">
+                                                                <table class="table table-bordered align-middle mt-3">
+                                                                    <tbody>
+                                                                        <tr>
+                                                                            <th scope="row" class="bg-light w-50">Harga Properti</th>
+                                                                            <td><strong class="text-dark">Rp {{ number_format($property->harga, 0, ',', '.') }}</strong></td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <th scope="row" class="bg-light">Biaya Dokumen</th>
+                                                                            <td>Rp {{ number_format($property->harga * 0.085, 0, ',', '.') }} (8,5% dari harga)</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <th scope="row" class="bg-light">Biaya Pengosongan</th>
+                                                                            <td>
+                                                                                @php
+                                                                                    $biayaPengosongan = match(true) {
+                                                                                        $property->harga < 500000000 => 100000000,
+                                                                                        $property->harga <= 1500000000 => 125000000,
+                                                                                        $property->harga <= 2500000000 => 175000000,
+                                                                                        $property->harga <= 10000000000 => 225000000,
+                                                                                        $property->harga <= 100000000000 => 375000000,
+                                                                                        $property->harga <= 250000000000 => 525000000,
+                                                                                        default => 1025000000
+                                                                                    };
+                                                                                @endphp
+                                                                                Rp {{ number_format($biayaPengosongan, 0, ',', '.') }}
+                                                                            </td>
+                                                                        </tr>
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                            <!-- MOBILE CARD VERSION -->
 <!-- MOBILE CARD VERSION -->
 <div class="d-block d-md-none mt-3">
-    <div class="container"> <!-- atau div dengan max-width yang sama dengan tombol -->
+    <div class="container"> <!-- Ini bikin lebarnya nyesuaiin sama konten atas -->
       <div class="row g-3">
         <div class="col-12">
           <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
@@ -393,7 +377,6 @@
             <div class="fw-bold text-primary fs-5">Rp {{ number_format($property->harga, 0, ',', '.') }}</div>
           </div>
         </div>
-
         <div class="col-12">
           <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
             <div class="text-uppercase small text-muted mb-1">Biaya Dokumen</div>
@@ -403,7 +386,6 @@
             </div>
           </div>
         </div>
-
         <div class="col-12">
           <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
             <div class="text-uppercase small text-muted mb-1">Biaya Pengosongan</div>
@@ -411,250 +393,202 @@
           </div>
         </div>
       </div>
-    </div> <!-- END container -->
+    </div>
   </div>
 
 
 
-
-
-                                                        <!-- CATATAN -->
-                                                        <div class="d-flex justify-content-center">
-                                                            <div class="alert alert-warning mt-3 rounded-3 shadow-sm border-start border-4 border-warning bg-warning-subtle w-100" style="max-width: 720px;">
-                                                                <i class="fa fa-info-circle me-2 text-warning"></i>
-                                                                <strong>Catatan:</strong> <br class="d-md-none">
-                                                                <span class="text-dark">
-                                                                    Sudah termasuk biaya pengosongan, ditambah biaya-biaya (biaya lelang, biaya balik nama sertifikat, biaya roya, biaya akte grosse, penerimaan negara bukan pajak dan Pajak-Pajak seperti BPHTB dan Pajak Penambahan Nilai), tidak termasuk tunggakan biaya utilitas apabila ada.
-                                                                </span>
-                                                            </div>
-                                                        </div>
-
-
-                                                    </div>
-                                                </div>
-
-                                                <div class="tab-pane" id="features-tab-2">
-                                                    <div class="card shadow-sm border-0 p-4 mb-4">
-                                                        <h4 class="text-primary mb-3">Spesifikasi Properti</h4>
-
-                                                        <div class="table-responsive">
-                                                            <table class="table table-bordered align-middle mb-0">
-                                                                <tbody>
-                                                                    <tr>
-                                                                        <th scope="row" class="bg-light">Tipe</th>
-                                                                        <td class="text-capitalize">{{ $property->tipe }}</td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <th scope="row" class="bg-light">Luas Tanah</th>
-                                                                        <td>{{ $property->luas }} m²</td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <th scope="row" class="bg-light">Sertifikat</th>
-                                                                        <td>{{ $property->sertifikat }}</td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <th scope="row" class="bg-light">Lokasi</th>
-                                                                        <td>{{ $property->kelurahan }}, {{ $property->kota }}, {{ $property->provinsi }}</td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <th scope="row" class="bg-light">Batas Penawaran</th>
-                                                                        <td>{{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->format('d M Y') }}</td>
-                                                                    </tr>
-                                                                    <tr>
-                                                                        <th scope="row" class="bg-light">Status</th>
-                                                                        <td>
-                                                                            <span class="badge {{ $property->status == 'Tersedia' ? 'bg-success' : 'bg-danger' }}">
-                                                                                {{ $property->status }}
-                                                                            </span>
-                                                                        </td>
-                                                                    </tr>
-                                                                </tbody>
-                                                            </table>
                                                         </div>
                                                     </div>
-                                                </div>
 
-                                                <div class="tab-pane" id="features-tab-3">
-                                                    @php
-                                                        $encodedAlamat = urlencode($property->lokasi); // Pastikan $property->alamat sudah tersedia
-                                                        $apiKey = 'AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8'; // Ganti dengan API key kamu sendiri jika diperlukan
-                                                        $gmapSrc = "https://www.google.com/maps/embed/v1/place?q={$encodedAlamat}&key={$apiKey}";
-                                                    @endphp
+                                                    <div class="tab-pane" id="features-tab-2">
+                                                        <div class="card shadow-sm border-0 p-4 mb-4">
+                                                            <h4 class="text-primary mb-3">Spesifikasi Properti</h4>
 
-                                                    <div class="row g-4 align-items-stretch">
-                                                        <!-- Map -->
-                                                        <div class="col-md-8">
-                                                            <div class="rounded shadow-sm overflow-hidden" style="height: 410px;">
-                                                                <iframe
-                                                                    src="{{ $gmapSrc }}"
-                                                                    style="width: 100%; height: 100%; border: 0;"
-                                                                    allowfullscreen
-                                                                    loading="lazy"
-                                                                    referrerpolicy="no-referrer-when-downgrade">
-                                                                </iframe>
+                                                            <div class="table-responsive">
+                                                                <table class="table table-bordered align-middle mb-0">
+                                                                    <tbody>
+                                                                        <tr>
+                                                                            <th scope="row" class="bg-light">Tipe</th>
+                                                                            <td class="text-capitalize">{{ $property->tipe }}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <th scope="row" class="bg-light">Luas Tanah</th>
+                                                                            <td>{{ $property->luas }} m²</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <th scope="row" class="bg-light">Sertifikat</th>
+                                                                            <td>{{ $property->sertifikat }}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <th scope="row" class="bg-light">Lokasi</th>
+                                                                            <td>{{ $property->kelurahan }}, {{ $property->kota }}, {{ $property->provinsi }}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <th scope="row" class="bg-light">Batas Penawaran</th>
+                                                                            <td>{{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->format('d M Y') }}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <th scope="row" class="bg-light">Status</th>
+                                                                            <td>
+                                                                                <span class="badge {{ $property->status == 'Tersedia' ? 'bg-success' : 'bg-danger' }}">
+                                                                                    {{ $property->status }}
+                                                                                </span>
+                                                                            </td>
+                                                                        </tr>
+                                                                    </tbody>
+                                                                </table>
                                                             </div>
                                                         </div>
+                                                    </div>
 
-                                                        <!-- Location Info & Nearby -->
-                                                        <div class="col-md-4">
-                                                            <div class="card border-0 shadow-sm h-100">
-                                                                <div class="card-body">
-                                                                    <h5 class="card-title text-primary mb-3"><i class="fa fa-map-marker-alt me-2"></i>Detail Lokasi</h5>
-                                                                    <p class="mb-2"><strong>Alamat:</strong><br>{{ $property->lokasi }}</p>
-                                                                    <p class="mb-2"><strong>Kota:</strong> {{ $property->kota }}</p>
-                                                                    <p class="mb-3"><strong>Kelurahan:</strong> {{ $property->kelurahan }}</p>
-                                                                    <a href="https://maps.google.com/?q={{ urlencode($property->lokasi) }}" target="_blank" class="btn btn-outline-primary btn-sm w-100 mb-3">
-                                                                        <i class="fa fa-location-arrow me-1"></i> Buka di Google Maps
-                                                                    </a>
+                                                    <div class="tab-pane" id="features-tab-3">
+                                                        @php
+                                                            $encodedAlamat = urlencode($property->lokasi); // Pastikan $property->alamat sudah tersedia
+                                                            $apiKey = 'AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8'; // Ganti dengan API key kamu sendiri jika diperlukan
+                                                            $gmapSrc = "https://www.google.com/maps/embed/v1/place?q={$encodedAlamat}&key={$apiKey}";
+                                                        @endphp
 
-                                                                    <hr>
+                                                        <div class="row g-4 align-items-stretch">
+                                                            <!-- Map -->
+                                                            <div class="col-md-8">
+                                                                <div class="rounded shadow-sm overflow-hidden" style="height: 410px;">
+                                                                    <iframe
+                                                                        src="{{ $gmapSrc }}"
+                                                                        style="width: 100%; height: 100%; border: 0;"
+                                                                        allowfullscreen
+                                                                        loading="lazy"
+                                                                        referrerpolicy="no-referrer-when-downgrade">
+                                                                    </iframe>
+                                                                </div>
+                                                            </div>
 
-                                                                    <h6 class="text-muted mb-3">Fasilitas Sekitar</h6>
-                                                                    <div class="row text-center small">
-                                                                        <div class="col-6 mb-3">
-                                                                            <i class="fa fa-utensils fa-lg text-success mb-1"></i><br>Restoran
-                                                                        </div>
-                                                                        <div class="col-6 mb-3">
-                                                                            <i class="fa fa-bed fa-lg text-info mb-1"></i><br>Hotel
-                                                                        </div>
-                                                                        <div class="col-6">
-                                                                            <i class="fa fa-hospital fa-lg text-danger mb-1"></i><br>Rumah Sakit
-                                                                        </div>
-                                                                        <div class="col-6">
-                                                                            <i class="fa fa-bus fa-lg text-warning mb-1"></i><br>Transportasi
+                                                            <!-- Location Info & Nearby -->
+                                                            <div class="col-md-4">
+                                                                <div class="card border-0 shadow-sm h-100">
+                                                                    <div class="card-body">
+                                                                        <h5 class="card-title text-primary mb-3"><i class="fa fa-map-marker-alt me-2"></i>Detail Lokasi</h5>
+                                                                        <p class="mb-2"><strong>Alamat:</strong><br>{{ $property->lokasi }}</p>
+                                                                        <p class="mb-2"><strong>Kota:</strong> {{ $property->kota }}</p>
+                                                                        <p class="mb-3"><strong>Kelurahan:</strong> {{ $property->kelurahan }}</p>
+                                                                        <a href="https://maps.google.com/?q={{ urlencode($property->lokasi) }}" target="_blank" class="btn btn-outline-primary btn-sm w-100 mb-3">
+                                                                            <i class="fa fa-location-arrow me-1"></i> Buka di Google Maps
+                                                                        </a>
+
+                                                                        <hr>
+
+                                                                        <h6 class="text-muted mb-3">Fasilitas Sekitar</h6>
+                                                                        <div class="row text-center small">
+                                                                            <div class="col-6 mb-3">
+                                                                                <i class="fa fa-utensils fa-lg text-success mb-1"></i><br>Restoran
+                                                                            </div>
+                                                                            <div class="col-6 mb-3">
+                                                                                <i class="fa fa-bed fa-lg text-info mb-1"></i><br>Hotel
+                                                                            </div>
+                                                                            <div class="col-6">
+                                                                                <i class="fa fa-hospital fa-lg text-danger mb-1"></i><br>Rumah Sakit
+                                                                            </div>
+                                                                            <div class="col-6">
+                                                                                <i class="fa fa-bus fa-lg text-warning mb-1"></i><br>Transportasi
+                                                                            </div>
                                                                         </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </div>
-
-                                                <div class="tab-pane" id="features-tab-4">
-                                                    <div class="row">
-                                                      <!-- Keunggulan Properti (Kiri) -->
-                                                      <div class="col-lg-8 details order-2 order-lg-1">
-                                                        <h3 class="text-primary mb-4">Mengapa Properti Ini Pilihan Terbaik untuk Anda?</h3>
-                                                        <p class="mb-3">Kami tidak hanya menjual rumah, kami menawarkan <strong>gaya hidup dan kenyamanan</strong> jangka panjang. Berikut adalah alasan mengapa properti ini sangat menarik dan bernilai tinggi:</p>
-
-                                                        <ul class="list-group list-group-flush mb-4">
-                                                          <li class="list-group-item d-flex align-items-center">
-                                                            <i class="fa fa-map-marker-alt text-success me-3"></i>
-                                                            <span><strong>Lokasi Strategis:</strong> Terletak di {{ $property->kelurahan }}, {{ $property->kota }} — kawasan yang berkembang pesat dan dekat pusat kota.</span>
-                                                          </li>
-                                                          <li class="list-group-item d-flex align-items-center">
-                                                            <i class="fa fa-shield-alt text-success me-3"></i>
-                                                            <span><strong>Legalitas Terjamin:</strong> Sertifikat resmi jenis <strong>{{ $property->sertifikat }}</strong> menjamin keamanan transaksi Anda.</span>
-                                                          </li>
-                                                          <li class="list-group-item d-flex align-items-center">
-                                                            <i class="fa fa-home text-success me-3"></i>
-                                                            <span><strong>Bangunan Berkualitas:</strong> Dengan luas bangunan {{ $property->luas_bangunan }} m² dan {{ $property->lantai }} lantai, cocok untuk keluarga besar atau investasi kos.</span>
-                                                          </li>
-                                                          <li class="list-group-item d-flex align-items-center">
-                                                            <i class="fa fa-tree text-success me-3"></i>
-                                                            <span><strong>Lingkungan Nyaman:</strong> Dikelilingi area hijau, aman, dan minim polusi — cocok untuk hunian sehat dan tenang.</span>
-                                                          </li>
-                                                          <li class="list-group-item d-flex align-items-center">
-                                                            <i class="fa fa-money-bill-wave text-success me-3"></i>
-                                                            <span><strong>Harga Kompetitif:</strong> Hanya <strong>Rp {{ number_format($property->harga, 0, ',', '.') }}</strong>, setara atau lebih murah dari properti sekelas di area yang sama.</span>
-                                                          </li>
-                                                        </ul>
-                                                      </div>
-
-                                                      <!-- Analisa Harga dan Diskon Properti (Kanan) -->
-                                                      <div class="col-lg-4 order-1 order-lg-2">
+                                                    <div class="tab-pane" id="features-tab-4">
                                                         <div class="row">
-                                                            <!-- Rentang Harga Pasaran -->
-                                                            <div class="col-md-12 mb-4">
-                                                                <div class="alert alert-info d-flex align-items-center">
-                                                                    <i class="fa fa-lightbulb me-3"></i>
-                                                                    <div>
-                                                                        <strong>Rentang Harga Pasaran per m² di {{ $property->kelurahan ?? $property->kecamatan }}:</strong>
-                                                                        @if ($minPricePerM2 == 0 || $maxPricePerM2 == 0)
-                                                                            <br><strong>Tidak ada properti sebanding di area ini untuk perbandingan harga.</strong>
-                                                                        @else
-                                                                            <br>Rp {{ number_format($minPricePerM2, 0, ',', '.') }} /m² - Rp {{ number_format($maxPricePerM2, 0, ',', '.') }} /m²
-                                                                        @endif
-                                                                    </div>
-                                                                </div>
+                                                            <!-- Keunggulan Properti (Kiri) -->
+                                                            <div class="col-lg-8 details order-2 order-lg-1">
+                                                                <h3 class="text-primary mb-4">Mengapa Properti Ini Pilihan Terbaik untuk Anda?</h3>
+                                                                <p class="mb-3">Kami tidak hanya menjual rumah, kami menawarkan <strong>gaya hidup dan kenyamanan</strong> jangka panjang. Berikut adalah alasan mengapa properti ini sangat menarik dan bernilai tinggi:</p>
+
+                                                                <ul class="list-group list-group-flush mb-4">
+                                                                <li class="list-group-item d-flex align-items-center">
+                                                                    <i class="fa fa-map-marker-alt text-success me-3"></i>
+                                                                    <span><strong>Lokasi Strategis:</strong> Terletak di {{ $property->kelurahan }}, {{ $property->kota }} — kawasan yang berkembang pesat dan dekat pusat kota.</span>
+                                                                </li>
+                                                                <li class="list-group-item d-flex align-items-center">
+                                                                    <i class="fa fa-shield-alt text-success me-3"></i>
+                                                                    <span><strong>Legalitas Terjamin:</strong> Sertifikat resmi jenis <strong>{{ $property->sertifikat }}</strong> menjamin keamanan transaksi Anda.</span>
+                                                                </li>
+                                                                <li class="list-group-item d-flex align-items-center">
+                                                                    <i class="fa fa-home text-success me-3"></i>
+                                                                    <span><strong>Bangunan Berkualitas:</strong> Dengan luas bangunan {{ $property->luas_bangunan }} m² dan {{ $property->lantai }} lantai, cocok untuk keluarga besar atau investasi kos.</span>
+                                                                </li>
+                                                                <li class="list-group-item d-flex align-items-center">
+                                                                    <i class="fa fa-tree text-success me-3"></i>
+                                                                    <span><strong>Lingkungan Nyaman:</strong> Dikelilingi area hijau, aman, dan minim polusi — cocok untuk hunian sehat dan tenang.</span>
+                                                                </li>
+                                                                <li class="list-group-item d-flex align-items-center">
+                                                                    <i class="fa fa-money-bill-wave text-success me-3"></i>
+                                                                    <span><strong>Harga Kompetitif:</strong> Hanya <strong>Rp {{ number_format($property->harga, 0, ',', '.') }}</strong>, setara atau lebih murah dari properti sekelas di area yang sama.</span>
+                                                                </li>
+                                                                </ul>
                                                             </div>
 
-                                                            <!-- Harga Tengah (Median) -->
-                                                            <div class="col-md-12 mb-4">
-                                                                <div class="alert alert-info d-flex align-items-center">
-                                                                    <i class="fa fa-chart-line me-3"></i>
-                                                                    <div>
-                                                                        <strong>Harga Tengah (Median) per m²:</strong>
-                                                                        @if ($medianPricePerM2 == 0 || empty($medianPricePerM2))
-                                                                            <br><strong>Tidak ada properti sebanding di area ini untuk perbandingan harga.</strong>
-                                                                        @else
-                                                                            <br>Rp {{ number_format($medianPricePerM2, 0, ',', '.') }} /m²
-                                                                        @endif
+                                                            <!-- Analisa Harga dan Diskon Properti (Kanan) -->
+                                                            <div class="col-lg-4 order-1 order-lg-2">
+                                                                <div class="row">
+                                                                    <!-- Rentang Harga Pasaran -->
+                                                                    <div class="col-md-12 mb-4">
+                                                                        <div class="alert alert-info d-flex align-items-center">
+                                                                            <i class="fa fa-lightbulb me-3"></i>
+                                                                            <div>
+                                                                                <strong>Rentang Harga Pasaran per m² di {{ $property->kelurahan ?? $property->kecamatan }}:</strong>
+                                                                                @if ($minPricePerM2 == 0 || $maxPricePerM2 == 0)
+                                                                                    <br><strong>Tidak ada properti sebanding di area ini untuk perbandingan harga.</strong>
+                                                                                @else
+                                                                                    <br>Rp {{ number_format($minPricePerM2, 0, ',', '.') }} /m² - Rp {{ number_format($maxPricePerM2, 0, ',', '.') }} /m²
+                                                                                @endif
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
-                                                                </div>
-                                                            </div>
 
-                                                            <!-- Diskon Properti -->
-                                                            <div class="col-md-12 mb-4">
-                                                                <div class="alert alert-warning d-flex align-items-center">
-                                                                    <i class="fa fa-percent me-3"></i>
-                                                                    <div>
-                                                                        <strong>Diskon Properti:</strong>
-                                                                        @if (is_string($selisihPersen))
-                                                                            <p>{{ $selisihPersen }}</p>
-                                                                        @else
-                                                                            <p>Harga rata-rata properti di wilayah ini adalah Rp {{ number_format($avgPricePerM2, 0, ',', '.') }} /m², sementara properti ini dijual dengan harga <strong>Rp {{ number_format($thisPricePerM2, 0, ',', '.') }} /m²</strong>.</p>
-                                                                            @if ($selisihPersen >= 0)
-                                                                                <p>Properti ini lebih murah <strong>{{ number_format($selisihPersen, 2, ',', '.') }}%</strong> dibanding rata-rata.</p>
-                                                                            @else
-                                                                                <p>Properti ini lebih mahal <strong>{{ number_format(abs($selisihPersen), 2, ',', '.') }}%</strong> dibanding rata-rata.</p>
-                                                                            @endif
-                                                                        @endif
+                                                                    <!-- Harga Tengah (Median) -->
+                                                                    <div class="col-md-12 mb-4">
+                                                                        <div class="alert alert-info d-flex align-items-center">
+                                                                            <i class="fa fa-chart-line me-3"></i>
+                                                                            <div>
+                                                                                <strong>Harga Tengah (Median) per m²:</strong>
+                                                                                @if ($medianPricePerM2 == 0 || empty($medianPricePerM2))
+                                                                                    <br><strong>Tidak ada properti sebanding di area ini untuk perbandingan harga.</strong>
+                                                                                @else
+                                                                                    <br>Rp {{ number_format($medianPricePerM2, 0, ',', '.') }} /m²
+                                                                                @endif
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <!-- Diskon Properti -->
+                                                                    <div class="col-md-12 mb-4">
+                                                                        <div class="alert alert-warning d-flex align-items-center">
+                                                                            <i class="fa fa-percent me-3"></i>
+                                                                            <div>
+                                                                                <strong>Diskon Properti:</strong>
+                                                                                @if (is_string($selisihPersen))
+                                                                                    <p>{{ $selisihPersen }}</p>
+                                                                                @else
+                                                                                    <p>Harga rata-rata properti di wilayah ini adalah Rp {{ number_format($avgPricePerM2, 0, ',', '.') }} /m², sementara properti ini dijual dengan harga <strong>Rp {{ number_format($thisPricePerM2, 0, ',', '.') }} /m²</strong>.</p>
+                                                                                    @if ($selisihPersen >= 0)
+                                                                                        <p>Properti ini lebih murah <strong>{{ number_format($selisihPersen, 2, ',', '.') }}%</strong> dibanding rata-rata.</p>
+                                                                                    @else
+                                                                                        <p>Properti ini lebih mahal <strong>{{ number_format(abs($selisihPersen), 2, ',', '.') }}%</strong> dibanding rata-rata.</p>
+                                                                                    @endif
+                                                                                @endif
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                         </div>
-
-                                                      </div>
                                                     </div>
-                                                  </div>
-
-
-
-
-                                              </div>
+                                                </div>
                                             </div>
-                                          </div>
-
                                         </div>
-
-                                      </section><!-- /Features Section -->
-
-                                    {{-- <div class="col-lg-4">
-                                        <div class="info-table">
-                                            <ul>
-                                                <li>
-                                                    <img src="{{ asset('img/info-icon-01.png') }}" alt="" style="max-width: 52px;">
-                                                    <h4>{{ $property->luas_tanah }} m2<br><span>Luas Tanah</span></h4>
-                                                </li>
-                                                <li>
-                                                    <img src="{{ asset('img/info-icon-01.png') }}" alt="" style="max-width: 52px;">
-                                                    <h4>{{ $property->luas_bangunan }} m2<br><span>Luas Bangunan</span></h4>
-                                                </li>
-                                                <li>
-                                                    <img src="{{ asset('img/info-icon-02.png') }}" alt="" style="max-width: 52px;">
-                                                    <h4>{{ $property->sertifikat }}<br><span>Jenis Setifikat</span></h4>
-                                                </li>
-                                                <li>
-                                                    <img src="{{ asset('img/info-icon-03.png') }}" alt="" style="max-width: 52px;">
-                                                    <h4>{{ $property->payment }}<br><span>Pembayaran</span></h4>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    </div> --}}
-
-
-
+                                    </section><!-- /Features Section -->
                                 </div>
                             </div>
                         </div>
