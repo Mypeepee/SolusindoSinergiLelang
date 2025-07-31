@@ -5,21 +5,22 @@
     <meta property="og:url" content="{{ $ogTags['og_url'] }}">
     <meta property="og:type" content="website">
 @endif
+
 @include('template.header')
 
-@if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show position-fixed top-0 end-0 m-3 shadow-lg z-3" role="alert" style="min-width: 300px;">
-        {{ session('success') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-@endif
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show position-fixed top-0 end-0 m-3 shadow-lg z-3" role="alert" style="min-width: 300px;">
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
 
-@if(session('error'))
-    <div class="alert alert-success alert-danger fade show position-fixed top-0 end-0 m-3 shadow-lg z-3" role="alert" style="min-width: 300px;">
-        {{ session('error') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-@endif
+        @if(session('error'))
+            <div class="alert alert-success alert-danger fade show position-fixed top-0 end-0 m-3 shadow-lg z-3" role="alert" style="min-width: 300px;">
+                {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
         <!-- Property List Start -->
         <div class="container-xxl py-5">
             <div class="container">
@@ -110,14 +111,12 @@
                                         justify-content: center;
                                     }
 
-
-
                                     #prevBtn { left: 16px; }
                                     #nextBtn { right: 16px; }
 
                                     @media (max-width: 768px) {
                                         .img-wrapper {
-                                            aspect-ratio: 4 / 3;
+                                            aspect-ratio: 4 / 4;
                                         }
                                     }
 
@@ -194,65 +193,63 @@
 
                                 <div class="d-flex flex-column flex-md-row flex-md-nowrap gap-2 mt-4 justify-content-md-center">
                                     @php
-    use App\Models\Account;
+                                        use App\Models\Account;
 
-    $userId = Session::get('id_account') ?? Cookie::get('id_account');
-    $userRole = $userId ? Account::where('id_account', $userId)->value('roles') : null;
-@endphp
-
-
-@if ($userRole === 'User')
-    <!-- Hubungi Agent -->
-    <a href="{{ $property->agent && $property->agent->nomor_telepon
-        ? 'https://wa.me/62' . ltrim($property->agent->nomor_telepon, '0') . '?text=' . urlencode('Halo ' . $property->agent->nama . ', saya melihat property "' . $property->lokasi . '" di website. Bisa minta info lebih lengkap tentang property tersebut?')
-        : '#' }}"
-        class="btn btn-danger px-3 py-2 flex-shrink-1"
-        style="min-width: 180px;"
-        {{ $property->agent && $property->agent->nomor_telepon ? '' : 'onclick="return false;"' }}>
-        <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
-    </a>
-
-    <!-- Ikuti / Login -->
-    @if ($userId)
-        <a href="{{ route('property.interest.show', $property->id_listing) }}"
-           class="btn btn-danger px-3 py-2 flex-shrink-1"
-           style="min-width: 180px;">
-           <i class="fa fa-calendar-alt me-2"></i>Ikuti Lelang Ini
-        </a>
-    @else
-        <a href="{{ url('login') }}"
-           class="btn btn-dark-blue px-3 py-2 flex-shrink-1"
-           style="min-width: 180px;">
-           <i class="fa fa-lock me-2"></i>Login untuk Ikut Lelang
-        </a>
-    @endif
-@else
-    <!-- Share / Copy Link -->
-    <a href="javascript:void(0);"
-   onclick="copyPropertyLink(this)"
-   class="btn btn-outline-secondary px-3 py-2 flex-shrink-1"
-   style="min-width: 180px;">
-   <i class="fa fa-link me-2"></i>Copy Link Properti
-</a>
-
-<script>
-    function copyPropertyLink(el) {
-        const link = "{{ url()->current() }}";
-        navigator.clipboard.writeText(link).then(() => {
-            // Berhasil salin
-            el.innerHTML = '<i class="fa fa-check me-2"></i>Link Disalin!';
-            setTimeout(() => {
-                el.innerHTML = '<i class="fa fa-link me-2"></i>Copy Link Properti';
-            }, 2000);
-        }).catch(err => {
-            console.error('Gagal menyalin link:', err);
-            alert("Gagal menyalin link. Coba lagi.");
-        });
-    }
-</script>
+                                        $userId = Session::get('id_account') ?? Cookie::get('id_account');
+                                        $userRole = $userId ? Account::where('id_account', $userId)->value('roles') : null;
+                                    @endphp
 
 
-@endif
+                                    @if ($userRole === 'User')
+                                        <!-- Hubungi Agent -->
+                                        <a href="{{ $property->agent && $property->agent->nomor_telepon
+                                            ? 'https://wa.me/62' . ltrim($property->agent->nomor_telepon, '0') . '?text=' . urlencode('Halo ' . $property->agent->nama . ', saya melihat property "' . $property->lokasi . '" di website. Bisa minta info lebih lengkap tentang property tersebut?')
+                                            : '#' }}"
+                                            class="btn btn-danger px-3 py-2 flex-shrink-1"
+                                            style="min-width: 180px;"
+                                            {{ $property->agent && $property->agent->nomor_telepon ? '' : 'onclick="return false;"' }}>
+                                            <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
+                                        </a>
+
+                                        <!-- Ikuti / Login -->
+                                        @if ($userId)
+                                            <a href="{{ route('property.interest.show', $property->id_listing) }}"
+                                            class="btn btn-danger px-3 py-2 flex-shrink-1"
+                                            style="min-width: 180px;">
+                                            <i class="fa fa-calendar-alt me-2"></i>Ikuti Lelang Ini
+                                            </a>
+                                        @else
+                                            <a href="{{ url('login') }}"
+                                            class="btn btn-dark-blue px-3 py-2 flex-shrink-1"
+                                            style="min-width: 180px;">
+                                            <i class="fa fa-lock me-2"></i>Login untuk Ikut Lelang
+                                            </a>
+                                        @endif
+                                    @else
+                                        <!-- Share / Copy Link -->
+                                        <a href="javascript:void(0);"
+                                    onclick="copyPropertyLink(this)"
+                                    class="btn btn-outline-secondary px-3 py-2 flex-shrink-1"
+                                    style="min-width: 180px;">
+                                    <i class="fa fa-link me-2"></i>Copy Link Properti
+                                    </a>
+
+                                    <script>
+                                        function copyPropertyLink(el) {
+                                            const link = "{{ url()->current() }}";
+                                            navigator.clipboard.writeText(link).then(() => {
+                                                // Berhasil salin
+                                                el.innerHTML = '<i class="fa fa-check me-2"></i>Link Disalin!';
+                                                setTimeout(() => {
+                                                    el.innerHTML = '<i class="fa fa-link me-2"></i>Copy Link Properti';
+                                                }, 2000);
+                                            }).catch(err => {
+                                                console.error('Gagal menyalin link:', err);
+                                                alert("Gagal menyalin link. Coba lagi.");
+                                            });
+                                        }
+                                    </script>
+                                    @endif
 
 
                                     <!-- Edit -->
@@ -577,10 +574,6 @@
                                                                     <span><strong>Legalitas Terjamin:</strong> Sertifikat resmi jenis <strong>{{ $property->sertifikat }}</strong> menjamin keamanan transaksi Anda.</span>
                                                                 </li>
                                                                 <li class="list-group-item d-flex align-items-center">
-                                                                    <i class="fa fa-home text-success me-3"></i>
-                                                                    <span><strong>Bangunan Berkualitas:</strong> Dengan luas bangunan {{ $property->luas_bangunan }} m² dan {{ $property->lantai }} lantai, cocok untuk keluarga besar atau investasi kos.</span>
-                                                                </li>
-                                                                <li class="list-group-item d-flex align-items-center">
                                                                     <i class="fa fa-tree text-success me-3"></i>
                                                                     <span><strong>Lingkungan Nyaman:</strong> Dikelilingi area hijau, aman, dan minim polusi — cocok untuk hunian sehat dan tenang.</span>
                                                                 </li>
@@ -680,167 +673,141 @@
                     scrollbar-color: #ccc transparent;
                     scrollbar-width: thin;
                 }
-            </style>
-<link
-rel="stylesheet"
-href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css"
-/>
+                </style>
+                <link
+                rel="stylesheet"
+                href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css"/>
 
-{{-- Sliding Properti Serupa --}}
-{{-- Sliding Properti Serupa --}}
-<h4 class="mb-3">Properti Serupa di {{ $similarLocation }}</h4>
+                {{-- Sliding Properti Serupa --}}
+                <h4 class="mb-3">Properti Serupa di {{ $similarLocation }}</h4>
 
-<div class="swiper mySwiper">
-    <div class="swiper-wrapper">
-        @foreach ($similarProperties as $property)
-        <div class="swiper-slide">
-            <div class="property-item rounded overflow-hidden shadow-sm">
-                <div class="position-relative overflow-hidden">
-                    <a href="{{ route('property-detail', $property->id_listing) }}">
-                        <img class="img-fluid rounded w-100" src="{{ explode(',', $property->gambar)[0] }}" alt="Property Image" loading="lazy">
-                    </a>
-                    <div class="bg-primary rounded text-white position-absolute start-0 top-0 m-2 py-1 px-3">{{ $property->tipe }}</div>
-                    <div class="bg-white rounded-top text-primary position-absolute start-0 bottom-0 mx-2 pt-1 px-3">{{ $property->tipe }}</div>
+                <div class="swiper mySwiper">
+                    <div class="swiper-wrapper">
+                        @foreach ($similarProperties as $property)
+                        <div class="swiper-slide">
+                            <div class="property-item rounded overflow-hidden shadow-sm">
+                                <div class="position-relative overflow-hidden">
+                                    <a href="{{ route('property-detail', $property->id_listing) }}">
+                                        <img class="img-fluid rounded w-100" src="{{ explode(',', $property->gambar)[0] }}" alt="Property Image" loading="lazy">
+                                    </a>
+                                    <div class="bg-primary rounded text-white position-absolute start-0 top-0 m-2 py-1 px-3">{{ $property->tipe }}</div>
+                                    <div class="bg-white rounded-top text-primary position-absolute start-0 bottom-0 mx-2 pt-1 px-3">{{ $property->tipe }}</div>
+                                </div>
+                                <div class="p-3">
+                                    <h5 class="text-primary mb-2">{{ 'Rp ' . number_format($property->harga, 0, ',', '.') }}</h5>
+                                    <a class="d-block h6 mb-2" href="{{ route('property-detail', $property->id_listing) }}">
+                                        {{ \Illuminate\Support\Str::limit($property->deskripsi, 50) }}
+                                    </a>
+                                    <p>
+                                        <i class="fa fa-map-marker-alt text-primary me-2"></i>
+                                        {{ \Illuminate\Support\Str::limit($property->lokasi, 70, '...') }}
+                                    </p>
+                                </div>
+                                <div class="d-flex border-top border-2 border-dashed border-orange">
+                                    <small class="flex-fill text-center border-end border-dashed py-2">
+                                        <i class="fa fa-vector-square text-danger me-2"></i>
+                                        <span class="text-dark">{{ $property->luas }} m²</span>
+                                    </small>
+                                    <small class="flex-fill text-center border-end border-dashed py-2">
+                                        <i class="fa fa-map-marker-alt text-danger me-2"></i>
+                                        <span class="text-dark text-uppercase">{{ $property->kota }}</span>
+                                    </small>
+                                    <small class="flex-fill text-center py-2">
+                                        <i class="fa fa-calendar-alt text-danger me-2"></i>
+                                        <span class="text-dark">
+                                            {{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->format('d M Y') }}
+                                        </span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                    <!-- Tombol Navigasi -->
+                    <div class="swiper-button-next"></div>
+                    <div class="swiper-button-prev"></div>
                 </div>
-                <div class="p-3">
-                    <h5 class="text-primary mb-2">{{ 'Rp ' . number_format($property->harga, 0, ',', '.') }}</h5>
-                    <a class="d-block h6 mb-2" href="{{ route('property-detail', $property->id_listing) }}">
-                        {{ \Illuminate\Support\Str::limit($property->deskripsi, 50) }}
-                    </a>
-                    <p><i class="fa fa-map-marker-alt text-primary me-2"></i>{{ $property->lokasi }}</p>
-                </div>
-                <div class="d-flex border-top border-2 border-dashed border-orange">
-                    <small class="flex-fill text-center border-end border-dashed py-2">
-                        <i class="fa fa-vector-square text-danger me-2"></i>
-                        <span class="text-dark">{{ $property->luas }} m²</span>
-                    </small>
-                    <small class="flex-fill text-center border-end border-dashed py-2">
-                        <i class="fa fa-map-marker-alt text-danger me-2"></i>
-                        <span class="text-dark text-uppercase">{{ $property->kota }}</span>
-                    </small>
-                    <small class="flex-fill text-center py-2">
-                        <i class="fa fa-calendar-alt text-danger me-2"></i>
-                        <span class="text-dark">
-                            {{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->format('d M Y') }}
-                        </span>
-                    </small>
-                </div>
-            </div>
-        </div>
-        @endforeach
-    </div>
 
-    <!-- Tombol Navigasi -->
-    <div class="swiper-button-next"></div>
-    <div class="swiper-button-prev"></div>
-</div>
+                <script src="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.js"></script>
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        const swiper = new Swiper(".mySwiper", {
+                            slidesPerView: 1.2,
+                            spaceBetween: 15,
 
-<script src="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.js"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const swiper = new Swiper(".mySwiper", {
-            slidesPerView: 1.2,
-            spaceBetween: 15,
-            loop: true,
-            grabCursor: true,
-            navigation: {
-                nextEl: ".swiper-button-next",
-                prevEl: ".swiper-button-prev",
-            },
-            breakpoints: {
-                576: {
-                    slidesPerView: 2.2,
-                },
-                768: {
-                    slidesPerView: 3,
-                },
-                992: {
-                    slidesPerView: 4,
+                            grabCursor: true,
+                            navigation: {
+                                nextEl: ".swiper-button-next",
+                                prevEl: ".swiper-button-prev",
+                            },
+                            breakpoints: {
+                                576: {
+                                    slidesPerView: 2.2,
+                                },
+                                768: {
+                                    slidesPerView: 3,
+                                },
+                                992: {
+                                    slidesPerView: 4,
+                                }
+                            }
+                        });
+                    });
+                </script>
+                <style>
+                    .mySwiper {
+                    height: 70%; /* ini buat batasi tinggi keseluruhan swiper */
                 }
-            }
-        });
-    });
-</script>
-<script src="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.js"></script>
-<script>
-    const swiper = new Swiper(".mySwiper", {
-        slidesPerView: 1.2,
-        spaceBetween: 15,
-        loop: true,
-        grabCursor: true,
-        navigation: {
-            nextEl: ".swiper-button-next",
-            prevEl: ".swiper-button-prev",
-        },
-        breakpoints: {
-            576: {
-                slidesPerView: 2.2,
-            },
-            768: {
-                slidesPerView: 3,
-            },
-            992: {
-                slidesPerView: 4,
-            }
-        }
-    });
-</script>
-<style>
-    .swiper {
-        padding-bottom: 30px;
-    }
-    .swiper-slide {
-        width: 320px;
-    }
-    .swiper-button-next, .swiper-button-prev {
-        color: #ff6600; /* warna tombol navigasi */
-    }
-    .swiper-slide {
-    display: flex;
-    height: auto; /* Biarkan Swiper menyesuaikan tinggi otomatis */
-}
+                /* Swiper slide size */
+                .swiper-slide {
+                    width: auto; /* atau biarkan tanpa width */
+                    flex-shrink: 0; /* biar tidak menyusut */
+                }
 
-.property-item {
-    height: 100%; /* Buat semua card setara tinggi */
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    transition: transform 0.2s ease;
-}
+                /* Tombol navigasi Swiper */
+                .swiper-button-next,
+                .swiper-button-prev {
+                    color: #ff6600;
+                    top: 50%; /* Lebih pas di tengah secara vertikal */
+                    transform: translateY(-50%); /* Tengah beneran */
+                }
 
-.property-item:hover {
-    transform: translateY(-4px);
-}
-.property-item a.d-block.h6 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2; /* Maks 2 baris */
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-.swiper {
-    padding-bottom: 40px; /* Tambahkan space bawah slider */
-}
+                /* Kartu properti */
+                .property-item {
+                    height: 100%;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                    transition: transform 0.2s ease;
+                    background: #fff; /* Tambahkan agar tidak transparan */
+                }
 
-.swiper-button-next,
-.swiper-button-prev {
-    color: #ff6600; /* Warna panah sesuai brand */
-    top: 45%; /* Posisikan panah di tengah */
-}
+                /* Hover effect */
+                .property-item:hover {
+                    transform: translateY(-4px);
+                }
 
-    </style>
+                /* Judul atau deskripsi pendek, dibatasi 2 baris */
+                .property-item a.d-block.h6 {
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    min-height: 3em; /* Tambahkan agar tinggi konsisten walau konten sedikit */
+                }
 
-
+                /* Tambahan opsional: untuk gambar agar rapi */
+                .property-item img {
+                    width: 100%;
+                    height: 200px; /* Atur sesuai desain */
+                    object-fit: cover;
+                    border-top-left-radius: 8px;
+                    border-top-right-radius: 8px;
+                }
+                </style>
         </div>
-
-
-
-
-
-        <!-- Property List End -->
-
-
-
 
 @include('template.footer')
