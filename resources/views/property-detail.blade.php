@@ -229,13 +229,12 @@
 
                                     <!-- Tombol Share / Copy Link -->
                                     <a href="javascript:void(0);"
-                                        onclick="copyPropertyLink(this)"
-                                        class="btn btn-outline-secondary d-flex align-items-center justify-content-center px-3 py-2 flex-shrink-1"
-                                        style="min-width: 50px;"
-                                        title="Bagikan Link Properti">
-                                        <i class="fa fa-share-alt"></i>
-                                        <span class="d-none d-sm-inline ms-2">Bagikan</span>
-                                    </a>
+                                    onclick="copyPropertyLink(this)"
+                                    class="btn btn-outline-secondary d-flex align-items-center justify-content-center px-2 py-2 rounded-circle"
+                                    style="width: 40px; height: 40px;"
+                                    title="Bagikan Link Properti">
+                                    <i class="fa fa-share-alt"></i>
+                                </a>
 
                                 </div>
 
