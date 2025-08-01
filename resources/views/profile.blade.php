@@ -345,16 +345,16 @@
           <div class="modal-body">
             <div class="text-center mb-3 " id="previewContainer" style="display: block;">
                 @php
-    $pictureId = ($user->roles === 'Agent' && !empty($informasi_klien->picture)) ? $informasi_klien->picture : null;
-@endphp
+                    $pictureId = ($user->roles === 'Agent' && !empty($informasi_klien->picture)) ? $informasi_klien->picture : null;
+                @endphp
 
-<img
-    id="profilePreview"
-    src="{{ $pictureId ? 'https://drive.google.com/thumbnail?id=' . $pictureId : asset('img/default-profile.jpg') }}"
-    alt="Foto Profil"
-    class="shadow"
-    style="width: 180px; height: 180px; object-fit: cover; margin: 0 auto;"
-/>
+                <img
+                    id="profilePreview"
+                    src="{{ $pictureId ? 'https://drive.google.com/thumbnail?id=' . $pictureId : asset('img/default-profile.jpg') }}"
+                    alt="Foto Profil"
+                    class="shadow"
+                    style="width: 180px; height: 180px; object-fit: cover; margin: 0 auto;"
+                />
                 <div id="profileCropActions" class="d-flex justify-content-center gap-2 mt-2"></div>
               </div>
 
@@ -398,23 +398,20 @@
                         ? asset('storage/' . $agent->picture)
                         : asset('img/default-profile.jpg');
                     @endphp
+                    <div class="position-relative d-inline-block">
+                        <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->picture }}"
+                        alt="Foto Agent"
+                        class="img-fluid shadow"
+                        style="width: 200px; height: 200px; object-fit: cover;">
 
-
-<div class="position-relative d-inline-block">
-    <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->picture }}"
-    alt="Foto Agent"
-    class="img-fluid shadow"
-    style="width: 200px; height: 200px; object-fit: cover;">
-
-  <button type="button"
-          class="btn btn-sm btn-light border position-absolute top-0 end-0 m-1"
-          data-bs-toggle="modal"
-          data-bs-target="#modalGantiFoto"
-          style="background: rgba(255, 255, 255, 0.8);">
-    <i class="bi bi-pencil-fill"></i>
-  </button>
-</div>
-
+                    <button type="button"
+                            class="btn btn-sm btn-light border position-absolute top-0 end-0 m-1"
+                            data-bs-toggle="modal"
+                            data-bs-target="#modalGantiFoto"
+                            style="background: rgba(255, 255, 255, 0.8);">
+                        <i class="bi bi-pencil-fill"></i>
+                    </button>
+                    </div>
                     <p class="text-muted mt-2"></p>
                 </div>
                 {{-- Form Data --}}
@@ -485,8 +482,6 @@
                   </div>
                 </div>
               </div>
-
-
 
               <div class="mb-3">
                 <label for="nomor_telepon" class="form-label">Nomor Telepon</label>

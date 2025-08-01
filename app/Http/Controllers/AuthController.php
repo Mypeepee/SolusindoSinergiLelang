@@ -321,43 +321,44 @@ public function updateProfilePicture(Request $request)
     // }
 
     public function updateProfile(Request $request)
-    {
-        // Validasi inputan yang boleh diubah user
-        $request->validate([
-            'nama' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255',
-            'tanggal_lahir' => 'required|date',
-            'nomor_telepon' => 'required|string|max:15',
-            // 'message' => 'nullable|string',
-        ]);
+{
+    // Validasi inputan
+    $request->validate([
+        'nama' => 'required|string|max:255',
+        'email' => 'required|string|email|max:255',
+        'tanggal_lahir' => 'required|date',
+        'nomor_telepon' => 'required|string|max:15',
+    ]);
 
-        // Ambil id_account dari session
-        $id_account = session('id_account');
-        if (!$id_account) {
-            return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
-        }
-
-        // Cari user berdasarkan id_account
-        $user = Account::where('id_account', $id_account)->first();
-        if (!$user) {
-            return redirect()->route('login')->with('error', 'User tidak ditemukan.');
-        }
-
-        // Update field yang boleh diubah
-        $user->nama = $request->nama;
-        $user->email = $request->email;
-        $user->tanggal_lahir = $request->tanggal_lahir;
-        $user->nomor_telepon = $request->nomor_telepon;
-
-        // Update pesan tambahan jika ada
-        // $user->message = $request->filled('message') ? $request->message : null;
-
-        // Simpan perubahan
-        $user->save();
-
-        return redirect()->route('profile', ['id_account' => $user->id_account])->with('success', 'Profil berhasil diperbarui!');
-
+    // Ambil id_account dari session
+    $id_account = session('id_account');
+    if (!$id_account) {
+        return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
     }
+
+    // Cari user di tabel account
+    $user = Account::where('id_account', $id_account)->first();
+    if (!$user) {
+        return redirect()->route('login')->with('error', 'User tidak ditemukan.');
+    }
+
+    // Update field di tabel account
+    $user->nama = $request->nama;
+    $user->email = $request->email;
+    $user->tanggal_lahir = $request->tanggal_lahir;
+    $user->nomor_telepon = $request->nomor_telepon;
+    $user->save();
+
+    // Update field di tabel agent (kalau ada)
+    $agent = \App\Models\Agent::where('id_account', $id_account)->first();
+    if ($agent) {
+        $agent->nomor_telepon = $request->nomor_telepon;
+        $agent->save();
+    }
+
+    return redirect()->route('profile', ['id_account' => $user->id_account])
+        ->with('success', 'Profil berhasil diperbarui!');
+}
 
 
 
@@ -429,10 +430,15 @@ public function updateProfilePicture(Request $request)
                 session()->put('role', $account->roles);
             }
 
-            // Debugging: Tampilkan semua data session & cookie yang tersimpan
+            // **Tambahan**: Ambil id_agent & simpan ke session
+            $agent = \App\Models\Agent::where('id_account', $account->id_account)->first();
+            if ($agent) {
+                session()->put('id_agent', $agent->id_agent);
+            }
 
             return redirect('/')->with('success', 'Login Successful!');
         }
+
 
         return redirect('login')->with('error', 'Login Failed! Please Try Again.');
     }

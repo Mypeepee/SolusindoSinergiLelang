@@ -68,7 +68,7 @@ Route::get('/property-list', [propertylistController::class, 'showproperty'])->n
 Route::get('/property-type', [propertytypeController::class, 'tipeproperty']);
 Route::get('/property/{id}', [propertylistController::class, 'showPropertyDetail'])->name('property-detail');
 
-Route::get('/property-detail/{id}', [propertydetailController::class, 'PropertyDetail'])->name('property-detail');
+Route::get('/property-detail/{id}/{agent?}', [PropertyDetailController::class, 'PropertyDetail'])->name('property-detail');
 // Route for displaying the form
 // Route to show the form
 Route::get('/addProperty', [ProductController::class, 'create'])->name('property.create');

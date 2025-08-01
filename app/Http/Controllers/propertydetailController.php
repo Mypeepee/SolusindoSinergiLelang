@@ -23,12 +23,31 @@ class propertydetailController extends Controller
         return view('propertyDetail', compact('property'));
     }
 
-    public function PropertyDetail($id)
+    public function PropertyDetail(Request $request, $id, $agent = null)
     {
         $property = Property::where('id_listing', $id)->first();
 
-        if (!$property) {
-            abort(404);
+        // Kalau belum ada agent di URL, tapi ada di session → redirect
+        if (!$agent && session()->has('id_agent')) {
+            return redirect()->to(url("/property-detail/{$id}/" . session('id_agent')));
+        }
+
+        // Kalau ada agent di URL → cari datanya
+        $sharedAgent = null;
+        if ($agent) {
+            $sharedAgent = \App\Models\Agent::where('id_agent', $agent)->first();
+
+                    // Kalau agent valid → catat klik ke referral_clicks
+            if ($sharedAgent) {
+                \DB::table('referral_clicks')->insert([
+                    'id_agent'   => $sharedAgent->id_agent,
+                    'id_listing' => $property->id_listing,
+                    'ip'         => $request->ip(),
+                    'user_agent' => $request->header('User-Agent'),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
 
         // ✅ Hitung harga per m² properti ini
@@ -114,7 +133,8 @@ class propertydetailController extends Controller
             'maxPricePerM2',
             'medianPricePerM2',
             'selisihPersen',
-            'ogTags'
+            'ogTags',
+            'sharedAgent'
         ));
     }
 
