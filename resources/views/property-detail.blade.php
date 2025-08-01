@@ -193,65 +193,64 @@
 
                                 <div class="d-flex flex-column flex-md-row flex-md-nowrap gap-2 mt-4 justify-content-md-center">
                                     @php
-                                        use App\Models\Account;
+                                    use App\Models\Account;
 
-                                        $userId = Session::get('id_account') ?? Cookie::get('id_account');
-                                        $userRole = $userId ? Account::where('id_account', $userId)->value('roles') : null;
-                                    @endphp
+                                    $userId = Session::get('id_account') ?? Cookie::get('id_account');
+                                    $userRole = $userId ? Account::where('id_account', $userId)->value('roles') : null;
+                                @endphp
 
+                                <!-- Tombol Aksi Properti -->
+                                <div class="d-flex gap-2 flex-wrap align-items-center">
 
-                                    @if ($userRole === 'User')
-                                        <!-- Hubungi Agent -->
-                                        <a href="{{ $property->agent && $property->agent->nomor_telepon
-                                            ? 'https://wa.me/62' . ltrim($property->agent->nomor_telepon, '0') . '?text=' . urlencode('Halo ' . $property->agent->nama . ', saya melihat property "' . $property->lokasi . '" di website. Bisa minta info lebih lengkap tentang property tersebut?')
-                                            : '#' }}"
-                                            class="btn btn-danger px-3 py-2 flex-shrink-1"
-                                            style="min-width: 180px;"
-                                            {{ $property->agent && $property->agent->nomor_telepon ? '' : 'onclick="return false;"' }}>
-                                            <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
-                                        </a>
-
-                                        <!-- Ikuti / Login -->
-                                        @if ($userId)
-                                            <a href="{{ route('property.interest.show', $property->id_listing) }}"
-                                            class="btn btn-danger px-3 py-2 flex-shrink-1"
-                                            style="min-width: 180px;">
-                                            <i class="fa fa-calendar-alt me-2"></i>Ikuti Lelang Ini
-                                            </a>
-                                        @else
-                                            <a href="{{ url('login') }}"
-                                            class="btn btn-dark-blue px-3 py-2 flex-shrink-1"
-                                            style="min-width: 180px;">
-                                            <i class="fa fa-lock me-2"></i>Login untuk Ikut Lelang
-                                            </a>
-                                        @endif
-                                    @else
-                                        <!-- Share / Copy Link -->
-                                        <a href="javascript:void(0);"
-                                    onclick="copyPropertyLink(this)"
-                                    class="btn btn-outline-secondary px-3 py-2 flex-shrink-1"
-                                    style="min-width: 180px;">
-                                    <i class="fa fa-link me-2"></i>Copy Link Properti
+                                    <!-- Tombol Hubungi Agent -->
+                                    <a href="{{ $property->agent && $property->agent->nomor_telepon
+                                        ? 'https://wa.me/62' . ltrim($property->agent->nomor_telepon, '0') . '?text=' . urlencode('Halo ' . $property->agent->nama . ', saya melihat property "' . $property->lokasi . '" di website. Bisa minta info lebih lengkap tentang property tersebut?')
+                                        : '#' }}"
+                                        class="btn btn-danger d-flex align-items-center justify-content-center px-3 py-2 flex-shrink-1"
+                                        style="min-width: 180px;"
+                                        {{ $property->agent && $property->agent->nomor_telepon ? '' : 'onclick="return false;"' }}>
+                                        <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
                                     </a>
 
-                                    <script>
-                                        function copyPropertyLink(el) {
-                                            const link = "{{ url()->current() }}";
-                                            navigator.clipboard.writeText(link).then(() => {
-                                                // Berhasil salin
-                                                el.innerHTML = '<i class="fa fa-check me-2"></i>Link Disalin!';
-                                                setTimeout(() => {
-                                                    el.innerHTML = '<i class="fa fa-link me-2"></i>Copy Link Properti';
-                                                }, 2000);
-                                            }).catch(err => {
-                                                console.error('Gagal menyalin link:', err);
-                                                alert("Gagal menyalin link. Coba lagi.");
-                                            });
-                                        }
-                                    </script>
+                                    <!-- Tombol Ikuti / Login -->
+                                    @if ($userId && $userRole === 'User')
+                                        <a href="{{ route('property.interest.show', $property->id_listing) }}"
+                                            class="btn btn-danger d-flex align-items-center justify-content-center px-3 py-2 flex-shrink-1"
+                                            style="min-width: 180px;">
+                                            <i class="fa fa-calendar-alt me-2"></i>Ikuti Lelang Ini
+                                        </a>
+                                    @else
+                                        <a href="{{ url('login') }}"
+                                            class="btn btn-dark-blue d-flex align-items-center justify-content-center px-3 py-2 flex-shrink-1"
+                                            style="min-width: 180px;">
+                                            <i class="fa fa-lock me-2"></i>Login untuk Ikut Lelang
+                                        </a>
                                     @endif
 
+                                    <!-- Tombol Share / Copy Link -->
+                                    <a href="javascript:void(0);"
+                                        onclick="copyPropertyLink(this)"
+                                        class="btn btn-outline-secondary d-flex align-items-center justify-content-center px-3 py-2 flex-shrink-1"
+                                        style="min-width: 50px;"
+                                        title="Bagikan Link Properti">
+                                        <i class="fa fa-share-alt"></i>
+                                        <span class="d-none d-sm-inline ms-2">Bagikan</span>
+                                    </a>
 
+                                </div>
+
+                                <script>
+                                    function copyPropertyLink(el) {
+                                        const link = "{{ url()->current() }}";
+                                        navigator.clipboard.writeText(link).then(() => {
+                                            // Tampilkan notifikasi (bisa ganti ke toast kalau pakai Bootstrap)
+                                            alert('Link berhasil disalin!');
+                                        }).catch(err => {
+                                            console.error('Gagal menyalin link:', err);
+                                            alert("Gagal menyalin link. Coba lagi.");
+                                        });
+                                    }
+                                </script>
                                     <!-- Edit -->
                                     @if (Session::has('id_account'))
                                         @php
