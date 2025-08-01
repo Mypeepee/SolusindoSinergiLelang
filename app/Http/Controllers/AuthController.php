@@ -27,6 +27,7 @@ class AuthController extends Controller
 {
     public function showJoinAgentForm()
 {
+
     $id_account = trim(Session::get('id_account') ?? $_COOKIE['id_account'] ?? null);
 
     if (!$id_account) {
@@ -107,12 +108,13 @@ public function registerAgent(Request $request)
         return redirect()->route('register')->with('error', 'Akun tidak ditemukan.');
     }
 
+    // === Siapkan Google Drive ===
     $accessToken = app(\App\Http\Controllers\GdriveController::class)->token();
     $parentFolderId = '1u8faFug3GV3lB6y0L2TbwEX48IPAUtiQ'; // ID folder Data_Agent
     $folderName = \Str::slug($request->nama, '_');
     $targetFolderId = $this->getOrCreateFolder($folderName, $parentFolderId, $accessToken);
 
-    // === UPLOAD GDRIVE FUNCTION ===
+    // === Upload ke Google Drive ===
     $uploadToDrive = function ($base64Data, $prefix) use ($targetFolderId, $accessToken) {
         $filename = $prefix . '_' . \Str::uuid() . '.jpg';
         $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $base64Data));
@@ -139,12 +141,13 @@ public function registerAgent(Request $request)
                     'type' => 'anyone',
                 ]);
 
-            return $fileId;
+            return $fileId; // Kembaliin ID, bukan link
         }
 
         return null;
     };
 
+    // === KTP ===
     $ktpFileId = $request->filled('cropped_image_ktp')
         ? $uploadToDrive($request->cropped_image_ktp, 'ktp')
         : DB::table('informasi_klien')->where('id_account', $user->id_account)->value('gambar_ktp');
@@ -153,10 +156,12 @@ public function registerAgent(Request $request)
         return back()->withErrors(['cropped_image_ktp' => 'Gambar KTP wajib diunggah.']);
     }
 
+    // === NPWP ===
     $npwpFileId = $request->filled('cropped_image_npwp')
         ? $uploadToDrive($request->cropped_image_npwp, 'npwp')
         : DB::table('informasi_klien')->where('id_account', $user->id_account)->value('gambar_npwp');
 
+    // === Foto Profil ===
     $profileFileId = null;
     if ($request->hasFile('picture')) {
         $path = $request->file('picture')->store('temp');
@@ -167,6 +172,7 @@ public function registerAgent(Request $request)
         $profileFileId = $uploadToDrive($request->cropped_profile_image, 'agent');
     }
 
+    // === Simpan ke DB Agent (HANYA ID) ===
     Agent::updateOrCreate(
         ['id_account' => $user->id_account],
         [
@@ -189,6 +195,7 @@ public function registerAgent(Request $request)
 
     return redirect('/join-agent')->with('success', 'Pendaftaran agen berhasil. Menunggu verifikasi dari Owner.');
 }
+
 
 
 public function updateProfilePicture(Request $request)

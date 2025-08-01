@@ -820,7 +820,7 @@ public function updateStatusClosing(Request $request)
         $account = DB::table('account')->where('id_account', $id_account)->first();
         $waNumber = '62' . ltrim($account->nomor_telepon, '0');
 
-        $message = urlencode('Selamat! Akun Anda telah resmi menjadi agent kami.');
+        $message = urlencode('Mohon Maaf! Akun Anda tidak memenuhi kriteria kami, dikarenakan');
 
         return redirect()->away("https://wa.me/{$waNumber}?text={$message}");
     }

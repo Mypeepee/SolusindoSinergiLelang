@@ -218,179 +218,49 @@
 
 
 
-<div class="col-lg-7">
-    <div class="bg-light rounded p-5 wow fadeIn" data-wow-delay="0.5s">
-        @if (isset($isPending) && $isPending === true)
-        <div class="alert alert-info text-center mb-0">
-            <h5 class="mb-2">Akun Anda Sedang Diverifikasi</h5>
-            <p class="mb-0">Terima kasih telah mendaftar sebagai agen. Kami sedang memproses verifikasi akun Anda. Silakan tunggu konfirmasi dari Admin.</p>
-        </div>
-        @elseif (isset($isRejected) && $isRejected === true)
-    <div class="alert alert-danger text-center mb-0">
-        <h5 class="mb-2">Pendaftaran Ditolak</h5>
-        <p class="mb-0">Mohon perbaiki data Anda dan daftar ulang sebagai agen.</p>
-    </div>
-    <form action="{{ route('join.agent.submit') }}" method="POST" enctype="multipart/form-data">
-        @csrf
-        <input type="hidden" name="id_account" value="{{ session('id_account') }}">
-
-        <div class="row g-3">
-
-            <!-- Nama -->
-            <div class="col-12">
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fa fa-user"></i></span>
-                    <input type="text" name="nama" value="{{ old('nama') }}" class="form-control" placeholder="Nama Lengkap" required>
+        <div class="col-lg-7">
+            <div class="bg-light rounded p-5 wow fadeIn" data-wow-delay="0.5s">
+                @if (isset($isPending) && $isPending === true)
+                <div class="alert alert-info text-center mb-0">
+                    <h5 class="mb-2">Akun Anda Sedang Diverifikasi</h5>
+                    <p class="mb-0">Terima kasih telah mendaftar sebagai agen. Kami sedang memproses verifikasi akun Anda. Silakan tunggu konfirmasi dari Admin.</p>
                 </div>
+                @elseif (isset($isRejected) && $isRejected === true)
+            <div class="alert alert-danger text-center mb-0">
+                <h5 class="mb-2">Pendaftaran Ditolak</h5>
+                <p class="mb-0">Mohon perbaiki data Anda dan daftar ulang sebagai agen.</p>
             </div>
-
-            <!-- Nomor Telepon -->
-            <div class="col-12 col-md-6">
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fa fa-phone"></i></span>
-                    <input type="text" name="nomor_telepon" value="{{ old('nomor_telepon') }}" class="form-control" placeholder="Nomor Telepon" pattern="[0-9]{10,15}" required>
-                </div>
-            </div>
-
-            <!-- Email -->
-            <div class="col-12 col-md-6">
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fa fa-envelope"></i></span>
-                    <input type="email" name="email" value="{{ old('email') }}" class="form-control" placeholder="Email Aktif" required>
-                </div>
-            </div>
-
-            <!-- Instagram -->
-            <div class="col-12 col-md-6">
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fab fa-instagram"></i></span>
-                    <input type="text" name="instagram" value="{{ old('instagram') }}" class="form-control" placeholder="Instagram">
-                </div>
-            </div>
-
-            <!-- Facebook -->
-            <div class="col-12 col-md-6">
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fab fa-facebook-f"></i></span>
-                    <input type="text" name="facebook" value="{{ old('facebook') }}" class="form-control" placeholder="Facebook">
-                </div>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <label class="form-label">Provinsi</label>
-                <select id="province" class="form-select" required>
-                    <option selected disabled>Pilih Provinsi</option>
-                </select>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <label class="form-label">Kota / Kabupaten</label>
-                <select name="lokasi_kerja" id="city" class="form-select" disabled required>
-                    <option selected disabled>Pilih Kota/Kabupaten</option>
-                </select>
-            </div>
-
-            @php
-                $croppedKTP = old('cropped_image_ktp');
-                $croppedNPWP = old('cropped_image_npwp');
-            @endphp
-
-            {{-- === KTP === --}}
-            <div class="col-12 col-md-6 mb-4">
-                <label class="form-label">Foto KTP</label>
-
-                @if($croppedKTP)
-                    <div class="mb-2">
-                        <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_ktp }}" alt="KTP"
-                        class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
-                        <div class="form-text text-muted">Gambar KTP telah diunggah.</div>
-                        <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="resetKTP()">Ganti KTP</button>
-                    </div>
-                    <input type="hidden" name="cropped_image_ktp" value="{{ $croppedKTP }}">
-                @elseif(isset($informasi_klien) && $informasi_klien->gambar_ktp)
-                    <div class="mb-2">
-                        <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_ }}" alt="KTP"
-                        class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
-                        <div class="form-text text-muted">Data KTP Anda sudah tersedia.</div>
-                        <a href="{{ route('profile', ['id_account' => $user->id_account]) }}" class="btn btn-sm btn-outline-primary mt-2">Ganti KTP</a>
-                    </div>
-                @else
-                    <div id="uploadKTPSection">
-                        <input type="file" id="gambar_ktp" accept="image/*" class="form-control mb-2">
-                        <img id="imagePreview" class="img-fluid rounded d-none" style="max-height: 300px;">
-                        <input type="hidden" name="cropped_image_ktp" id="cropped_image">
-                    </div>
-                @endif
-            </div>
-
-            {{-- === NPWP === --}}
-            <div class="col-12 col-md-6 mb-4">
-                <label class="form-label">Foto NPWP</label>
-
-                @if(isset($informasi_klien) && $informasi_klien->gambar_npwp && empty(old('cropped_image_npwp')))
-                    <div class="mb-2">
-                        <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_npwp }}" alt="NPWP"
-                        class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
-                        <div class="form-text text-muted">Data NPWP Anda sudah tersedia.</div>
-                        <a href="{{ route('profile', ['id_account' => $user->id_account]) }}" class="btn btn-sm btn-outline-primary mt-2">Ganti NPWP</a>
-                    </div>
-                @else
-                    <div>
-                        <input type="file" id="gambar_npwp" accept="image/*" class="form-control mb-2">
-                        <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_npwp }}" alt="NPWP"
-                        class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
-                        <input type="hidden" name="cropped_image_npwp" id="cropped_image_npwp">
-                    </div>
-                @endif
-            </div>
-
-            <div class="mb-3">
-                <label for="profileImageInput" class="form-label">Foto Profil (opsional)</label>
-                <input type="file" name="profile_image_input" id="profileImageInput" class="form-control" accept="image/*">
-                <div id="previewContainer" class="mt-2" style="display: none;">
-                    <img id="profilePreview" class="img-fluid rounded-circle" style="width: 150px;" />
-                </div>
-                <input type="hidden" name="cropped_profile_image" id="croppedProfileImage">
-            </div>
-
-            <!-- Tombol Submit -->
-            <div class="col-12">
-                <button class="btn btn-primary w-100 py-3" type="submit">Daftar Sebagai Agen</button>
-            </div>
-
-        </div>
-    </form>
-    @else
             <form action="{{ route('join.agent.submit') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="id_account" value="{{ session('id_account') }}">
 
                 <div class="row g-3">
-
-                    <!-- Nama -->
-                    <div class="col-12">
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="fa fa-user"></i></span>
-                            <input type="text" name="nama" value="{{ old('nama') }}" class="form-control" placeholder="Nama Lengkap" required>
-                        </div>
+                <!-- Nama -->
+                <div class="col-12">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa fa-user"></i></span>
+                        <input type="text" value="{{ $user->nama ?? '' }}" class="form-control" placeholder="Nama Lengkap" readonly>
+                        <input type="hidden" name="nama" value="{{ $user->nama ?? '' }}">
                     </div>
+                </div>
 
-                    <!-- Nomor Telepon -->
-                    <div class="col-12 col-md-6">
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="fa fa-phone"></i></span>
-                            <input type="text" name="nomor_telepon" value="{{ old('nomor_telepon') }}" class="form-control" placeholder="Nomor Telepon" pattern="[0-9]{10,15}" required>
-                        </div>
+                <!-- Nomor Telepon -->
+                <div class="col-12 col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa fa-phone"></i></span>
+                        <input type="text" value="{{ $user->nomor_telepon ?? '' }}" class="form-control" placeholder="Nomor Telepon" readonly>
+                        <input type="hidden" name="nomor_telepon" value="{{ $user->nomor_telepon ?? '' }}">
                     </div>
+                </div>
 
-                    <!-- Email -->
-                    <div class="col-12 col-md-6">
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="fa fa-envelope"></i></span>
-                            <input type="email" name="email" value="{{ old('email') }}" class="form-control" placeholder="Email Aktif" required>
-                        </div>
+                <!-- Email -->
+                <div class="col-12 col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa fa-envelope"></i></span>
+                        <input type="email" value="{{ $user->email ?? '' }}" class="form-control" placeholder="Email Aktif" readonly>
+                        <input type="hidden" name="email" value="{{ $user->email ?? '' }}">
                     </div>
-
+                </div>
                     <!-- Instagram -->
                     <div class="col-12 col-md-6">
                         <div class="input-group">
@@ -433,15 +303,15 @@
                         @if($croppedKTP)
                             <div class="mb-2">
                                 <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_ktp }}" alt="KTP"
-                class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
+                                class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
                                 <div class="form-text text-muted">Gambar KTP telah diunggah.</div>
                                 <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="resetKTP()">Ganti KTP</button>
                             </div>
                             <input type="hidden" name="cropped_image_ktp" value="{{ $croppedKTP }}">
                         @elseif(isset($informasi_klien) && $informasi_klien->gambar_ktp)
                             <div class="mb-2">
-                                <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_ktp }}" alt="KTP"
-                class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
+                                <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_ }}" alt="KTP"
+                                class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
                                 <div class="form-text text-muted">Data KTP Anda sudah tersedia.</div>
                                 <a href="{{ route('profile', ['id_account' => $user->id_account]) }}" class="btn btn-sm btn-outline-primary mt-2">Ganti KTP</a>
                             </div>
@@ -461,14 +331,15 @@
                         @if(isset($informasi_klien) && $informasi_klien->gambar_npwp && empty(old('cropped_image_npwp')))
                             <div class="mb-2">
                                 <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_npwp }}" alt="NPWP"
-                class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
+                                class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
                                 <div class="form-text text-muted">Data NPWP Anda sudah tersedia.</div>
                                 <a href="{{ route('profile', ['id_account' => $user->id_account]) }}" class="btn btn-sm btn-outline-primary mt-2">Ganti NPWP</a>
                             </div>
                         @else
                             <div>
                                 <input type="file" id="gambar_npwp" accept="image/*" class="form-control mb-2">
-                                <img id="imagePreviewNPWP" class="img-fluid rounded d-none" style="max-height: 300px;">
+                                <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_npwp }}" alt="NPWP"
+                                class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
                                 <input type="hidden" name="cropped_image_npwp" id="cropped_image_npwp">
                             </div>
                         @endif
@@ -478,8 +349,140 @@
                         <label for="profileImageInput" class="form-label">Foto Profil (opsional)</label>
                         <input type="file" name="profile_image_input" id="profileImageInput" class="form-control" accept="image/*">
                         <div id="previewContainer" class="mt-2" style="display: none;">
+                            <img id="profilePreview" class="img-fluid rounded-circle" style="width: 150px;" />
+                        </div>
+                        <input type="hidden" name="cropped_profile_image" id="croppedProfileImage">
+                    </div>
+
+                    <!-- Tombol Submit -->
+                    <div class="col-12">
+                        <button class="btn btn-primary w-100 py-3" type="submit">Daftar Sebagai Agen</button>
+                    </div>
+
+                </div>
+            </form>
+            @else
+            <form action="{{ route('join.agent.submit') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <input type="hidden" name="id_account" value="{{ session('id_account') }}">
+
+                <div class="row g-3">
+
+                    <!-- Nama -->
+                    <div class="col-12">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa fa-user"></i></span>
+                            <input type="text" name="nama" value="{{ $user->nama ?? old('nama') }}" class="form-control" placeholder="Nama Lengkap" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Nomor Telepon -->
+                    <div class="col-12 col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa fa-phone"></i></span>
+                            <input type="text" name="nomor_telepon" value="{{ $user->nomor_telepon ?? old('nomor_telepon') }}" class="form-control" placeholder="Nomor Telepon" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="col-12 col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa fa-envelope"></i></span>
+                            <input type="email" name="email" value="{{ $user->email ?? old('email') }}" class="form-control" placeholder="Email Aktif" readonly>
+                        </div>
+                    </div>
+
+
+                    <!-- Instagram -->
+                    <div class="col-12 col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fab fa-instagram"></i></span>
+                            <input type="text" name="instagram" value="{{ old('instagram') }}" class="form-control" placeholder="Instagram">
+                        </div>
+                    </div>
+
+                    <!-- Facebook -->
+                    <div class="col-12 col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fab fa-facebook-f"></i></span>
+                            <input type="text" name="facebook" value="{{ old('facebook') }}" class="form-control" placeholder="Facebook">
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Provinsi</label>
+                        <select id="province" class="form-select" required>
+                            <option selected disabled>Pilih Provinsi</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Kota / Kabupaten</label>
+                        <select name="lokasi_kerja" id="city" class="form-select" disabled required>
+                            <option selected disabled>Pilih Kota/Kabupaten</option>
+                        </select>
+                    </div>
+
+                    @php
+                        $croppedKTP = old('cropped_image_ktp');
+                        $croppedNPWP = old('cropped_image_npwp');
+                    @endphp
+
+                                        {{-- === KTP === --}}
+                    <div class="col-12 col-md-6 mb-4">
+                        <label class="form-label">Foto KTP</label>
+                        @if($croppedKTP)
+                            <div class="mb-2">
+                                <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_ktp }}"
+                                    alt="KTP" class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
+                                <div class="form-text text-muted">Gambar KTP telah diunggah.</div>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="resetKTP()">Ganti KTP</button>
+                            </div>
+                            <input type="hidden" name="cropped_image_ktp" value="{{ $croppedKTP }}">
+                        @elseif(isset($informasi_klien) && $informasi_klien->gambar_ktp)
+                            <div class="mb-2">
+                                <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_ktp }}"
+                                    alt="KTP" class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
+                                <div class="form-text text-muted">Data KTP Anda sudah tersedia.</div>
+                                <a href="{{ route('profile', ['id_account' => $user->id_account]) }}"
+                                class="btn btn-sm btn-outline-primary mt-2">Ganti KTP</a>
+                            </div>
+                            <input type="hidden" name="cropped_image_ktp" value="{{ $informasi_klien->gambar_ktp }}">
+                        @else
+                            <div id="uploadKTPSection">
+                                <input type="file" id="gambar_ktp" accept="image/*" class="form-control mb-2">
+                                <img id="imagePreview" class="img-fluid rounded d-none" style="max-height: 300px;">
+                                <input type="hidden" name="cropped_image_ktp" id="cropped_image">
+                            </div>
+                        @endif
+                    </div>
+
+                    {{-- === NPWP === --}}
+                    <div class="col-12 col-md-6 mb-4">
+                        <label class="form-label">Foto NPWP</label>
+                        @if(isset($informasi_klien) && $informasi_klien->gambar_npwp && empty(old('cropped_image_npwp')))
+                            <div class="mb-2">
+                                <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_npwp }}"
+                                    alt="NPWP" class="img-thumbnail me-4" style="width: 180px; height: auto; object-fit: contain;" />
+                                <div class="form-text text-muted">Data NPWP Anda sudah tersedia.</div>
+                                <a href="{{ route('profile', ['id_account' => $user->id_account]) }}"
+                                class="btn btn-sm btn-outline-primary mt-2">Ganti NPWP</a>
+                            </div>
+                            <input type="hidden" name="cropped_image_npwp" value="{{ $informasi_klien->gambar_npwp }}">
+                        @else
+                            <div>
+                                <input type="file" id="gambar_npwp" accept="image/*" class="form-control mb-2">
+                                <img id="imagePreviewNPWP" class="img-fluid rounded d-none" style="max-height: 300px;">
+                                <input type="hidden" name="cropped_image_npwp" id="cropped_image_npwp">
+                            </div>
+                        @endif
+                    </div>
+                    <div class="mb-3">
+                        <label for="profileImageInput" class="form-label">Foto Profil (opsional)</label>
+                        <input type="file" name="profile_image_input" id="profileImageInput" class="form-control" accept="image/*">
+                        <div id="previewContainer" class="mt-2" style="display: none;">
                             <!-- Gambar profil persegi -->
-<img id="profilePreview" class="img-fluid rounded" style="width: 150px;" />
+                        <img id="profilePreview" class="img-fluid rounded" style="width: 150px;" />
 
                         </div>
                         <input type="hidden" name="cropped_profile_image" id="croppedProfileImage">
