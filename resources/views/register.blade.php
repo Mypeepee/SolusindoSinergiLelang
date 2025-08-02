@@ -159,7 +159,21 @@
           </div>
         </div>
 
-        <!-- Lokasi -->
+        <div class="mb-3">
+            <label class="form-label">Kode Referal</label>
+            <div class="input-group">
+                <span class="input-group-text">AG</span>
+                <input type="text" name="kode_referal" class="form-control"
+                       value="{{ old('kode_referal') }}"
+                       placeholder="001"
+                       pattern="[0-9]{3}"
+                       title="Masukkan 3 digit angka (contoh: 001)">
+            </div>
+            <small class="text-muted">Opsional. Isi jika memiliki kode referal dari Agent.</small>
+        </div>
+
+
+        {{-- <!-- Lokasi -->
         <hr class="my-4">
         <h5 class="mb-3"><i class="bi bi-geo-alt-fill"></i> Domisili</h5>
 
@@ -187,7 +201,7 @@
         <div class="mb-3">
           <label class="form-label">Tanggal Lahir</label>
           <input type="date" name="tanggal_lahir" class="form-control" value="{{ old('tanggal_lahir') }}" required>
-        </div>
+        </div> --}}
 
         <div class="form-check mb-3">
           <input class="form-check-input" type="checkbox" name="terms" id="acceptTerms" required>
@@ -303,5 +317,5 @@
         }
     });
 });
-    
+
 </script>

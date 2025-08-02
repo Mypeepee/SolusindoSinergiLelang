@@ -469,44 +469,43 @@ public function updateProfilePicture(Request $request)
         $messages = [
             'username.unique' => 'Username sudah digunakan, silakan pilih username lain.',
             'email.unique' => 'Email sudah terdaftar, silakan gunakan email lain.',
+            'kode_referal.exists' => 'Kode referal tidak valid.',
         ];
 
         $request->validate([
             'nama' => 'required|string',
             'email' => 'required|email|unique:account,email',
-            'tanggal_lahir' => 'required|date',
             'nomor_telepon' => 'required|string',
             'username' => 'required|string|unique:account,username',
             'password' => 'required|string|min:5',
-            'kota' => 'required',
-            'kecamatan' => 'required',
+            'kode_referal' => 'nullable|string|regex:/^[0-9]{3}$/', // Hanya angka 3 digit
         ], $messages);
 
-        // 🧹 Tidak perlu generate id_account di sini
+        // Tambahkan prefix "AG" kalau user isi kode referal
+        $kodeReferal = $request->filled('kode_referal') ? 'AG' . str_pad($request->kode_referal, 3, '0', STR_PAD_LEFT) : null;
+
+        // Validasi kalau kode referal diisi → pastikan ada di tabel agent
+        if ($kodeReferal && !DB::table('agent')->where('id_agent', $kodeReferal)->exists()) {
+            return back()->withErrors(['kode_referal' => 'Kode referal tidak ditemukan.'])->withInput();
+        }
+
+        // Simpan ke database
         $customer = Account::create([
             'nama' => $request->nama,
             'email' => $request->email,
-            'tanggal_lahir' => $request->tanggal_lahir,
             'nomor_telepon' => $request->nomor_telepon,
             'username' => $request->username,
             'password' => $request->password,
-            'kota' => $request->kota,
-            'kecamatan' => $request->kecamatan,
             'roles' => 'User',
+            'kode_referal' => $kodeReferal,
         ]);
 
         if (!$customer) {
             return redirect()->back()->with('error', 'Registrasi gagal, silakan coba lagi.');
         }
 
-        \Log::info('Customer created successfully: ', ['id' => $customer->id_account]);
-
         return redirect('/login')->with('success', 'Registrasi berhasil, silakan login.');
     }
-
-
-
-
 
 public function save(Request $request)
 {

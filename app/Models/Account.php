@@ -24,7 +24,7 @@ class Account extends Model
     protected $fillable = [
         'id_account', 'nama', 'email', 'tanggal_lahir',
         'nomor_telepon', 'username', 'password',
-        'provinsi', 'kota', 'kecamatan'
+        'provinsi', 'kota', 'kecamatan', 'kode_referal'
     ];
 
     // Method untuk ambil nomor telepon dari session

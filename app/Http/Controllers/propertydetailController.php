@@ -24,119 +24,135 @@ class propertydetailController extends Controller
     }
 
     public function PropertyDetail(Request $request, $id, $agent = null)
-    {
-        $property = Property::where('id_listing', $id)->first();
+{
+    $property = Property::where('id_listing', $id)->first();
 
-        // Kalau belum ada agent di URL, tapi ada di session → redirect
-        if (!$agent && session()->has('id_agent')) {
-            return redirect()->to(url("/property-detail/{$id}/" . session('id_agent')));
-        }
+    // **Ambil kode referal dari account jika user login**
+    if (session()->has('id_account')) {
+        $userReferral = DB::table('account')
+            ->where('id_account', session('id_account'))
+            ->value('kode_referal');
 
-        // Kalau ada agent di URL → cari datanya
-        $sharedAgent = null;
-        if ($agent) {
-            $sharedAgent = \App\Models\Agent::where('id_agent', $agent)->first();
-
-                    // Kalau agent valid → catat klik ke referral_clicks
-            if ($sharedAgent) {
-                \DB::table('referral_clicks')->insert([
-                    'id_agent'   => $sharedAgent->id_agent,
-                    'id_listing' => $property->id_listing,
-                    'ip'         => $request->ip(),
-                    'user_agent' => $request->header('User-Agent'),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+        if ($userReferral) {
+            // Kalau URL belum pakai kode referal user → redirect pakai kode itu
+            if ($agent !== $userReferral) {
+                return redirect()->to(url("/property-detail/{$id}/" . $userReferral));
             }
         }
+    }
 
-        // ✅ Hitung harga per m² properti ini
-        $thisPricePerM2 = ($property->luas > 0) ? $property->harga / $property->luas : 0;
+    // Kalau belum ada agent di URL, tapi ada di session → redirect
+    if (!$agent && session()->has('id_agent')) {
+        return redirect()->to(url("/property-detail/{$id}/" . session('id_agent')));
+    }
 
-        // ✅ Hitung range harga per m² ±25%
-        $lowerBound = (int) floor($thisPricePerM2 * 0.75);
-        $upperBound = (int) ceil($thisPricePerM2 * 1.25);
+    // Kalau ada agent di URL → cari datanya
+    $sharedAgent = null;
+    if ($agent) {
+        $sharedAgent = \App\Models\Agent::where('id_agent', $agent)->first();
 
-        // ✅ Ambil properti serupa berdasarkan kecamatan & range harga
+        // Kalau agent valid → catat klik ke referral_clicks
+        if ($sharedAgent) {
+            \DB::table('referral_clicks')->insert([
+                'id_agent'   => $sharedAgent->id_agent,
+                'id_listing' => $property->id_listing,
+                'ip'         => $request->ip(),
+                'user_agent' => $request->header('User-Agent'),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+    // ✅ Hitung harga per m² properti ini
+    $thisPricePerM2 = ($property->luas > 0) ? $property->harga / $property->luas : 0;
+
+    // ✅ Hitung range harga per m² ±25%
+    $lowerBound = (int) floor($thisPricePerM2 * 0.75);
+    $upperBound = (int) ceil($thisPricePerM2 * 1.25);
+
+    // ✅ Ambil properti serupa berdasarkan kecamatan & range harga
+    $similarProperties = DB::table('property')
+        ->where('id_listing', '!=', $property->id_listing)
+        ->whereRaw('LOWER(kecamatan) = ?', [strtolower($property->kecamatan)])
+        ->whereBetween(DB::raw('harga / luas'), [$lowerBound, $upperBound])
+        ->limit(10)
+        ->get();
+
+    // ✅ Default: anggap serupa di kecamatan
+    $similarLocation = "Kecamatan " . $property->kecamatan;
+
+    // ✅ Fallback: kalau properti serupa di kecamatan kosong ➡️ ambil di kota
+    if ($similarProperties->isEmpty()) {
         $similarProperties = DB::table('property')
             ->where('id_listing', '!=', $property->id_listing)
-            ->whereRaw('LOWER(kecamatan) = ?', [strtolower($property->kecamatan)])
+            ->whereRaw('LOWER(kota) = ?', [strtolower($property->kota)])
             ->whereBetween(DB::raw('harga / luas'), [$lowerBound, $upperBound])
             ->limit(10)
             ->get();
 
-        // ✅ Default: anggap serupa di kecamatan
-        $similarLocation = "Kecamatan " . $property->kecamatan;
+        $similarLocation = "Kota " . $property->kota; // ✅ update location fallback
 
-        // ✅ Fallback: kalau properti serupa di kecamatan kosong ➡️ ambil di kota
+        // ✅ Kalau di kota juga tidak ada ➡️ ambil semua di kota
         if ($similarProperties->isEmpty()) {
             $similarProperties = DB::table('property')
                 ->where('id_listing', '!=', $property->id_listing)
                 ->whereRaw('LOWER(kota) = ?', [strtolower($property->kota)])
-                ->whereBetween(DB::raw('harga / luas'), [$lowerBound, $upperBound])
                 ->limit(10)
                 ->get();
 
-            $similarLocation = "Kota " . $property->kota; // ✅ update location fallback
-
-            // ✅ Kalau di kota juga tidak ada ➡️ ambil semua di kota
-            if ($similarProperties->isEmpty()) {
-                $similarProperties = DB::table('property')
-                    ->where('id_listing', '!=', $property->id_listing)
-                    ->whereRaw('LOWER(kota) = ?', [strtolower($property->kota)])
-                    ->limit(10)
-                    ->get();
-
-                $similarLocation = "Kota " . $property->kota; // tetap kota
-            }
+            $similarLocation = "Kota " . $property->kota; // tetap kota
         }
-
-        // ✅ Statistik harga
-        $pricesPerM2 = $similarProperties->map(function ($p) {
-            return ($p->luas > 0) ? $p->harga / $p->luas : null;
-        })->filter();
-
-        $avgPricePerM2 = $pricesPerM2->avg();
-        $minPricePerM2 = $pricesPerM2->min();
-        $maxPricePerM2 = $pricesPerM2->max();
-
-        // ✅ Median harga per m²
-        $sortedPrices = $pricesPerM2->sort()->values();
-        $count = $sortedPrices->count();
-        $medianPricePerM2 = null;
-        if ($count > 0) {
-            $medianPricePerM2 = ($count % 2 == 0)
-                ? ($sortedPrices[$count / 2 - 1] + $sortedPrices[$count / 2]) / 2
-                : $sortedPrices[floor($count / 2)];
-        }
-
-        // ✅ Selisih harga properti ini
-        if ($avgPricePerM2 && $thisPricePerM2) {
-            $selisihPersen = round((($avgPricePerM2 - $thisPricePerM2) / $avgPricePerM2) * 100, 2);
-        } else {
-            $selisihPersen = "Tidak ada data pembanding di kecamatan/kota ini.";
-        }
-        $ogTags = [
-            'og_title' => $property->judul,
-            'og_description' => Str::limit($property->lokasi . ' - ' . strip_tags($property->deskripsi), 150),
-            'og_image' => $property->gambar, // pastikan ini URL gambar full
-            'og_url' => url()->current(),
-        ];
-
-        return view("property-detail", compact(
-            'property',
-            'similarProperties',
-            'similarLocation', // ✅ kirim ke blade
-            'thisPricePerM2',
-            'avgPricePerM2',
-            'minPricePerM2',
-            'maxPricePerM2',
-            'medianPricePerM2',
-            'selisihPersen',
-            'ogTags',
-            'sharedAgent'
-        ));
     }
+
+    // ✅ Statistik harga
+    $pricesPerM2 = $similarProperties->map(function ($p) {
+        return ($p->luas > 0) ? $p->harga / $p->luas : null;
+    })->filter();
+
+    $avgPricePerM2 = $pricesPerM2->avg();
+    $minPricePerM2 = $pricesPerM2->min();
+    $maxPricePerM2 = $pricesPerM2->max();
+
+    // ✅ Median harga per m²
+    $sortedPrices = $pricesPerM2->sort()->values();
+    $count = $sortedPrices->count();
+    $medianPricePerM2 = null;
+    if ($count > 0) {
+        $medianPricePerM2 = ($count % 2 == 0)
+            ? ($sortedPrices[$count / 2 - 1] + $sortedPrices[$count / 2]) / 2
+            : $sortedPrices[floor($count / 2)];
+    }
+
+    // ✅ Selisih harga properti ini
+    if ($avgPricePerM2 && $thisPricePerM2) {
+        $selisihPersen = round((($avgPricePerM2 - $thisPricePerM2) / $avgPricePerM2) * 100, 2);
+    } else {
+        $selisihPersen = "Tidak ada data pembanding di kecamatan/kota ini.";
+    }
+
+    $ogTags = [
+        'og_title' => $property->judul,
+        'og_description' => Str::limit($property->lokasi . ' - ' . strip_tags($property->deskripsi), 150),
+        'og_image' => $property->gambar,
+        'og_url' => url()->current(),
+    ];
+
+    return view("property-detail", compact(
+        'property',
+        'similarProperties',
+        'similarLocation',
+        'thisPricePerM2',
+        'avgPricePerM2',
+        'minPricePerM2',
+        'maxPricePerM2',
+        'medianPricePerM2',
+        'selisihPersen',
+        'ogTags',
+        'sharedAgent'
+    ));
+}
+
 
 
 
