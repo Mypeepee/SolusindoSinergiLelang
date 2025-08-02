@@ -23,27 +23,37 @@ class propertyagentController extends Controller
     }
 
     public function showPropertyAgent(Request $request)
-    {
-        // Ambil semua agent
-        $agents = DB::table('agent')->get();
+{
+    // Ambil semua agent yang sudah role-nya 'Agent'
+    $agents = DB::table('agent')
+        ->join('account', 'agent.id_account', '=', 'account.id_account')
+        ->where('account.roles', 'Agent') // Filter hanya Agent yang disetujui
+        ->select('agent.*', 'account.nama as account_nama', 'account.roles') // Ambil juga nama dari account
+        ->get();
 
-        $properties = [];
-        $selectedAgent = null;
+    $properties = [];
+    $selectedAgent = null;
 
-        // Jika ada agent_id di query, ambil property milik agent itu
-        if ($request->filled('agent_id')) {
-            $selectedAgent = DB::table('agent')->where('id_agent', $request->agent_id)->first();
+    // Jika ada agent_id di query, ambil property milik agent itu
+    if ($request->filled('agent_id')) {
+        $selectedAgent = DB::table('agent')
+            ->join('account', 'agent.id_account', '=', 'account.id_account')
+            ->where('agent.id_agent', $request->agent_id)
+            ->where('account.roles', 'Agent') // Pastikan agent yang dipilih juga sudah disetujui
+            ->select('agent.*', 'account.nama as account_nama', 'account.roles')
+            ->first();
 
-            if ($selectedAgent) {
-                $properties = DB::table('property')
-                    ->where('id_agent', $selectedAgent->id_agent)
-                    ->where('status', 'Tersedia')
-                    ->paginate(12);
-            }
+        if ($selectedAgent) {
+            $properties = DB::table('property')
+                ->where('id_agent', $selectedAgent->id_agent)
+                ->where('status', 'Tersedia')
+                ->paginate(12);
         }
-
-        return view('property-agent', compact('agents', 'properties', 'selectedAgent'));
     }
+
+    return view('property-agent', compact('agents', 'properties', 'selectedAgent'));
+}
+
 
     public function filterPropertyByAgent(Request $request)
     {
