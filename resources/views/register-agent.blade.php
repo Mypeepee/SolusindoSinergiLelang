@@ -44,7 +44,7 @@
 
 <!-- Feature End -->
 
-<div class="container-xxl py-5 wow fadeInUp" data-wow-delay="0.1s">
+{{-- <div class="container-xxl py-5 wow fadeInUp" data-wow-delay="0.1s">
     <div class="container py-5">
         <div class="text-center">
             <h6 class="text-secondary text-uppercase">Testimonial</h6>
@@ -150,7 +150,7 @@
             }
         });
     });
-    </script>
+    </script> --}}
 
 <!-- Testimonial End -->
 
@@ -278,7 +278,6 @@
                     </div>
 
                     <div class="col-12 col-md-6">
-                        <label class="form-label">Provinsi</label>
                         <select id="province" class="form-select" required>
                             <option selected disabled>Pilih Provinsi</option>
                         </select>
