@@ -464,24 +464,44 @@
                 </div>
               </div>
 
-              <!-- Kota -->
-              <div class="row g-3 mb-3">
-                <div class="col-md-6">
-                  <label for="kota" class="form-label">Kabupaten/Kota</label>
-                  <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-building"></i></span>
-                    <input type="text" class="form-control" id="kota" name="kota" value="{{ old('kota', $user->kota ?? '') }}" readonly>
-                  </div>
+            <!-- Provinsi, Kota, Kecamatan dalam 1 Row -->
+            <div class="row g-3 mb-3">
+                <!-- Provinsi -->
+                <div class="col-md-4">
+                    <label for="provinsi" class="form-label">Provinsi</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-geo"></i></span>
+                        <select id="province" name="provinsi" class="form-select">
+                            <option value="" selected disabled>Pilih Provinsi</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div class="col-md-6">
-                  <label for="kecamatan" class="form-label">Kecamatan</label>
-                  <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-geo-alt-fill"></i></span>
-                    <input type="text" class="form-control" id="kecamatan" name="kecamatan" value="{{ old('kecamatan', $user->kecamatan ?? '') }}" readonly>
-                  </div>
+                <!-- Kota -->
+                <div class="col-md-4">
+                    <label for="kota" class="form-label">Kabupaten/Kota</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-building"></i></span>
+                        <select id="regency" name="kota" class="form-select" disabled>
+                            <option value="" selected disabled>Pilih Kota/Kabupaten</option>
+                        </select>
+                    </div>
                 </div>
-              </div>
+
+                <!-- Kecamatan -->
+                <div class="col-md-4">
+                    <label for="kecamatan" class="form-label">Kecamatan</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-geo-alt-fill"></i></span>
+                        <select id="district" name="kecamatan" class="form-select" disabled>
+                            <option value="" selected disabled>Pilih Kecamatan</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+
+
 
               <div class="mb-3">
                 <label for="nomor_telepon" class="form-label">Nomor Telepon</label>
@@ -492,9 +512,39 @@
               </div>
 
               <div class="mb-3">
-                <label for="message" class="form-label">Pesan Tambahan</label>
-                <textarea class="form-control" id="message" name="message" rows="3">{{ old('message') }}</textarea>
-              </div>
+                <label for="kode_referal" class="form-label">Kode Referal</label>
+                @if ($user->roles === 'Agent')
+                    {{-- AGENT: tampilkan langsung kode referal penuh --}}
+                    <div class="input-group">
+                        <input type="text" class="form-control text-center fw-bold" value="{{ $informasi_klien->id_agent ?? '' }}" readonly>
+                    </div>
+                    <div class="form-text text-muted">Ini adalah kode referal Anda. Bagikan ke calon klien.</div>
+                @else
+                    @if (empty($user->kode_referal))
+                        {{-- USER: Belum ada kode referal, bisa input --}}
+                        <div class="input-group">
+                            <span class="input-group-text bg-primary text-white fw-bold">AG</span>
+                            <input type="text"
+                                   class="form-control"
+                                   id="kode_referal"
+                                   name="kode_referal"
+                                   placeholder="Masukkan 3 digit (contoh: 001)"
+                                   value="{{ old('kode_referal') }}"
+                                   maxlength="3"
+                                   pattern="[0-9]{3}">
+                        </div>
+                        <div class="form-text text-muted">Masukkan 3 digit kode referal dari agen (contoh: <strong>001</strong>).</div>
+                    @else
+                        {{-- USER: Sudah ada kode referal, tampilkan readonly --}}
+                        <div class="input-group">
+                            <input type="text" class="form-control text-center fw-bold" value="{{ $user->kode_referal }}" readonly>
+                        </div>
+                        <div class="form-text text-muted">Kode referal Anda sudah terdaftar dan tidak bisa diubah.</div>
+                    @endif
+                @endif
+            </div>
+
+
 
               <div class="d-grid">
                 <button type="submit" class="btn btn-primary btn-lg">
@@ -826,6 +876,86 @@ function cancelCropKTP() {
         }, false)
       })
     })()
+
+    document.addEventListener('DOMContentLoaded', function () {
+    const province = document.getElementById('province');
+    const city = document.getElementById('regency');
+    const district = document.getElementById('district');
+
+    const provinceMap = new Map(); // Provinsi => Set kota
+    const cityMap = new Map();     // Kota => Set kecamatan
+
+    fetch("{{ asset('data/indonesia.json') }}")
+        .then(res => res.json())
+        .then(data => {
+            // Bangun map provinsi => kota dan kota => kecamatan
+            data.forEach(({ province: prov, regency, district: kec }) => {
+                if (!provinceMap.has(prov)) {
+                    provinceMap.set(prov, new Set());
+                }
+                provinceMap.get(prov).add(regency);
+
+                if (!cityMap.has(regency)) {
+                    cityMap.set(regency, new Set());
+                }
+                cityMap.get(regency).add(kec);
+            });
+
+            // Reset & tambahkan placeholder
+            province.innerHTML = '<option selected disabled>Pilih Provinsi</option>';
+
+            // Isi dropdown provinsi
+            [...provinceMap.keys()].sort().forEach(prov => {
+                const option = document.createElement('option');
+                option.value = prov;
+                option.textContent = prov;
+                province.appendChild(option);
+            });
+        });
+
+    // Event: isi kota saat provinsi berubah
+    province.addEventListener('change', function () {
+        const selectedProv = this.value;
+        const kotaSet = provinceMap.get(selectedProv);
+
+        // Reset city dan district
+        city.innerHTML = '<option selected disabled>Pilih Kota/Kabupaten</option>';
+        city.disabled = true;
+        district.innerHTML = '<option selected disabled>Pilih Kecamatan</option>';
+        district.disabled = true;
+
+        if (kotaSet) {
+            [...kotaSet].sort().forEach(kota => {
+                const option = document.createElement('option');
+                option.value = kota;
+                option.textContent = kota;
+                city.appendChild(option);
+            });
+            city.disabled = false;
+        }
+    });
+
+    // Event: isi kecamatan saat kota berubah
+    city.addEventListener('change', function () {
+        const selectedCity = this.value;
+        const kecSet = cityMap.get(selectedCity);
+
+        // Reset district
+        district.innerHTML = '<option selected disabled>Pilih Kecamatan</option>';
+        district.disabled = true;
+
+        if (kecSet) {
+            [...kecSet].sort().forEach(kec => {
+                const option = document.createElement('option');
+                option.value = kec;
+                option.textContent = kec;
+                district.appendChild(option);
+            });
+            district.disabled = false;
+        }
+    });
+});
+
   </script>
 
 <!-- Modal Tambah/Edit NPWP -->

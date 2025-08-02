@@ -328,75 +328,90 @@ public function updateProfilePicture(Request $request)
     // }
 
     public function updateProfile(Request $request)
-{
-    // Validasi inputan
-    $request->validate([
-        'nama' => 'required|string|max:255',
-        'email' => 'required|string|email|max:255',
-        'tanggal_lahir' => 'required|date',
-        'nomor_telepon' => 'required|string|max:15',
-    ]);
-
-    // Ambil id_account dari session
-    $id_account = session('id_account');
-    if (!$id_account) {
-        return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
-    }
-
-    // Cari user di tabel account
-    $user = Account::where('id_account', $id_account)->first();
-    if (!$user) {
-        return redirect()->route('login')->with('error', 'User tidak ditemukan.');
-    }
-
-    // Update field di tabel account
-    $user->nama = $request->nama;
-    $user->email = $request->email;
-    $user->tanggal_lahir = $request->tanggal_lahir;
-    $user->nomor_telepon = $request->nomor_telepon;
-    $user->save();
-
-    // Update field di tabel agent (kalau ada)
-    $agent = \App\Models\Agent::where('id_account', $id_account)->first();
-    if ($agent) {
-        $agent->nomor_telepon = $request->nomor_telepon;
-        $agent->save();
-    }
-
-    return redirect()->route('profile', ['id_account' => $user->id_account])
-        ->with('success', 'Profil berhasil diperbarui!');
-}
-
-
-
-    public function showProfile()
     {
-        $id_account = Session::get('id_account') ?? $_COOKIE['id_account'] ?? null;
+        // Validasi inputan
+        $request->validate([
+            'nama' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255',
+            'tanggal_lahir' => 'required|date',
+            'nomor_telepon' => 'required|string|max:15',
+            'kode_referal' => 'nullable|string|regex:/^[0-9]{3}$/', // 3 digit angka
+        ]);
 
+        // Ambil id_account dari session
+        $id_account = session('id_account');
         if (!$id_account) {
-            return redirect()->route('login')->with('error', 'Silakan login dulu.');
+            return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
         }
 
-        $user = DB::table('account')->where('id_account', $id_account)->first();
-
+        // Cari user di tabel account
+        $user = Account::where('id_account', $id_account)->first();
         if (!$user) {
             return redirect()->route('login')->with('error', 'User tidak ditemukan.');
         }
 
-        // Ambil data tambahan sesuai role
-        if ($user->roles === 'User' || $user->roles === 'Pending') {
-            $data_ktp_npwp = DB::table('informasi_klien')->where('id_account', $id_account)->first();
-        } elseif ($user->roles === 'Agent') {
-            $data_ktp_npwp = DB::table('agent')->where('id_account', $id_account)->first();
-        } else {
-            $data_ktp_npwp = null;
+        // Jika kode_referal masih kosong dan user mengisi kode baru
+        if (empty($user->kode_referal) && $request->filled('kode_referal')) {
+            $kodeReferal = 'AG' . str_pad($request->kode_referal, 3, '0', STR_PAD_LEFT);
+
+            // Validasi: pastikan kode ada di tabel agent
+            if (!DB::table('agent')->where('id_agent', $kodeReferal)->exists()) {
+                return back()->withErrors(['kode_referal' => 'Kode referal tidak ditemukan.'])->withInput();
+            }
+
+            $user->kode_referal = $kodeReferal;
         }
 
-        return view('profile', [
-            'user' => $user,
-            'informasi_klien' => $data_ktp_npwp  // <== INI DIA YANG DIMAKSUD
-        ]);
+        // Update field di tabel account
+        $user->nama = $request->nama;
+        $user->email = $request->email;
+        $user->tanggal_lahir = $request->tanggal_lahir;
+        $user->nomor_telepon = $request->nomor_telepon;
+        $user->save();
+
+        // Update field di tabel agent (kalau ada)
+        $agent = \App\Models\Agent::where('id_account', $id_account)->first();
+        if ($agent) {
+            $agent->nomor_telepon = $request->nomor_telepon;
+            $agent->save();
+        }
+
+        return redirect()->route('profile', ['id_account' => $user->id_account])
+            ->with('success', 'Profil berhasil diperbarui!');
     }
+
+
+
+
+public function showProfile()
+{
+    $id_account = Session::get('id_account') ?? $_COOKIE['id_account'] ?? null;
+
+    if (!$id_account) {
+        return redirect()->route('login')->with('error', 'Silakan login dulu.');
+    }
+
+    $user = DB::table('account')->where('id_account', $id_account)->first();
+
+    if (!$user) {
+        return redirect()->route('login')->with('error', 'User tidak ditemukan.');
+    }
+
+    // Ambil data tambahan sesuai role
+    if ($user->roles === 'User' || $user->roles === 'Pending') {
+        $data_ktp_npwp = DB::table('informasi_klien')->where('id_account', $id_account)->first();
+    } elseif ($user->roles === 'Agent') {
+        $data_ktp_npwp = DB::table('agent')->where('id_account', $id_account)->first();
+    } else {
+        $data_ktp_npwp = null;
+    }
+
+    return view('profile', [
+        'user' => $user,
+        'informasi_klien' => $data_ktp_npwp
+    ]);
+}
+
 
     public function Register()
     {
