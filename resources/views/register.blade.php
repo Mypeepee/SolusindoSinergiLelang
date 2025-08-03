@@ -165,7 +165,7 @@
                 <span class="input-group-text">AG</span>
                 <input type="text" name="kode_referal" class="form-control"
                        value="{{ old('kode_referal') }}"
-                       placeholder="001"
+                       placeholder="Hubungi agent anda untuk mendapatkan kode referal"
                        pattern="[0-9]{3}"
                        title="Masukkan 3 digit angka (contoh: 001)">
             </div>
