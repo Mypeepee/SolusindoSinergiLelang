@@ -335,7 +335,10 @@ public function updateProfilePicture(Request $request)
             'email' => 'required|string|email|max:255',
             'tanggal_lahir' => 'required|date',
             'nomor_telepon' => 'required|string|max:15',
-            'kode_referal' => 'nullable|string|regex:/^[0-9]{3}$/', // 3 digit angka
+            'kode_referal' => 'nullable|string|regex:/^[0-9]{3}$/',
+            'provinsi' => 'nullable|string|max:255',
+            'kota' => 'nullable|string|max:70',
+            'kecamatan' => 'nullable|string|max:100', // 3 digit angka
         ]);
 
         // Ambil id_account dari session
@@ -367,6 +370,10 @@ public function updateProfilePicture(Request $request)
         $user->email = $request->email;
         $user->tanggal_lahir = $request->tanggal_lahir;
         $user->nomor_telepon = $request->nomor_telepon;
+        $user->provinsi = $request->provinsi;
+        $user->kota = $request->kota;
+        $user->kecamatan = $request->kecamatan;
+
         $user->save();
 
         // Update field di tabel agent (kalau ada)

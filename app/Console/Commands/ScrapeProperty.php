@@ -448,7 +448,6 @@ class ScrapeProperty extends Command
     }
 
     // ✅ Simpan semua data ke JSON
-    file_put_contents('scraped-data.json', json_encode($allData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
     $this->info("🎯 Total link unik ditemukan: " . count($allLinks));
     $this->info("📂 Semua data disimpan ke scraped-data.json");
     $this->info("✅ Selesai scrape semua halaman.");

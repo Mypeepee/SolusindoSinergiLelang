@@ -465,41 +465,118 @@
               </div>
 
             <!-- Provinsi, Kota, Kecamatan dalam 1 Row -->
-            <div class="row g-3 mb-3">
-                <!-- Provinsi -->
-                <div class="col-md-4">
-                    <label for="provinsi" class="form-label">Provinsi</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-geo"></i></span>
-                        <select id="province" name="provinsi" class="form-select">
-                            <option value="" selected disabled>Pilih Provinsi</option>
-                        </select>
-                    </div>
-                </div>
+<div class="row g-3 mb-3">
+    <!-- Provinsi -->
+    <div class="col-md-4">
+        <label for="provinsi" class="form-label">Provinsi</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-geo"></i></span>
+            <select name="provinsi" id="province" class="form-select">
+                <option disabled selected>Pilih Provinsi</option>
+            </select>
+        </div>
+    </div>
 
-                <!-- Kota -->
-                <div class="col-md-4">
-                    <label for="kota" class="form-label">Kabupaten/Kota</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-building"></i></span>
-                        <select id="regency" name="kota" class="form-select" disabled>
-                            <option value="" selected disabled>Pilih Kota/Kabupaten</option>
-                        </select>
-                    </div>
-                </div>
+    <!-- Kota -->
+    <div class="col-md-4">
+        <label for="kota" class="form-label">Kabupaten/Kota</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-building"></i></span>
+            <select name="kota" id="city" class="form-select" disabled>
+                <option disabled selected>Pilih Kota</option>
+            </select>
+        </div>
+    </div>
 
-                <!-- Kecamatan -->
-                <div class="col-md-4">
-                    <label for="kecamatan" class="form-label">Kecamatan</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-geo-alt-fill"></i></span>
-                        <select id="district" name="kecamatan" class="form-select" disabled>
-                            <option value="" selected disabled>Pilih Kecamatan</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
+    <!-- Kecamatan -->
+    <div class="col-md-4">
+        <label for="kecamatan" class="form-label">Kecamatan</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-geo-alt-fill"></i></span>
+            <select name="kecamatan" id="district" class="form-select" disabled>
+                <option disabled selected>Pilih Kecamatan</option>
+            </select>
+        </div>
+    </div>
+</div>
 
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const provinceSelect = document.getElementById('province');
+        const citySelect = document.getElementById('city');
+        const districtSelect = document.getElementById('district');
+
+        let provinceMap = new Map();
+        let locationMap = new Map();
+
+        // Ambil data user
+        const userProvince = "{{ $user->provinsi }}";
+        const userCity = "{{ $user->kota }}";
+        const userDistrict = "{{ $user->kecamatan }}";
+
+        fetch("{{ asset('data/indonesia.json') }}")
+            .then(res => res.json())
+            .then(data => {
+                data.forEach(item => {
+                    const prov = item.province.trim();
+                    const regency = item.regency.trim();
+                    const district = item.district.trim();
+
+                    if (!provinceMap.has(prov)) provinceMap.set(prov, new Set());
+                    provinceMap.get(prov).add(regency);
+
+                    if (!locationMap.has(prov)) locationMap.set(prov, new Map());
+                    if (!locationMap.get(prov).has(regency)) locationMap.get(prov).set(regency, new Set());
+                    locationMap.get(prov).get(regency).add(district);
+                });
+
+                // Populate Provinsi
+                for (let prov of provinceMap.keys()) {
+                    provinceSelect.innerHTML += `<option value="${prov}">${prov}</option>`;
+                }
+
+                // === SET NILAI DEFAULT DARI USER ===
+                if (userProvince) {
+                    provinceSelect.value = userProvince;
+                    updateCityDropdown(userProvince, citySelect);
+
+                    if (userCity) {
+                        citySelect.value = userCity;
+                        updateDistrictDropdown(userProvince, userCity);
+
+                        if (userDistrict) {
+                            districtSelect.value = userDistrict;
+                        }
+                    }
+                }
+            });
+
+        function updateCityDropdown(selectedProv, targetCityDropdown) {
+            const citySet = provinceMap.get(selectedProv);
+            targetCityDropdown.disabled = false;
+            targetCityDropdown.innerHTML = '<option disabled selected>Pilih Kota</option>';
+            citySet.forEach(c => targetCityDropdown.innerHTML += `<option value="${c}">${c}</option>`);
+        }
+
+        function updateDistrictDropdown(prov, selectedCity) {
+            const districtSet = locationMap.get(prov).get(selectedCity);
+            districtSelect.disabled = false;
+            districtSelect.innerHTML = '<option disabled selected>Pilih Kecamatan</option>';
+            districtSet.forEach(d => districtSelect.innerHTML += `<option value="${d}">${d}</option>`);
+        }
+
+        // Event listener
+        provinceSelect.addEventListener('change', function () {
+            updateCityDropdown(this.value, citySelect);
+            districtSelect.disabled = true;
+            districtSelect.innerHTML = '<option disabled selected>Pilih Kecamatan</option>';
+        });
+
+        citySelect.addEventListener('change', function () {
+            updateDistrictDropdown(provinceSelect.value, this.value);
+        });
+    });
+    </script>
 
 
 
