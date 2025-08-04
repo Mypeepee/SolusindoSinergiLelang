@@ -68,12 +68,10 @@ class propertylistController extends Controller
         }
 
         $query->where(function ($q) use ($cities, $districts) {
-            // Jika ada kota
             if (!empty($cities)) {
                 $q->orWhereIn('kota', $cities);
             }
 
-            // Jika ada kecamatan
             if (!empty($districts)) {
                 foreach ($districts as $d) {
                     $q->orWhere(function ($sub) use ($d) {
@@ -96,13 +94,9 @@ class propertylistController extends Controller
 
     $properties = $query->paginate(18);
 
+    // kirim juga selectedTags
     return view('property-list', compact('properties', 'selectedTags'));
 }
-
-
-
-
-
 
     public function showPropertyDetail($id)
     {

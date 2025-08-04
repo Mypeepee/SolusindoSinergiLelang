@@ -97,13 +97,6 @@
 </div>
 <!-- Header End -->
 
-
-        <!-- Tombol baru (UI konsisten seperti desktop) -->
-        <button type="button" class="btn btn-dark w-100 py-3 d-md-none mb-3 fw-semibold" data-bs-toggle="modal" data-bs-target="#filterModal">
-            🔍 Filter Pencarian
-        </button>
-
-
 <!-- Tombol baru (UI konsisten seperti desktop) -->
 <button type="button" class="btn btn-dark w-100 py-3 d-md-none mb-3 fw-semibold" data-bs-toggle="modal" data-bs-target="#filterModal">
     Klik Untuk Filter Pencarian
@@ -286,6 +279,13 @@
 
         // Tambah tag (hindari duplikat berdasarkan value+type)
         function addTag(value, type) {
+            if (type === 'district') {
+                // Ambil nama kota dari format "KOTA SURABAYA - Tandes"
+                const cityName = value.split(' - ')[0].trim();
+                // Hapus tag kota yang sama dengan kota ini
+                selectedTagList = selectedTagList.filter(t => !(t.type === 'city' && t.value === cityName));
+            }
+
             if (!selectedTagList.find(t => t.value === value && t.type === type)) {
                 selectedTagList.push({ value, type });
                 renderTags();
@@ -302,7 +302,8 @@
             }
         });
     });
-    </script>
+</script>
+
 
 <!-- Desktop View Original Search Form (Visible Only on md and Up) -->
 <div class="container-fluid bg-primary mb-5 wow fadeIn d-none d-md-block" data-wow-delay="0.1s" style="padding: 35px;">
@@ -449,11 +450,18 @@
 
         // Tambah tag (cek duplikat berdasarkan value + type)
         function addTag(value, type) {
-            if (!selectedTags.find(t => t.value === value && t.type === type)) {
-                selectedTags.push({ value, type });
-                renderTags();
-            }
-        }
+    if (type === 'district') {
+        const cityName = value.split(' - ')[0].trim();
+        // Hapus tag kota dengan nama yang sama
+        selectedTags = selectedTags.filter(t => !(t.type === 'city' && t.value === cityName));
+    }
+
+    if (!selectedTags.find(t => t.value === value && t.type === type)) {
+        selectedTags.push({ value, type });
+        renderTags();
+    }
+}
+
 
         // Hapus tag
         selectedCitiesDesktop.addEventListener('click', function (e) {
@@ -624,9 +632,9 @@
 
 
 <!-- Property List Start -->
-@if (!empty($selectedCities))
+@if (!empty($selectedTags))
     <div class="alert alert-info">
-        Menampilkan properti di {{ implode(', ', $selectedCities) }}
+        Menampilkan properti di {{ implode(', ', $selectedTags) }}
     </div>
 @endif
 
