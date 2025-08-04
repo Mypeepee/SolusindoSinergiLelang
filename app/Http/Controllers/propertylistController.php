@@ -24,11 +24,10 @@ class propertylistController extends Controller
         return view('property-list', compact('properties'));
     }
 
-
     public function showproperty(Request $request)
 {
     $query = Property::query();
-    $selectedCities = [];
+    $selectedTags = [];
 
     // Filter harga minimum
     if ($request->filled('min_price')) {
@@ -52,25 +51,55 @@ class propertylistController extends Controller
         $query->where('provinsi', $request->province);
     }
 
-    // Filter kota
+    // Filter kota & kecamatan
     if ($request->filled('selected_city_values')) {
-        $selectedCities = explode(',', $request->selected_city_values);
-        $query->whereIn('kota', $selectedCities);
+        $selectedTags = explode(',', $request->selected_city_values);
+
+        $cities = [];
+        $districts = [];
+
+        foreach ($selectedTags as $tag) {
+            if (strpos($tag, ' - ') !== false) {
+                [$city, $district] = explode(' - ', $tag);
+                $districts[] = ['city' => trim($city), 'district' => trim($district)];
+            } else {
+                $cities[] = trim($tag);
+            }
+        }
+
+        $query->where(function ($q) use ($cities, $districts) {
+            // Jika ada kota
+            if (!empty($cities)) {
+                $q->orWhereIn('kota', $cities);
+            }
+
+            // Jika ada kecamatan
+            if (!empty($districts)) {
+                foreach ($districts as $d) {
+                    $q->orWhere(function ($sub) use ($d) {
+                        $sub->where('kota', $d['city'])
+                            ->where('kecamatan', $d['district']);
+                    });
+                }
+            }
+        });
     }
 
-    // ✅ Sorting berdasarkan parameter
+    // Sorting
     if ($request->sort === 'harga_asc') {
         $query->orderBy('harga', 'asc');
     } elseif ($request->sort === 'harga_desc') {
         $query->orderBy('harga', 'desc');
     } else {
-        $query->orderBy('tanggal_dibuat', 'desc'); // pakai kolom dari skema kamu
+        $query->orderBy('tanggal_dibuat', 'desc');
     }
 
     $properties = $query->paginate(18);
 
-    return view('property-list', compact('properties', 'selectedCities'));
+    return view('property-list', compact('properties', 'selectedTags'));
 }
+
+
 
 
 

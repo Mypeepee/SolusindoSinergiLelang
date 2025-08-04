@@ -79,37 +79,40 @@ class ScrapeProperty extends Command
 
     public function handle()
 {
+    // Pastikan sequence id_listing sesuai
     DB::statement("
-    SELECT setval(
-        pg_get_serial_sequence('property', 'id_listing'),
-        COALESCE(MAX(id_listing), 1),
-        true
-    ) FROM property
-");
-$baseUrl = 'https://lelang.go.id';
-$kategori = $this->argument('kategori') ?? 'Rumah'; // 🆕 bisa ganti kategori lewat argument artisan
-$page = 1;
-$allLinks = [];
-$allData = []; // 🆕 untuk menyimpan link + gambar
+        SELECT setval(
+            pg_get_serial_sequence('property', 'id_listing'),
+            COALESCE(MAX(id_listing), 1),
+            true
+        ) FROM property
+    ");
 
-$this->info("📄 Mulai scrape semua halaman kategori: $kategori");
+    $baseUrl = 'https://lelang.go.id';
+    $kategori = $this->argument('kategori') ?? 'Rumah';
+    $page = 1;
+    $allLinks = [];
 
-// Ubah kategori jadi lowercase untuk field tipe di DB
-$tipeProperti = strtolower($kategori); // e.g. Rumah -> rumah, Ruko -> ruko
+    $this->info("📄 Mulai scrape semua halaman kategori: $kategori");
 
-while (true) {
-    $listUrl = "$baseUrl/lot-lelang/katalog-lot-lelang?kategori=" . urlencode($kategori) . "&page=$page";
+    $tipeProperti = strtolower($kategori);
 
-    $this->info("🌐 Scraping halaman ke-$page: $listUrl");
+    // Ambil semua link existing sekali di awal
+    $existingLinks = DB::table('property')->pluck('link')->toArray();
+    $existingLinks = array_map('trim', $existingLinks);
+
+    while (true) {
+        $listUrl = "$baseUrl/lot-lelang/katalog-lot-lelang?kategori=" . urlencode($kategori) . "&page=$page";
+        $this->info("🌐 Scraping halaman ke-$page: $listUrl");
 
         try {
             $html = \Spatie\Browsershot\Browsershot::url($listUrl)
-        ->waitUntilNetworkIdle()
-        ->waitForFunction('document.querySelectorAll("a[href*=\"/detail-auction/\"]").length > 0')
-        ->userAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/119 Safari/537.36')
-        ->setOption('headless', true) // ⬅️ Debug visual
-        ->timeout(90)
-        ->bodyHtml();
+                ->waitUntilNetworkIdle()
+                ->waitForFunction('document.querySelectorAll("a[href*=\"/detail-auction/\"]").length > 0')
+                ->userAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/119 Safari/537.36')
+                ->setOption('headless', true)
+                ->timeout(90)
+                ->bodyHtml();
         } catch (\Exception $e) {
             $this->warn("⚠️ Tidak ada data di halaman ke-$page. Stop scraping.");
             break;
@@ -120,8 +123,7 @@ while (true) {
         $pageLinks = $crawler->filter('a')->each(function ($linkNode) use ($baseUrl) {
             $href = $linkNode->attr('href');
             if (str_contains($href, '/detail-auction/')) {
-                $cleanUrl = rtrim(trim($baseUrl . $href), '/');
-                return $cleanUrl;
+                return rtrim(trim($baseUrl . $href), '/');
             }
             return null;
         });
@@ -133,8 +135,16 @@ while (true) {
             break;
         }
 
-        $this->info("🔗 Ditemukan " . count($pageLinks) . " link detail property di halaman $page.");
+        // Hanya ambil link yang belum ada di DB
+        $pageLinks = array_diff($pageLinks, $existingLinks);
 
+        if (empty($pageLinks)) {
+            $this->info("⏭️ Semua link di halaman $page sudah ada di database. Skip.");
+            $page++;
+            continue;
+        }
+
+        $this->info("🔗 Ditemukan " . count($pageLinks) . " link baru di halaman $page.");
         foreach ($pageLinks as $detailUrl) {
             if (!in_array($detailUrl, $allLinks)) {
                 $allLinks[] = $detailUrl;
@@ -207,6 +217,10 @@ while (true) {
                     ');
                     $imageUrls = json_decode($imageJson, true);
                     $allImages = array_unique(array_filter($imageUrls));
+
+                    // 🔥 Batasi maksimal 7 gambar
+                    $allImages = array_slice($allImages, 0, 6);
+
 
                     $detailsJson = $browser->evaluate('
                     JSON.stringify({
@@ -419,6 +433,7 @@ while (true) {
                         : null,
                     'tanggal_dibuat' => now(),
                     'tanggal_diupdate' => now(),
+                    'link' => $detailUrl,
                 ]);
 
 

@@ -241,15 +241,20 @@
                                                 <td>{{ $agent->nama }}</td>
                                                 <td>+62{{ ltrim($agent->nomor_telepon, '0') }}</td>
                                                 <td>
-                                                    <a href="{{ asset($agent->gambar_ktp) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
+                                                    <a href="https://drive.google.com/file/d/{{ $agent->gambar_ktp }}/view"
+                                                       target="_blank"
+                                                       class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
                                                         <i class="fa fa-id-card me-1"></i> Lihat KTP
                                                     </a>
                                                 </td>
                                                 <td>
-                                                    <a href="{{ asset($agent->gambar_npwp) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
+                                                    <a href="https://drive.google.com/file/d/{{ $agent->gambar_npwp }}/view"
+                                                       target="_blank"
+                                                       class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
                                                         <i class="fa fa-file-invoice me-1"></i> Lihat NPWP
                                                     </a>
                                                 </td>
+
                                                 <td style="min-width: 230px;">
                                                     <div class="d-flex flex-wrap gap-2">
                                                         <!-- Form Verifikasi -->

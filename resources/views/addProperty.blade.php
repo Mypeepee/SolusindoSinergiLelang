@@ -195,11 +195,11 @@
 
                     <!-- Kelurahan -->
                     <div class="col-md-4">
-                        <label for="kelurahan" class="form-label">Kelurahan <span class="text-danger">*</span></label>
+                        <label for="kelurahan" class="form-label">Kecamatan <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-geo-fill"></i></span>
                             <select class="form-select" id="kelurahan" name="kelurahan" required disabled>
-                                <option value="">Pilih Kelurahan</option>
+                                <option value="">Pilih Kecamatan</option>
                             </select>
                         </div>
                     </div>
