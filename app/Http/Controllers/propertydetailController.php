@@ -271,10 +271,10 @@ private function getOrCreateFolder($name, $parentId, $token)
         'tipe' => 'required|string|max:50',
         'deskripsi' => 'required|string|max:2200',
         'harga' => 'required|numeric|min:0',
-        'lokasi' => 'required|string|max:100',
-        'provinsi' => 'required|string|max:50',
-        'kota' => 'required|string|max:50',
-        'kelurahan' => 'required|string|max:50',
+        'lokasi' => 'required|string|max:500',
+        'provinsi' => 'required|string|max:100',
+        'kota' => 'required|string|max:70',
+        'kelurahan' => 'required|string|max:70',
         'sertifikat' => 'required|string|max:100',
         'luas_tanah' => 'required|integer|min:0',
         'payment' => 'nullable|array',
@@ -357,9 +357,10 @@ private function getOrCreateFolder($name, $parentId, $token)
 
     $property->save();
 
-    return redirect()->route('agent.properties')->with('success', 'Properti berhasil diperbarui!');
-}
+    return redirect()->route('editproperty', ['id_listing' => $property->id_listing])
+    ->with('success', 'Properti berhasil diperbarui!');
 
+}
 
     public function edit($id)
     {

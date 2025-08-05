@@ -175,7 +175,7 @@ class ScrapeProperty extends Command
                         }
                         // ⏩ Scroll ke kanan penuh sekali lagi sebagai jaga-jaga
                         scrollDiv.scrollLeft = scrollDiv.scrollWidth;
-                        await new Promise(resolve => setTimeout(resolve, 500));
+                        await new Promise(resolve => setTimeout(resolve, 1000));
                     }
                 })()
             ');
