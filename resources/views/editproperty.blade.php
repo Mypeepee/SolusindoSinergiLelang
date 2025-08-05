@@ -226,11 +226,11 @@
 
             <!-- Kelurahan -->
             <div class="col-md-4">
-                <label for="kelurahan" class="form-label">Kelurahan <span class="text-danger">*</span></label>
+                <label for="kelurahan" class="form-label">Kecamatan <span class="text-danger">*</span></label>
                 <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-geo-fill"></i></span>
                     <select class="form-select" id="kelurahan" name="kelurahan" required>
-                        <option value="">Pilih Kelurahan</option>
+                        <option value="">Pilih Kecamatan</option>
                         @foreach($districts as $district)
                             <option value="{{ $district }}" {{ old('kelurahan', $property->kelurahan) == $district ? 'selected' : '' }}>{{ ucfirst($district) }}</option>
                         @endforeach

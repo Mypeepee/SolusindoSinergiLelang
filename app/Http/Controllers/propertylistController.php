@@ -25,78 +25,78 @@ class propertylistController extends Controller
     }
 
     public function showproperty(Request $request)
-{
-    $query = Property::query();
-    $selectedTags = [];
+    {
+        $query = Property::query();
+        $selectedTags = [];
 
-    // Filter harga minimum
-    if ($request->filled('min_price')) {
-        $minPrice = str_replace('.', '', $request->min_price);
-        $query->where('harga', '>=', $minPrice);
-    }
+        // Harga
+        if ($request->filled('min_price')) {
+            $query->where('harga', '>=', str_replace('.', '', $request->min_price));
+        }
+        if ($request->filled('max_price')) {
+            $query->where('harga', '<=', str_replace('.', '', $request->max_price));
+        }
 
-    // Filter harga maksimum
-    if ($request->filled('max_price')) {
-        $maxPrice = str_replace('.', '', $request->max_price);
-        $query->where('harga', '<=', $maxPrice);
-    }
+        // Tipe properti
+        if ($request->filled('property_type')) {
+            $query->where('tipe', $request->property_type);
+        }
 
-    // Filter tipe properti
-    if ($request->filled('property_type')) {
-        $query->where('tipe', $request->property_type);
-    }
-
-    // Filter provinsi
-    if ($request->filled('province')) {
-        $query->where('provinsi', $request->province);
-    }
-
-    // Filter kota & kecamatan
-    if ($request->filled('selected_city_values')) {
-        $selectedTags = explode(',', $request->selected_city_values);
-
+        // Ambil tag kota/kecamatan
         $cities = [];
         $districts = [];
-
-        foreach ($selectedTags as $tag) {
-            if (strpos($tag, ' - ') !== false) {
-                [$city, $district] = explode(' - ', $tag);
-                $districts[] = ['city' => trim($city), 'district' => trim($district)];
-            } else {
-                $cities[] = trim($tag);
+        if ($request->filled('selected_city_values')) {
+            $selectedTags = explode(',', $request->selected_city_values);
+            foreach ($selectedTags as $tag) {
+                if (strpos($tag, ' - ') !== false) {
+                    [$city, $district] = explode(' - ', $tag);
+                    $districts[] = ['city' => trim($city), 'district' => trim($district)];
+                } else {
+                    $cities[] = trim($tag);
+                }
             }
         }
 
-        $query->where(function ($q) use ($cities, $districts) {
-            if (!empty($cities)) {
-                $q->orWhereIn('kota', $cities);
-            }
-
-            if (!empty($districts)) {
+        // Filter lokasi:
+        if (!empty($districts)) {
+            // Kalau ada kecamatan → fokus kota+kecamatan
+            $query->where(function ($q) use ($districts) {
                 foreach ($districts as $d) {
                     $q->orWhere(function ($sub) use ($d) {
-                        $sub->where('kota', $d['city'])
-                            ->where('kecamatan', $d['district']);
+                        $sub->where('kota', 'ILIKE', '%' . $d['city'] . '%')
+                            ->where('kecamatan', 'ILIKE', '%' . $d['district'] . '%');
                     });
                 }
-            }
-        });
+            });
+        } elseif (!empty($cities)) {
+            // Kalau cuma kota
+            $query->where(function ($q) use ($cities) {
+                foreach ($cities as $city) {
+                    $q->orWhere('kota', 'ILIKE', '%' . $city . '%');
+                }
+            });
+        } elseif ($request->filled('province')) {
+            // Kalau cuma provinsi
+            $query->where(function ($q) use ($request) {
+                $q->where('provinsi', 'ILIKE', '%' . $request->province . '%')
+                  ->orWhere('lokasi', 'ILIKE', '%' . $request->province . '%');
+            });
+        }
+
+        // Sorting
+        if ($request->sort === 'harga_asc') {
+            $query->orderBy('harga', 'asc');
+        } elseif ($request->sort === 'harga_desc') {
+            $query->orderBy('harga', 'desc');
+        } else {
+            $query->orderBy('tanggal_dibuat', 'desc');
+        }
+
+        $properties = $query->paginate(18);
+
+        return view('property-list', compact('properties', 'selectedTags'));
     }
 
-    // Sorting
-    if ($request->sort === 'harga_asc') {
-        $query->orderBy('harga', 'asc');
-    } elseif ($request->sort === 'harga_desc') {
-        $query->orderBy('harga', 'desc');
-    } else {
-        $query->orderBy('tanggal_dibuat', 'desc');
-    }
-
-    $properties = $query->paginate(18);
-
-    // kirim juga selectedTags
-    return view('property-list', compact('properties', 'selectedTags'));
-}
 
     public function showPropertyDetail($id)
     {

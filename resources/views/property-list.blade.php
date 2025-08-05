@@ -631,12 +631,12 @@
     </script>
 
 
-<!-- Property List Start -->
-@if (!empty($selectedTags))
-    <div class="alert alert-info">
-        Menampilkan properti di {{ implode(', ', $selectedTags) }}
-    </div>
-@endif
+<div class="alert alert-info">
+    Menampilkan <strong>{{ $properties->total() }}</strong> properti
+    @if (!empty($selectedTags))
+        di {{ implode(', ', $selectedTags) }}
+    @endif
+</div>
 
 <div id="property-list-section" class="container-xxl py-5">
     <div class="container">
