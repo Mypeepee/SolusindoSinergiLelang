@@ -357,8 +357,14 @@ private function getOrCreateFolder($name, $parentId, $token)
 
     $property->save();
 
-    return redirect()->route('editproperty', ['id_listing' => $property->id_listing])
-    ->with('success', 'Properti berhasil diperbarui!');
+// === Ambil id_agent dari session ===
+$idAgent = session('id_agent') ?? 'DEFAULT';
+
+// Redirect ke detail
+return redirect()->route('property-detail', [
+    'id' => $property->id_listing,
+    'agent' => $idAgent
+])->with('success', 'Properti berhasil diperbarui!');
 }
 
     public function edit($id)
