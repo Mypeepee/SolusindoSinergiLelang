@@ -359,7 +359,6 @@ private function getOrCreateFolder($name, $parentId, $token)
 
     return redirect()->route('editproperty', ['id_listing' => $property->id_listing])
     ->with('success', 'Properti berhasil diperbarui!');
-
 }
 
     public function edit($id)
