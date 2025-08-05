@@ -725,6 +725,12 @@ function formatNumberInput(input) {
             </div>
         </div>
 
+        @if (isset($hotListingNote))
+            <div class="alert alert-warning text-center">
+                {{ $hotListingNote }}
+            </div>
+        @endif
+
         <div class="tab-content">
             <div id="tab-1" class="tab-pane fade show p-0 active">
                 <div class="row g-4">

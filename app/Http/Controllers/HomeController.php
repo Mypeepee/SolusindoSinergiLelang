@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
 use App\Models\Property;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cookie;
 
 class HomeController extends Controller
 {
@@ -27,13 +29,88 @@ class HomeController extends Controller
             ];
         });
 
-// Ambil 6 properti random dengan status "Tersedia" dan ada gambar
-$hotListings = Property::where('status', 'Tersedia')
-    ->whereNotNull('gambar')       // ✅ pastikan kolom gambar tidak null
-    ->where('gambar', '!=', '')    // ✅ pastikan kolom gambar tidak kosong
-    ->inRandomOrder()
-    ->take(6)
-    ->get();
+        $idaccount = session('id_account') ?? Cookie::get('id_account');
+        $hotListings = collect(); // default kosong
+        $hotListingNote = null;
+
+        if (!$idaccount) {
+            // ❌ Tidak login
+            $hotListings = Property::where('status', 'Tersedia')
+                ->whereNotNull('gambar')
+                ->where('gambar', '!=', '')
+                ->inRandomOrder()
+                ->take(6)
+                ->get();
+            $hotListingNote = "Silakan login untuk melihat listing properti yang sesuai dengan lokasi Anda.";
+        } else {
+            $account = Account::find($idaccount);
+
+            $kecamatan = $account->kecamatan ?? null;
+            $kota = $account->kota ?? null;
+            $provinsi = $account->provinsi ?? null;
+
+            if (!$kecamatan && !$kota && !$provinsi) {
+                // ⚠️ Semua lokasi kosong
+                $hotListings = Property::where('status', 'Tersedia')
+                    ->whereNotNull('gambar')
+                    ->where('gambar', '!=', '')
+                    ->inRandomOrder()
+                    ->take(6)
+                    ->get();
+                $hotListingNote = "Silakan lengkapi data lokasi Anda (provinsi, kota, kecamatan) di profil untuk melihat listing properti yang relevan.";
+            } else {
+                $query = Property::where('status', 'Tersedia')
+                    ->whereNotNull('gambar')
+                    ->where('gambar', '!=', '');
+
+                $results = collect();
+
+                // 1. Kecamatan + kota
+                if ($kecamatan && $kota) {
+                    $results = (clone $query)
+                        ->where('kecamatan', $kecamatan)
+                        ->where('kota', $kota)
+                        ->take(6)
+                        ->get();
+                }
+
+                // 2. Kota (hindari duplikat kecamatan jika sudah diambil)
+                if ($results->count() < 6 && $kota) {
+                    $remaining = 6 - $results->count();
+                    $more = (clone $query)
+                        ->where('kota', $kota)
+                        ->when($kecamatan, fn($q) => $q->where('kecamatan', '!=', $kecamatan))
+                        ->take($remaining)
+                        ->get();
+                    $results = $results->concat($more);
+                }
+
+                // 3. Provinsi (hindari duplikat kota)
+                if ($results->count() < 6 && $provinsi) {
+                    $remaining = 6 - $results->count();
+                    $more = (clone $query)
+                        ->where('provinsi', $provinsi)
+                        ->when($kota, fn($q) => $q->where('kota', '!=', $kota))
+                        ->take($remaining)
+                        ->get();
+                    $results = $results->concat($more);
+                }
+
+                // 4. Fallback: Random
+                if ($results->count() < 6) {
+                    $remaining = 6 - $results->count();
+                    $more = Property::where('status', 'Tersedia')
+                        ->whereNotNull('gambar')
+                        ->where('gambar', '!=', '')
+                        ->take($remaining)
+                        ->get();
+                    $results = $results->concat($more);
+                }
+
+                $hotListings = $results;
+
+            }
+        }
 
 
         // Ambil testimonial terakhir dengan rating
@@ -46,7 +123,7 @@ $hotListings = Property::where('status', 'Tersedia')
             ->get();
 
         // Kirim semua ke view
-        return view('index', compact('properties', 'hotListings', 'testimonials'));
+        return view('index', compact('properties', 'hotListings', 'hotListingNote', 'testimonials'));
     }
 
 }
