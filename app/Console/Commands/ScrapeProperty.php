@@ -150,77 +150,76 @@ class ScrapeProperty extends Command
                 $allLinks[] = $detailUrl;
                 $this->info("➡️ $detailUrl");
 
-                // 🔥 MASUK KE DETAIL & SCRAPE GAMBAR
-                try {
-                    $browser = \Spatie\Browsershot\Browsershot::url($detailUrl)
-                        ->setOption('headless', true) // 🔥 Non-headless biar lihat proses
-                        ->userAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/119 Safari/537.36')
-                        ->waitUntilNetworkIdle()
-                        ->waitForFunction('document.querySelector("div.scrollbar-hide") !== null', null, 18000)
-                        ->timeout(300); // Timeout lebih lama
+// 🔥 MASUK KE DETAIL & SCRAPE GAMBAR
+try {
+    $browser = \Spatie\Browsershot\Browsershot::url($detailUrl)
+        ->setOption('headless', true) // non-headless kalau mau debugging
+        ->userAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/119 Safari/537.36')
+        ->waitUntilNetworkIdle()
+        ->waitForFunction('document.querySelector("div.scrollbar-hide") !== null', null, 20000)
+        ->timeout(300);
 
-                    sleep(2); // 🕒 Tunggu halaman stabil
+    // 🕒 Scroll halus & delay panjang
+    $browser->evaluate('
+        (async () => {
+            const scrollDiv = document.querySelector("div.scrollbar-hide");
+            if (scrollDiv) {
+                const totalWidth = scrollDiv.scrollWidth;
+                const step = 200;
+                for (let x = 0; x <= totalWidth; x += step) {
+                    scrollDiv.scrollLeft = x;
+                    await new Promise(r => setTimeout(r, 400));
+                }
+                scrollDiv.scrollLeft = totalWidth;
+                await new Promise(r => setTimeout(r, 3000)); // tunggu extra 3 detik
+            }
+        })()
+    ');
 
-                    // 🔥 Scroll bertahap ke kanan & pastikan semua gambar lazy-load
-            $browser->evaluate('
-                (async () => {
-                    const scrollDiv = document.querySelector("div.scrollbar-hide");
-                    if (scrollDiv) {
-                        const totalWidth = scrollDiv.scrollWidth;
-                        const viewportWidth = scrollDiv.clientWidth;
-                        const step = viewportWidth / 2; // scroll setengah viewport
-                        for (let x = 0; x <= totalWidth; x += step) {
-                            scrollDiv.scrollLeft = x;
-                            await new Promise(resolve => setTimeout(resolve, 1000)); // ⏱️ tunggu 1 detik tiap scroll
-                        }
-                        // ⏩ Scroll ke kanan penuh sekali lagi sebagai jaga-jaga
-                        scrollDiv.scrollLeft = scrollDiv.scrollWidth;
-                        await new Promise(resolve => setTimeout(resolve, 1000));
+    // 🕒 Tunggu semua <img> punya src & jumlah stabil
+    $browser->waitForFunction('
+        (() => {
+            return new Promise(resolve => {
+                let stableTime = 0;
+                let lastCount = 0;
+                const check = setInterval(() => {
+                    const imgs = Array.from(document.querySelectorAll("div.scrollbar-hide img"));
+                    const count = imgs.filter(img => img.src && img.src.startsWith("https")).length;
+                    if (count === lastCount) {
+                        stableTime += 500;
+                    } else {
+                        stableTime = 0;
+                        lastCount = count;
                     }
-                })()
-            ');
+                    if (stableTime >= 3000 && count > 0) { // 3 detik stabil
+                        clearInterval(check);
+                        resolve(true);
+                    }
+                }, 500);
+            });
+        })()
+    ', null, 20000);
 
-            // 🕒 Tunggu sampai jumlah <img> stabil selama 2 detik
-            $browser->waitForFunction('
-                (() => {
-                    let lastCount = 0;
-                    let stableTime = 0;
-                    const checkInterval = 500; // cek tiap 0.5 detik
+    // 🔥 Ambil semua gambar setelah scroll & stabil
+    $imageJson = $browser->evaluate('
+        JSON.stringify(
+            Array.from(document.querySelectorAll("div.scrollbar-hide img"))
+            .map(img => img.src)
+            .filter(url => url && url.startsWith("https://file.lelang.go.id/lelang/photo_barang/"))
+        )
+    ');
+    $imageUrls = json_decode($imageJson, true);
+    $allImages = array_unique(array_filter($imageUrls));
 
-                    return new Promise(resolve => {
-                        const interval = setInterval(() => {
-                            const currentCount = document.querySelectorAll("div.scrollbar-hide img").length;
-                            if (currentCount === lastCount) {
-                                stableTime += checkInterval;
-                            } else {
-                                stableTime = 0;
-                                lastCount = currentCount;
-                            }
-                            if (stableTime >= 2500) { // ✅ stabil selama 2 detik
-                                clearInterval(interval);
-                                resolve(true);
-                            }
-                        }, checkInterval);
-                    });
-                })()
-            ', null, 18000); // Timeout maksimum 15 detik
+    // 🔥 Kalau gagal ambil gambar → simpan screenshot untuk dicek
+    if (empty($allImages)) {
+        $this->warn("⚠️ Gagal ambil gambar: $detailUrl → Simpan screenshot.");
+        $screenshotPath = storage_path('app/scrape-fail-'.time().'.png');
+        $browser->save($screenshotPath);
+    }
 
-
-                    // 🔥 Ambil semua <img> setelah scroll selesai & stabil
-                    $imageJson = $browser->evaluate('
-                    JSON.stringify(
-                        Array.from(
-                            document.querySelectorAll("div.scrollbar-hide img")
-                        ).map(img => img.src)
-                        .filter(url => url && url.startsWith("https://file.lelang.go.id/lelang/photo_barang/"))
-                    )
-                    ');
-                    $imageUrls = json_decode($imageJson, true);
-                    $allImages = array_unique(array_filter($imageUrls));
-
-                    // 🔥 Batasi maksimal 7 gambar
-                    $allImages = array_slice($allImages, 0, 6);
-
+    // Batasi maksimal 6 gambar
+    $allImages = array_slice($allImages, 0, 6);
 
                     $detailsJson = $browser->evaluate('
                     JSON.stringify({
@@ -414,7 +413,7 @@ class ScrapeProperty extends Command
                     'deskripsi' => "Lelang properti dengan luas tanah {$details['luas_tanah']} m2 di {$kabupaten}, {$provinsi}. Sertifikat: " . ($buktiKepemilikan ?? 'Tidak tersedia') . ". Batas penawaran hingga {$details['batas_penawaran']}.",
                     'tipe' => $tipeProperti,
                     'harga' => $hargaInt,
-                    'lokasi' => $details['alamat'] ?? 'Lokasi tidak diketahui',
+                    'lokasi' => substr($details['alamat'] ?? 'Lokasi tidak diketahui', 0, 500),
                     'luas' => $details['luas_tanah'] ?? null,
                     'provinsi' => $provinsi ?? null,
                     'kota' => $kabupaten ?? null,

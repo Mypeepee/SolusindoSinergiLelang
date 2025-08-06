@@ -101,20 +101,35 @@ public function registerAgent(Request $request)
         'cropped_image_ktp' => 'nullable|string',
         'cropped_image_npwp' => 'nullable|string',
         'cropped_profile_image' => 'nullable|string',
+
+        'kode_referal' => [
+            'nullable',
+            'regex:/^[0-9]{3}$/',
+            function ($attribute, $value, $fail) {
+                $fullCode = 'AG' . str_pad($value, 3, '0', STR_PAD_LEFT);
+                $exists = DB::table('agent')->where('id_agent', $fullCode)->exists();
+                if (!$exists) {
+                    $fail('Kode referral tidak valid atau tidak terdaftar.');
+                }
+            }
+        ],
     ]);
 
     $user = Account::where('id_account', $request->id_account)->first();
-    if (!$user) {
-        return redirect()->route('register')->with('error', 'Akun tidak ditemukan.');
+
+    // === CARI UPLINE DARI KODE REFERAL ===
+    $uplineId = null;
+    if ($request->filled('kode_referal')) {
+        $finalKode = 'AG' . str_pad($request->kode_referal, 3, '0', STR_PAD_LEFT);
+        $uplineId = $finalKode;
     }
 
     // === Siapkan Google Drive ===
     $accessToken = app(\App\Http\Controllers\GdriveController::class)->token();
-    $parentFolderId = '1u8faFug3GV3lB6y0L2TbwEX48IPAUtiQ'; // ID folder Data_Agent
+    $parentFolderId = '1u8faFug3GV3lB6y0L2TbwEX48IPAUtiQ';
     $folderName = \Str::slug($request->nama, '_');
     $targetFolderId = $this->getOrCreateFolder($folderName, $parentFolderId, $accessToken);
 
-    // === Upload ke Google Drive ===
     $uploadToDrive = function ($base64Data, $prefix) use ($targetFolderId, $accessToken) {
         $filename = $prefix . '_' . \Str::uuid() . '.jpg';
         $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $base64Data));
@@ -141,13 +156,12 @@ public function registerAgent(Request $request)
                     'type' => 'anyone',
                 ]);
 
-            return $fileId; // Kembaliin ID, bukan link
+            return $fileId;
         }
 
         return null;
     };
 
-    // === KTP ===
     $ktpFileId = $request->filled('cropped_image_ktp')
         ? $uploadToDrive($request->cropped_image_ktp, 'ktp')
         : DB::table('informasi_klien')->where('id_account', $user->id_account)->value('gambar_ktp');
@@ -156,12 +170,10 @@ public function registerAgent(Request $request)
         return back()->withErrors(['cropped_image_ktp' => 'Gambar KTP wajib diunggah.']);
     }
 
-    // === NPWP ===
     $npwpFileId = $request->filled('cropped_image_npwp')
         ? $uploadToDrive($request->cropped_image_npwp, 'npwp')
         : DB::table('informasi_klien')->where('id_account', $user->id_account)->value('gambar_npwp');
 
-    // === Foto Profil ===
     $profileFileId = null;
     if ($request->hasFile('picture')) {
         $path = $request->file('picture')->store('temp');
@@ -172,11 +184,12 @@ public function registerAgent(Request $request)
         $profileFileId = $uploadToDrive($request->cropped_profile_image, 'agent');
     }
 
-    // === Simpan ke DB Agent (HANYA ID) ===
+    // === SIMPAN AGENT ===
     Agent::updateOrCreate(
         ['id_account' => $user->id_account],
         [
             'id_account' => $user->id_account,
+            'upline_id' => $uplineId,
             'nama' => $request->nama,
             'email' => $request->email ?? $user->email,
             'deskripsi' => $request->deskripsi,
@@ -195,6 +208,9 @@ public function registerAgent(Request $request)
 
     return redirect('/join-agent')->with('success', 'Pendaftaran agen berhasil. Menunggu verifikasi dari Owner.');
 }
+
+
+
 
 
 

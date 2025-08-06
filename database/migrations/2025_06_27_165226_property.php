@@ -24,7 +24,7 @@ return new class extends Migration
             $table->string('kelurahan', 70)->nullable();
             $table->string('sertifikat', 100)->nullable();
             $table->enum('status', ['Tersedia', 'Terjual'])->nullable(); // check constraint
-            $table->string('gambar', 900)->nullable();
+            $table->string('gambar', 1500)->nullable();
             $table->string('payment', 20)->nullable();
             $table->bigInteger('uang_jaminan')->nullable();
             $table->date('batas_akhir_jaminan')->nullable();

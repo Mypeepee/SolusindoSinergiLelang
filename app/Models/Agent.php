@@ -35,6 +35,7 @@ class Agent extends Model
         'tanggal_diupdate',
         'gambar_ktp',
         'gambar_npwp',
+        'upline_id',
     ];
 
     // Agent dan Account (One to One)

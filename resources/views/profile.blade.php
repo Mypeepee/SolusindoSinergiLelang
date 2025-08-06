@@ -578,8 +578,6 @@
                 });
                 </script>
 
-
-
               <div class="mb-3">
                 <label for="nomor_telepon" class="form-label">Nomor Telepon</label>
                 <div class="input-group">
@@ -591,11 +589,16 @@
               <div class="mb-3">
                 <label for="kode_referal" class="form-label">Kode Referal</label>
                 @if ($user->roles === 'Agent')
-                    {{-- AGENT: tampilkan langsung kode referal penuh --}}
+                    {{-- AGENT: tampilkan kode referal + tombol copy --}}
                     <div class="input-group">
                         <input type="text" class="form-control text-center fw-bold" value="{{ $informasi_klien->id_agent ?? '' }}" readonly>
+                        <button class="btn btn-outline-primary fw-bold" type="button" onclick="copyShareLink()">Copy Link</button>
                     </div>
-                    <div class="form-text text-muted">Ini adalah kode referal Anda. Bagikan ke calon klien.</div>
+                    <div class="form-text text-muted">
+                        Bagikan link ini ke calon klien. Mereka akan otomatis terdaftar dengan kode referal Anda.
+                    </div>
+                    <!-- Hidden input untuk copy -->
+                    <input type="hidden" id="share_link" value="{{ url('/register?ref=' . ($informasi_klien->id_agent ?? '')) }}">
                 @else
                     @if (empty($user->kode_referal))
                         {{-- USER: Belum ada kode referal, bisa input --}}
@@ -621,7 +624,16 @@
                 @endif
             </div>
 
-
+            <script>
+                function copyShareLink() {
+                    const copyText = document.getElementById("share_link").value;
+                    navigator.clipboard.writeText(copyText).then(() => {
+                        alert("Link berhasil disalin!");
+                    }).catch(err => {
+                        alert("Gagal menyalin link");
+                    });
+                }
+            </script>
 
               <div class="d-grid">
                 <button type="submit" class="btn btn-primary btn-lg">

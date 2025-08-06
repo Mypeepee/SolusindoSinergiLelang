@@ -163,7 +163,10 @@
             <label class="form-label">Kode Referal</label>
             <div class="input-group">
                 <span class="input-group-text">AG</span>
-                <input type="text" name="kode_referal" class="form-control"
+                <input type="text"
+                       id="kode_referal"
+                       name="kode_referal"
+                       class="form-control"
                        value="{{ old('kode_referal') }}"
                        placeholder="Hubungi agent anda untuk mendapatkan kode referal"
                        pattern="[0-9]{3}"
@@ -171,6 +174,21 @@
             </div>
             <small class="text-muted">Opsional. Isi jika memiliki kode referal dari Agent.</small>
         </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const urlParams = new URLSearchParams(window.location.search);
+                const ref = urlParams.get('ref');
+                if (ref) {
+                    const input = document.getElementById('kode_referal');
+                    if (input) {
+                        input.value = ref.replace('AG', ''); // 🔥 hapus prefix AG kalau ada
+                        input.readOnly = true; // Biar ga bisa diubah
+                    }
+                }
+            });
+        </script>
+
 
 
         {{-- <!-- Lokasi -->
