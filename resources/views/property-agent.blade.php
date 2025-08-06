@@ -143,7 +143,7 @@
                         </a>
                     @endif
                     @if($agent->nomor_telepon)
-                        <a class="btn btn-sm btn-outline-success rounded-circle" href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $agent->nomor_telepon) }}" target="_blank">
+                        <a class="btn btn-sm btn-outline-success rounded-circle" href="https://wa.me/+62{{ preg_replace('/[^0-9]/', '', $agent->nomor_telepon) }}" target="_blank">
                             <i class="fab fa-whatsapp"></i>
                         </a>
                     @endif
