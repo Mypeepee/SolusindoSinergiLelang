@@ -176,22 +176,34 @@ try {
         })()
     ');
 
-    // 🕒 Tunggu semua <img> punya src & jumlah stabil
-    $browser->waitForFunction('
+        // 🕒 Tunggu semua <img> punya src & jumlah stabil
+        $browser->waitForFunction('
         (() => {
             return new Promise(resolve => {
                 let stableTime = 0;
                 let lastCount = 0;
                 const check = setInterval(() => {
                     const imgs = Array.from(document.querySelectorAll("div.scrollbar-hide img"));
-                    const count = imgs.filter(img => img.src && img.src.startsWith("https")).length;
+                    const validImgs = imgs.filter(img => img.src && img.src.startsWith("https"));
+                    const count = validImgs.length;
+
+                    // Jika sudah ada minimal 7 gambar, langsung resolve
+                    if (count >= 7) {
+                        clearInterval(check);
+                        resolve(true);
+                        return;
+                    }
+
+                    // Cek kestabilan jumlah gambar
                     if (count === lastCount) {
                         stableTime += 500;
                     } else {
                         stableTime = 0;
                         lastCount = count;
                     }
-                    if (stableTime >= 3000 && count > 0) { // 3 detik stabil
+
+                    // Jika jumlah stabil selama 3 detik dan minimal 1 gambar, resolve
+                    if (stableTime >= 3000 && count > 0) {
                         clearInterval(check);
                         resolve(true);
                     }
@@ -199,6 +211,7 @@ try {
             });
         })()
     ', null, 20000);
+
 
     // 🔥 Ambil semua gambar setelah scroll & stabil
     $imageJson = $browser->evaluate('
@@ -219,7 +232,7 @@ try {
     }
 
     // Batasi maksimal 6 gambar
-    $allImages = array_slice($allImages, 0, 6);
+    $allImages = array_slice($allImages, 0, 7);
 
                     $detailsJson = $browser->evaluate('
                     JSON.stringify({

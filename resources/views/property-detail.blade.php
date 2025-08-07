@@ -432,10 +432,10 @@
                                                                             <td><strong class="text-dark">Rp {{ number_format($property->harga, 0, ',', '.') }}</strong></td>
                                                                         </tr>
                                                                         <tr>
-                                                                            <th scope="row" class="bg-light">Biaya Dokumen</th>
-                                                                            <td>Rp {{ number_format($property->harga * 0.085, 0, ',', '.') }} (8,5% dari harga)</td>
+                                                                            <th scope="row" class="bg-light">Uang Jaminan</th>
+                                                                            <td>Rp {{ number_format($property->uang_jaminan, 0, ',', '.') }}</td>
                                                                         </tr>
-                                                                        <tr>
+                                                                        {{-- <tr>
                                                                             <th scope="row" class="bg-light">Biaya Pengosongan</th>
                                                                             <td>
                                                                                 @php
@@ -451,7 +451,7 @@
                                                                                 @endphp
                                                                                 Rp {{ number_format($biayaPengosongan, 0, ',', '.') }}
                                                                             </td>
-                                                                        </tr>
+                                                                        </tr> --}}
                                                                     </tbody>
                                                                 </table>
                                                             </div>
@@ -468,20 +468,19 @@
                                                                     </div>
                                                                     </div>
                                                                     <div class="col-12">
-                                                                    <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
-                                                                        <div class="text-uppercase small text-muted mb-1">Biaya Dokumen</div>
-                                                                        <div class="text-secondary">
-                                                                        <span class="fw-semibold text-primary">Rp {{ number_format($property->harga * 0.085, 0, ',', '.') }}</span>
-                                                                        <div class="small text-muted">(8,5% dari harga)</div>
+                                                                        <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
+                                                                            <div class="text-uppercase small text-muted mb-1">Uang Jaminan</div>
+                                                                            <div class="text-secondary">
+                                                                            <span class="fw-semibold text-primary">Rp {{ number_format($property->uang_jaminan, 0, ',', '.') }}</span>
+                                                                            </div>
                                                                         </div>
                                                                     </div>
-                                                                    </div>
-                                                                    <div class="col-12">
+                                                                    {{-- <div class="col-12">
                                                                     <div class="p-3 rounded-3 shadow-sm border bg-white w-100">
                                                                         <div class="text-uppercase small text-muted mb-1">Biaya Pengosongan</div>
                                                                         <div class="text-secondary fw-semibold text-primary">Rp {{ number_format($biayaPengosongan, 0, ',', '.') }}</div>
                                                                     </div>
-                                                                    </div>
+                                                                    </div> --}}
                                                                 </div>
                                                             </div>
                                                             <!-- CATATAN -->
@@ -490,7 +489,7 @@
                                                                     <i class="fa fa-info-circle me-2 text-warning"></i>
                                                                     <strong>Catatan:</strong> <br class="d-md-none">
                                                                     <span class="text-dark">
-                                                                        Sudah termasuk biaya pengosongan, ditambah biaya-biaya (biaya lelang, biaya balik nama sertifikat, biaya roya, biaya akte grosse, penerimaan negara bukan pajak dan Pajak-Pajak seperti BPHTB dan Pajak Penambahan Nilai), tidak termasuk tunggakan biaya utilitas apabila ada.
+                                                                        Belum termasuk biaya pengosongan, dan biaya balik nama.
                                                                     </span>
                                                                 </div>
                                                             </div>
