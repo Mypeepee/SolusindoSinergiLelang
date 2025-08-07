@@ -221,15 +221,41 @@
 
                                     <!-- Tombol Utama (Hubungi, Ikuti/Login, Share) -->
                                     <div class="d-flex flex-column flex-md-row gap-2 justify-content-md-center align-items-stretch">
-                                        <!-- Tombol Hubungi Agent -->
-                                        <a href="{{ $targetAgent && $targetAgent->nomor_telepon
-                                                ? 'https://wa.me/62' . ltrim($targetAgent->nomor_telepon) . '?text=' . urlencode('Halo ' . $targetAgent->nama . ', saya melihat property "' . $property->lokasi . '" di website. Bisa minta info lebih lengkap tentang property tersebut?')
-                                                : '#' }}"
-                                            class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
-                                            style="min-width: 180px;"
-                                            {{ $targetAgent && $targetAgent->nomor_telepon ? '' : 'onclick="return false;"' }}>
-                                            <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
-                                        </a>
+<!-- Tombol Hubungi Agent / Tanyakan Stok -->
+@if ($userRole === 'User')
+    <!-- Untuk User: tetap tombol WA ke Agent -->
+    <a href="{{ $targetAgent && $targetAgent->nomor_telepon
+            ? 'https://wa.me/62' . ltrim($targetAgent->nomor_telepon) . '?text=' . urlencode('Halo ' . $targetAgent->nama . ', saya melihat property "' . $property->lokasi . '" di website. Bisa minta info lebih lengkap tentang property tersebut?')
+            : '#' }}"
+        class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
+        style="min-width: 180px;"
+        {{ $targetAgent && $targetAgent->nomor_telepon ? '' : 'onclick="return false;"' }}>
+        <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
+    </a>
+@else
+    <!-- Untuk selain User: tombol copy & buka grup -->
+    <a href="https://chat.whatsapp.com/BRKrMZk2wWJ9rEGV7Oy06V"
+        onclick="copyTanyakanStok('{{ $property->id_listing }}', `{{ $property->lokasi }}`, `{{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->translatedFormat('d F Y') }}`)"
+        target="_blank"
+        class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
+        style="min-width: 180px;">
+        <i class="fa fa-question-circle me-2"></i>Tanyakan Stok
+    </a>
+
+    <!-- Script untuk copy pesan ke clipboard -->
+    <script>
+        function copyTanyakanStok(id, lokasi, tanggalLelang) {
+            const teks = `${id}: ${lokasi}\nTanggal Lelang: ${tanggalLelang}\nTunggu Update Stok Please`;
+            navigator.clipboard.writeText(teks).then(() => {
+                alert("✅ Pesan berhasil disalin ke clipboard.\nTinggal paste di grup WhatsApp.");
+            }).catch(() => {
+                alert("❌ Gagal menyalin pesan.");
+            });
+        }
+    </script>
+@endif
+
+
 
                                         <!-- Tombol Ikuti / Login -->
                                         @if ($userId && $userRole === 'User')
