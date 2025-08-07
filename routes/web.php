@@ -221,10 +221,4 @@ Route::get('/property', [PropertyListController::class, 'PropertyList'])->name('
 
 Route::get('/property/export/{tipe}', [AgentAdminController::class, 'exportByType'])->name('property.export');
 
-
-
-
-
-
-
-
+Route::get('/property/{id}', [ProductController::class, 'apiShow']);

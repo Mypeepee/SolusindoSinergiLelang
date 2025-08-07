@@ -21,6 +21,23 @@ use Illuminate\Support\Facades\Http;
 
 class productController extends Controller
 {
+    public function apiShow($id)
+{
+    $property = Property::where('id_listing', $id)->first();
+
+    if (!$property) {
+        return response()->json(['message' => 'Property tidak ditemukan'], 404);
+    }
+
+    return response()->json([
+        'id_listing' => $property->id_listing,
+        'judul' => $property->judul,
+        'vendor' => $property->vendor ?? 'Vendor tidak diketahui',
+        'lokasi' => $property->lokasi,
+        'batas_akhir_penawaran' => \Carbon\Carbon::parse($property->batas_akhir_penawaran)->translatedFormat('d F Y')
+    ]);
+}
+
     // public function showRandom()
     // {
     //     // Ambil 6 properti secara acak dengan status available
