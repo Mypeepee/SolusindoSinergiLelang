@@ -1,26 +1,52 @@
-const text = message.body?.toLowerCase()?.replace(/\s+/g, ' ').trim() || '';
+const { create } = require('@open-wa/wa-automate');
+const axios = require('axios');
 
-if (text.startsWith("update stok")) {
-  const match = text.match(/update\W*stok\W*(\d+)/i);
-  if (!match) {
-    await client.sendText(message.from, 'Format salah. Contoh: update stok 61151');
-    return;
-  }
+// Jalankan client
+create().then(start).catch(console.error);
 
-  const id = match[1];
+function start(client) {
+  client.onMessage(async (message) => {
+    try {
+      // Normalisasi teks
+      const text = (message.body || '')
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim();
 
-  try {
-    const res = await axios.get(`http://localhost:8000/api/property/${id}`);
-    const data = res.data;
+      // Hanya tanggapi perintah "update stok <id>"
+      if (!text.startsWith('update')) return;
 
-    const reply =
-    `${data.id_listing}: ${data.lokasi}
-    Tanggal Lelang: ${data.batas_akhir_penawaran}
-    Tunggu Update Stok Please`;
+      const match = text.match(/update\W*stok\W*(\d+)/i);
+      if (!match) {
+        await client.sendText(
+          message.from,
+          'Format salah. Contoh: update stok 61151'
+        );
+        return;
+      }
 
-    await client.sendText(message.from, reply);
-  } catch (err) {
-    console.error(err.message);
-    await client.sendText(message.from, `Data untuk ID ${id} tidak ditemukan.`);
-  }
+      const id = match[1];
+      console.log('ID diterima:', id);
+
+      // Panggil API Laravel kamu
+      try {
+        const res = await axios.get(
+          `http://localhost:8000/api/property/${id}`,
+          { timeout: 10000 }
+        );
+        const p = res.data || {};
+
+        const reply = `${p.id_listing}: ${p.lokasi}
+Tanggal Lelang: ${p.batas_akhir_penawaran} jam 09:00 WIB
+Tunggu Update Stok Please`;
+
+        await client.sendText(message.from, reply);
+      } catch (e) {
+        console.error('API error:', e.message);
+        await client.sendText(message.from, `Data untuk ID ${id} tidak ditemukan.`);
+      }
+    } catch (err) {
+      console.error('Handler error:', err);
+    }
+  });
 }
