@@ -200,7 +200,7 @@ Route::post('/update-password/{email}', [AuthController::class, 'updatePassword'
 Route::get('/closing/{id_listing}/{id_klien}', [AgentAdminController::class, 'showClosing'])->name('closing.show');
 Route::post('/agent/closing', [AgentAdminController::class, 'agentclosing'])->name('agent.closing');
 
-Route::get('/download-surat-kuasa', [SuratKuasaController::class, 'download'])->name('download.suratkuasa');
+// Route::get('/download-surat-kuasa', [SuratKuasaController::class, 'download'])->name('download.suratkuasa');
 Route::post('/update-status-closing', [AgentAdminController::class, 'updateStatusClosing']);
 
 // Route untuk update KTP
@@ -222,3 +222,21 @@ Route::get('/property', [PropertyListController::class, 'PropertyList'])->name('
 Route::get('/property/export/{tipe}', [AgentAdminController::class, 'exportByType'])->name('property.export');
 
 Route::get('/property/{id}', [ProductController::class, 'apiShow']);
+Route::get('/ping', fn() => ['ok' => true]); // test cepat
+
+Route::get('/property/{id}', function ($id) {
+    $p = Property::where('id_listing', $id)->first();
+
+    if (!$p) {
+        return response()->json(['message' => 'Property tidak ditemukan'], 404);
+    }
+
+    return response()->json([
+        'id_listing' => $p->id_listing,
+        'vendor' => $p->vendor ?? 'Vendor tidak diketahui',
+        'lokasi' => $p->lokasi,
+        'batas_akhir_penawaran' => $p->batas_akhir_penawaran
+            ? Carbon::parse($p->batas_akhir_penawaran)->translatedFormat('d F Y')
+            : null,
+    ]);
+});
