@@ -222,7 +222,12 @@
                                     <!-- Tombol Utama (Hubungi, Ikuti/Login, Share) -->
                                     <div class="d-flex flex-column flex-md-row gap-2 justify-content-md-center align-items-stretch">
                                         <!-- Tombol Hubungi Agent / Tanyakan Stok -->
-                                        @if ($userRole === 'User')
+                                        @php
+                                            // === Deteksi login & role via session ===
+                                            $loggedIn = session()->has('id_account');                 // true kalau sudah login
+                                            $role     = $userRole ?? session('roles', 'User');        // fallback ke 'User' kalau kosong
+                                        @endphp
+                                        @if (!$loggedIn || $role === 'User')
                                             <!-- Untuk User: tetap tombol WA ke Agent -->
                                             <a href="{{ $targetAgent && $targetAgent->nomor_telepon
                                                     ? 'https://wa.me/62' . ltrim($targetAgent->nomor_telepon) . '?text=' . urlencode('Halo ' . $targetAgent->nama . ', saya melihat property "' . $property->lokasi . '" di website. Bisa minta info lebih lengkap tentang property tersebut?')
