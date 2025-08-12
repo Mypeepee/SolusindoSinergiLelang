@@ -301,8 +301,7 @@
                                                       alert("❌ Gagal menyalin pesan. Browser mungkin memblokir akses clipboard.");
                                                     });
                                                 }
-                                                </script>
-
+                                            </script>
                                         @endif
 
                                         <!-- Tombol Ikuti / Login -->
