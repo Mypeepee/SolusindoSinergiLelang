@@ -24,11 +24,9 @@ class propertyagentController extends Controller
 
     public function showPropertyAgent(Request $request)
 {
-    // Ambil semua agent yang sudah role-nya 'Agent'
+    // Ambil semua agent yang status-nya 'Aktif'
     $agents = DB::table('agent')
-        ->join('account', 'agent.id_account', '=', 'account.id_account')
-        ->where('account.roles', 'Agent') // Filter hanya Agent yang disetujui
-        ->select('agent.*', 'account.nama as account_nama', 'account.roles') // Ambil juga nama dari account
+        ->where('status', 'Aktif') // Filter hanya agent aktif
         ->get();
 
     $properties = [];
@@ -37,10 +35,8 @@ class propertyagentController extends Controller
     // Jika ada agent_id di query, ambil property milik agent itu
     if ($request->filled('agent_id')) {
         $selectedAgent = DB::table('agent')
-            ->join('account', 'agent.id_account', '=', 'account.id_account')
-            ->where('agent.id_agent', $request->agent_id)
-            ->where('account.roles', 'Agent') // Pastikan agent yang dipilih juga sudah disetujui
-            ->select('agent.*', 'account.nama as account_nama', 'account.roles')
+            ->where('id_agent', $request->agent_id)
+            ->where('status', 'Aktif') // Pastikan agent yang dipilih juga aktif
             ->first();
 
         if ($selectedAgent) {
@@ -53,6 +49,7 @@ class propertyagentController extends Controller
 
     return view('property-agent', compact('agents', 'properties', 'selectedAgent'));
 }
+
 
 
     public function filterPropertyByAgent(Request $request)
