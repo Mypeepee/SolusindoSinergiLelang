@@ -251,15 +251,15 @@
                                             $loggedIn = session()->has('id_account');                 // true kalau sudah login
                                             $role     = $userRole ?? session('roles', 'User');
                                             if (app('router')->has('property.show')) {
-        $baseUrl = route('property.show', $property->id_listing);
-    } else {
-        $baseUrl = url()->current();
-    }
-                                            $propertyUrl = $baseUrl . '?' . http_build_query([
-        'src'   => 'wa_group',
-        'share' => $shareAgent,
-        // misal sekalian sisipkan referral (kalau mau): 'ref' => $shareAgent,
-    ]);       // fallback ke 'User' kalau kosong
+                                                $baseUrl = route('property.show', $property->id_listing);
+                                            } else {
+                                                $baseUrl = url()->current();
+                                            }
+                                                                                    $propertyUrl = $baseUrl . '?' . http_build_query([
+                                                'src'   => 'wa_group',
+                                                'share' => $shareAgent,
+                                                // misal sekalian sisipkan referral (kalau mau): 'ref' => $shareAgent,
+                                            ]);       // fallback ke 'User' kalau kosong
                                         @endphp
                                         @if (!$loggedIn || $role === 'User')
                                             <!-- Untuk User: tetap tombol WA ke Agent -->
@@ -274,24 +274,35 @@
                                         @else
                                             <!-- Untuk selain User: tombol copy & buka grup -->
                                             <a href="https://chat.whatsapp.com/BRKrMZk2wWJ9rEGV7Oy06V"
-                                            onclick="copyTanyakanStok('{{ $property->id_listing }}', `{{ $property->lokasi }}`, `{{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->translatedFormat('d F Y') }}`, `{{ $propertyUrl }}`)"
-                                            target="_blank"
-                                            class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
-                                            style="min-width: 180px;">
-                                            <i class="fa fa-question-circle me-2"></i>Tanyakan Stok
-                                         </a>
+                                                onclick="copyTanyakanStok('{{ $property->id_listing }}', `{{ $property->lokasi }}`, `{{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->translatedFormat('d F Y') }}`, `{{ $propertyUrl }}`)"
+                                                target="_blank"
+                                                class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
+                                                style="min-width: 180px;">
+                                                <i class="fa fa-question-circle me-2"></i>Tanyakan Stok
+                                            </a>
 
-                                         <script>
-                                         function copyTanyakanStok(id, lokasi, tanggalLelang, urlSumber) {
-                                           const teks = `${id}: ${lokasi}
-                                         Tanggal Lelang: ${tanggalLelang}
-                                         Tunggu Update Stok Please
-                                         Sumber: ${urlSumber}`;
-                                           navigator.clipboard.writeText(teks)
-                                             .then(() => alert("✅ Pesan disalin. Tinggal paste di grup WhatsApp."))
-                                             .catch(() => alert("❌ Gagal menyalin pesan."));
-                                         }
-                                         </script>
+                                            <script>
+                                                function copyTanyakanStok(id, lokasi, tanggalLelang, urlSumber) {
+                                                  const lines = [
+                                                    `📍 *${id}*: ${lokasi}`,
+                                                    `📅 *Tanggal Lelang*: ${tanggalLelang}`,
+                                                    `📢 Mohon update stok please`,
+                                                    `🔗 Detail: ${urlSumber}`
+                                                  ];
+
+                                                  const teks = lines.join("\n");
+
+                                                  navigator.clipboard.writeText(teks)
+                                                    .then(() => {
+                                                      alert("✅ Pesan berhasil disalin. Tinggal paste di grup WhatsApp.");
+                                                    })
+                                                    .catch(err => {
+                                                      console.error(err);
+                                                      alert("❌ Gagal menyalin pesan. Browser mungkin memblokir akses clipboard.");
+                                                    });
+                                                }
+                                                </script>
+
                                         @endif
 
                                         <!-- Tombol Ikuti / Login -->
