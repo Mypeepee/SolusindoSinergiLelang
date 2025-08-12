@@ -193,21 +193,45 @@
                                     </div>
                                 </div>
 
+                                @php
+                                $userId = Session::get('id_account') ?? Cookie::get('id_account');
+
+                                $loggedIn = !empty($userId);
+
+                                $roleRaw = $loggedIn ? \App\Models\Account::where('id_account', $userId)->value('roles') : null;
+                                $role = strtolower(trim($roleRaw ?? 'User'));
+
+                                $privilegedRoles = ['agent', 'owner', 'register'];
+                                $showJaminan = $loggedIn && in_array($role, $privilegedRoles, true);
+
+                                $tglJaminan = $property->batas_akhir_jaminan
+                                    ? \Carbon\Carbon::parse($property->batas_akhir_jaminan)->translatedFormat('d M Y')
+                                    : '-';
+                                @endphp
+
                                 <!-- Detail Properti -->
                                 <div class="row mb-4">
                                     <div class="col-md-6 col-lg-4 text-center border-top border-bottom py-3">
                                         <span class="d-inline-block text-black mb-0 caption-text">Luas Tanah</span>
                                         <strong class="d-block">{{ $property->luas }} m<sup>2</sup></strong>
                                     </div>
+
                                     <div class="col-md-6 col-lg-4 text-center border-top border-bottom py-3">
                                         <span class="d-inline-block text-black mb-0 caption-text">Sertifikat</span>
-                                        <strong class="d-block">{{ $property->sertifikat }}</strong>
+                                        <strong class="d-block">{{ $property->sertifikat ?? '-' }}</strong>
                                     </div>
+
                                     <div class="col-md-6 col-lg-4 text-center border-top border-bottom py-3">
-                                        <span class="d-inline-block text-black mb-0 caption-text">Batas Setoran Jaminan</span>
-                                        <strong class="d-block">{{ \Carbon\Carbon::parse($property->batas_akhir_jaminan)->format('d M Y') }}</strong>
+                                        @if ($showJaminan)
+                                            <span class="d-inline-block text-black mb-0 caption-text">Batas Setoran Jaminan</span>
+                                            <strong class="d-block">{{ $tglJaminan }}</strong>
+                                        @else
+                                            <span class="d-inline-block text-black mb-0 caption-text">Tipe</span>
+                                            <strong class="d-block">{{ $property->tipe ?? '-' }}</strong>
+                                        @endif
                                     </div>
                                 </div>
+
 
                                 <div class="position-relative mt-4">
                                     @php
@@ -225,7 +249,17 @@
                                         @php
                                             // === Deteksi login & role via session ===
                                             $loggedIn = session()->has('id_account');                 // true kalau sudah login
-                                            $role     = $userRole ?? session('roles', 'User');        // fallback ke 'User' kalau kosong
+                                            $role     = $userRole ?? session('roles', 'User');
+                                            if (app('router')->has('property.show')) {
+        $baseUrl = route('property.show', $property->id_listing);
+    } else {
+        $baseUrl = url()->current();
+    }
+                                            $propertyUrl = $baseUrl . '?' . http_build_query([
+        'src'   => 'wa_group',
+        'share' => $shareAgent,
+        // misal sekalian sisipkan referral (kalau mau): 'ref' => $shareAgent,
+    ]);       // fallback ke 'User' kalau kosong
                                         @endphp
                                         @if (!$loggedIn || $role === 'User')
                                             <!-- Untuk User: tetap tombol WA ke Agent -->
@@ -240,24 +274,24 @@
                                         @else
                                             <!-- Untuk selain User: tombol copy & buka grup -->
                                             <a href="https://chat.whatsapp.com/BRKrMZk2wWJ9rEGV7Oy06V"
-                                                onclick="copyTanyakanStok('{{ $property->id_listing }}', `{{ $property->lokasi }}`, `{{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->translatedFormat('d F Y') }}`)"
-                                                target="_blank"
-                                                class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
-                                                style="min-width: 180px;">
-                                                <i class="fa fa-question-circle me-2"></i>Tanyakan Stok
-                                            </a>
+                                            onclick="copyTanyakanStok('{{ $property->id_listing }}', `{{ $property->lokasi }}`, `{{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->translatedFormat('d F Y') }}`, `{{ $propertyUrl }}`)"
+                                            target="_blank"
+                                            class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
+                                            style="min-width: 180px;">
+                                            <i class="fa fa-question-circle me-2"></i>Tanyakan Stok
+                                         </a>
 
-                                            <!-- Script untuk copy pesan ke clipboard -->
-                                            <script>
-                                                function copyTanyakanStok(id, lokasi, tanggalLelang) {
-                                                    const teks = `${id}: ${lokasi}\nTanggal Lelang: ${tanggalLelang}\nTunggu Update Stok Please`;
-                                                    navigator.clipboard.writeText(teks).then(() => {
-                                                        alert("✅ Pesan berhasil disalin ke clipboard.\nTinggal paste di grup WhatsApp.");
-                                                    }).catch(() => {
-                                                        alert("❌ Gagal menyalin pesan.");
-                                                    });
-                                                }
-                                            </script>
+                                         <script>
+                                         function copyTanyakanStok(id, lokasi, tanggalLelang, urlSumber) {
+                                           const teks = `${id}: ${lokasi}
+                                         Tanggal Lelang: ${tanggalLelang}
+                                         Tunggu Update Stok Please
+                                         Sumber: ${urlSumber}`;
+                                           navigator.clipboard.writeText(teks)
+                                             .then(() => alert("✅ Pesan disalin. Tinggal paste di grup WhatsApp."))
+                                             .catch(() => alert("❌ Gagal menyalin pesan."));
+                                         }
+                                         </script>
                                         @endif
 
                                         <!-- Tombol Ikuti / Login -->
