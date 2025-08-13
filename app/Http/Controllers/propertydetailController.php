@@ -25,7 +25,27 @@ class propertydetailController extends Controller
 
     public function PropertyDetail(Request $request, $id, $agent = null)
 {
+    $ua = Str::lower($request->header('User-Agent', ''));
+    $isCrawler = Str::contains($ua, ['facebookexternalhit', 'whatsapp', 'telegrambot', 'twitterbot', 'linkedinbot']);
+
     $property = Property::where('id_listing', $id)->first();
+
+    // HANYA redirect kalau BUKAN crawler
+    if (!$isCrawler) {
+        if (session()->has('id_account')) {
+            $userReferral = DB::table('account')
+                ->where('id_account', session('id_account'))
+                ->value('kode_referal');
+
+            if ($userReferral && $agent !== $userReferral) {
+                return redirect()->to(url("/property-detail/{$id}/".$userReferral));
+            }
+        }
+
+        if (!$agent && session()->has('id_agent')) {
+            return redirect()->to(url("/property-detail/{$id}/".session('id_agent')));
+        }
+    }
 
     // **Ambil kode referal dari account jika user login**
     if (session()->has('id_account')) {
