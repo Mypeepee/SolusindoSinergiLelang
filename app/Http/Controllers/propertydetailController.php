@@ -26,7 +26,7 @@ class propertydetailController extends Controller
     public function PropertyDetail(Request $request, $id, $agent = null)
 {
     // ================================
-    // 🔒 ADD: Deteksi crawler (bot OG)
+    // 🔒 Tambahan: deteksi crawler
     // ================================
     $ua = \Illuminate\Support\Str::lower($request->header('User-Agent', ''));
     $isCrawler = \Illuminate\Support\Str::contains($ua, [
@@ -36,7 +36,6 @@ class propertydetailController extends Controller
     $property = Property::where('id_listing', $id)->first();
 
     // **Ambil kode referal dari account jika user login**
-    // 🔒 ADD: Redirect referral HANYA untuk non-crawler (biar bot tidak diping-pong)
     if (!$isCrawler && session()->has('id_account')) {
         $userReferral = DB::table('account')
             ->where('id_account', session('id_account'))
@@ -51,7 +50,6 @@ class propertydetailController extends Controller
     }
 
     // Kalau belum ada agent di URL, tapi ada di session → redirect
-    // 🔒 ADD: Juga hanya untuk non-crawler
     if (!$isCrawler && !$agent && session()->has('id_agent')) {
         return redirect()->to(url("/property-detail/{$id}/" . session('id_agent')));
     }
@@ -62,7 +60,6 @@ class propertydetailController extends Controller
         $sharedAgent = \App\Models\Agent::where('id_agent', $agent)->first();
 
         // Kalau agent valid → catat klik ke referral_clicks
-        // 🔒 ADD: Hindari insert saat crawler (biar ringan & tanpa side-effect)
         if (!$isCrawler && $sharedAgent && $property) {
             \DB::table('referral_clicks')->insert([
                 'id_agent'   => $sharedAgent->id_agent,
@@ -102,9 +99,8 @@ class propertydetailController extends Controller
             ->limit(10)
             ->get();
 
-        $similarLocation = "Kota " . $property->kota; // ✅ update location fallback
+        $similarLocation = "Kota " . $property->kota;
 
-        // ✅ Kalau di kota juga tidak ada ➡️ ambil semua di kota
         if ($similarProperties->isEmpty()) {
             $similarProperties = DB::table('property')
                 ->where('id_listing', '!=', $property->id_listing)
@@ -112,7 +108,7 @@ class propertydetailController extends Controller
                 ->limit(10)
                 ->get();
 
-            $similarLocation = "Kota " . $property->kota; // tetap kota
+            $similarLocation = "Kota " . $property->kota;
         }
     }
 
@@ -143,7 +139,7 @@ class propertydetailController extends Controller
     }
 
     // =======================
-    // 🔧 Perbaikan OG Image (kode asli kamu — DIPERTAHANKAN)
+    // 🔧 OG Image (kode asli kamu) + FAILSAFE
     // =======================
     $imgRaw = $property->gambar ?? null;
 
@@ -157,95 +153,109 @@ class propertydetailController extends Controller
         $imgRaw = trim(explode(',', $imgRaw)[0]);
     }
 
-    // Buat URL absolut (HTTPS) yang bisa diakses crawler
+    // Buat URL absolut (bisa HTTP/HTTPS sesuai server)
     $ogImage = null;
     if ($imgRaw) {
         if (\Illuminate\Support\Str::startsWith($imgRaw, ['http://', 'https://'])) {
             $ogImage = $imgRaw;
         } elseif (\Illuminate\Support\Str::startsWith($imgRaw, ['storage/', '/storage/'])) {
-            // file di storage symlink
             $ogImage = url(\Illuminate\Support\Str::start($imgRaw, '/'));
         } elseif (\Illuminate\Support\Str::startsWith($imgRaw, ['public/', '/public/'])) {
-            // convert public/foo.jpg -> /storage/foo.jpg (butuh storage:link)
             $path = ltrim(preg_replace('#^/?public/#', '', $imgRaw), '/');
             $ogImage = url('/storage/'.$path);
         } else {
-            // anggap relative di public/
             $ogImage = url('/'.ltrim($imgRaw, '/'));
         }
     }
-    // Fallback jika kosong / gagal
     if (!$ogImage) {
         $ogImage = asset('img/og-default.jpg');
     }
 
-    // Tambahkan cache-buster agar scraper ambil versi terbaru
-    $ogImage .= (str_contains($ogImage, '?') ? '&' : '?')
-              . 'v=' . ($property->updated_at?->timestamp ?? time());
+    // Tambahkan cache-buster (versi asli kamu)
+    $ogImageWithQS = $ogImage . ((str_contains($ogImage, '?') ? '&' : '?')
+                    . 'v=' . ($property->updated_at?->timestamp ?? time()));
 
-    // =========================================
-    // 🔒 ADD: Generate DERIVATIVE 1200×630 JPG
-    // =========================================
-    // Path derivative lokal yang stabil untuk semua listing
+    // =====================================================
+    // 🧯 FAILSAFE: Generate derivative 1200x630 + verifikasi
+    // =====================================================
     $derivativeRel      = "og/property_{$property->id_listing}.jpg";
     $derivativeDiskPath = storage_path('app/public/'.$derivativeRel);
-    $derivativeUrl      = secure_url('/storage/'.$derivativeRel); // HTTPS selalu
+    $derivativePublic   = '/storage/'.$derivativeRel;
 
-    // Bangun kalau belum ada
+    // Cek apakah storage symlink sudah ada
+    $storageLinked = is_link(public_path('storage')) || file_exists(public_path('storage/.'));
+
+    // Bangun derivative jika mungkin
     if (!file_exists($derivativeDiskPath)) {
         try {
-            if (!is_dir(dirname($derivativeDiskPath))) {
+            if ($storageLinked && !is_dir(dirname($derivativeDiskPath))) {
                 @mkdir(dirname($derivativeDiskPath), 0775, true);
             }
 
             if (class_exists(\Intervention\Image\ImageManagerStatic::class)) {
-                // Sumber: utamakan URL langsung kalau eksternal
+                // Sumber gambar: prioritas URL eksternal; jika tidak, cari di public/
                 if ($imgRaw && \Illuminate\Support\Str::startsWith($imgRaw, ['http://','https://'])) {
                     $binary = @file_get_contents($imgRaw);
                     if ($binary === false) throw new \RuntimeException('Gagal unduh gambar eksternal');
                     $img = \Intervention\Image\ImageManagerStatic::make($binary);
                 } else {
-                    // Local fallback (public/ atau default)
                     $local = public_path('/'.ltrim($imgRaw ?: 'img/og-default.jpg', '/'));
-                    if (!file_exists($local)) {
-                        $local = public_path('img/og-default.jpg');
-                    }
+                    if (!file_exists($local)) $local = public_path('img/og-default.jpg');
                     $img = \Intervention\Image\ImageManagerStatic::make($local);
                 }
-
-                // Fit 1200x630 (upsize true)
                 $img->fit(1200, 630, function($c){ $c->upsize(); })
-                    ->encode('jpg', 85)
-                    ->save($derivativeDiskPath);
-            } else {
-                // Tanpa Intervention: copy saja sumber lokal / default
-                $local = public_path('/'.ltrim($imgRaw ?: 'img/og-default.jpg', '/'));
-                if (!file_exists($local)) {
-                    $local = public_path('img/og-default.jpg');
+                    ->encode('jpg', 85);
+
+                if ($storageLinked) {
+                    $img->save($derivativeDiskPath);
                 }
-                @copy($local, $derivativeDiskPath);
+            } else {
+                // Tanpa Intervention: copy apa adanya (kalau symlink ada)
+                if ($storageLinked) {
+                    $local = public_path('/'.ltrim($imgRaw ?: 'img/og-default.jpg', '/'));
+                    if (!file_exists($local)) $local = public_path('img/og-default.jpg');
+                    @copy($local, $derivativeDiskPath);
+                }
             }
         } catch (\Throwable $e) {
-            // Kalau gagal total → pakai default
-            @copy(public_path('img/og-default.jpg'), $derivativeDiskPath);
+            // diamkan: akan fallback ke ogImage original kalau gagal
         }
     }
 
-    // Pakai derivative sebagai OG utama (lebih konsisten)
-    $derivativeCacheV = file_exists($derivativeDiskPath) ? filemtime($derivativeDiskPath) : time();
-    $ogImageFinal = $derivativeUrl . '?v=' . $derivativeCacheV;
+    // Tentukan OG final yang DIPAKAI:
+    // 1) Kalau derivative ada & bisa dibaca wajar, pakai derivative.
+    // 2) Kalau derivative tidak ada / gagal / symlink ga ada → pakai ogImageWithQS (asli kamu).
+    $useDerivative = false;
+    if ($storageLinked && file_exists($derivativeDiskPath)) {
+        $size = @filesize($derivativeDiskPath);
+        if ($size !== false && $size > 10 * 1024) { // >10KB biar ga empty file
+            $useDerivative = true;
+        }
+    }
 
-    // 🔒 ADD: Pastikan og:url juga HTTPS & lengkap
+    if ($useDerivative) {
+        // Pakai HTTPS kalau bisa
+        $base = rtrim(env('APP_URL', ''), '/');
+        $derivativeUrl = $base ? $base.$derivativePublic : url($derivativePublic);
+        if (\Illuminate\Support\Str::startsWith($derivativeUrl, 'http://')) {
+            $derivativeUrl = preg_replace('#^http://#', 'https://', $derivativeUrl);
+        }
+        $cacheV = filemtime($derivativeDiskPath) ?: time();
+        $ogImageFinal = $derivativeUrl . '?v=' . $cacheV;
+    } else {
+        // Fallback ke ogImage original (versi kamu)
+        $ogImageFinal = $ogImageWithQS;
+    }
+
+    // Pastikan og:url juga HTTPS & lengkap
     $ogUrlFinal = $request->fullUrl();
     if (\Illuminate\Support\Str::startsWith($ogUrlFinal, 'http://')) {
         $ogUrlFinal = preg_replace('#^http://#', 'https://', $ogUrlFinal);
     }
 
-    // 🔒 ADD: Build ogTags final (mempertahankan milikmu + override yg penting)
     $ogTags = [
         'og_title'       => $property->judul,
         'og_description' => \Illuminate\Support\Str::limit(($property->lokasi ?? '') . ' - ' . strip_tags($property->deskripsi ?? ''), 150),
-        // gunakan derivative konsisten
         'og_image'       => $ogImageFinal,
         'og_url'         => $ogUrlFinal,
     ];
