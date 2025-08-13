@@ -9,7 +9,7 @@ use Kreait\Firebase\Factory;
 use Illuminate\Support\Facades\Http;
 use App\Models\Agent;
 use Illuminate\Support\Str;
-
+use Intervention\Image\ImageManagerStatic as Image;
 
 use App\Models\User;
 
@@ -132,51 +132,92 @@ class propertydetailController extends Controller
     }
 
     // =======================
-    // 🔧 Perbaikan OG Image
+    // 🔧 Perbaikan OG Image (konsisten besar 1200x630)
     // =======================
+    // Ambil sumber gambar mentah (bisa path relatif/CSV/JSON/URL)
     $imgRaw = $property->gambar ?? null;
-
-    // Jika berformat JSON / CSV → ambil gambar pertama
-    if (is_string($imgRaw) && Str::startsWith(trim($imgRaw), ['[','{'])) {
+    if (is_string($imgRaw) && \Illuminate\Support\Str::startsWith(trim($imgRaw), ['[','{'])) {
         $decoded = json_decode($imgRaw, true);
         if (is_array($decoded)) {
             $imgRaw = $decoded[0]['url'] ?? $decoded[0] ?? $imgRaw;
         }
-    } elseif (is_string($imgRaw) && Str::contains($imgRaw, ',')) {
+    } elseif (is_string($imgRaw) && \Illuminate\Support\Str::contains($imgRaw, ',')) {
         $imgRaw = trim(explode(',', $imgRaw)[0]);
     }
 
-    // Buat URL absolut (HTTPS) yang bisa diakses crawler
-    $ogImage = null;
+    // Normalisasi ke file lokal jika mungkin
+    $localFilePath = null;
     if ($imgRaw) {
-        if (Str::startsWith($imgRaw, ['http://', 'https://'])) {
-            $ogImage = $imgRaw;
-        } elseif (Str::startsWith($imgRaw, ['storage/', '/storage/'])) {
-            // file di storage symlink
-            $ogImage = url(Str::start($imgRaw, '/'));
-        } elseif (Str::startsWith($imgRaw, ['public/', '/public/'])) {
-            // convert public/foo.jpg -> /storage/foo.jpg (butuh storage:link)
-            $path = ltrim(preg_replace('#^/?public/#', '', $imgRaw), '/');
-            $ogImage = url('/storage/'.$path);
-        } else {
-            // anggap relative di public/
-            $ogImage = url('/'.ltrim($imgRaw, '/'));
+        if (\Illuminate\Support\Str::startsWith($imgRaw, ['storage/', '/storage/'])) {
+            $localFilePath = public_path(\Illuminate\Support\Str::start($imgRaw, '/'));
+        } elseif (\Illuminate\Support\Str::startsWith($imgRaw, ['public/', '/public/'])) {
+            $localFilePath = public_path('/'.ltrim($imgRaw, '/'));
+        } elseif (!\Illuminate\Support\Str::startsWith($imgRaw, ['http://','https://'])) {
+            $localFilePath = public_path('/'.ltrim($imgRaw, '/'));
         }
     }
-    // Fallback jika kosong / gagal
-    if (!$ogImage) {
-        $ogImage = asset('img/og-default.jpg');
+
+    // Lokasi derivative OG (selalu JPG 1200x630) -> storage/app/public/og/...
+    $derivativeRel      = "og/property_{$property->id_listing}.jpg";
+    $derivativeDiskPath = storage_path('app/public/'.$derivativeRel);
+
+    // Bangun derivative jika belum ada
+    if (!file_exists($derivativeDiskPath)) {
+        try {
+            if (!is_dir(dirname($derivativeDiskPath))) {
+                @mkdir(dirname($derivativeDiskPath), 0775, true);
+            }
+
+            // Jika Intervention terpasang, proses jadi 1200x630
+            if (class_exists(\Intervention\Image\ImageManagerStatic::class)) {
+                if ($localFilePath && file_exists($localFilePath)) {
+                    $img = \Intervention\Image\ImageManagerStatic::make($localFilePath);
+                } elseif ($imgRaw && \Illuminate\Support\Str::startsWith($imgRaw, ['http://','https://'])) {
+                    $binary = @file_get_contents($imgRaw);
+                    if ($binary === false) throw new \RuntimeException('Gagal unduh gambar remote');
+                    $img = \Intervention\Image\ImageManagerStatic::make($binary);
+                } else {
+                    $img = \Intervention\Image\ImageManagerStatic::make(public_path('img/og-default.jpg'));
+                }
+
+                $img->fit(1200, 630, function($c){ $c->upsize(); })
+                    ->encode('jpg', 85)
+                    ->save($derivativeDiskPath);
+            } else {
+                // Fallback tanpa Intervention: copy saja gambar/fallback
+                if ($localFilePath && file_exists($localFilePath)) {
+                    @copy($localFilePath, $derivativeDiskPath);
+                } elseif ($imgRaw && \Illuminate\Support\Str::startsWith($imgRaw, ['http://','https://'])) {
+                    $binary = @file_get_contents($imgRaw);
+                    if ($binary !== false) @file_put_contents($derivativeDiskPath, $binary);
+                    else @copy(public_path('img/og-default.jpg'), $derivativeDiskPath);
+                } else {
+                    @copy(public_path('img/og-default.jpg'), $derivativeDiskPath);
+                }
+            }
+        } catch (\Throwable $e) {
+            // Jika apapun gagal, pakai fallback default
+            @copy(public_path('img/og-default.jpg'), $derivativeDiskPath);
+        }
     }
 
-    // Tambahkan cache-buster agar scraper ambil versi terbaru
-    $ogImage .= (str_contains($ogImage, '?') ? '&' : '?')
-              . 'v=' . ($property->updated_at?->timestamp ?? time());
+    // URL publik absolut untuk derivative (butuh storage:link)
+    $publicBase = rtrim(env('PUBLIC_BASE_URL', ''), '/'); // isi ini saat develop via tunnel/ngrok
+    $derivativePublicPath = '/storage/'.$derivativeRel;
+    $ogImage = $publicBase ? $publicBase.$derivativePublicPath : url($derivativePublicPath);
+
+    // Cache-buster agar scraper ambil versi baru
+    $cacheV = ($property->updated_at?->timestamp ?? (file_exists($derivativeDiskPath) ? filemtime($derivativeDiskPath) : time()));
+    $ogImage .= (str_contains($ogImage, '?') ? '&' : '?').'v='.$cacheV;
+
+    // og:url absolut (tetap bawa agent/query yang sekarang)
+    $ogUrl = $publicBase ? ($publicBase.$request->getRequestUri()) : url()->current();
 
     $ogTags = [
         'og_title'       => $property->judul,
-        'og_description' => Str::limit(($property->lokasi ?? '') . ' - ' . strip_tags($property->deskripsi ?? ''), 150),
+        'og_description' => \Illuminate\Support\Str::limit(($property->lokasi ?? '') . ' - ' . strip_tags($property->deskripsi ?? ''), 150),
         'og_image'       => $ogImage,
-        'og_url'         => url()->current(),
+        'og_url'         => $ogUrl,
     ];
 
     return view("property-detail", compact(
@@ -193,6 +234,7 @@ class propertydetailController extends Controller
         'sharedAgent'
     ));
 }
+
 
 
 

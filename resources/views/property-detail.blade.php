@@ -1,19 +1,22 @@
 @if(isset($ogTags))
-    <meta property="og:type" content="article">
-    <meta property="og:url" content="{{ $ogTags['og_url'] }}">
-    <meta property="og:title" content="{{ $ogTags['og_title'] }}">
-    <meta property="og:description" content="{{ $ogTags['og_description'] }}">
+  <link rel="canonical" href="{{ $ogTags['canonical'] ?? $ogTags['og_url'] }}"/>
 
-    <meta property="og:image" content="{{ $ogTags['og_image'] }}">
-    <meta property="og:image:secure_url" content="{{ $ogTags['og_image'] }}">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="{{ $ogTags['og_title'] }}">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="{{ $ogTags['og_url'] }}">
+  <meta property="og:title" content="{{ $ogTags['og_title'] }}">
+  <meta property="og:description" content="{{ $ogTags['og_description'] }}">
 
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{{ $ogTags['og_title'] }}">
-    <meta name="twitter:description" content="{{ $ogTags['og_description'] }}">
-    <meta name="twitter:image" content="{{ $ogTags['og_image'] }}">
+  <meta property="og:image" content="{{ $ogTags['og_image'] }}">
+  <meta property="og:image:secure_url" content="{{ $ogTags['og_image'] }}">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="{{ $ogTags['og_title'] }}">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ $ogTags['og_title'] }}">
+  <meta name="twitter:description" content="{{ $ogTags['og_description'] }}">
+  <meta name="twitter:image" content="{{ $ogTags['og_image'] }}">
 @endif
 
 
