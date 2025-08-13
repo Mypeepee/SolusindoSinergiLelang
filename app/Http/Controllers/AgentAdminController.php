@@ -953,6 +953,7 @@ public function updateStatusClosing(Request $request)
 
                 // Ambil id_account agent yang login
                 $idAccountAgent = session('id_account') ?? Cookie::get('id_account');
+                $account = Account::find($idAccountAgent);
 
                 // Harga bidding dari request
                 $hargaBidding = (int) str_replace('.', '', $request->harga_bidding);
@@ -1025,8 +1026,13 @@ public function updateStatusClosing(Request $request)
                     ]);
 
                 DB::commit();
-
-                return redirect()->back()->with('success', '✅ Transaksi Closing berhasil disimpan!');
+                
+                if ($account && $account->roles === 'Owner') {
+                    return redirect()->route('dashboard.owner')->with('success', 'Transaksi Closing berhasil disimpan.');
+                } else {
+                    return redirect()->route('dashboard.agent')->with('success', 'Status berhasil diperbarui.');
+                }
+                
             } catch (\Throwable $e) {
                 DB::rollBack();
                 return back()->withErrors(['error' => '❌ Gagal Closing: ' . $e->getMessage()]);
@@ -1055,6 +1061,7 @@ public function updateStatusClosing(Request $request)
                 ->first();
 
             $idAccountAgent = session('id_account') ?? Cookie::get('id_account');
+            $account = Account::find($idAccountAgent);
 
             // Progress Register/Pengosongan → transaction
             DB::table('transaction')
@@ -1077,7 +1084,11 @@ public function updateStatusClosing(Request $request)
 
         }
 
-        return redirect()->back()->with('success', 'Status berhasil diperbarui.');
+        if ($account && $account->roles === 'Owner') {
+            return redirect()->route('dashboard.owner')->with('success', 'Transaksi Closing berhasil disimpan.');
+        } else {
+            return redirect()->route('dashboard.agent')->with('success', 'Status berhasil diperbarui.');
+        }
     }
 
 
