@@ -9,7 +9,6 @@ use Kreait\Firebase\Factory;
 use Illuminate\Support\Facades\Http;
 use App\Models\Agent;
 use Illuminate\Support\Str;
-use Intervention\Image\ImageManagerStatic as Image;
 
 use App\Models\User;
 
