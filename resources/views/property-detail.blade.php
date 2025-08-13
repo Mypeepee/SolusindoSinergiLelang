@@ -1,10 +1,21 @@
 @if(isset($ogTags))
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="{{ $ogTags['og_url'] }}">
     <meta property="og:title" content="{{ $ogTags['og_title'] }}">
     <meta property="og:description" content="{{ $ogTags['og_description'] }}">
+
     <meta property="og:image" content="{{ $ogTags['og_image'] }}">
-    <meta property="og:url" content="{{ $ogTags['og_url'] }}">
-    <meta property="og:type" content="website">
+    <meta property="og:image:secure_url" content="{{ $ogTags['og_image'] }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="{{ $ogTags['og_title'] }}">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $ogTags['og_title'] }}">
+    <meta name="twitter:description" content="{{ $ogTags['og_description'] }}">
+    <meta name="twitter:image" content="{{ $ogTags['og_image'] }}">
 @endif
+
 
 @include('template.header')
 
@@ -321,24 +332,47 @@
 
                                         <!-- Tombol Share / Copy Link (Desktop) -->
                                         <a href="javascript:void(0);"
-                                            onclick="copyPropertyLink('{{ url('/property-detail/' . $property->id_listing . '/' . $shareAgent) }}')"
-                                            class="btn btn-outline-secondary d-none d-md-flex align-items-center justify-content-center rounded-circle"
-                                            style="width: 50px; height: 50px;"
-                                            title="Bagikan Link Properti">
-                                            <i class="fa fa-share-alt"></i>
+                                        id="shareBtn"
+                                        class="btn btn-outline-secondary d-none d-md-flex align-items-center justify-content-center rounded-circle"
+                                        style="width: 50px; height: 50px;"
+                                        title="Bagikan">
+                                        <i class="fa fa-share-alt"></i>
                                         </a>
                                     </div>
+                                    <!-- Menu Share (popover sederhana) -->
+                                    <div id="shareMenu" class="share-popover" style="display:none; position:absolute; z-index:9999; background:#fff; border:1px solid #ddd; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.12); padding:8px; width:220px;">
+                                        <!-- Instagram -->
+                                        <button class="share-item" data-action="instagram" style="display:flex;align-items:center;width:100%;border:0;background:transparent;padding:10px;border-radius:10px;cursor:pointer;">
+                                            <img src="{{ asset('img/instagram.png') }}" alt="Instagram" style="width:20px;height:20px;margin-right:10px;">
+                                            Instagram
+                                        </button>
 
+                                        <!-- TikTok -->
+                                        <button class="share-item" data-action="tiktok" style="display:flex;align-items:center;width:100%;border:0;background:transparent;padding:10px;border-radius:10px;cursor:pointer;">
+                                            <img src="{{ asset('img/tiktok.png') }}" alt="TikTok" style="width:20px;height:20px;margin-right:10px;">
+                                            TikTok
+                                        </button>
+
+                                        <!-- WhatsApp -->
+                                        <button class="share-item" data-action="whatsapp" style="display:flex;align-items:center;width:100%;border:0;background:transparent;padding:10px;border-radius:10px;cursor:pointer;">
+                                            <img src="{{ asset('img/wa.png') }}" alt="WhatsApp" style="width:20px;height:20px;margin-right:10px;">
+                                            WhatsApp
+                                        </button>
+
+                                        <button class="share-item" data-action="copy" style="display:flex;align-items:center;width:100%;border:0;background:transparent;padding:10px;border-radius:10px;cursor:pointer;">
+                                            <i class="fa fa-link" style="margin-right:10px;"></i> Copy link
+                                        </button>
+                                    </div>
                                     <!-- Share + Edit (Mobile Only) -->
                                     <div class="d-flex d-md-none gap-2 mt-3">
                                         <!-- Share dengan teks -->
                                         <a href="javascript:void(0);"
-                                            onclick="copyPropertyLink('{{ url('/property-detail/' . $property->id_listing . '/' . $shareAgent) }}')"
-                                            class="btn btn-outline-secondary d-flex align-items-center justify-content-center px-3 py-2"
-                                            style="min-width: 180px; height: 50px;"
-                                            title="Bagikan Link Properti">
-                                            <i class="fa fa-share-alt me-2"></i>Bagikan
-                                        </a>
+                                        id="shareBtnMobile"
+                                        class="btn btn-outline-secondary d-flex align-items-center justify-content-center px-3 py-2"
+                                        style="min-width: 180px; height: 50px;"
+                                        title="Bagikan">
+                                        <i class="fa fa-share-alt me-2"></i> Bagikan
+                                     </a>
 
 
                                         <!-- Edit (Hanya Pemilik) -->
@@ -562,7 +596,7 @@
                                                                     <i class="fa fa-info-circle me-2 text-warning"></i>
                                                                     <strong>Catatan:</strong> <br class="d-md-none">
                                                                     <span class="text-dark">
-                                                                        Belum termasuk biaya pengosongan, dan biaya balik nama.
+                                                                        Belum termasuk pajak, biaya pengosongan, dan biaya balik nama.
                                                                     </span>
                                                                 </div>
                                                             </div>
@@ -915,18 +949,176 @@
                     border-top-left-radius: 8px;
                     border-top-right-radius: 8px;
                 }
+
+                /* share */
+                #shareMenu .share-item {
+                transition: background-color 0.2s ease, transform 0.1s ease;
+                }
+
+                #shareMenu .share-item:hover {
+                background-color: #f5f7fa !important;
+                transform: translateX(2px);
+                }
+
+                #shareMenu .share-item[data-action="instagram"]:hover {
+                background-color: #fddde6 !important; /* pink IG */
+                }
+
+                #shareMenu .share-item[data-action="tiktok"]:hover {
+                background-color: #d9f5f4 !important; /* hijau muda TikTok */
+                }
+
+                #shareMenu .share-item[data-action="whatsapp"]:hover {
+                background-color: #e6f7ec !important; /* hijau muda WA */
+                }
+
                 </style>
         </div>
         <script>
-            function copyPropertyLink(el) {
-                const link = "{{ url()->current() }}";
-                navigator.clipboard.writeText(link).then(() => {
-                    // Tampilkan notifikasi (bisa ganti ke toast kalau pakai Bootstrap)
-                    alert('Link berhasil disalin!');
-                }).catch(err => {
-                    console.error('Gagal menyalin link:', err);
-                    alert("Gagal menyalin link. Coba lagi.");
-                });
+document.addEventListener('DOMContentLoaded', function () {
+  // === konfigurasi share (boleh kamu ubah) ===
+  const shareUrl  = "{{ url()->current() }}";
+  const shareText = "Cek properti ini — cocok banget!";
+
+  // === fungsi copy seperti yang kamu minta ===
+  async function copyPropertyLink() {
+    try {
+      // navigator.clipboard butuh HTTPS/localhost
+      await navigator.clipboard.writeText(shareUrl);
+      alert('Link berhasil disalin!');
+    } catch (err) {
+      // fallback untuk http / browser lama
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = shareUrl;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        alert('Link berhasil disalin!');
+      } catch (err2) {
+        console.error('Gagal menyalin link:', err2);
+        alert('Gagal menyalin link. Coba lagi.');
+      }
+    }
+  }
+
+  // === ambil trigger dan menu ===
+  const triggers = [
+    document.getElementById('shareBtn'),       // desktop (jika ada)
+    document.getElementById('shareBtnMobile')  // mobile (jika ada)
+  ].filter(Boolean);
+
+  const menu = document.getElementById('shareMenu');
+  if (!triggers.length || !menu) return;
+
+  // pindahkan menu ke body biar tidak ketahan overflow parent
+  document.body.appendChild(menu);
+  menu.style.position = 'fixed';
+  menu.style.display  = 'none';
+  menu.style.zIndex   = 99999;
+
+  function positionMenu(anchor) {
+    const r = anchor.getBoundingClientRect();
+    const menuW = menu.offsetWidth || 220;
+    const top   = r.top - menu.offsetHeight - 8;
+    const left  = r.left + (r.width/2) - (menuW/2);
+    const finalTop  = top < 8 ? (r.bottom + 8) : top;
+    const finalLeft = Math.max(8, Math.min(left, window.innerWidth - menuW - 8));
+    menu.style.top  = finalTop + 'px';
+    menu.style.left = finalLeft + 'px';
+  }
+
+  function openMenu(anchor) { positionMenu(anchor); menu.style.display = 'block'; }
+  function closeMenu()      { menu.style.display = 'none'; }
+
+  // klik tombol (desktop/mobile) membuka/menutup menu
+  triggers.forEach(trigger => {
+    trigger.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (menu.style.display === 'block') closeMenu();
+      else openMenu(trigger);
+    });
+  });
+
+  // klik di luar menutup menu
+  document.addEventListener('click', (e) => {
+    if (!menu.contains(e.target) && !triggers.some(t => t.contains(e.target))) closeMenu();
+  });
+
+  // reposisi saat viewport berubah
+  window.addEventListener('resize', () => { if (menu.style.display === 'block') positionMenu(triggers[0]); });
+  window.addEventListener('scroll',  () => { if (menu.style.display === 'block') positionMenu(triggers[0]); });
+
+  // tampilkan tombol "Share… (native)" jika tersedia
+  if (navigator.share) {
+    const nativeBtn = menu.querySelector('[data-action="native"]');
+    if (nativeBtn) nativeBtn.style.display = 'flex';
+  }
+
+  // === aksi tiap item di menu ===
+  menu.addEventListener('click', async (e) => {
+    const item = e.target.closest('.share-item');
+    if (!item) return;
+    const action = item.getAttribute('data-action');
+
+    switch (action) {
+      case 'copy':
+        await copyPropertyLink();        // <<— di sini dipanggil
+        break;
+
+      case 'whatsapp':
+        window.open(`https://wa.me/?text=${encodeURIComponent(shareText + "\n" + shareUrl)}`, '_blank', 'noopener,noreferrer');
+        break;
+
+      case 'instagram':
+        // sementara: buka app (best-effort) lalu fallback web
+        openAppOrWeb('instagram://camera', 'https://www.instagram.com/');
+        // opsional: copy caption
+        try { await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`); } catch (_) {}
+        break;
+
+      case 'tiktok':
+        openAppOrWeb('snssdk1128://', 'https://www.tiktok.com/upload?lang=id-ID');
+        try { await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`); } catch (_) {}
+        break;
+
+      case 'native':
+        try { await navigator.share({ title: document.title, text: shareText, url: shareUrl }); } catch (_) {}
+        break;
+    }
+
+    closeMenu();
+  });
+
+  // coba buka app; kalau gagal, fallback ke web
+  function openAppOrWeb(appUrl, webUrl) {
+    const now = Date.now();
+    const a = document.createElement('a');
+    a.href = appUrl;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      if (Date.now() - now < 1200) {
+        window.open(webUrl, '_blank', 'noopener,noreferrer');
+      }
+      a.remove();
+    }, 800);
+  }
+});
+
+            // fungsi copy seperti yang kamu inginkan
+            function copyPropertyLink() {
+            const link = "{{ url()->current() }}";
+            return navigator.clipboard.writeText(link).then(() => {
+                alert('Link berhasil disalin!');
+            }).catch(err => {
+                console.error('Gagal menyalin link:', err);
+                alert("Gagal menyalin link. Coba lagi.");
+            });
             }
-        </script>
+            </script>
+
 @include('template.footer')

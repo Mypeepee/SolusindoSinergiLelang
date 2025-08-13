@@ -52,7 +52,7 @@ class propertydetailController extends Controller
         $sharedAgent = \App\Models\Agent::where('id_agent', $agent)->first();
 
         // Kalau agent valid → catat klik ke referral_clicks
-        if ($sharedAgent) {
+        if ($sharedAgent && $property) {
             \DB::table('referral_clicks')->insert([
                 'id_agent'   => $sharedAgent->id_agent,
                 'id_listing' => $property->id_listing,
@@ -131,11 +131,52 @@ class propertydetailController extends Controller
         $selisihPersen = "Tidak ada data pembanding di kecamatan/kota ini.";
     }
 
+    // =======================
+    // 🔧 Perbaikan OG Image
+    // =======================
+    $imgRaw = $property->gambar ?? null;
+
+    // Jika berformat JSON / CSV → ambil gambar pertama
+    if (is_string($imgRaw) && Str::startsWith(trim($imgRaw), ['[','{'])) {
+        $decoded = json_decode($imgRaw, true);
+        if (is_array($decoded)) {
+            $imgRaw = $decoded[0]['url'] ?? $decoded[0] ?? $imgRaw;
+        }
+    } elseif (is_string($imgRaw) && Str::contains($imgRaw, ',')) {
+        $imgRaw = trim(explode(',', $imgRaw)[0]);
+    }
+
+    // Buat URL absolut (HTTPS) yang bisa diakses crawler
+    $ogImage = null;
+    if ($imgRaw) {
+        if (Str::startsWith($imgRaw, ['http://', 'https://'])) {
+            $ogImage = $imgRaw;
+        } elseif (Str::startsWith($imgRaw, ['storage/', '/storage/'])) {
+            // file di storage symlink
+            $ogImage = url(Str::start($imgRaw, '/'));
+        } elseif (Str::startsWith($imgRaw, ['public/', '/public/'])) {
+            // convert public/foo.jpg -> /storage/foo.jpg (butuh storage:link)
+            $path = ltrim(preg_replace('#^/?public/#', '', $imgRaw), '/');
+            $ogImage = url('/storage/'.$path);
+        } else {
+            // anggap relative di public/
+            $ogImage = url('/'.ltrim($imgRaw, '/'));
+        }
+    }
+    // Fallback jika kosong / gagal
+    if (!$ogImage) {
+        $ogImage = asset('img/og-default.jpg');
+    }
+
+    // Tambahkan cache-buster agar scraper ambil versi terbaru
+    $ogImage .= (str_contains($ogImage, '?') ? '&' : '?')
+              . 'v=' . ($property->updated_at?->timestamp ?? time());
+
     $ogTags = [
-        'og_title' => $property->judul,
-        'og_description' => Str::limit($property->lokasi . ' - ' . strip_tags($property->deskripsi), 150),
-        'og_image' => $property->gambar,
-        'og_url' => url()->current(),
+        'og_title'       => $property->judul,
+        'og_description' => Str::limit(($property->lokasi ?? '') . ' - ' . strip_tags($property->deskripsi ?? ''), 150),
+        'og_image'       => $ogImage,
+        'og_url'         => url()->current(),
     ];
 
     return view("property-detail", compact(
