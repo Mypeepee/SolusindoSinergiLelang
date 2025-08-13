@@ -1,22 +1,19 @@
 @if(isset($ogTags))
-  <link rel="canonical" href="{{ $ogTags['canonical'] ?? $ogTags['og_url'] }}"/>
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="{{ $ogTags['og_url'] }}">
+    <meta property="og:title" content="{{ $ogTags['og_title'] }}">
+    <meta property="og:description" content="{{ $ogTags['og_description'] }}">
 
-  <meta property="og:type" content="article">
-  <meta property="og:url" content="{{ $ogTags['og_url'] }}">
-  <meta property="og:title" content="{{ $ogTags['og_title'] }}">
-  <meta property="og:description" content="{{ $ogTags['og_description'] }}">
+    <meta property="og:image" content="{{ $ogTags['og_image'] }}">
+    <meta property="og:image:secure_url" content="{{ $ogTags['og_image'] }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="{{ $ogTags['og_title'] }}">
 
-  <meta property="og:image" content="{{ $ogTags['og_image'] }}">
-  <meta property="og:image:secure_url" content="{{ $ogTags['og_image'] }}">
-  <meta property="og:image:type" content="image/jpeg">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="{{ $ogTags['og_title'] }}">
-
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="{{ $ogTags['og_title'] }}">
-  <meta name="twitter:description" content="{{ $ogTags['og_description'] }}">
-  <meta name="twitter:image" content="{{ $ogTags['og_image'] }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $ogTags['og_title'] }}">
+    <meta name="twitter:description" content="{{ $ogTags['og_description'] }}">
+    <meta name="twitter:image" content="{{ $ogTags['og_image'] }}">
 @endif
 
 
@@ -25,7 +22,7 @@
         @if(session('success'))
             <div class="alert alert-success alert-dismissible fade show position-fixed top-0 end-0 m-3 shadow-lg z-3" role="alert" style="min-width: 300px;">
                 {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Closew"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         @endif
 
