@@ -25,30 +25,19 @@ class propertydetailController extends Controller
 
     public function PropertyDetail(Request $request, $id, $agent = null)
 {
-    $ua = Str::lower($request->header('User-Agent', ''));
-    $isCrawler = Str::contains($ua, ['facebookexternalhit', 'whatsapp', 'telegrambot', 'twitterbot', 'linkedinbot']);
+    // ================================
+    // 🔒 ADD: Deteksi crawler (bot OG)
+    // ================================
+    $ua = \Illuminate\Support\Str::lower($request->header('User-Agent', ''));
+    $isCrawler = \Illuminate\Support\Str::contains($ua, [
+        'facebookexternalhit', 'whatsapp', 'telegrambot', 'twitterbot', 'linkedinbot'
+    ]);
 
     $property = Property::where('id_listing', $id)->first();
 
-    // HANYA redirect kalau BUKAN crawler
-    if (!$isCrawler) {
-        if (session()->has('id_account')) {
-            $userReferral = DB::table('account')
-                ->where('id_account', session('id_account'))
-                ->value('kode_referal');
-
-            if ($userReferral && $agent !== $userReferral) {
-                return redirect()->to(url("/property-detail/{$id}/".$userReferral));
-            }
-        }
-
-        if (!$agent && session()->has('id_agent')) {
-            return redirect()->to(url("/property-detail/{$id}/".session('id_agent')));
-        }
-    }
-
     // **Ambil kode referal dari account jika user login**
-    if (session()->has('id_account')) {
+    // 🔒 ADD: Redirect referral HANYA untuk non-crawler (biar bot tidak diping-pong)
+    if (!$isCrawler && session()->has('id_account')) {
         $userReferral = DB::table('account')
             ->where('id_account', session('id_account'))
             ->value('kode_referal');
@@ -62,7 +51,8 @@ class propertydetailController extends Controller
     }
 
     // Kalau belum ada agent di URL, tapi ada di session → redirect
-    if (!$agent && session()->has('id_agent')) {
+    // 🔒 ADD: Juga hanya untuk non-crawler
+    if (!$isCrawler && !$agent && session()->has('id_agent')) {
         return redirect()->to(url("/property-detail/{$id}/" . session('id_agent')));
     }
 
@@ -72,7 +62,8 @@ class propertydetailController extends Controller
         $sharedAgent = \App\Models\Agent::where('id_agent', $agent)->first();
 
         // Kalau agent valid → catat klik ke referral_clicks
-        if ($sharedAgent && $property) {
+        // 🔒 ADD: Hindari insert saat crawler (biar ringan & tanpa side-effect)
+        if (!$isCrawler && $sharedAgent && $property) {
             \DB::table('referral_clicks')->insert([
                 'id_agent'   => $sharedAgent->id_agent,
                 'id_listing' => $property->id_listing,
@@ -152,29 +143,29 @@ class propertydetailController extends Controller
     }
 
     // =======================
-    // 🔧 Perbaikan OG Image
+    // 🔧 Perbaikan OG Image (kode asli kamu — DIPERTAHANKAN)
     // =======================
     $imgRaw = $property->gambar ?? null;
 
     // Jika berformat JSON / CSV → ambil gambar pertama
-    if (is_string($imgRaw) && Str::startsWith(trim($imgRaw), ['[','{'])) {
+    if (is_string($imgRaw) && \Illuminate\Support\Str::startsWith(trim($imgRaw), ['[','{'])) {
         $decoded = json_decode($imgRaw, true);
         if (is_array($decoded)) {
             $imgRaw = $decoded[0]['url'] ?? $decoded[0] ?? $imgRaw;
         }
-    } elseif (is_string($imgRaw) && Str::contains($imgRaw, ',')) {
+    } elseif (is_string($imgRaw) && \Illuminate\Support\Str::contains($imgRaw, ',')) {
         $imgRaw = trim(explode(',', $imgRaw)[0]);
     }
 
     // Buat URL absolut (HTTPS) yang bisa diakses crawler
     $ogImage = null;
     if ($imgRaw) {
-        if (Str::startsWith($imgRaw, ['http://', 'https://'])) {
+        if (\Illuminate\Support\Str::startsWith($imgRaw, ['http://', 'https://'])) {
             $ogImage = $imgRaw;
-        } elseif (Str::startsWith($imgRaw, ['storage/', '/storage/'])) {
+        } elseif (\Illuminate\Support\Str::startsWith($imgRaw, ['storage/', '/storage/'])) {
             // file di storage symlink
-            $ogImage = url(Str::start($imgRaw, '/'));
-        } elseif (Str::startsWith($imgRaw, ['public/', '/public/'])) {
+            $ogImage = url(\Illuminate\Support\Str::start($imgRaw, '/'));
+        } elseif (\Illuminate\Support\Str::startsWith($imgRaw, ['public/', '/public/'])) {
             // convert public/foo.jpg -> /storage/foo.jpg (butuh storage:link)
             $path = ltrim(preg_replace('#^/?public/#', '', $imgRaw), '/');
             $ogImage = url('/storage/'.$path);
@@ -192,11 +183,71 @@ class propertydetailController extends Controller
     $ogImage .= (str_contains($ogImage, '?') ? '&' : '?')
               . 'v=' . ($property->updated_at?->timestamp ?? time());
 
+    // =========================================
+    // 🔒 ADD: Generate DERIVATIVE 1200×630 JPG
+    // =========================================
+    // Path derivative lokal yang stabil untuk semua listing
+    $derivativeRel      = "og/property_{$property->id_listing}.jpg";
+    $derivativeDiskPath = storage_path('app/public/'.$derivativeRel);
+    $derivativeUrl      = secure_url('/storage/'.$derivativeRel); // HTTPS selalu
+
+    // Bangun kalau belum ada
+    if (!file_exists($derivativeDiskPath)) {
+        try {
+            if (!is_dir(dirname($derivativeDiskPath))) {
+                @mkdir(dirname($derivativeDiskPath), 0775, true);
+            }
+
+            if (class_exists(\Intervention\Image\ImageManagerStatic::class)) {
+                // Sumber: utamakan URL langsung kalau eksternal
+                if ($imgRaw && \Illuminate\Support\Str::startsWith($imgRaw, ['http://','https://'])) {
+                    $binary = @file_get_contents($imgRaw);
+                    if ($binary === false) throw new \RuntimeException('Gagal unduh gambar eksternal');
+                    $img = \Intervention\Image\ImageManagerStatic::make($binary);
+                } else {
+                    // Local fallback (public/ atau default)
+                    $local = public_path('/'.ltrim($imgRaw ?: 'img/og-default.jpg', '/'));
+                    if (!file_exists($local)) {
+                        $local = public_path('img/og-default.jpg');
+                    }
+                    $img = \Intervention\Image\ImageManagerStatic::make($local);
+                }
+
+                // Fit 1200x630 (upsize true)
+                $img->fit(1200, 630, function($c){ $c->upsize(); })
+                    ->encode('jpg', 85)
+                    ->save($derivativeDiskPath);
+            } else {
+                // Tanpa Intervention: copy saja sumber lokal / default
+                $local = public_path('/'.ltrim($imgRaw ?: 'img/og-default.jpg', '/'));
+                if (!file_exists($local)) {
+                    $local = public_path('img/og-default.jpg');
+                }
+                @copy($local, $derivativeDiskPath);
+            }
+        } catch (\Throwable $e) {
+            // Kalau gagal total → pakai default
+            @copy(public_path('img/og-default.jpg'), $derivativeDiskPath);
+        }
+    }
+
+    // Pakai derivative sebagai OG utama (lebih konsisten)
+    $derivativeCacheV = file_exists($derivativeDiskPath) ? filemtime($derivativeDiskPath) : time();
+    $ogImageFinal = $derivativeUrl . '?v=' . $derivativeCacheV;
+
+    // 🔒 ADD: Pastikan og:url juga HTTPS & lengkap
+    $ogUrlFinal = $request->fullUrl();
+    if (\Illuminate\Support\Str::startsWith($ogUrlFinal, 'http://')) {
+        $ogUrlFinal = preg_replace('#^http://#', 'https://', $ogUrlFinal);
+    }
+
+    // 🔒 ADD: Build ogTags final (mempertahankan milikmu + override yg penting)
     $ogTags = [
         'og_title'       => $property->judul,
-        'og_description' => Str::limit(($property->lokasi ?? '') . ' - ' . strip_tags($property->deskripsi ?? ''), 150),
-        'og_image'       => $ogImage,
-        'og_url'         => url()->current(),
+        'og_description' => \Illuminate\Support\Str::limit(($property->lokasi ?? '') . ' - ' . strip_tags($property->deskripsi ?? ''), 150),
+        // gunakan derivative konsisten
+        'og_image'       => $ogImageFinal,
+        'og_url'         => $ogUrlFinal,
     ];
 
     return view("property-detail", compact(
@@ -213,6 +264,7 @@ class propertydetailController extends Controller
         'sharedAgent'
     ));
 }
+
 
 
 
