@@ -91,11 +91,33 @@
                     }
                 </style>
 
-                @if (session('role') === 'Agent')
-                    <div class="card shadow-sm border-0 mb-4">
-                        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0 fw-semibold text-primary">📋 Daftar Klien Tertarik</h5>
-                        </div>
+                <div class="container-fluid">
+                <!-- Tabs Utama -->
+                <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="progress-tab" data-bs-toggle="tab" data-bs-target="#progress" type="button" role="tab" aria-controls="progress" aria-selected="true">
+                            📦 Progress
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="calendar-tab" data-bs-toggle="tab" data-bs-target="#calendar" type="button" role="tab" aria-controls="calendar" aria-selected="false">
+                            🗓️ Calendar
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content mt-3" id="mainTabsContent">
+                    <!-- Progress Tab -->
+                    <div class="tab-pane fade show active" id="progress" role="tabpanel" aria-labelledby="progress-tab">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-body">
+
+                                <!-- AGENT -->
+                                @if (session('role') === 'Agent')
+                                <div class="card shadow-sm border-0 mb-4">
+                                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0 fw-semibold text-primary">📋 Daftar Klien Tertarik</h5>
+                                    </div>
                                     <div class="card-body table-responsive">
                                         <table class="table align-middle table-hover" id="clientTable">
                                             <thead class="table-light">
@@ -113,19 +135,194 @@
                                             </thead>
                                             <tbody>
                                                 @forelse ($clients as $index => $client)
+                                                @php
+                                                    $status = $client->status;
+                                                    $progress = match($status) {
+                                                        'Pending' => 0,
+                                                        'FollowUp' => 33,
+                                                        'BuyerMeeting' => 66,
+                                                        'Closing', 'Gagal' => 100,
+                                                        default => 0,
+                                                    };
+                                                    $barClass = match($status) {
+                                                        'gagal' => 'bg-danger',
+                                                        'pending' => 'bg-warning',
+                                                        default => 'bg-success',
+                                                    };
+                                                @endphp
+                                                <tr id="row-{{ $client->id_account }}-{{ $client->id_listing }}">
+                                                    <td>{{ $index + 1 }}</td>
+                                                    <td><span class="badge bg-light text-dark">{{ $client->id_account }}</span></td>
+                                                    <td>{{ $client->nama }}</td>
+                                                    <td><span class="badge bg-secondary">{{ $client->id_listing }}</span></td>
+                                                    <td>{{ $client->lokasi }}</td>
+                                                    <td>Rp {{ number_format($client->harga, 0, ',', '.') }}</td>
+                                                    <td style="min-width: 160px;">
+                                                        <div class="progress" style="height: 18px;">
+                                                        <div class="progress-bar {{ $barClass }}"
+                                                            role="progressbar"
+                                                            style="width: {{ $progress }}%;"
+                                                            aria-valuenow="{{ $progress }}"
+                                                            aria-valuemin="0"
+                                                            aria-valuemax="100">
+                                                            {{ $progress }}%
+                                                        </div>
+                                                        </div>
+                                                    </td>
+                                                    @php
+                                                        $status = $client->status; // biar konsisten kita nggak ubah case
+                                                    @endphp
+                                                    <td>{{ $client->status }}</td>
+                                                    <td>
+                                                        <form action="{{ route('dashboard.detail', ['id_listing' => $client->id_listing, 'id_account' => $client->id_account]) }}" method="GET">
+                                                            @csrf
+                                                            <button type="submit" class="btn btn-sm bg-secondary text-white rounded-pill px-3 shadow-sm">
+                                                            Detail
+                                                            </button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                                @empty
+                                                <tr>
+                                                    <td colspan="8" class="text-center text-muted py-4">Belum ada klien yang tertarik saat ini.</td>
+                                                </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            @endif
+   
+                            <!-- REGISTER -->
+                            @if (session('role') === 'Register')
+                            <div class="card shadow-sm border-0 mb-4">
+                                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0 fw-semibold text-primary">📋 Register Jobdesk</h5>
+                                </div>
+                                <div class="card-body table-responsive">
+                                    <table class="table align-middle table-hover text-center" id="clientClosingTable">
+                                        <thead class="table-light align-middle">
+                                            <tr>
+                                                <th style="width: 40px;">#</th> <!-- ✅ Mepet -->
+                                                <th style="width: 80px;">ID</th> <!-- ✅ Mepet -->
+                                                <th style="min-width: 180px;">Name</th> <!-- ✅ Lebar untuk nama panjang -->
+                                                <th style="width: 100px;">Property ID</th>
+                                                <th style="min-width: 200px;">Lokasi</th> <!-- ✅ Lebih lebar -->
+                                                <th style="min-width: 120px;">Harga</th>
+                                                <th style="min-width: 160px;">Progess</th>
+                                                <th style="min-width: 160px;">Status</th> <!-- ✅ Lebih lebar -->
+                                                <th style="min-width: 160px;">Detail</th> <!-- ✅ Lebih lebar -->
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @forelse ($clientsClosing as $index => $client)
+                                            <tr id="row-{{ $client->id_account }}-{{ $client->id_listing }}">
+                                                <td>{{ $index + 1 }}</td>
+                                                <td><span class="badge bg-light text-dark">{{ $client->id_account }}</span></td>
+                                                <td class="text-truncate" style="max-width: 220px;">{{ $client->nama }}</td>
+                                                <td><span class="badge bg-secondary">{{ $client->id_listing }}</span></td>
+                                                <td class="text-truncate" style="max-width: 300px;">{{ $client->lokasi }}</td>
+                                                <td>Rp {{ number_format($client->harga, 0, ',', '.') }}</td>
+                                                <td>
+                                                    @php
+                                                    $tahap = $client->status ?? 'Closing'; // Ambil status dari query
+                                                    $progress = match($tahap) {
+                                                        'Closing' => 0,
+                                                        'Kuitansi' => 20,
+                                                        'Kode Billing' => 40,
+                                                        'Kutipan Risalah Lelang' => 60,
+                                                        'Akte Grosse' => 80,
+                                                        'Balik Nama' => 100,
+                                                        default => 0
+                                                    };
+                                                @endphp
+                                                    <div class="progress" style="height: 14px;">
+                                                        <div class="progress-bar {{ $progress == 100 ? 'bg-success' : 'bg-secondary' }}"
+                                                            role="progressbar"
+                                                            style="width: {{ $progress }}%;"
+                                                            aria-valuenow="{{ $progress }}"
+                                                            aria-valuemin="0"
+                                                            aria-valuemax="100">
+                                                            {{ $progress }}%
+                                                        </div>
+                                                    </div>
+                                                </td>
+
+                                                <td>{{ $client->status }}</td>
+                                                <td>
+                                                    <form action="{{ route('dashboard.detail', ['id_listing' => $client->id_listing, 'id_account' => $client->id_account]) }}" method="GET">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-sm bg-secondary text-white rounded-pill px-3 shadow-sm">
+                                                            Detail
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                            @empty
+                                            <tr>
+                                                <td colspan="9" class="text-center text-muted py-4">Belum ada klien closing.</td>
+                                            </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            @endif
+
+                            @if (session('role') === 'Pengosongan')
+                            <style>
+                                .table thead th:nth-child(5),
+                                .table tbody td:nth-child(5) {
+                                    width: 200px;
+                                }
+
+                                .table thead th:nth-child(6),
+                                .table tbody td:nth-child(6) {
+                                    width: 180px;
+                                }
+
+                                .table td,
+                                .table th {
+                                    vertical-align: middle;
+                                }
+                            </style>
+
+                            <div class="card shadow-sm border-0 mb-4 mt-5">
+                                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0 fw-semibold text-primary">📦 Daftar Pengosongan Properti</h5>
+                                </div>
+                                <div class="card-body table-responsive">
+                                    <table class="table align-middle table-hover" id="pengosonganTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>#</th>
+                                                <th>ID Klien</th>
+                                                <th>Nama</th>
+                                                <th>ID Properti</th>
+                                                <th>Lokasi</th>
+                                                <th>Harga</th>
+                                                <th>Progress</th>
+                                                <th>Status</th>
+                                                <th>Detail</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @php $now = \Carbon\Carbon::now(); @endphp
+                                            @forelse ($clientsPengosongan as $index => $client)
+                                                @if ($client->status === 'Balik Nama' || $client->status === 'Eksekusi Pengosongan')
                                                     @php
                                                         $status = $client->status;
                                                         $progress = match($status) {
-                                                            'Pending' => 0,
-                                                            'FollowUp' => 33,
-                                                            'BuyerMeeting' => 66,
-                                                            'Closing', 'Gagal' => 100,
+                                                            'Balik Nama' => 25,
+                                                            'Eksekusi Pengosongan' => 50,
+                                                            'Selesai' => 100,
                                                             default => 0,
                                                         };
                                                         $barClass = match($status) {
-                                                            'gagal' => 'bg-danger',
-                                                            'pending' => 'bg-warning',
-                                                            default => 'bg-success',
+                                                            'Balik Nama' => 'bg-secondary',
+                                                            'Eksekusi Pengosongan' => 'bg-warning',
+                                                            'Selesai' => 'bg-success',
+                                                            default => 'bg-secondary',
                                                         };
                                                     @endphp
                                                     <tr id="row-{{ $client->id_account }}-{{ $client->id_listing }}">
@@ -147,10 +344,6 @@
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        @php
-                                                            $status = $client->status; // biar konsisten kita nggak ubah case
-                                                        @endphp
-
                                                         <td>{{ $client->status }}</td>
                                                         <td>
                                                             <form action="{{ route('dashboard.detail', ['id_listing' => $client->id_listing, 'id_account' => $client->id_account]) }}" method="GET">
@@ -161,190 +354,301 @@
                                                             </form>
                                                         </td>
                                                     </tr>
-                                                @empty
-                                            <tr>
-                                        <td colspan="8" class="text-center text-muted py-4">Belum ada klien yang tertarik saat ini.</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                @endif
+                                                @endif
+                                            @empty
+                                                <tr>
+                                                    <td colspan="9" class="text-center text-muted py-4">Belum ada data pengosongan.</td>
+                                                </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            @endif
 
 
-        @if (session('role') === 'Register')
-<div class="card shadow-sm border-0 mb-4">
-    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-        <h5 class="mb-0 fw-semibold text-primary">📋 Register Jobdesk</h5>
-    </div>
-    <div class="card-body table-responsive">
-        <table class="table align-middle table-hover text-center" id="clientClosingTable">
-            <thead class="table-light align-middle">
-                <tr>
-                    <th style="width: 40px;">#</th> <!-- ✅ Mepet -->
-                    <th style="width: 80px;">ID</th> <!-- ✅ Mepet -->
-                    <th style="min-width: 180px;">Name</th> <!-- ✅ Lebar untuk nama panjang -->
-                    <th style="width: 100px;">Property ID</th>
-                    <th style="min-width: 200px;">Lokasi</th> <!-- ✅ Lebih lebar -->
-                    <th style="min-width: 120px;">Harga</th>
-                    <th style="min-width: 160px;">Progess</th>
-                    <th style="min-width: 160px;">Status</th> <!-- ✅ Lebih lebar -->
-                    <th style="min-width: 160px;">Detail</th> <!-- ✅ Lebih lebar -->
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($clientsClosing as $index => $client)
-                <tr id="row-{{ $client->id_account }}-{{ $client->id_listing }}">
-                    <td>{{ $index + 1 }}</td>
-                    <td><span class="badge bg-light text-dark">{{ $client->id_account }}</span></td>
-                    <td class="text-truncate" style="max-width: 220px;">{{ $client->nama }}</td>
-                    <td><span class="badge bg-secondary">{{ $client->id_listing }}</span></td>
-                    <td class="text-truncate" style="max-width: 300px;">{{ $client->lokasi }}</td>
-                    <td>Rp {{ number_format($client->harga, 0, ',', '.') }}</td>
-                    <td>
-                        @php
-                        $tahap = $client->status ?? 'Closing'; // Ambil status dari query
-                        $progress = match($tahap) {
-                            'Closing' => 0,
-                            'Kuitansi' => 20,
-                            'Kode Billing' => 40,
-                            'Kutipan Risalah Lelang' => 60,
-                            'Akte Grosse' => 80,
-                            'Balik Nama' => 100,
-                            default => 0
-                        };
-                    @endphp
-                        <div class="progress" style="height: 14px;">
-                            <div class="progress-bar {{ $progress == 100 ? 'bg-success' : 'bg-secondary' }}"
-                                role="progressbar"
-                                style="width: {{ $progress }}%;"
-                                aria-valuenow="{{ $progress }}"
-                                aria-valuemin="0"
-                                aria-valuemax="100">
-                                {{ $progress }}%
                             </div>
                         </div>
-                    </td>
+                    </div>
 
-                    <td>{{ $client->status }}</td>
-                    <td>
-                        <form action="{{ route('dashboard.detail', ['id_listing' => $client->id_listing, 'id_account' => $client->id_account]) }}" method="GET">
-                            @csrf
-                            <button type="submit" class="btn btn-sm bg-secondary text-white rounded-pill px-3 shadow-sm">
-                                Detail
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="9" class="text-center text-muted py-4">Belum ada klien closing.</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-</div>
-@endif
-
-@if (session('role') === 'Pengosongan')
-<style>
-    .table thead th:nth-child(5),
-    .table tbody td:nth-child(5) {
-        width: 200px;
-    }
-
-    .table thead th:nth-child(6),
-    .table tbody td:nth-child(6) {
-        width: 180px;
-    }
-
-    .table td,
-    .table th {
-        vertical-align: middle;
-    }
-</style>
-
-<div class="card shadow-sm border-0 mb-4 mt-5">
-    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-        <h5 class="mb-0 fw-semibold text-primary">📦 Daftar Pengosongan Properti</h5>
-    </div>
-    <div class="card-body table-responsive">
-        <table class="table align-middle table-hover" id="pengosonganTable">
-            <thead class="table-light">
-                <tr>
-                    <th>#</th>
-                    <th>ID Klien</th>
-                    <th>Nama</th>
-                    <th>ID Properti</th>
-                    <th>Lokasi</th>
-                    <th>Harga</th>
-                    <th>Progress</th>
-                    <th>Status</th>
-                    <th>Detail</th>
-                </tr>
-            </thead>
-            <tbody>
-                @php $now = \Carbon\Carbon::now(); @endphp
-                @forelse ($clientsPengosongan as $index => $client)
-                    @if ($client->status === 'Balik Nama' || $client->status === 'Eksekusi Pengosongan')
-                        @php
-                            $status = $client->status;
-                            $progress = match($status) {
-                                'Balik Nama' => 25,
-                                'Eksekusi Pengosongan' => 50,
-                                'Selesai' => 100,
-                                default => 0,
-                            };
-                            $barClass = match($status) {
-                                'Balik Nama' => 'bg-secondary',
-                                'Eksekusi Pengosongan' => 'bg-warning',
-                                'Selesai' => 'bg-success',
-                                default => 'bg-secondary',
-                            };
-                        @endphp
-                        <tr id="row-{{ $client->id_account }}-{{ $client->id_listing }}">
-                            <td>{{ $index + 1 }}</td>
-                            <td><span class="badge bg-light text-dark">{{ $client->id_account }}</span></td>
-                            <td>{{ $client->nama }}</td>
-                            <td><span class="badge bg-secondary">{{ $client->id_listing }}</span></td>
-                            <td>{{ $client->lokasi }}</td>
-                            <td>Rp {{ number_format($client->harga, 0, ',', '.') }}</td>
-                            <td style="min-width: 160px;">
-                                <div class="progress" style="height: 18px;">
-                                    <div class="progress-bar {{ $barClass }}"
-                                        role="progressbar"
-                                        style="width: {{ $progress }}%;"
-                                        aria-valuenow="{{ $progress }}"
-                                        aria-valuemin="0"
-                                        aria-valuemax="100">
-                                        {{ $progress }}%
-                                    </div>
+                    <!-- Calendar Tab -->
+                    <div class="tab-pane fade" id="calendar" role="tabpanel" aria-labelledby="calendar-tab">
+                        <div class="card shadow-sm border-0 mb-4">
+                            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center gap-2">
+                                    <button id="calPrev" type="button" class="btn btn-sm btn-outline-primary">‹</button>
+                                    <button id="calToday" type="button" class="btn btn-sm btn-outline-secondary">Today</button>
+                                    <button id="calNext" type="button" class="btn btn-sm btn-outline-primary">›</button>
                                 </div>
-                            </td>
-                            <td>{{ $client->status }}</td>
-                            <td>
-                                <form action="{{ route('dashboard.detail', ['id_listing' => $client->id_listing, 'id_account' => $client->id_account]) }}" method="GET">
-                                    @csrf
-                                    <button type="submit" class="btn btn-sm bg-secondary text-white rounded-pill px-3 shadow-sm">
-                                        Detail
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                    @endif
-                @empty
-                    <tr>
-                        <td colspan="9" class="text-center text-muted py-4">Belum ada data pengosongan.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-</div>
-@endif
+                                <h5 class="mb-0 fw-semibold text-primary" id="calTitle">🗓️ CALENDAR</h5>
+                                <div style="width:116px;"></div> {{-- spacer supaya judul center --}}
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <!-- KIRI: KALENDER -->
+                                    <div class="col-lg-8">
+                                        <div class="calendar-lite">
+                                            <div class="calendar-lite__weekdays">
+                                                <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                                            </div>
+                                            <div id="calendarGrid" class="calendar-lite__grid"></div>
+                                        </div>
+                                    </div>
 
+                                    <!-- KANAN: EVENT 7 HARI KE DEPAN -->
+                                    <div class="col-lg-4">
+                                        <div class="upcoming card border-0 shadow-sm h-100">
+                                            <div class="card-header bg-white py-3">
+                                                <h6 class="mb-0 fw-semibold">📅 Event 7 Hari Ke Depan</h6>
+                                            </div>
+                                            <div id="upcomingList" class="list-group list-group-flush small" style="max-height: 520px; overflow:auto;">
+                                                <!-- Diisi via JS -->
+                                            </div>
+                                            <div class="p-3 border-top text-muted small">
+                                                <span id="rangeInfo"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div> <!-- /row -->
+                            </div>
+                        </div>
+
+                        <style>
+                            /* --- Calendar --- */
+                            .calendar-lite { max-width: 100%; margin: 0 auto; background: #fff; }
+                            .calendar-lite__weekdays {
+                                display: grid; grid-template-columns: repeat(7, 1fr);
+                                gap: 4px; padding: .25rem 0 .5rem 0; color: #6c757d;
+                                font-size: .85rem; text-align: center; user-select: none;
+                            }
+                            .calendar-lite__weekdays > div { padding: .25rem 0; font-weight: 600; }
+
+                            .calendar-lite__grid {
+                                display: grid; grid-template-columns: repeat(7, 1fr);
+                                gap: 4px; padding: 0;
+                            }
+                            .calendar-lite__cell {
+                                aspect-ratio: 1 / 1; border: 1px solid rgba(0,0,0,.12);
+                                border-radius: 8px; background: #f9fafb; position: relative;
+                                transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
+                                overflow: hidden;
+                            }
+                            .calendar-lite__cell:hover { transform: translateY(-2px); background: #fff; box-shadow: 0 6px 12px rgba(0,0,0,.06); border-color: rgba(0,0,0,.2); }
+                            .calendar-lite__date { position: absolute; top: 5px; right: 6px; font-size: .8rem; font-weight: 600; color: #495057; }
+                            .calendar-lite__cell.muted { background: #f3f4f6; color: #9aa0a6; }
+                            .calendar-lite__cell.today { outline: 2px solid #0d6efd; background: #e7f1ff; }
+                            .calendar-lite__cell .events { position: absolute; left: 6px; right: 6px; bottom: 6px; display: flex; flex-direction: column; gap: 4px; }
+                            .calendar-lite__badge { display:inline-block; font-size:.72rem; padding:2px 6px; border-radius:6px; background:#e9ecef; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+                            /* --- Upcoming list --- */
+                            .list-group-item.upcoming-item { display:flex; align-items:flex-start; gap:.5rem; }
+                            .up-date {
+                                min-width: 42px; text-align:center; border-radius:8px; background:#f1f3f5;
+                                padding:.35rem .25rem; line-height:1;
+                            }
+                            .up-date .d { font-size: .95rem; font-weight:700; }
+                            .up-date .m { font-size: .7rem; text-transform:uppercase; letter-spacing:.3px; color:#6c757d; }
+                            .up-body .ttl { font-weight:600; }
+                            .up-body .meta { color:#6c757d; }
+
+                            @media (max-width: 576px) {
+                                .calendar-lite__grid { gap: 3px; }
+                                .calendar-lite__weekdays { gap: 3px; font-size: .8rem; }
+                                .calendar-lite__date { font-size: .75rem; }
+                            }
+                        </style>
+
+                        <script>
+                            (function(){
+
+                                // Format yang disarankan untuk dari server:
+                                // [{id:1, title:"Judul", start:"2025-08-15T10:00:00", end:"2025-08-15T11:00:00", allDay:false, location:"..."}, ...]
+                                const events = [
+                                    { id: 1, title: "Meeting Tim", start: new Date().toISOString().slice(0,10) + "T10:00:00", end: new Date().toISOString().slice(0,10) + "T11:00:00", allDay:false, location:"Kantor" },
+                                    { id: 2, title: "Survey Lokasi", start: new Date(new Date().setDate(new Date().getDate()+1)).toISOString().slice(0,10), end: null, allDay:true, location: "Cluster A" },
+                                    { id: 3, title: "Follow Up Client", start: new Date(new Date().setDate(new Date().getDate()+3)).toISOString().slice(0,10) + "T14:00:00", end: null, allDay:false, location: "Zoom" },
+                                    { id: 4, title: "Open House", start: new Date(new Date().setDate(new Date().getDate()+6)).toISOString().slice(0,10), end: null, allDay:true, location: "Green Residence" },
+                                    { id: 5, title: "Listing Baru", start: new Date(new Date().setDate(new Date().getDate()-1)).toISOString().slice(0,10) + "T09:00:00", end: null, allDay:false, location:"Website" }
+                                ];
+                                // const events = @json($events ?? []);
+
+                                // ====== Elemen ======
+                                const titleEl = document.getElementById('calTitle');
+                                const gridEl  = document.getElementById('calendarGrid');
+                                const btnPrev = document.getElementById('calPrev');
+                                const btnNext = document.getElementById('calNext');
+                                const btnToday= document.getElementById('calToday');
+                                const upList  = document.getElementById('upcomingList');
+                                const rangeInfo = document.getElementById('rangeInfo');
+
+                                // ====== State Kalender ======
+                                const now = new Date();
+                                let viewYear  = now.getFullYear();
+                                let viewMonth = now.getMonth(); // 0-11
+                                const MONTHS_ID = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+
+                                // ====== Utils ======
+                                function toDate(val){
+                                    if (!val) return null;
+                                    return (val instanceof Date) ? val : new Date(val);
+                                }
+                                function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
+                                function endOfDay(d){ const x = new Date(d); x.setHours(23,59,59,999); return x; }
+                                function daysInMonth(y, m){ return new Date(y, m+1, 0).getDate(); }
+                                function startWeekday(y, m){ return new Date(y, m, 1).getDay(); } // 0=Sun
+                                function fmtDate(d){
+                                    return d.toLocaleString('id-ID', { weekday:'short', day:'2-digit', month:'short' });
+                                }
+                                function fmtTime(d){
+                                    return d.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', hour12:false });
+                                }
+                                function isSameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+
+                                // ====== Render Kalender ======
+                                function renderCalendar(){
+                                    titleEl.innerHTML = `🗓️ ${MONTHS_ID[viewMonth]} ${viewYear}`;
+
+                                    const firstDay = startWeekday(viewYear, viewMonth);
+                                    const thisCount = daysInMonth(viewYear, viewMonth);
+                                    const prevCount = daysInMonth(viewYear, (viewMonth-1+12)%12);
+
+                                    const cells = [];
+                                    for (let i = 0; i < firstDay; i++){
+                                        const dateNum = prevCount - firstDay + 1 + i;
+                                        cells.push({ num: dateNum, other:true, date: new Date(viewYear, viewMonth-1, dateNum) });
+                                    }
+                                    for (let d = 1; d <= thisCount; d++){
+                                        cells.push({ num: d, other:false, date: new Date(viewYear, viewMonth, d) });
+                                    }
+                                    while (cells.length < 42){
+                                        const d = cells.length - (firstDay + thisCount) + 1;
+                                        cells.push({ num: d, other:true, date: new Date(viewYear, viewMonth+1, d) });
+                                    }
+
+                                    gridEl.innerHTML = '';
+                                    cells.forEach(c => {
+                                        const cell = document.createElement('div');
+                                        cell.className = 'calendar-lite__cell' + (c.other ? ' muted' : '');
+                                        const isToday = isSameDay(c.date, new Date());
+                                        if (isToday && !c.other) cell.classList.add('today');
+
+                                        const num = document.createElement('div');
+                                        num.className = 'calendar-lite__date';
+                                        num.textContent = c.num;
+                                        cell.appendChild(num);
+
+                                        const evts = document.createElement('div');
+                                        evts.className = 'events';
+
+                                        // ambil event dalam hari ini (00:00-23:59)
+                                        const dayStart = startOfDay(c.date);
+                                        const dayEnd   = endOfDay(c.date);
+                                        const todays = events.filter(e=>{
+                                            const s = toDate(e.start);
+                                            const eEnd = toDate(e.end) || s;
+                                            return (s <= dayEnd && eEnd >= dayStart); // overlap dengan hari tsb
+                                        });
+
+                                        todays.slice(0,2).forEach(e=>{
+                                            const b = document.createElement('span');
+                                            b.className = 'calendar-lite__badge';
+                                            if (e.allDay) {
+                                                b.textContent = e.title;
+                                            } else {
+                                                b.textContent = `${fmtTime(toDate(e.start))} · ${e.title}`;
+                                            }
+                                            evts.appendChild(b);
+                                        });
+                                        if (todays.length > 2){
+                                            const more = document.createElement('span');
+                                            more.className = 'calendar-lite__badge';
+                                            more.textContent = `+${todays.length - 2} lagi`;
+                                            evts.appendChild(more);
+                                        }
+
+                                        cell.appendChild(evts);
+                                        gridEl.appendChild(cell);
+                                    });
+                                }
+
+                                // ====== Render Sidebar 7 Hari Ke Depan ======
+                                function renderUpcoming(){
+                                    const today = startOfDay(new Date());
+                                    const cutoff = startOfDay(new Date(today)); cutoff.setDate(cutoff.getDate()+7);
+
+                                    rangeInfo.textContent = `${fmtDate(today)} – ${fmtDate(new Date(cutoff.getTime()-86400000))}`;
+
+                                    // event yang overlap dalam rentang [today, cutoff)
+                                    const upcoming = events
+                                        .map(ev => {
+                                            const s = toDate(ev.start);
+                                            const e = toDate(ev.end) || s;
+                                            return { ...ev, _s: s, _e: e };
+                                        })
+                                        .filter(ev => ev._s < cutoff && ev._e >= today)
+                                        .sort((a,b)=> a._s - b._s)
+                                        .slice(0, 20); // batasi agar list tidak kepanjangan
+
+                                    upList.innerHTML = '';
+                                    if (upcoming.length === 0){
+                                        upList.innerHTML = `<div class="list-group-item text-muted">Tidak ada event dalam 7 hari ke depan.</div>`;
+                                        return;
+                                    }
+
+                                    upcoming.forEach(ev=>{
+                                        const s = ev._s, e = ev._e;
+                                        const li = document.createElement('div');
+                                        li.className = 'list-group-item upcoming-item';
+
+                                        const badge = document.createElement('div');
+                                        badge.className = 'up-date';
+                                        badge.innerHTML = `<div class="d">${String(s.getDate()).padStart(2,'0')}</div><div class="m">${MONTHS_ID[s.getMonth()]}</div>`;
+
+                                        const body = document.createElement('div');
+                                        body.className = 'up-body';
+                                        const ttl = document.createElement('div');
+                                        ttl.className = 'ttl';
+                                        ttl.textContent = ev.title;
+
+                                        const meta = document.createElement('div');
+                                        meta.className = 'meta';
+                                        if (ev.allDay){
+                                            meta.textContent = `All day • ${fmtDate(s)}` + (ev.location ? ` • ${ev.location}` : '');
+                                        } else {
+                                            const timePart = (isSameDay(s,e) || !e) ? `${fmtTime(s)}` : `${fmtTime(s)}–${fmtTime(e)}`;
+                                            meta.textContent = `${fmtDate(s)} • ${timePart}` + (ev.location ? ` • ${ev.location}` : '');
+                                        }
+
+                                        body.appendChild(ttl);
+                                        body.appendChild(meta);
+                                        li.appendChild(badge);
+                                        li.appendChild(body);
+                                        upList.appendChild(li);
+                                    });
+                                }
+
+                                // ====== Navigasi Bulan ======
+                                function goPrev(){ viewMonth--; if (viewMonth < 0){ viewMonth = 11; viewYear--; } renderCalendar(); }
+                                function goNext(){ viewMonth++; if (viewMonth > 11){ viewMonth = 0; viewYear++; } renderCalendar(); }
+                                function goToday(){ const n = new Date(); viewYear = n.getFullYear(); viewMonth = n.getMonth(); renderCalendar(); }
+
+                                document.getElementById('calPrev').addEventListener('click', goPrev);
+                                document.getElementById('calNext').addEventListener('click', goNext);
+                                document.getElementById('calToday').addEventListener('click', goToday);
+
+                                // pertama kali render
+                                renderCalendar();
+                                renderUpcoming();
+
+                                // ====== OPTIONAL: jika kamu nanti load events dari server via AJAX,
+                                // panggil renderCalendar() dan renderUpcoming() ulang setelah data masuk.
+                            })();
+                        </script>
+                    </div>
+                </div>
+            </div>
+
+            
 <div class="card shadow-sm border-0 mb-4">
     <div class="row">
         <!-- Line Chart -->
