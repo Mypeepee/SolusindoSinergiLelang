@@ -64,6 +64,18 @@ class Account extends Model
         return $this->hasMany(TransactionDetail::class, 'id_account', 'id_account');
     }
 
+     // Account sebagai pembuat event (one-to-many)
+    public function events(): HasMany
+    {
+        return $this->hasMany(Event::class, 'created_by', 'id_account');
+    }
+
+    // Account sebagai penerima undangan event (one-to-many)
+    public function eventInvites(): HasMany
+    {
+        return $this->hasMany(EventInvite::class, 'id_account', 'id_account');
+    }
+    
     protected static function boot()
     {
         parent::boot();

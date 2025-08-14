@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use Carbon\Carbon;
+use App\Models\Event;
 use App\Models\Account;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Models\Property;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use App\Models\InformasiKlien;
@@ -12,8 +13,8 @@ use App\Models\PropertyInterest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
-use App\Models\Property;
 use Illuminate\Support\Facades\Artisan;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AgentAdminController extends Controller
 {
@@ -353,6 +354,31 @@ return view('Agent.dashboard-agent', [
             ->groupBy('status')
             ->pluck('total', 'status');
 
+        //calendar
+        $idAccount = session('id_account') ?? Cookie::get('id_account');
+        // Event yang dia buat
+        $myEvents = Event::where('created_by', $idAccount);
+
+        // Event yang dia diundang
+        $invitedEvents = Event::whereHas('invites', function ($q) use ($idAccount) {
+            $q->where('id_account', $idAccount);
+        });
+
+        // Gabungkan keduanya
+        $events = $myEvents->union($invitedEvents)->get();
+
+        // Format untuk JS
+        $eventsFormatted = $events->map(function ($event) {
+            return [
+                'id'      => $event->id_event,
+                'title'   => $event->title,
+                'start'   => $event->start->format('Y-m-d\TH:i:s'),
+                'end'     => $event->end ? $event->end->format('Y-m-d\TH:i:s') : null,
+                'allDay'  => (bool) $event->all_day,
+                'location'=> $event->location,
+            ];
+        });
+        
         return view('Agent.dashboardowner', ['pendingAgents' => $pendingAgents,
                                             'pendingClients' => $pendingClients,
                                             'clients' => $clients,
@@ -363,7 +389,8 @@ return view('Agent.dashboard-agent', [
                                             'labels' => $labels,
                                             'revenue' => $revenue,
                                             'transactions' => $transactions,
-                                            'statusCounts' => $statusCounts ]);
+                                            'statusCounts' => $statusCounts,
+                                            'events' => $eventsFormatted ]);
     }
 
     public function storeregister(Request $request)

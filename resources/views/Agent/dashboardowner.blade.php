@@ -734,17 +734,7 @@
 
             <script>
                 (function(){
-
-                    // Format yang disarankan untuk dari server:
-                    // [{id:1, title:"Judul", start:"2025-08-15T10:00:00", end:"2025-08-15T11:00:00", allDay:false, location:"..."}, ...]
-                    const events = [
-                        { id: 1, title: "Meeting Tim", start: new Date().toISOString().slice(0,10) + "T10:00:00", end: new Date().toISOString().slice(0,10) + "T11:00:00", allDay:false, location:"Kantor" },
-                        { id: 2, title: "Survey Lokasi", start: new Date(new Date().setDate(new Date().getDate()+1)).toISOString().slice(0,10), end: null, allDay:true, location: "Cluster A" },
-                        { id: 3, title: "Follow Up Client", start: new Date(new Date().setDate(new Date().getDate()+3)).toISOString().slice(0,10) + "T14:00:00", end: null, allDay:false, location: "Zoom" },
-                        { id: 4, title: "Open House", start: new Date(new Date().setDate(new Date().getDate()+6)).toISOString().slice(0,10), end: null, allDay:true, location: "Green Residence" },
-                        { id: 5, title: "Listing Baru", start: new Date(new Date().setDate(new Date().getDate()-1)).toISOString().slice(0,10) + "T09:00:00", end: null, allDay:false, location:"Website" }
-                    ];
-                    // const events = @json($events ?? []);
+                    const events = @json($events ?? []);
 
                     // ====== Elemen ======
                     const titleEl = document.getElementById('calTitle');
@@ -759,7 +749,7 @@
                     const now = new Date();
                     let viewYear  = now.getFullYear();
                     let viewMonth = now.getMonth(); // 0-11
-                    const MONTHS_ID = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+                    const MONTHS_ID = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
                     // ====== Utils ======
                     function toDate(val){
