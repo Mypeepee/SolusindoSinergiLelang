@@ -12,6 +12,10 @@ class EventInvite extends Model
         'id_event',
         'id_account',
         'status',
+        'urutan',
+        'mulai_giliran',
+        'selesai_giliran',
+        'status_giliran',
         'tanggal_dibuat',
         'tanggal_diupdate',
     ];

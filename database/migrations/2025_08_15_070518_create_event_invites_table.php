@@ -15,14 +15,22 @@ return new class extends Migration
             $table->id('id_invite');
             $table->unsignedBigInteger('id_event');
             $table->string('id_account');
-            $table->enum('status', ['invited', 'accepted', 'declined'])
-                ->default('invited');
+            $table->enum('status', ['Diundang', 'Hadir', 'Tidak Hadir'])
+                ->default('Diundang');
+
+            // ===== GABUNG GILIRAN =====
+            $table->unsignedInteger('urutan')->nullable();      // 1,2,3,... (null = belum dijadwalkan)
+            $table->dateTime('mulai_giliran')->nullable();      // bisa diisi auto dari event.mulai
+            $table->dateTime('selesai_giliran')->nullable();    // = mulai_giliran + durasi
+            $table->enum('status_giliran', ['Menunggu','Berjalan','Selesai'])->default('Menunggu');
+
             $table->timestamp('tanggal_dibuat')->useCurrent();
             $table->timestamp('tanggal_diupdate')->useCurrent()->useCurrentOnUpdate();
 
             // Indexes
             $table->index('id_event');
             $table->index('id_account');
+            $table->unique(['id_event','urutan']);
 
             // Foreign keys
             $table->foreign('id_event')

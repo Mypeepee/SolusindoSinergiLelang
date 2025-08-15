@@ -15,11 +15,13 @@ return new class extends Migration
             $table->id('id_event');
             $table->string('title', 255);
             $table->text('description')->nullable();
-            $table->dateTime('start');
-            $table->dateTime('end')->nullable();
+            $table->dateTime('mulai');
+            $table->dateTime('selesai')->nullable();
             $table->boolean('all_day')->default(false);
+            $table->enum('akses', ['Terbuka','Tertutup'])->default('Terbuka');
             $table->string('location', 255)->nullable();
             $table->string('created_by');
+            $table->unsignedInteger('durasi')->default(5);
             $table->timestamp('tanggal_dibuat')->useCurrent();
             $table->timestamp('tanggal_diupdate')->useCurrent()->useCurrentOnUpdate();
 

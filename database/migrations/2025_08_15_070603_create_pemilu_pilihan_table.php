@@ -17,7 +17,7 @@ return new class extends Migration
 
             $table->dateTime('waktu_pilih')->useCurrent();
 
-            $table->foreign('id_event')->references('id_event')->on('event_grup')->cascadeOnDelete();
+            $table->foreign('id_event')->references('id_event')->on('events')->cascadeOnDelete();
             $table->foreign('id_agent')->references('id_agent')->on('agent')->cascadeOnDelete();
             // Ubah 'property' sesuai tabel listing kamu:
             // $table->foreign('id_listing')->references('id')->on('property')->cascadeOnDelete();

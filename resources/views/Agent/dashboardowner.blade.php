@@ -1,5 +1,4 @@
 @include('template.header')
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <style>
 .property-card {
@@ -646,528 +645,419 @@
                 </div>
             </div>
         </div>
-
-                <!-- Calendar -->
-                <div class="tab-pane fade" id="calendar" role="tabpanel" aria-labelledby="calendar-tab">
-                    <div class="card shadow-sm border-0 mb-4">
-                        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center gap-2">
-                                <button id="calPrev" type="button" class="btn btn-sm btn-outline-primary">‹</button>
-                                <button id="calToday" type="button" class="btn btn-sm btn-outline-secondary">Today</button>
-                                <button id="calNext" type="button" class="btn btn-sm btn-outline-primary">›</button>
-                            </div>
-                            <h5 class="mb-0 fw-semibold text-primary" id="calTitle">🗓️ CALENDAR</h5>
-                            <div style="width:116px;"></div> {{-- spacer supaya judul center --}}
-                        </div>
-                        <div class="card-body">
-                            <div class="row g-3">
-                                <!-- KIRI: KALENDER -->
-                                <div class="col-lg-8">
-                                    <div class="calendar-lite">
-                                        <div class="calendar-lite__weekdays">
-                                            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
-                                        </div>
-                                        <div id="calendarGrid" class="calendar-lite__grid"></div>
-                                    </div>
-                                </div>
-
-                                <!-- KANAN: EVENT 7 HARI KE DEPAN -->
-                                <div class="col-lg-4">
-                                    <div class="upcoming card border-0 shadow-sm h-100">
-                                      <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                                        <h6 id="sideTitle" class="mb-0 fw-semibold">📅 Event 7 Hari Ke Depan</h6>
-                                        <div class="d-flex gap-2">
-                                          <!-- Tombol kembali ke mode 7 hari -->
-                                          <button id="btnBackToUpcoming" type="button" class="btn btn-sm btn-outline-secondary d-none">
-                                            Kembali
-                                          </button>
-                                          <!-- Tombol tambah event -->
-                                          <button id="btnAddEvent" type="button" class="btn btn-sm btn-primary d-none">
-                                            + Tambah Event
-                                          </button>
-                                        </div>
-                                      </div>
-                                      <div id="upcomingList" class="list-group list-group-flush small" style="max-height: 520px; overflow:auto;">
-                                        <!-- Diisi via JS -->
-                                      </div>
-                                      <div class="p-3 border-top text-muted small">
-                                        <span id="rangeInfo"></span>
-                                      </div>
-                                    </div>
-                                  </div>
-                            </div> <!-- /row -->
-                        </div>
+        <!-- Calendar -->
+        <div class="tab-pane fade" id="calendar" role="tabpanel" aria-labelledby="calendar-tab">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <button id="calPrev" type="button" class="btn btn-sm btn-outline-primary">‹</button>
+                        <button id="calToday" type="button" class="btn btn-sm btn-outline-secondary">Today</button>
+                        <button id="calNext" type="button" class="btn btn-sm btn-outline-primary">›</button>
                     </div>
-
-                    <style>
-                        /* --- Calendar --- */
-                        .calendar-lite { max-width: 100%; margin: 0 auto; background: #fff; }
-                        .calendar-lite__weekdays {
-                            display: grid; grid-template-columns: repeat(7, 1fr);
-                            gap: 4px; padding: .25rem 0 .5rem 0; color: #6c757d;
-                            font-size: .85rem; text-align: center; user-select: none;
-                        }
-                        .calendar-lite__weekdays > div { padding: .25rem 0; font-weight: 600; }
-
-                        .calendar-lite__grid {
-                            display: grid; grid-template-columns: repeat(7, 1fr);
-                            gap: 4px; padding: 0;
-                        }
-                        .calendar-lite__cell {
-                            aspect-ratio: 1 / 1; border: 1px solid rgba(0,0,0,.12);
-                            border-radius: 8px; background: #f9fafb; position: relative;
-                            transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
-                            overflow: hidden;
-                        }
-                        .calendar-lite__cell:hover { transform: translateY(-2px); background: #fff; box-shadow: 0 6px 12px rgba(0,0,0,.06); border-color: rgba(0,0,0,.2); }
-                        .calendar-lite__date { position: absolute; top: 5px; right: 6px; font-size: .8rem; font-weight: 600; color: #495057; }
-                        .calendar-lite__cell.muted { background: #f3f4f6; color: #9aa0a6; }
-                        .calendar-lite__cell.today { outline: 2px solid #0d6efd; background: #e7f1ff; }
-                        .calendar-lite__cell .events { position: absolute; left: 6px; right: 6px; bottom: 6px; display: flex; flex-direction: column; gap: 4px; }
-                        .calendar-lite__badge { display:inline-block; font-size:.72rem; padding:2px 6px; border-radius:6px; background:#e9ecef; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-
-                        /* --- Upcoming list --- */
-                        .list-group-item.upcoming-item { display:flex; align-items:flex-start; gap:.5rem; }
-                        .up-date {
-                            min-width: 42px; text-align:center; border-radius:8px; background:#f1f3f5;
-                            padding:.35rem .25rem; line-height:1;
-                        }
-                        .up-date .d { font-size: .95rem; font-weight:700; }
-                        .up-date .m { font-size: .7rem; text-transform:uppercase; letter-spacing:.3px; color:#6c757d; }
-                        .up-body .ttl { font-weight:600; }
-                        .up-body .meta { color:#6c757d; }
-
-                        @media (max-width: 576px) {
-                            .calendar-lite__grid { gap: 3px; }
-                            .calendar-lite__weekdays { gap: 3px; font-size: .8rem; }
-                            .calendar-lite__date { font-size: .75rem; }
-                        }
-                        .calendar-lite__cell.selected {
-                        outline: 2px solid #ff7a00;
-                        background: #fff7ef;
-                        }
-                    </style>
-
-                    <script>
-                        (function(){
-                            const events = @json($events ?? []);
-
-                            // ====== Elemen ======
-                            const titleEl   = document.getElementById('calTitle');
-                            const gridEl    = document.getElementById('calendarGrid');
-                            const btnPrev   = document.getElementById('calPrev');
-                            const btnNext   = document.getElementById('calNext');
-                            const btnToday  = document.getElementById('calToday');
-                            const upList    = document.getElementById('upcomingList');
-                            const rangeInfo = document.getElementById('rangeInfo');
-
-                            // >>> tambahan utk hybrid
-                            const sideTitle         = document.getElementById('sideTitle');           // pastikan ada
-                            const btnAddEvent       = document.getElementById('btnAddEvent');         // pastikan ada
-                            const btnBackToUpcoming = document.getElementById('btnBackToUpcoming');   // pastikan ada
-
-                            // ====== State Kalender ======
-                            const now = new Date();
-                            let viewYear  = now.getFullYear();
-                            let viewMonth = now.getMonth(); // 0-11
-                            let selectedDate = null; // >>> tanggal yang dipilih (mode hybrid)
-                            const MONTHS_ID = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
-                            // ====== Utils ======
-                            function toDate(val){ if (!val) return null; return (val instanceof Date) ? val : new Date(val); }
-                            function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
-                            function endOfDay(d){ const x = new Date(d); x.setHours(23,59,59,999); return x; }
-                            function daysInMonth(y, m){ return new Date(y, m+1, 0).getDate(); }
-                            function startWeekday(y, m){ return new Date(y, m, 1).getDay(); } // 0=Sun
-                            function fmtDate(d){ return d.toLocaleString('id-ID', { weekday:'short', day:'2-digit', month:'short' }); }
-                            function fmtTime(d){ return d.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', hour12:false }); }
-                            function isSameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
-
-                            // ====== Render Kalender ======
-                            function renderCalendar(){
-                                titleEl.innerHTML = `🗓️ ${MONTHS_ID[viewMonth]} ${viewYear}`;
-
-                                const firstDay = startWeekday(viewYear, viewMonth);
-                                const thisCount = daysInMonth(viewYear, viewMonth);
-                                const prevCount = daysInMonth(viewYear, (viewMonth-1+12)%12);
-
-                                const cells = [];
-                                for (let i = 0; i < firstDay; i++){
-                                    const dateNum = prevCount - firstDay + 1 + i;
-                                    cells.push({ num: dateNum, other:true, date: new Date(viewYear, viewMonth-1, dateNum) });
-                                }
-                                for (let d = 1; d <= thisCount; d++){
-                                    cells.push({ num: d, other:false, date: new Date(viewYear, viewMonth, d) });
-                                }
-                                while (cells.length < 42){
-                                    const d = cells.length - (firstDay + thisCount) + 1;
-                                    cells.push({ num: d, other:true, date: new Date(viewYear, viewMonth+1, d) });
-                                }
-
-                                gridEl.innerHTML = '';
-                                cells.forEach(c => {
-                                    const cell = document.createElement('div');
-                                    cell.className = 'calendar-lite__cell' + (c.other ? ' muted' : '');
-
-                                    const isToday = isSameDay(c.date, new Date());
-                                    if (isToday && !c.other) cell.classList.add('today');
-
-                                    // highlight kalau sedang terpilih (opsional, tambahkan CSS .selected)
-                                    if (!c.other && selectedDate && isSameDay(c.date, selectedDate)) {
-                                        cell.classList.add('selected');
-                                    }
-
-                                    const num = document.createElement('div');
-                                    num.className = 'calendar-lite__date';
-                                    num.textContent = c.num;
-                                    cell.appendChild(num);
-
-                                    const evts = document.createElement('div');
-                                    evts.className = 'events';
-
-                                    // ambil event dalam hari ini (00:00-23:59)
-                                    const dayStart = startOfDay(c.date);
-                                    const dayEnd   = endOfDay(c.date);
-                                    const todays = events.filter(e=>{
-                                        const s = toDate(e.start);
-                                        const eEnd = toDate(e.end) || s;
-                                        return (s <= dayEnd && eEnd >= dayStart); // overlap dengan hari tsb
-                                    });
-
-                                    todays.slice(0,2).forEach(e=>{
-                                        const b = document.createElement('span');
-                                        b.className = 'calendar-lite__badge';
-                                        if (e.allDay) {
-                                            b.textContent = e.title;
-                                        } else {
-                                            b.textContent = `${fmtTime(toDate(e.start))} · ${e.title}`;
-                                        }
-                                        evts.appendChild(b);
-                                    });
-                                    if (todays.length > 2){
-                                        const more = document.createElement('span');
-                                        more.className = 'calendar-lite__badge';
-                                        more.textContent = `+${todays.length - 2} lagi`;
-                                        evts.appendChild(more);
-                                    }
-
-                                    cell.appendChild(evts);
-
-                                    // >>> HYBRID: klik tanggal -> mode "tanggal terpilih" di sidebar
-                                    cell.dataset.dateIso = c.date.toISOString();
-                                    cell.addEventListener('click', () => {
-                                        selectedDate = new Date(cell.dataset.dateIso);
-                                        renderCalendar(); // refresh highlight
-                                        renderSidebar();  // tampilkan sidebar untuk tanggal ini + tombol Tambah
-                                    });
-
-                                    gridEl.appendChild(cell);
-                                });
-                            }
-
-                            // ====== Sidebar: mode tanggal terpilih
-                            function renderSelectedDay(){
-                                if (!selectedDate) return;
-
-                                // judul & tombol
-                                if (sideTitle) sideTitle.textContent = `📌 Event pada ${fmtDate(selectedDate)}`;
-                                if (btnAddEvent) btnAddEvent.classList.remove('d-none');
-                                if (btnBackToUpcoming) btnBackToUpcoming.classList.remove('d-none');
-
-                                const dayStart = startOfDay(selectedDate);
-                                const dayEnd   = endOfDay(selectedDate);
-
-                                const todays = events
-                                .map(ev => ({...ev, _s: toDate(ev.start), _e: toDate(ev.end) || toDate(ev.start)}))
-                                .filter(ev => ev._s <= dayEnd && ev._e >= dayStart)
-                                .sort((a,b)=> a._s - b._s);
-
-                                upList.innerHTML = '';
-                                if (todays.length === 0){
-                                    upList.innerHTML = `<div class="list-group-item text-muted">Belum ada event pada tanggal ini.</div>`;
-                                } else {
-                                    todays.forEach(ev=>{
-                                        const s = ev._s, e = ev._e;
-                                        const li = document.createElement('div');
-                                        li.className = 'list-group-item upcoming-item';
-
-                                        const badge = document.createElement('div');
-                                        badge.className = 'up-date';
-                                        badge.innerHTML = `<div class="d">${String(s.getDate()).padStart(2,'0')}</div><div class="m">${MONTHS_ID[s.getMonth()]}</div>`;
-
-                                        const body = document.createElement('div');
-                                        body.className = 'up-body';
-                                        const ttl = document.createElement('div');
-                                        ttl.className = 'ttl';
-                                        ttl.textContent = ev.title;
-
-                                        const meta = document.createElement('div');
-                                        meta.className = 'meta';
-                                        if (ev.allDay){
-                                            meta.textContent = `All day • ${fmtDate(s)}` + (ev.location ? ` • ${ev.location}` : '');
-                                        } else {
-                                            const timePart = (isSameDay(s,e) || !e) ? `${fmtTime(s)}` : `${fmtTime(s)}–${fmtTime(e)}`;
-                                            meta.textContent = `${fmtDate(s)} • ${timePart}` + (ev.location ? ` • ${ev.location}` : '');
-                                        }
-
-                                        body.appendChild(ttl); body.appendChild(meta);
-                                        li.appendChild(badge); li.appendChild(body);
-                                        upList.appendChild(li);
-                                    });
-                                }
-
-                                rangeInfo.textContent = ''; // tidak dipakai di mode ini
-                            }
-
-                            // ====== Sidebar: mode 7 hari ke depan (kode lama kamu, tidak diubah)
-                            function renderUpcomingSevenDays(){
-                                const today = startOfDay(new Date());
-                                const cutoff = startOfDay(new Date(today)); cutoff.setDate(cutoff.getDate()+7);
-
-                                if (sideTitle) sideTitle.textContent = '📅 Event 7 Hari Ke Depan';
-                                if (btnAddEvent) btnAddEvent.classList.add('d-none');
-                                if (btnBackToUpcoming) btnBackToUpcoming.classList.add('d-none');
-
-                                rangeInfo.textContent = `${fmtDate(today)} – ${fmtDate(new Date(cutoff.getTime()-86400000))}`;
-
-                                const upcoming = events
-                                    .map(ev => {
-                                        const s = toDate(ev.start);
-                                        const e = toDate(ev.end) || s;
-                                        return { ...ev, _s: s, _e: e };
-                                    })
-                                    .filter(ev => ev._s < cutoff && ev._e >= today)
-                                    .sort((a,b)=> a._s - b._s)
-                                    .slice(0, 20);
-
-                                upList.innerHTML = '';
-                                if (upcoming.length === 0){
-                                    upList.innerHTML = `<div class="list-group-item text-muted">Tidak ada event dalam 7 hari ke depan.</div>`;
-                                    return;
-                                }
-
-                                upcoming.forEach(ev=>{
-                                    const s = ev._s, e = ev._e;
-                                    const li = document.createElement('div');
-                                    li.className = 'list-group-item upcoming-item';
-
-                                    const badge = document.createElement('div');
-                                    badge.className = 'up-date';
-                                    badge.innerHTML = `<div class="d">${String(s.getDate()).padStart(2,'0')}</div><div class="m">${MONTHS_ID[s.getMonth()]}</div>`;
-
-                                    const body = document.createElement('div');
-                                    body.className = 'up-body';
-                                    const ttl = document.createElement('div');
-                                    ttl.className = 'ttl';
-                                    ttl.textContent = ev.title;
-
-                                    const meta = document.createElement('div');
-                                    meta.className = 'meta';
-                                    if (ev.allDay){
-                                        meta.textContent = `All day • ${fmtDate(s)}` + (ev.location ? ` • ${ev.location}` : '');
-                                    } else {
-                                        const timePart = (isSameDay(s,e) || !e) ? `${fmtTime(s)}` : `${fmtTime(s)}–${fmtTime(e)}`;
-                                        meta.textContent = `${fmtDate(s)} • ${timePart}` + (ev.location ? ` • ${ev.location}` : '');
-                                    }
-
-                                    body.appendChild(ttl); body.appendChild(meta);
-                                    li.appendChild(badge); li.appendChild(body);
-                                    upList.appendChild(li);
-                                });
-                            }
-
-                            // ====== Wrapper: pilih mode sidebar
-                            function renderSidebar(){
-                                if (selectedDate) {
-                                    renderSelectedDay();
-                                } else {
-                                    renderUpcomingSevenDays();
-                                }
-                            }
-
-                            // ====== Navigasi Bulan ======
-                            function goPrev(){ viewMonth--; if (viewMonth < 0){ viewMonth = 11; viewYear--; } renderCalendar(); }
-                            function goNext(){ viewMonth++; if (viewMonth > 11){ viewMonth = 0; viewYear++; } renderCalendar(); }
-                            function goToday(){ const n = new Date(); viewYear = n.getFullYear(); viewMonth = n.getMonth(); renderCalendar(); }
-
-                            btnPrev.addEventListener('click', goPrev);
-                            btnNext.addEventListener('click', goNext);
-                            btnToday.addEventListener('click', goToday);
-
-                            // >>> tombol kembali & tambah event
-                            if (btnBackToUpcoming){
-                                btnBackToUpcoming.addEventListener('click', ()=>{
-                                    selectedDate = null;
-                                    renderCalendar();
-                                    renderSidebar();
-                                });
-                            }
-                            if (btnAddEvent){
-                            btnAddEvent.addEventListener('click', ()=>{
-                                if (!selectedDate) return;
-
-                                // set tanggal ke hidden input
-                                const eventDateInput = document.getElementById('eventDate');
-                                if (!eventDateInput) { console.warn('#eventDate tidak ditemukan'); return; }
-                                eventDateInput.value = startOfDay(selectedDate).toISOString();
-
-                                // cek modal element + bootstrap
-                                const modalEl = document.getElementById('addEventModal');
-                                if (!modalEl) { console.warn('#addEventModal tidak ditemukan'); return; }
-                                if (!window.bootstrap || !bootstrap.Modal) { console.warn('Bootstrap Modal belum ter-load'); return; }
-
-                                // buka modal
-                                const modal = bootstrap.Modal.getOrCreateInstance(modalEl, { backdrop: true, focus: true });
-                                modal.show();
-                            });
-                            }
-
-                            // ====== Render awal
-                            renderCalendar();
-                            renderSidebar();
-
-                            // (opsional) kalau kamu load events via AJAX, panggil renderCalendar() & renderSidebar() ulang setelah data masuk.
-                        })();
-                        </script>
-                        <script>
-                        document.addEventListener('DOMContentLoaded', function () {
-                        const navbar = document.querySelector('nav.navbar');
-                        if (!navbar) return;
-
-                        document.addEventListener('show.bs.modal', () => navbar.classList.add('d-none'));
-                        document.addEventListener('hidden.bs.modal', () => navbar.classList.remove('d-none'));
-                        });
-                        </script>
+                    <h5 class="mb-0 fw-semibold text-primary" id="calTitle">🗓️ CALENDAR</h5>
+                    <div style="width:116px;"></div> {{-- spacer supaya judul center --}}
                 </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- KIRI: KALENDER -->
+                        <div class="col-lg-8">
+                            <div class="calendar-lite">
+                                <div class="calendar-lite__weekdays">
+                                    <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                                </div>
+                                <div id="calendarGrid" class="calendar-lite__grid"></div>
+                            </div>
+                        </div>
 
-<!-- MODAL: TAMBAH EVENT GRUP (PEMILU) -->
-<div class="modal fade" id="addEventModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <form id="addEventForm" class="modal-content" method="POST" action="{{ route('event-grup.store') }}">
-        @csrf
-        <div class="modal-header">
-          <h5 class="modal-title">Tambah Event Grup (Pemilu)</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
-        </div>
+                        <!-- KANAN: EVENT 7 HARI KE DEPAN -->
+                        <div class="col-lg-4 d-flex flex-column gap-3">
+                            
+                            <!-- Event 7 Hari -->
+                            <div class="card shadow-sm border-0">
+                                <div class="card-header text-white" style="background-color:#f4511e; color:#fff;">
+                                    <h6 class="mb-0 fw-semibold">Event 7 Hari Ke Depan</h6>
+                                </div>
+                                <div id="upcomingList" class="list-group list-group-flush small" style="max-height: 300px; overflow:auto;">
+                                    <!-- Diisi via JS -->
+                                </div>
+                                <div class="p-3 border-top small text-muted">
+                                    <span id="rangeInfo"></span>
+                                </div>
+                            </div>
 
-        <div class="modal-body">
-          <!-- tanggal terpilih dari kalender (ISO) -->
-          <input type="hidden" id="eventDate" name="eventDate">
+                            <!-- Container Kedua -->
+                            <div class="card shadow-sm border-0">
+                                <div class="card-header text-white" style="background-color:#f4511e; color:#fff;">
+                                    <h6 class="mb-0 fw-semibold">Container Kedua</h6>
+                                </div>
+                                <div class="p-3">
+                                    Konten container kedua di sini...
+                                </div>
+                            </div>
 
-          <!-- Judul (auto, readonly) -->
-          <div class="mb-3">
-            <label class="form-label">Judul</label>
-            <input type="text" class="form-control" name="judul" id="judulInput" readonly>
-          </div>
+                        </div>
 
-          <!-- Mulai & Selesai (auto, readonly) -->
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label">Mulai</label>
-              <input type="datetime-local" class="form-control" name="mulai" id="mulaiInput" readonly required>
+                    </div> <!-- /row -->
+                </div>
             </div>
-            <div class="col-md-6">
-              <label class="form-label">Selesai</label>
-              <input type="datetime-local" class="form-control" name="selesai" id="selesaiInput" readonly required>
-            </div>
-          </div>
 
-          <!-- Lokasi (opsional) -->
-          <div class="mt-3">
-            <label class="form-label">Lokasi (opsional)</label>
-            <input type="text" class="form-control" name="lokasi" placeholder="Ruang Meeting / Zoom / dll">
-          </div>
+            <style>
+                /* --- Calendar --- */
+                .calendar-lite { max-width: 100%; margin: 0 auto; background: #fff; }
+                .calendar-lite__weekdays {
+                    display: grid; grid-template-columns: repeat(7, 1fr);
+                    gap: 4px; padding: .25rem 0 .5rem 0; color: #6c757d;
+                    font-size: .85rem; text-align: center; user-select: none;
+                }
+                .calendar-lite__weekdays > div { padding: .25rem 0; font-weight: 600; }
 
-          <!-- Akses & Durasi -->
-          <div class="row g-3 mt-3">
-            <div class="col-md-6">
-              <label class="form-label">Akses Event</label>
-              <select class="form-select" name="akses_event" id="aksesEventSelect" required>
-                <option value="terbuka" selected>Terbuka (semua agent bisa join)</option>
-                <option value="tertutup">Tertutup (hanya undangan)</option>
-              </select>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Durasi Giliran (menit)</label>
-              <input type="number" class="form-control" name="durasi_giliran_menit" id="durasiInput" min="1" step="1" value="5" required>
-            </div>
-          </div>
+                .calendar-lite__grid {
+                    display: grid; grid-template-columns: repeat(7, 1fr);
+                    gap: 4px; padding: 0;
+                }
+                .calendar-lite__cell {
+                    aspect-ratio: 1 / 1; border: 1px solid rgba(0,0,0,.12);
+                    border-radius: 8px; background: #f9fafb; position: relative;
+                    transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
+                    overflow: hidden;
+                }
+                .calendar-lite__cell:hover { transform: translateY(-2px); background: #fff; box-shadow: 0 6px 12px rgba(0,0,0,.06); border-color: rgba(0,0,0,.2); }
+                .calendar-lite__date { position: absolute; top: 5px; right: 6px; font-size: .8rem; font-weight: 600; color: #495057; }
+                .calendar-lite__cell.muted { background: #f3f4f6; color: #9aa0a6; }
+                .calendar-lite__cell.today { outline: 2px solid #0d6efd; background: #e7f1ff; }
+                .calendar-lite__cell .events { position: absolute; left: 6px; right: 6px; bottom: 6px; display: flex; flex-direction: column; gap: 4px; }
+                .calendar-lite__badge { display:inline-block; font-size:.72rem; padding:2px 6px; border-radius:6px; background:#e9ecef; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-          <!-- Peserta undangan (muncul jika tertutup) -->
-          <div class="mt-3 d-none" id="fieldPesertaWrap">
-            <label class="form-label">Undang Peserta (Agent)</label>
-            <select class="form-select" name="peserta[]" id="pesertaSelect" multiple size="6">
-              @isset($agentsAktif)
-                @foreach($agentsAktif as $ag)
-                  <option value="{{ $ag->id_agent }}">{{ $ag->nama ?? $ag->id_agent }} ({{ $ag->id_agent }})</option>
-                @endforeach
-              @endisset
-            </select>
-            <div class="form-text">Tahan Ctrl/Cmd untuk pilih banyak.</div>
-          </div>
-        </div>
+                /* --- Upcoming list --- */
+                .list-group-item.upcoming-item { display:flex; align-items:flex-start; gap:.5rem; }
+                .up-date {
+                    min-width: 42px; text-align:center; border-radius:8px; background:#f1f3f5;
+                    padding:.35rem .25rem; line-height:1;
+                }
+                .up-date .d { font-size: .95rem; font-weight:700; }
+                .up-date .m { font-size: .7rem; text-transform:uppercase; letter-spacing:.3px; color:#6c757d; }
+                .up-body .ttl { font-weight:600; }
+                .up-body .meta { color:#6c757d; }
 
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-primary">Simpan</button>
-        </div>
-      </form>
-    </div>
-  </div>
+                @media (max-width: 576px) {
+                    .calendar-lite__grid { gap: 3px; }
+                    .calendar-lite__weekdays { gap: 3px; font-size: .8rem; }
+                    .calendar-lite__date { font-size: .75rem; }
+                }
 
-  <script>
-    (function(){
-      const modalEl     = document.getElementById('addEventModal');
-      const aksesEl     = document.getElementById('aksesEventSelect');
-      const pesertaWrap = document.getElementById('fieldPesertaWrap');
-      const mulaiInput  = document.getElementById('mulaiInput');
-      const selesaiInput= document.getElementById('selesaiInput');
-      const durasiInput = document.getElementById('durasiInput');
-      const judulInput  = document.getElementById('judulInput');
-      const eventDateEl = document.getElementById('eventDate'); // hidden
+                .custom-event-container {
+                    border-radius: 12px;
+                    overflow: hidden;
+                    background: #fff;
+                    display: flex;
+                    flex-direction: column;
+                }
 
-      // toggle undangan
-      aksesEl?.addEventListener('change', () => {
-        pesertaWrap?.classList.toggle('d-none', aksesEl.value !== 'tertutup');
-      });
+                .custom-event-header {
+                    font-weight: 600;
+                    padding: 12px 16px;
+                    background-color: #fff;
+                    font-size: 0.95rem;
+                }
 
-      const monthsID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+                .custom-event-body {
+                    padding: 12px 16px;
+                    max-height: 300px;
+                    overflow-y: auto;
+                }
 
-      const pad = n => String(n).padStart(2,'0');
-      const toDatetimeLocal = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                .custom-event-footer {
+                    padding: 8px 16px;
+                    border-top: 1px solid rgba(0,0,0,0.08);
+                }
 
-      function fillFromDate(base){
-        // judul "Pemilu DD Bulan YYYY"
-        judulInput.value = `Pemilu ${pad(base.getDate())} ${monthsID[base.getMonth()]} ${base.getFullYear()}`;
+                .list-group-item.upcoming-item {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: .5rem;
+                    background-color: #fff;
+                    color: #000;
+                }
 
-        // jam 08:00 — 23:59
-        const start = new Date(base); start.setHours(8,0,0,0);
-        const end   = new Date(base); end.setHours(23,59,0,0);
-        mulaiInput.value   = toDatetimeLocal(start);
-        selesaiInput.value = toDatetimeLocal(end);
+                .card-header {
+                    font-size: 0.95rem;
+                }
 
-        // set hidden eventDate (YYYY-MM-DD)
-        if (eventDateEl) eventDateEl.value = `${start.getFullYear()}-${pad(start.getMonth()+1)}-${pad(start.getDate())}`;
-      }
+                .card-header h6 {
+                    margin: 0;
+                    color: #fff; /* Pastikan font judul putih */
+                }
+                .card-header {
+                    font-size: 0.95rem;
+                }
 
-      // Saat modal dibuka
-      modalEl?.addEventListener('show.bs.modal', () => {
-        const iso = eventDateEl?.value;                 // diisi saat klik tanggal (jika ada)
-        const base = iso ? new Date(iso) : new Date();  // fallback: hari ini
-        fillFromDate(base);
-      });
+                .card-header h6 {
+                    margin: 0;
+                    color: #fff; /* Pastikan font judul putih */
+                }
+            </style>
 
-      // Pastikan eventDate ikut tersimpan meski user mengubah 'mulai' via devtools, dll
-      document.getElementById('addEventForm')?.addEventListener('submit', () => {
-        if (mulaiInput?.value && eventDateEl) {
-          eventDateEl.value = mulaiInput.value.split('T')[0]; // YYYY-MM-DD
+            <script>
+(function(){
+    const events = @json($events ?? []);
+
+    const titleEl = document.getElementById('calTitle');
+    const gridEl  = document.getElementById('calendarGrid');
+    const btnPrev = document.getElementById('calPrev');
+    const btnNext = document.getElementById('calNext');
+    const btnToday= document.getElementById('calToday');
+    const upList  = document.getElementById('upcomingList');
+    const rangeInfo = document.getElementById('rangeInfo');
+    const containerKedua = document.querySelector('.col-lg-4 .card:nth-child(2)');
+    const containerKeduaHeader = containerKedua.querySelector('.card-header h6');
+    const containerKeduaBody = containerKedua.querySelector('.p-3');
+
+    const now = new Date();
+    let viewYear  = now.getFullYear();
+    let viewMonth = now.getMonth();
+    const MONTHS_ID = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    let selectedDate = null;
+
+    function toDate(val){ return (val instanceof Date) ? val : new Date(val); }
+    function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
+    function endOfDay(d){ const x = new Date(d); x.setHours(23,59,59,999); return x; }
+    function daysInMonth(y, m){ return new Date(y, m+1, 0).getDate(); }
+    function startWeekday(y, m){ return new Date(y, m, 1).getDay(); }
+    function fmtDate(d){ return d.toLocaleString('id-ID', { weekday:'short', day:'2-digit', month:'short' }); }
+    function fmtTime(d){ return d.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', hour12:false }); }
+    function isSameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+
+    function renderCalendar(){
+        titleEl.innerHTML = `🗓️ ${MONTHS_ID[viewMonth]} ${viewYear}`;
+        const firstDay = startWeekday(viewYear, viewMonth);
+        const thisCount = daysInMonth(viewYear, viewMonth);
+        const prevCount = daysInMonth(viewYear, (viewMonth-1+12)%12);
+
+        const cells = [];
+        for (let i = 0; i < firstDay; i++){
+            const dateNum = prevCount - firstDay + 1 + i;
+            cells.push({ num: dateNum, other:true, date: new Date(viewYear, viewMonth-1, dateNum) });
         }
-      });
-    })();
-    </script>
+        for (let d = 1; d <= thisCount; d++){
+            cells.push({ num: d, other:false, date: new Date(viewYear, viewMonth, d) });
+        }
+        while (cells.length < 42){
+            const d = cells.length - (firstDay + thisCount) + 1;
+            cells.push({ num: d, other:true, date: new Date(viewYear, viewMonth+1, d) });
+        }
 
+        gridEl.innerHTML = '';
+        cells.forEach(c => {
+            const cell = document.createElement('div');
+            cell.className = 'calendar-lite__cell' + (c.other ? ' muted' : '');
+            if (isSameDay(c.date, new Date()) && !c.other) cell.classList.add('today');
 
+            const num = document.createElement('div');
+            num.className = 'calendar-lite__date';
+            num.textContent = c.num;
+            cell.appendChild(num);
 
+            const evts = document.createElement('div');
+            evts.className = 'events';
+            const dayStart = startOfDay(c.date);
+            const dayEnd   = endOfDay(c.date);
+            const todays = events.filter(e=>{
+                const s = toDate(e.start);
+                const eEnd = toDate(e.end) || s;
+                return (s <= dayEnd && eEnd >= dayStart);
+            });
 
+            todays.slice(0,2).forEach(e=>{
+                const b = document.createElement('span');
+                b.className = 'calendar-lite__badge';
+                b.textContent = e.allDay ? e.title : `${fmtTime(toDate(e.start))} · ${e.title}`;
+                evts.appendChild(b);
+            });
+            if (todays.length > 2){
+                const more = document.createElement('span');
+                more.className = 'calendar-lite__badge';
+                more.textContent = `+${todays.length - 2} lagi`;
+                evts.appendChild(more);
+            }
+
+            cell.appendChild(evts);
+            cell.addEventListener('click', ()=> renderTodayEvents(c.date));
+            gridEl.appendChild(cell);
+        });
+    }
+
+    function renderUpcoming(){
+        const today = startOfDay(new Date());
+        const cutoff = startOfDay(new Date(today)); cutoff.setDate(cutoff.getDate()+7);
+        rangeInfo.textContent = `${fmtDate(today)} – ${fmtDate(new Date(cutoff.getTime()-86400000))}`;
+
+        const upcoming = events
+            .map(ev => ({...ev, _s: toDate(ev.start), _e: toDate(ev.end) || toDate(ev.start)}))
+            .filter(ev => ev._s < cutoff && ev._e >= today)
+            .sort((a,b)=> a._s - b._s)
+            .slice(0, 20);
+
+        upList.innerHTML = '';
+        if (upcoming.length === 0){
+            upList.innerHTML = `<div class="list-group-item text-muted">Tidak ada event.</div>`;
+            return;
+        }
+        upcoming.forEach(ev=>{
+            const li = document.createElement('div');
+            li.className = 'list-group-item upcoming-item';
+            li.innerHTML = `
+                <div class="up-date">
+                    <div class="d">${String(ev._s.getDate()).padStart(2,'0')}</div>
+                    <div class="m">${MONTHS_ID[ev._s.getMonth()]}</div>
+                </div>
+                <div class="up-body">
+                    <div class="ttl">${ev.title}</div>
+                    <div class="meta">${ev.allDay ? 'All day' : `${fmtTime(ev._s)}–${fmtTime(ev._e)}`} • ${fmtDate(ev._s)}</div>
+                </div>
+            `;
+            li.addEventListener('click', ()=> renderEventDetail(ev));
+            upList.appendChild(li);
+        });
+    }
+
+    function renderTodayEvents(date){
+        selectedDate = date;
+        const dayStart = startOfDay(date);
+        const dayEnd   = endOfDay(date);
+        const todays = events.filter(e=>{
+            const s = toDate(e.start);
+            const eEnd = toDate(e.end) || s;
+            return (s <= dayEnd && eEnd >= dayStart);
+        });
+
+        containerKedua.style.display = 'block';
+        containerKeduaHeader.textContent = `Event Hari Ini (${fmtDate(date)})`;
+        containerKeduaBody.innerHTML = '';
+
+        if (todays.length === 0){
+            containerKeduaBody.innerHTML = `<div class="list-group-item text-muted">Tidak ada event.</div>`;
+        } else {
+            todays.forEach(ev=>{
+                const li = document.createElement('div');
+                li.className = 'list-group-item upcoming-item';
+                li.innerHTML = `
+                    <div class="up-date">
+                        <div class="d">${String(toDate(ev.start).getDate()).padStart(2,'0')}</div>
+                        <div class="m">${MONTHS_ID[toDate(ev.start).getMonth()]}</div>
+                    </div>
+                    <div class="up-body">
+                        <div class="ttl">${ev.title}</div>
+                        <div class="meta">${ev.allDay ? 'All day' : `${fmtTime(toDate(ev.start))}–${fmtTime(toDate(ev.end))}`} • ${fmtDate(toDate(ev.start))}</div>
+                    </div>
+                `;
+                li.addEventListener('click', ()=> renderEventDetail(ev));
+                containerKeduaBody.appendChild(li);
+            });
+        }
+
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-primary btn-sm mt-3';
+        btn.textContent = 'Tambah Event';
+        btn.addEventListener('click', ()=> renderAddEventForm(date));
+        containerKeduaBody.appendChild(btn);
+    }
+
+    function renderAddEventForm(date){
+        containerKedua.style.display = 'block';
+        containerKeduaHeader.textContent = `Tambah Event (${fmtDate(date)})`;
+        containerKeduaBody.innerHTML = `
+            <form id="addEventForm">
+                <div class="mb-2"><label>Judul</label><input type="text" class="form-control" name="title" required></div>
+                <div class="mb-2"><label>Deskripsi</label><textarea class="form-control" name="description"></textarea></div>
+                <div class="mb-2"><label>Mulai</label><input type="datetime-local" class="form-control" name="start" id="evStart" required></div>
+                <div class="mb-2"><label>Selesai</label><input type="datetime-local" class="form-control" name="end" id="evEnd" required></div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="evAllDay" name="allDay">
+                    <label class="form-check-label">All Day</label>
+                </div>
+                <div class="mb-2"><label>Lokasi</label><input type="text" class="form-control" name="location"></div>
+                <div class="mb-2"><label>Akses Event</label>
+                    <select class="form-select" name="access">
+                        <option value="terbuka">Terbuka</option>
+                        <option value="tertutup">Tertutup</option>
+                    </select>
+                </div>
+                <div class="mb-2"><label>Durasi (menit)</label><input type="number" class="form-control" name="duration" id="evDuration"></div>
+                <button type="submit" class="btn btn-success btn-sm">Simpan</button>
+            </form>
+        `;
+
+        document.getElementById('evAllDay').addEventListener('change', function(){
+            const dis = this.checked;
+            document.getElementById('evStart').disabled = dis;
+            document.getElementById('evEnd').disabled = dis;
+            if(dis){ document.getElementById('evStart').value=''; document.getElementById('evEnd').value=''; }
+        });
+
+        const startEl = document.getElementById('evStart');
+        const endEl = document.getElementById('evEnd');
+        const durationEl = document.getElementById('evDuration');
+        function updateDuration(){
+            const s = new Date(startEl.value);
+            const e = new Date(endEl.value);
+            if(s && e && e > s && !durationEl.matches(':focus')){
+                const diffMin = Math.floor((e - s) / (1000*60));
+                durationEl.value = diffMin;
+            }
+        }
+        startEl.addEventListener('change', updateDuration);
+        endEl.addEventListener('change', updateDuration);
+
+        document.getElementById('addEventForm').addEventListener('submit', async function(e){
+            e.preventDefault();
+            const formData = new FormData(this);
+            try {
+                const res = await fetch("{{ route('events.store') }}", {
+                    method: "POST",
+                    headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'},
+                    body: formData
+                });
+                if(!res.ok) throw new Error('Gagal menyimpan event');
+                alert('Event berhasil disimpan');
+                renderTodayEvents(selectedDate);
+                renderCalendar();
+                renderUpcoming();
+            } catch(err) {
+                alert(err.message);
+            }
+        });
+    }
+
+    function renderEventDetail(ev){
+        containerKedua.style.display = 'block';
+        containerKeduaHeader.textContent = `Detail Event`;
+        containerKeduaBody.innerHTML = `
+            <p><strong>${ev.title}</strong></p>
+            <p>Penyelenggara: ${ev.created_by || '-'}</p>
+            <p><strong>Deskripsi:</strong><br>${ev.description || '-'}</p>
+            <p>${ev.allDay ? 'All Day' : `${fmtDate(toDate(ev.start))} ${fmtTime(toDate(ev.start))} - ${fmtTime(toDate(ev.end))}`}</p>
+            <p>Lokasi: ${ev.location || '-'}</p>
+            <p>Akses: ${ev.access || '-'}</p>
+            <button class="btn btn-secondary btn-sm" id="btnBack">Kembali</button>
+        `;
+        document.getElementById('btnBack').addEventListener('click', ()=> renderTodayEvents(selectedDate));
+    }
+
+    function goPrev(){ viewMonth--; if(viewMonth<0){viewMonth=11;viewYear--;} renderCalendar(); }
+    function goNext(){ viewMonth++; if(viewMonth>11){viewMonth=0;viewYear++;} renderCalendar(); }
+    function goToday(){ const n=new Date(); viewYear=n.getFullYear(); viewMonth=n.getMonth(); renderCalendar(); }
+
+    btnPrev.addEventListener('click', goPrev);
+    btnNext.addEventListener('click', goNext);
+    btnToday.addEventListener('click', goToday);
+
+    containerKedua.style.display = 'none';
+    renderCalendar();
+    renderUpcoming();
+})();
+</script>
+
+        </div>
         </div>
     </div>
 </div>

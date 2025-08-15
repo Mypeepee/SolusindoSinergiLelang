@@ -242,4 +242,4 @@ Route::get('/property/{id}', function ($id) {
 });
 
 
-Route::post('/event-grup/store', [AgentAdminController::class, 'store'])->name('event-grup.store');
+Route::post('/events/store', [AgentAdminController::class, 'store'])->name('events.store');
