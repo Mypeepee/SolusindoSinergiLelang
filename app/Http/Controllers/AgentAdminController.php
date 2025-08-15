@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Artisan;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Support\Facades\Session;
 
 class AgentAdminController extends Controller
 {
@@ -378,7 +379,7 @@ return view('Agent.dashboard-agent', [
                 'location'=> $event->location,
             ];
         });
-        
+
         return view('Agent.dashboardowner', ['pendingAgents' => $pendingAgents,
                                             'pendingClients' => $pendingClients,
                                             'clients' => $clients,
@@ -392,6 +393,80 @@ return view('Agent.dashboard-agent', [
                                             'statusCounts' => $statusCounts,
                                             'events' => $eventsFormatted ]);
     }
+
+    public function store(Request $r)
+{
+    $validated = $r->validate([
+        'eventDate'            => 'nullable|string', // ISO dari UI (opsional)
+        'akses_event'          => 'required|in:terbuka,tertutup',
+        'durasi_giliran_menit' => 'required|integer|min:1|max:240',
+        'lokasi'               => 'nullable|string|max:150',
+        'peserta'              => 'array',
+        'peserta.*'            => 'string|exists:agent,id_agent',
+    ]);
+
+    // ========= TANGGAL ACUAN & OTOMATISASI FIELD =========
+    $d = $r->input('eventDate') ? Carbon::parse($r->input('eventDate')) : now();
+    Carbon::setLocale('id'); // agar bulan berbahasa Indonesia
+
+    $judul   = 'Pemilu '.$d->format('d').' '.$d->translatedFormat('F').' '.$d->format('Y');
+    $mulai   = $d->copy()->setTime(8, 0, 0);
+    $selesai = $d->copy()->setTime(23, 59, 0);
+
+    // ========= PENYELENGGARA DARI SESSION ID ACCOUNT =========
+    $penyelenggara = Session::get('id_account');
+
+    // ✅ Cek judul sudah ada belum
+    $judulSudahAda = DB::table('event_grup')
+        ->where('judul', $judul)
+        ->exists();
+
+    if ($judulSudahAda) {
+        return back()
+            ->withErrors(['judul' => 'Event Pemilu pada tanggal ini sudah ada.'])
+            ->withInput();
+    }
+
+    // (Opsional) Jika kamu juga ingin kunci 1 event per hari, buka blok ini:
+    /*
+    $sudahAdaHariIni = DB::table('event_grup')->whereDate('mulai', $mulai->toDateString())->exists();
+    if ($sudahAdaHariIni) {
+        return back()->withErrors(['mulai' => 'Sudah ada event Pemilu pada tanggal ini.'])->withInput();
+    }
+    */
+
+    // ========= SIMPAN EVENT =========
+    $idEvent = DB::table('event_grup')->insertGetId([
+        'penyelenggara'         => Session::get('id_account'),
+        'judul'                 => $judul,
+        'mulai'                 => $mulai,
+        'selesai'               => $selesai,
+        'akses_event'           => $validated['akses_event'],
+        'durasi_giliran_menit'  => $validated['durasi_giliran_menit'],
+        'lokasi'                => $validated['lokasi'] ?? null,
+        'tanggal_dibuat'        => now(),
+        'tanggal_diupdate'      => now(),
+    ], 'id_event');
+
+    // Undang peserta jika tertutup
+    if ($validated['akses_event'] === 'tertutup' && !empty($validated['peserta'])) {
+        $rows = array_map(fn ($aid) => [
+            'id_event'        => $idEvent,
+            'id_agent'        => $aid,
+            'status_rsvp'     => 'belum',
+            'urutan'          => null,
+            'mulai_giliran'   => null,
+            'selesai_giliran' => null,
+            'status_giliran'  => 'menunggu',
+            'tanggal_dibuat'  => now(),
+        ], $validated['peserta']);
+
+        DB::table('event_grup_peserta')->insert($rows);
+    }
+
+    return back()->with('Event Pemilu berhasil dibuat.');
+}
+
 
     public function storeregister(Request $request)
     {
@@ -1053,13 +1128,13 @@ public function updateStatusClosing(Request $request)
                     ]);
 
                 DB::commit();
-                
+
                 if ($account && $account->roles === 'Owner') {
                     return redirect()->route('dashboard.owner')->with('success', 'Transaksi Closing berhasil disimpan.');
                 } else {
                     return redirect()->route('dashboard.agent')->with('success', 'Status berhasil diperbarui.');
                 }
-                
+
             } catch (\Throwable $e) {
                 DB::rollBack();
                 return back()->withErrors(['error' => '❌ Gagal Closing: ' . $e->getMessage()]);
