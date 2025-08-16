@@ -47,9 +47,13 @@
                                     <div class="swiper mySwiperMain rounded overflow-hidden">
                                         <div class="swiper-wrapper">
                                             @foreach(explode(',', $property->gambar) as $index => $image)
-                                                <div class="swiper-slide">
+                                                <div class="swiper-slide position-relative">
                                                     <div class="img-wrapper">
-                                                        <img src="{{ $image }}" alt="Property Image">
+                                                        <img src="{{ $image }}" alt="Property Image" class="w-100">
+                                                    </div>
+                                                    <!-- Label ID Listing di pojok kanan atas -->
+                                                    <div class="bg-primary rounded text-white position-absolute end-0 top-0 m-2 py-1 px-3">
+                                                        ID: {{ $property->id_listing }}
                                                     </div>
                                                 </div>
                                             @endforeach

@@ -11,14 +11,14 @@ use Illuminate\Http\Request;
 use App\Models\InformasiKlien;
 use App\Models\PropertyInterest;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Artisan;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Support\Facades\Session;
+use App\Models\EventInvite;
 
 class AgentAdminController extends Controller
 {
+    private int $intervalSeconds = 300;
     public function index()
     {
         $idAccount = session('id_account');
@@ -207,6 +207,178 @@ return view('Agent.dashboard-agent', [
 ]);
     }
 
+    public function indexpemilu(Request $request)
+    {
+        $search = trim($request->get('search'));
+
+        $properties = \App\Models\Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar')
+            ->where('id_agent', 'AG001') // filter hanya agent tertentu
+            ->when($search !== '' && $search !== null, function ($query) use ($search) {
+                // Jika id_listing bertipe integer
+                return $query->where('id_listing', (int) $search);
+
+                // Kalau kolom id_listing bertipe string/char, ganti dengan:
+                // return $query->where('id_listing', $search);
+            })
+            ->paginate(10)
+            ->appends(['search' => $search]);
+
+        return view('Agent.pemilu', compact('properties', 'search'));
+    }
+
+    public function join($idEvent, Request $request)
+    {
+        // Ambil ID akun/agent dari user login atau dari request
+        $idAccount = auth()->user()->id_account ?? $request->string('id_account')->toString();
+
+        // Ambil waktu mulai event (asumsi ada tabel events dengan kolom 'mulai')
+        $event = DB::table('events')->where('id_event', $idEvent)->first(['id_event','mulai']);
+        abort_if(!$event, 404, 'Event tidak ditemukan');
+
+        DB::transaction(function () use ($idEvent, $idAccount, $event) {
+            // Cek sudah ada invite-nya?
+            $existing = EventInvite::forEvent($idEvent)->where('id_account', $idAccount)->lockForUpdate()->first();
+            if ($existing) {
+                // Sudah join → tidak perlu apa-apa
+                return;
+            }
+
+            // Ambil urutan terakhir dengan lock agar aman dari race-condition
+            $lastOrder = EventInvite::forEvent($idEvent)->lockForUpdate()->max('urutan');
+            $urutanBaru = (int) $lastOrder + 1;
+
+            $mulaiEvent = Carbon::parse($event->mulai);
+            $mulaiGiliran = (clone $mulaiEvent)->addSeconds(($urutanBaru - 1) * $this->intervalSeconds);
+            $selesaiGiliran = (clone $mulaiGiliran)->addSeconds($this->intervalSeconds);
+
+            EventInvite::create([
+                'id_event'        => $idEvent,
+                'id_account'      => $idAccount,
+                'status'          => 'Hadir', // atau tetap 'Diundang' kalau alurmu begitu
+                'urutan'          => $urutanBaru,
+                'mulai_giliran'   => $mulaiGiliran,
+                'selesai_giliran' => $selesaiGiliran,
+                'status_giliran'  => 'Menunggu',
+            ]);
+        });
+
+        return back()->with('status', 'Berhasil join giliran.');
+    }
+
+    public function show($idEvent)
+    {
+        // Ambil data event
+        $event = DB::table('events')->where('id_event', $idEvent)->first(['id_event','mulai']);
+        abort_if(!$event, 404, 'Event tidak ditemukan');
+
+        // Ambil semua invites dengan username dan hitung waktu tersisa
+        $invites = DB::table('event_invites')
+            ->join('account', 'event_invites.id_account', '=', 'account.id_account')
+            ->where('event_invites.id_event', $idEvent)
+            ->orderBy('event_invites.urutan')
+            ->get([
+                'event_invites.id_invite',
+                'event_invites.id_account',
+                'account.username',
+                'event_invites.mulai_giliran',
+                'event_invites.selesai_giliran',
+                'event_invites.status_giliran',
+                'event_invites.urutan',
+            ])
+            ->map(function ($invite) {
+                // Hitung waktu tersisa
+                $now = Carbon::now();
+                $waktuTersisa = $invite->selesai_giliran ? $now->diffInSeconds($invite->selesai_giliran, false) : 0;
+                $invite->waktu_tersisa = $waktuTersisa < 0 ? 0 : $waktuTersisa;
+
+                // Tentukan status giliran yang sedang berjalan
+                if ($now->between($invite->mulai_giliran, $invite->selesai_giliran)) {
+                    $invite->status_giliran = 'Berjalan';
+                } elseif ($now->lt($invite->mulai_giliran)) {
+                    $invite->status_giliran = 'Menunggu';
+                } else {
+                    $invite->status_giliran = 'Selesai';
+                }
+
+                return $invite;
+            });
+
+        // Ambil log transaksi
+        $logs = PemiluLog::where('id_event', $idEvent)
+            ->orderBy('created_at', 'desc')
+            ->limit(10) // menampilkan 10 log terakhir
+            ->get();
+
+        return view('Agent.pemilu', [
+            'event'   => $event,
+            'invites' => $invites,
+            'logs'    => $logs,
+        ]);
+    }
+    public function pilihProperty($idEvent, Request $request)
+    {
+        // Ambil ID akun/agent dari user login
+        $idAccount = auth()->user()->id_account ?? $request->string('id_account');
+
+        // Ambil data event dan pilih listing
+        $event = DB::table('events')->where('id_event', $idEvent)->first(['id_event', 'mulai']);
+        $idListing = $request->input('id_listing');  // ID Property yang dipilih
+
+        // Validasi: pastikan property tidak sudah dipilih agent lain di event yang sama
+        $existingChoice = PemiluPilihan::where('id_event', $idEvent)
+            ->where('id_listing', $idListing)
+            ->exists();
+
+        if ($existingChoice) {
+            return back()->with('error', 'Property ini sudah dipilih.');
+        }
+
+        // Simpan pilihan agent
+        PemiluPilihan::create([
+            'id_event'   => $idEvent,
+            'id_agent'   => $idAccount,
+            'id_listing' => $idListing,
+            'waktu_pilih'=> now(),
+        ]);
+
+        // Simpan log pengumuman
+        PemiluLog::create([
+            'id_event'  => $idEvent,
+            'id_agent'  => $idAccount,
+            'action'    => 'Memilih Property',
+            'meta'      => json_encode([
+                'id_listing' => $idListing,
+                'message'    => "Agent {$idAccount} telah memilih nomor {$idListing}.",
+            ]),
+        ]);
+
+        return back()->with('status', 'Berhasil memilih property.');
+    }
+    // Endpoint JSON untuk polling UI kanan-atas
+    public function state($idEvent)
+    {
+        $event = DB::table('events')->where('id_event', $idEvent)->first(['id_event','mulai']);
+        abort_if(!$event, 404);
+
+        $invites = EventInvite::forEvent($idEvent)->orderBy('urutan')->get([
+            'id_account','urutan','mulai_giliran','selesai_giliran'
+        ]);
+
+        $now = now();
+        $current = null;
+        foreach ($invites as $v) {
+            if ($now->between($v->mulai_giliran, $v->selesai_giliran)) {
+                $current = $v;
+                break;
+            }
+        }
+
+        return response()->json([
+            'current' => $current,
+            'invites' => $invites,
+            'server_time' => $now->toDateTimeString(),
+        ]);
+    }
 
     public function owner()
     {
