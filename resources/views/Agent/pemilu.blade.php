@@ -38,7 +38,7 @@
                     <!-- Search -->
                     <form method="GET" action="{{ route('pemilu.index') }}" class="mb-3 d-flex gap-2">
                         <input type="text" name="search" value="{{ $search ?? '' }}"
-                            class="form-control" placeholder="Cari lokasi...">
+                            class="form-control" placeholder="Cari ID Listing">
                         <button type="submit" class="btn btn-primary">Search</button>
                     </form>
 
