@@ -1066,18 +1066,8 @@
 
         let actionButtons = '';
 
-        // cek apakah user masih bisa memilih (status null atau Diundang)
-        const canChoose = !ev.invite_status || ev.invite_status.toLowerCase() === 'diundang';
-
-        if(canChoose){
-            if(ev.title && ev.title.toLowerCase() === 'pemilu'){
-                actionButtons = `<button class="btn btn-primary btn-sm me-2" id="btnJoin">Join</button>`;
-            } else {
-                actionButtons = `
-                    <button class="btn btn-success btn-sm me-2" id="btnHadir">Hadir</button>
-                    <button class="btn btn-danger btn-sm me-2" id="btnTidak">Tidak Hadir</button>
-                `;
-            }
+        if(ev.title && ev.title.toLowerCase() === 'pemilu'){
+            actionButtons = `<button class="btn btn-primary btn-sm me-2" id="btnJoin">Join</button>`;
         }
 
         containerKeduaBody.innerHTML = `
@@ -1095,45 +1085,45 @@
 
         document.getElementById('btnBack').addEventListener('click', ()=> renderTodayEvents(selectedDate));
 
-        if(canChoose){
-            if(ev.title && ev.title.toLowerCase() === 'pemilu'){
-                document.getElementById('btnJoin').addEventListener('click', ()=> updateInvite(ev.id, 'join', ev.access));
-            } else {
-                document.getElementById('btnHadir').addEventListener('click', ()=> updateInvite(ev.id, 'hadir', ev.access));
-                document.getElementById('btnTidak').addEventListener('click', ()=> updateInvite(ev.id, 'tidak', ev.access));
-            }
-        }
+        if(ev.title && ev.title.toLowerCase() === 'pemilu'){
+            document.getElementById('btnJoin').addEventListener('click', ()=> updateInvite(ev.id, 'join', ev.access));
+        } 
     }
 
-    async function updateInvite(eventId, status, access) {
-        try {
-            const res = await fetch("{{ route('event.invite') }}", {
-                method: "POST",
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    event_id: eventId,
-                    status: status,
-                    access: access
-                })
-            });
+    function updateInvite(eventId, status, access) {
+        // bikin form hidden agar bisa kirim POST dengan CSRF token
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = "{{ route('event.invite') }}";
 
-            const data = await res.json();
-            if (!res.ok || data.status !== 'success') {
-                throw new Error(data.message || 'Gagal update status');
-            }
+        // csrf
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = '_token';
+        csrfInput.value = '{{ csrf_token() }}';
+        form.appendChild(csrfInput);
 
-            alert(data.message);
-            // refresh detail & daftar event biar status terbaru langsung muncul
-            renderTodayEvents(selectedDate);
-            renderCalendar();
-            renderUpcoming();
+        // data
+        const eventInput = document.createElement('input');
+        eventInput.type = 'hidden';
+        eventInput.name = 'event_id';
+        eventInput.value = eventId;
+        form.appendChild(eventInput);
 
-        } catch (err) {
-            alert(err.message);
-        }
+        const statusInput = document.createElement('input');
+        statusInput.type = 'hidden';
+        statusInput.name = 'status';
+        statusInput.value = status;
+        form.appendChild(statusInput);
+
+        const accessInput = document.createElement('input');
+        accessInput.type = 'hidden';
+        accessInput.name = 'access';
+        accessInput.value = access;
+        form.appendChild(accessInput);
+
+        document.body.appendChild(form);
+        form.submit(); // langsung redirect ke view dari controller
     }
 
 

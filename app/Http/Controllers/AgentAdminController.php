@@ -154,58 +154,100 @@ class AgentAdminController extends Controller
         $salesData = $salesData ?? [];
         $transactions = $transactions ?? [];
         // Siapkan label bulan
-$labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        $labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-// Ambil pendapatan & jumlah transaksi
-$earnings = DB::table('transaction')
-    ->select(
-        DB::raw('EXTRACT(YEAR FROM tanggal_transaksi) AS year'),
-        DB::raw('EXTRACT(MONTH FROM tanggal_transaksi) AS month'),
-        DB::raw('SUM(selisih) AS total'),
-        DB::raw('COUNT(*) as total_transaksi')
-    )
-    ->where('id_agent', $idAgent ?? $idAccount)
-    ->groupByRaw('EXTRACT(YEAR FROM tanggal_transaksi), EXTRACT(MONTH FROM tanggal_transaksi)')
-    ->orderByRaw('EXTRACT(YEAR FROM tanggal_transaksi), EXTRACT(MONTH FROM tanggal_transaksi)')
-    ->get();
+        // Ambil pendapatan & jumlah transaksi
+        $earnings = DB::table('transaction')
+            ->select(
+                DB::raw('EXTRACT(YEAR FROM tanggal_transaksi) AS year'),
+                DB::raw('EXTRACT(MONTH FROM tanggal_transaksi) AS month'),
+                DB::raw('SUM(selisih) AS total'),
+                DB::raw('COUNT(*) as total_transaksi')
+            )
+            ->where('id_agent', $idAgent ?? $idAccount)
+            ->groupByRaw('EXTRACT(YEAR FROM tanggal_transaksi), EXTRACT(MONTH FROM tanggal_transaksi)')
+            ->orderByRaw('EXTRACT(YEAR FROM tanggal_transaksi), EXTRACT(MONTH FROM tanggal_transaksi)')
+            ->get();
 
-$revenue = array_fill(0, 12, 0);
-$transactions = array_fill(0, 12, 0);
-foreach ($earnings as $e) {
-    $revenue[$e->month - 1] = (int)$e->total;
-    $transactions[$e->month - 1] = (int)$e->total_transaksi;
-}
+        $revenue = array_fill(0, 12, 0);
+        $transactions = array_fill(0, 12, 0);
+        foreach ($earnings as $e) {
+            $revenue[$e->month - 1] = (int)$e->total;
+            $transactions[$e->month - 1] = (int)$e->total_transaksi;
+        }
 
-// Status klien untuk pie chart
-$statusCounts = DB::table('property_interests')
-    ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
-    ->where('property.id_agent', $idAgent)
-    ->selectRaw("
-        SUM(CASE WHEN property_interests.status = 'FollowUp' THEN 1 ELSE 0 END) as followup,
-        SUM(CASE WHEN property_interests.status = 'pending' THEN 1 ELSE 0 END) as pending,
-        SUM(CASE WHEN property_interests.status = 'gagal' THEN 1 ELSE 0 END) as gagal,
-        SUM(CASE WHEN property_interests.status = 'buyer_meeting' THEN 1 ELSE 0 END) as buyer_meeting,
-        SUM(CASE WHEN property_interests.status = 'closing' THEN 1 ELSE 0 END) as closing
-    ")
-    ->first();
+        // Status klien untuk pie chart
+        $statusCounts = DB::table('property_interests')
+            ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
+            ->where('property.id_agent', $idAgent)
+            ->selectRaw("
+                SUM(CASE WHEN property_interests.status = 'FollowUp' THEN 1 ELSE 0 END) as followup,
+                SUM(CASE WHEN property_interests.status = 'pending' THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN property_interests.status = 'gagal' THEN 1 ELSE 0 END) as gagal,
+                SUM(CASE WHEN property_interests.status = 'buyer_meeting' THEN 1 ELSE 0 END) as buyer_meeting,
+                SUM(CASE WHEN property_interests.status = 'closing' THEN 1 ELSE 0 END) as closing
+            ")
+            ->first();
 
-// Kirim ke view
-return view('Agent.dashboard-agent', [
-    'totalKomisi' => $totalKomisi,
-    'totalSelisih' => $totalSelisih,
-    'jumlahListing' => $jumlahListing,
-    'jumlahClients' => $jumlahClients,
-    'clients' => $clients,
-    'clientsClosing' => $clientsClosing,
-    'clientsPengosongan' => $clientsPengosongan,
-    'salesData' => json_encode($salesData),         // <--- dijamin ada
-    'transactions' => json_encode($transactions),
-    'labels' => $labels,
-    'revenue' => $revenue,
-    'transactions' => $transactions,
-    'statusCounts' => (array) $statusCounts,
-    'pendingAgents' => $pendingAgents,
-]);
+        //calender
+        $idAccount = session('id_account') ?? Cookie::get('id_account');
+        // Event yang dia buat
+        $myEvents = Event::where('created_by', $idAccount);
+
+        // Event yang dia diundang
+        $invitedEvents = Event::whereHas('invites', function ($q) use ($idAccount) {
+            $q->where('id_account', $idAccount);
+        });
+
+        // Event dengan akses terbuka
+        $publicEvents = Event::where('akses', 'Terbuka');
+
+        // Gabungkan ketiga query
+        $events = $myEvents
+            ->union($invitedEvents)
+            ->union($publicEvents)
+            ->get();
+
+        $events = Event::leftJoin('account', 'account.id_account', '=', 'events.created_by')
+        ->select(
+            'events.*',
+            'account.nama as creator_name'
+        )
+        ->get();
+
+        // Format untuk JS
+        $eventsFormatted = $events->map(function ($event) {
+            return [
+                'id'       => $event->id_event,
+                'title'    => $event->title,
+                'description' => $event->description,
+                'start'    => Carbon::parse($event->mulai)->format('Y-m-d\TH:i:s'),
+                'end'      => $event->selesai ? Carbon::parse($event->selesai)->format('Y-m-d\TH:i:s') : null,
+                'allDay'   => (bool) $event->all_day,
+                'location' => $event->location,
+                'access'   => $event->akses,
+                'created_by'  => $event->creator_name,
+            ];
+        });
+
+        // Kirim ke view
+        return view('Agent.dashboard-agent', [
+            'totalKomisi' => $totalKomisi,
+            'totalSelisih' => $totalSelisih,
+            'jumlahListing' => $jumlahListing,
+            'jumlahClients' => $jumlahClients,
+            'clients' => $clients,
+            'clientsClosing' => $clientsClosing,
+            'clientsPengosongan' => $clientsPengosongan,
+            'salesData' => json_encode($salesData),         // <--- dijamin ada
+            'transactions' => json_encode($transactions),
+            'labels' => $labels,
+            'revenue' => $revenue,
+            'transactions' => $transactions,
+            'statusCounts' => (array) $statusCounts,
+            'pendingAgents' => $pendingAgents,
+            'events' => $eventsFormatted ]);
+
     }
 
     public function indexpemilu(Request $request)
@@ -304,16 +346,26 @@ return view('Agent.dashboard-agent', [
                 return $invite;
             });
 
-        // Ambil log transaksi
-        $logs = PemiluLog::where('id_event', $idEvent)
-            ->orderBy('created_at', 'desc')
-            ->limit(10) // menampilkan 10 log terakhir
-            ->get();
+        $current = EventInvite::where('id_event', $idEvent)
+            ->where('status_giliran', 'Berjalan')
+            ->first();
+
+        $properties = \App\Models\Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar')
+            ->where('id_agent', 'AG001')
+            ->paginate(10);
+
+        // // Ambil log transaksi
+        // $logs = PemiluLog::where('id_event', $idEvent)
+        //     ->orderBy('created_at', 'desc')
+        //     ->limit(10) // menampilkan 10 log terakhir
+        //     ->get();
 
         return view('Agent.pemilu', [
-            'event'   => $event,
-            'invites' => $invites,
-            'logs'    => $logs,
+            'event'     => $event,
+            'invites'   => $invites,
+            'properties'=> $properties,
+            'current'   => $current,
+            // 'logs'    => $logs,
         ]);
     }
     public function pilihProperty($idEvent, Request $request)
@@ -556,10 +608,6 @@ return view('Agent.dashboard-agent', [
 
         // Format untuk JS
         $eventsFormatted = $events->map(function ($event) {
-            $accountId = session('id_account') ?? Cookie::get('id_account');
-            $invite = $event->invites()
-                ->where('id_account', $accountId)
-                ->first();
             return [
                 'id'       => $event->id_event,
                 'title'    => $event->title,
@@ -570,7 +618,6 @@ return view('Agent.dashboard-agent', [
                 'location' => $event->location,
                 'access'   => $event->akses,
                 'created_by'  => $event->creator_name,
-                'invite_status' => $invite->status ?? null, 
             ];
         });
 
@@ -647,7 +694,7 @@ return view('Agent.dashboard-agent', [
     {
         $validated = $request->validate([
             'event_id' => 'required|exists:events,id_event',
-            'status'   => 'required|string|in:join,hadir,tidak',
+            'status'   => 'required|string|in:join',
             'access'   => 'required|in:Terbuka,Tertutup,terbuka,tertutup',
         ]);
 
@@ -661,39 +708,54 @@ return view('Agent.dashboard-agent', [
 
         $event = Event::findOrFail($validated['event_id']);
 
-        // cari invite user
-        $invite = EventInvite::where('id_event', $event->id_event)
+        // ===== Case khusus PEMILU saja =====
+        if (strtolower($event->title) !== 'pemilu') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Update undangan hanya berlaku untuk event Pemilu.'
+            ], 400);
+        }
+
+        // === cek apakah user sudah punya invite di event ini ===
+        $existingInvite = EventInvite::where('id_event', $event->id_event)
             ->where('id_account', $accountId)
             ->first();
 
-        // mapping status
-        $statusMap = [
-            'join'  => 'Hadir',         // join diperlakukan hadir
-            'hadir' => 'Hadir',
-            'tidak' => 'Tidak Hadir'
-        ];
-        $newStatus = $statusMap[$validated['status']];
-
-        if ($invite) {
-            // update jika sudah ada
-            $invite->status = $newStatus;
-            $invite->tanggal_diupdate = now();
-            $invite->save();
-        } else {
-            // insert baru kalau belum ada (misalnya event "Terbuka")
-            EventInvite::create([
-                'id_event'   => $event->id_event,
-                'id_account' => $accountId,
-                'status'     => $newStatus,
-                'tanggal_dibuat' => now(),
-                'tanggal_diupdate' => now(),
-            ]);
+        if ($existingInvite) {
+            return redirect()->route('pemilu.show', ['event' => $event->id_event]);
         }
 
-        return response()->json([
-            'status' => 'success',
-            'message' => "Status undangan berhasil diubah menjadi {$newStatus}"
+        // === kalau belum punya invite, insert baru ===
+        $lastInvite = EventInvite::where('id_event', $event->id_event)
+            ->orderByDesc('urutan')
+            ->first();
+
+        $nextOrder = $lastInvite ? $lastInvite->urutan + 1 : 1;
+
+        // hitung mulai_giliran & selesai_giliran
+        if ($lastInvite && $lastInvite->selesai_giliran) {
+            $mulaiGiliran = Carbon::parse($lastInvite->selesai_giliran);
+        } else {
+            $mulaiGiliran = Carbon::parse($event->mulai);
+        }
+
+        $durasiMenit = $event->durasi ?? 0;
+        $selesaiGiliran = $mulaiGiliran->copy()->addMinutes($durasiMenit);
+
+        // insert giliran baru
+        EventInvite::create([
+            'id_event'        => $event->id_event,
+            'id_account'      => $accountId,
+            'status'          => 'Hadir',
+            'urutan'          => $nextOrder,
+            'mulai_giliran'   => $mulaiGiliran,
+            'selesai_giliran' => $selesaiGiliran,
+            'status_giliran'  => 'Menunggu',
+            'tanggal_dibuat'  => now(),
+            'tanggal_diupdate'=> now(),
         ]);
+
+        return redirect()->route('pemilu.show', ['event' => $event->id_event]);
     }
 
 

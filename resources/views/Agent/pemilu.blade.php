@@ -144,19 +144,12 @@
                 <i class="bi bi-people-fill me-2"></i> Antrian Giliran
                 </div>
                 <div class="card-body">
-                {{-- Tombol Join --}}
-                {{-- <form method="POST" action="{{ route('pemilu.join', $event->id_event) }}" class="mb-3">
-                    @csrf
-                    <button class="btn btn-sm btn-success rounded-pill shadow-sm">
-                    <i class="bi bi-box-arrow-in-right me-1"></i> Join Giliran
-                    </button>
-                </form> --}}
 
                 {{-- Info yang sedang berjalan --}}
                 <div class="alert alert-info py-2">
                     <div class="d-flex align-items-center">
                     <i class="bi bi-lightning-charge-fill me-2"></i>
-                    {{-- <div>
+                    <div>
                         <div><strong>Sedang Giliran:</strong> {{ $current->id_account ?? '-' }}</div>
                         @if($current?->mulai_giliran && $current?->selesai_giliran)
                         <div class="small text-muted">
@@ -164,7 +157,7 @@
                             – {{ \Carbon\Carbon::parse($current->selesai_giliran)->format('H:i') }}
                         </div>
                         @endif
-                    </div> --}}
+                    </div>
                     </div>
                 </div>
 
@@ -179,7 +172,7 @@
                                 <th>Status</th>
                             </tr>
                         </thead>
-                        {{-- <tbody>
+                        <tbody>
                             @forelse ($invites as $row)
                                 <tr @class(['table-primary' => isset($current) && $current->id_invite === $row->id_invite])>
                                     <td class="fw-bold">{{ $row->urutan }}</td>
@@ -203,7 +196,7 @@
                             @empty
                                 <tr><td colspan="4"><em>Belum ada yang join.</em></td></tr>
                             @endforelse
-                        </tbody> --}}
+                        </tbody>
                     </table>
                 </div>
             </div>

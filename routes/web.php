@@ -243,7 +243,7 @@ Route::get('/property/{id}', function ($id) {
 
 
 Route::post('/events/store', [AgentAdminController::class, 'store'])->name('events.store');
-Route::post('/event/invite', [AgentAdminController::class, 'updateInvite'])->name('event.invite');
+Route::post('/events/update', [AgentAdminController::class, 'updateInvite'])->name('event.invite');
 
 
 Route::get('/pemilu', [AgentAdminController::class, 'indexpemilu'])->name('pemilu.index');
