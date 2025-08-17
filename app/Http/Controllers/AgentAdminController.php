@@ -6,15 +6,16 @@ use Carbon\Carbon;
 use App\Models\Event;
 use App\Models\Account;
 use App\Models\Property;
+use App\Models\EventInvite;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use App\Models\InformasiKlien;
 use App\Models\PropertyInterest;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Artisan;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Support\Facades\Session;
-use App\Models\EventInvite;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AgentAdminController extends Controller
 {
@@ -555,6 +556,10 @@ return view('Agent.dashboard-agent', [
 
         // Format untuk JS
         $eventsFormatted = $events->map(function ($event) {
+            $accountId = session('id_account') ?? Cookie::get('id_account');
+            $invite = $event->invites()
+                ->where('id_account', $accountId)
+                ->first();
             return [
                 'id'       => $event->id_event,
                 'title'    => $event->title,
@@ -563,7 +568,9 @@ return view('Agent.dashboard-agent', [
                 'end'      => $event->selesai ? Carbon::parse($event->selesai)->format('Y-m-d\TH:i:s') : null,
                 'allDay'   => (bool) $event->all_day,
                 'location' => $event->location,
-                'created_by'  => $event->creator_name
+                'access'   => $event->akses,
+                'created_by'  => $event->creator_name,
+                'invite_status' => $invite->status ?? null, 
             ];
         });
 
@@ -583,27 +590,109 @@ return view('Agent.dashboard-agent', [
 
     public function store(Request $request)
     {
+        // validasi sesuai field form
         $validated = $request->validate([
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string',
-            'mulai'       => 'required|date',
-            'selesai'     => 'nullable|date|after_or_equal:mulai',
-            'all_day'     => 'boolean',
-            'akses'       => 'required|in:Terbuka,Tertutup',
+            'start'       => 'required|date',
+            'end'         => 'nullable|date|after_or_equal:start',
+            'allDay'      => 'boolean',
+            'access'      => 'required|in:terbuka,tertutup',
             'location'    => 'nullable|string|max:255',
-            'durasi'      => 'integer|min:1',
+            'duration'    => 'nullable|integer|min:1',
         ]);
 
-        $validated['created_by'] = session('id_account') ?? Cookie::get('id_account');
-        $validated['tanggal_dibuat'] = now();
-        $validated['tanggal_diupdate'] = now();
+        // --- pengecekan khusus untuk "pemilu" ---
+        if (strtolower($validated['title']) === 'pemilu') {
+            $startDate = \Carbon\Carbon::parse($validated['start'])->startOfDay();
+            $endDate   = \Carbon\Carbon::parse($validated['start'])->endOfDay();
 
-        $event = Event::create($validated);
+            $exists = \App\Models\Event::whereRaw('LOWER(title) = ?', ['pemilu'])
+                ->whereBetween('mulai', [$startDate, $endDate])
+                ->exists();
+
+            if ($exists) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Event "pemilu" sudah ada di hari tersebut.'
+                ], 422);
+            }
+        }
+
+        // mapping ke field tabel (supaya sesuai kolom database)
+        $data = [
+            'title'            => $validated['title'],
+            'description'      => $validated['description'] ?? null,
+            'mulai'            => $validated['start'],
+            'selesai'          => $validated['end'] ?? null,
+            'all_day'          => $request->boolean('allDay'),
+            'akses'            => ucfirst($validated['access']), // jadi "Terbuka"/"Tertutup"
+            'location'         => $validated['location'] ?? null,
+            'durasi'           => $validated['duration'] ?? null,
+            'created_by'       => session('id_account') ?? Cookie::get('id_account'),
+            'tanggal_dibuat'   => now(),
+            'tanggal_diupdate' => now(),
+        ];
+
+        $event = Event::create($data);
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Event berhasil dibuat',
+            'event'   => $event
+        ]);
+    }
+
+    public function updateInvite(Request $request)
+    {
+        $validated = $request->validate([
+            'event_id' => 'required|exists:events,id_event',
+            'status'   => 'required|string|in:join,hadir,tidak',
+            'access'   => 'required|in:Terbuka,Tertutup,terbuka,tertutup',
+        ]);
+
+        $accountId = session('id_account') ?? Cookie::get('id_account');
+        if (!$accountId) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'User tidak terautentikasi'
+            ], 401);
+        }
+
+        $event = Event::findOrFail($validated['event_id']);
+
+        // cari invite user
+        $invite = EventInvite::where('id_event', $event->id_event)
+            ->where('id_account', $accountId)
+            ->first();
+
+        // mapping status
+        $statusMap = [
+            'join'  => 'Hadir',         // join diperlakukan hadir
+            'hadir' => 'Hadir',
+            'tidak' => 'Tidak Hadir'
+        ];
+        $newStatus = $statusMap[$validated['status']];
+
+        if ($invite) {
+            // update jika sudah ada
+            $invite->status = $newStatus;
+            $invite->tanggal_diupdate = now();
+            $invite->save();
+        } else {
+            // insert baru kalau belum ada (misalnya event "Terbuka")
+            EventInvite::create([
+                'id_event'   => $event->id_event,
+                'id_account' => $accountId,
+                'status'     => $newStatus,
+                'tanggal_dibuat' => now(),
+                'tanggal_diupdate' => now(),
+            ]);
+        }
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Event berhasil dibuat',
-            'event' => $event
+            'message' => "Status undangan berhasil diubah menjadi {$newStatus}"
         ]);
     }
 

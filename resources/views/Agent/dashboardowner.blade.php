@@ -965,12 +965,26 @@
     function renderAddEventForm(date){
         containerKedua.style.display = 'block';
         containerKeduaHeader.textContent = `Tambah Event (${fmtDate(date)})`;
+
+        // Ambil YYYY-MM-DD dari date yang dipencet
+        function formatDateOnly(d){
+            return d.getFullYear() + "-" + 
+                String(d.getMonth()+1).padStart(2,'0') + "-" + 
+                String(d.getDate()).padStart(2,'0');
+        }
+
+        const dateOnly = formatDateOnly(date);
+
         containerKeduaBody.innerHTML = `
             <form id="addEventForm">
                 <div class="mb-2"><label>Judul</label><input type="text" class="form-control" name="title" required></div>
                 <div class="mb-2"><label>Deskripsi</label><textarea class="form-control" name="description"></textarea></div>
-                <div class="mb-2"><label>Mulai</label><input type="datetime-local" class="form-control" name="start" id="evStart" required></div>
-                <div class="mb-2"><label>Selesai</label><input type="datetime-local" class="form-control" name="end" id="evEnd" required></div>
+                <div class="mb-2"><label>Mulai</label>
+                    <input type="datetime-local" class="form-control" name="start" id="evStart" required value="${dateOnly}T00:00">
+                </div>
+                <div class="mb-2"><label>Selesai</label>
+                    <input type="datetime-local" class="form-control" name="end" id="evEnd" required value="${dateOnly}T00:00">
+                </div>
                 <div class="form-check mb-2">
                     <input class="form-check-input" type="checkbox" id="evAllDay" name="allDay">
                     <label class="form-check-label">All Day</label>
@@ -986,6 +1000,7 @@
                 <button type="submit" class="btn btn-success btn-sm">Simpan</button>
             </form>
         `;
+
 
         document.getElementById('evAllDay').addEventListener('change', function(){
             const dis = this.checked;
@@ -1018,6 +1033,22 @@
                     body: formData
                 });
                 if(!res.ok) throw new Error('Gagal menyimpan event');
+                const data = await res.json(); // ← ambil data balik dari backend
+
+                // push event baru ke array events supaya langsung terpakai
+                events.push({
+                    id: data.event.id_event,
+                    title: data.event.title,
+                    description: data.event.description,
+                    start: data.event.mulai,
+                    end: data.event.selesai,
+                    allDay: !!data.event.all_day,
+                    location: data.event.location,
+                    access: data.event.akses,
+                    duration: data.event.durasi,
+                    created_by: data.event.created_by
+                });
+
                 alert('Event berhasil disimpan');
                 renderTodayEvents(selectedDate);
                 renderCalendar();
@@ -1026,11 +1057,29 @@
                 alert(err.message);
             }
         });
+
     }
 
     function renderEventDetail(ev){
         containerKedua.style.display = 'block';
         containerKeduaHeader.textContent = `Detail Event`;
+
+        let actionButtons = '';
+
+        // cek apakah user masih bisa memilih (status null atau Diundang)
+        const canChoose = !ev.invite_status || ev.invite_status.toLowerCase() === 'diundang';
+
+        if(canChoose){
+            if(ev.title && ev.title.toLowerCase() === 'pemilu'){
+                actionButtons = `<button class="btn btn-primary btn-sm me-2" id="btnJoin">Join</button>`;
+            } else {
+                actionButtons = `
+                    <button class="btn btn-success btn-sm me-2" id="btnHadir">Hadir</button>
+                    <button class="btn btn-danger btn-sm me-2" id="btnTidak">Tidak Hadir</button>
+                `;
+            }
+        }
+
         containerKeduaBody.innerHTML = `
             <p><strong>${ev.title}</strong></p>
             <p>Penyelenggara: ${ev.created_by || '-'}</p>
@@ -1038,10 +1087,55 @@
             <p>${ev.allDay ? 'All Day' : `${fmtDate(toDate(ev.start))} ${fmtTime(toDate(ev.start))} - ${fmtTime(toDate(ev.end))}`}</p>
             <p>Lokasi: ${ev.location || '-'}</p>
             <p>Akses: ${ev.access || '-'}</p>
-            <button class="btn btn-secondary btn-sm" id="btnBack">Kembali</button>
+            <div class="mt-3">
+                ${actionButtons}
+                <button class="btn btn-secondary btn-sm" id="btnBack">Kembali</button>
+            </div>
         `;
+
         document.getElementById('btnBack').addEventListener('click', ()=> renderTodayEvents(selectedDate));
+
+        if(canChoose){
+            if(ev.title && ev.title.toLowerCase() === 'pemilu'){
+                document.getElementById('btnJoin').addEventListener('click', ()=> updateInvite(ev.id, 'join', ev.access));
+            } else {
+                document.getElementById('btnHadir').addEventListener('click', ()=> updateInvite(ev.id, 'hadir', ev.access));
+                document.getElementById('btnTidak').addEventListener('click', ()=> updateInvite(ev.id, 'tidak', ev.access));
+            }
+        }
     }
+
+    async function updateInvite(eventId, status, access) {
+        try {
+            const res = await fetch("{{ route('event.invite') }}", {
+                method: "POST",
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    event_id: eventId,
+                    status: status,
+                    access: access
+                })
+            });
+
+            const data = await res.json();
+            if (!res.ok || data.status !== 'success') {
+                throw new Error(data.message || 'Gagal update status');
+            }
+
+            alert(data.message);
+            // refresh detail & daftar event biar status terbaru langsung muncul
+            renderTodayEvents(selectedDate);
+            renderCalendar();
+            renderUpcoming();
+
+        } catch (err) {
+            alert(err.message);
+        }
+    }
+
 
     function goPrev(){ viewMonth--; if(viewMonth<0){viewMonth=11;viewYear--;} renderCalendar(); }
     function goNext(){ viewMonth++; if(viewMonth>11){viewMonth=0;viewYear++;} renderCalendar(); }
