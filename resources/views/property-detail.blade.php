@@ -279,13 +279,13 @@
                                         @if (!$loggedIn || $role === 'User')
                                             <!-- Untuk User: tetap tombol WA ke Agent -->
                                             <a href="{{ $targetAgent && $targetAgent->nomor_telepon
-                                                ? 'https://wa.me/62' . ltrim($targetAgent->nomor_telepon) . '?text=' . urlencode('Halo ' . $targetAgent->nama . ', saya melihat property "' . $property->lokasi . '" di website. Bisa minta info lebih lengkap tentang property tersebut? Link properti: ' . url('/property-detail/' . $property->id_listing))
-                                                : '#' }}"
-                                            class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
-                                            style="min-width: 180px;"
-                                            {{ $targetAgent && $targetAgent->nomor_telepon ? '' : 'onclick="return false;"' }}>
-                                            <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
-                                        </a>
+                                                    ? 'https://wa.me/62' . ltrim($targetAgent->nomor_telepon) . '?text=' . urlencode('Halo ' . $targetAgent->nama . ', saya melihat property "' . $property->lokasi . '" di website. Bisa minta info lebih lengkap tentang property tersebut? Link properti: ' . url('/property-detail/' . $property->id_listing))
+                                                    : '#' }}"
+                                                class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
+                                                style="min-width: 180px;"
+                                                {{ $targetAgent && $targetAgent->nomor_telepon ? '' : 'onclick="return false;"' }}>
+                                                <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
+                                            </a>
 
                                         @else
                                             <!-- Untuk selain User: tombol copy & buka grup -->
@@ -504,13 +504,13 @@
 
 
                         <div class="single-property section">
-                            <div class="container">
+                            <div class="row mb-3">
                                 <div class="row">
                                     <section id="features" class="features section">
                                         <!-- Section Title -->
                                         <div class="py-2" data-aos="fade-up">
                                         </div><!-- End Section Title -->
-                                        <div class="px-2 px-md-3" data-aos="fade-up" data-aos-delay="100">
+                                        <div class="container-fluid px-2 px-md-3" data-aos="fade-up" data-aos-delay="100">
                                         <div class="row">
                                             <div class="col-lg-3">
                                               <ul class="nav nav-tabs flex-column">

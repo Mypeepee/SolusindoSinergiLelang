@@ -711,6 +711,9 @@
                             <div class="bg-primary rounded text-white position-absolute start-0 top-0 m-2 py-1 px-3 text-capitalize">
                                 {{ $property->tipe }}
                             </div>
+                            <div class="bg-primary rounded text-white position-absolute end-0 top-0 m-2 py-1 px-3">
+                                ID: {{ $property->id_listing }}
+                            </div>
                         </div>
                         <div class="p-4 pb-0">
                             <h5 class="text-primary mb-3">{{ 'Rp ' . number_format($property->harga, 0, ',', '.') }}</h5>
