@@ -279,13 +279,14 @@
                                         @if (!$loggedIn || $role === 'User')
                                             <!-- Untuk User: tetap tombol WA ke Agent -->
                                             <a href="{{ $targetAgent && $targetAgent->nomor_telepon
-                                                    ? 'https://wa.me/62' . ltrim($targetAgent->nomor_telepon) . '?text=' . urlencode('Halo ' . $targetAgent->nama . ', saya melihat property "' . $property->lokasi . '" di website. Bisa minta info lebih lengkap tentang property tersebut?')
-                                                    : '#' }}"
-                                                class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
-                                                style="min-width: 180px;"
-                                                {{ $targetAgent && $targetAgent->nomor_telepon ? '' : 'onclick="return false;"' }}>
-                                                <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
-                                            </a>
+                                                ? 'https://wa.me/62' . ltrim($targetAgent->nomor_telepon) . '?text=' . urlencode('Halo ' . $targetAgent->nama . ', saya melihat property "' . $property->lokasi . '" di website. Bisa minta info lebih lengkap tentang property tersebut? Link properti: ' . url('/property-detail/' . $property->id_listing))
+                                                : '#' }}"
+                                            class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
+                                            style="min-width: 180px;"
+                                            {{ $targetAgent && $targetAgent->nomor_telepon ? '' : 'onclick="return false;"' }}>
+                                            <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
+                                        </a>
+
                                         @else
                                             <!-- Untuk selain User: tombol copy & buka grup -->
                                             <a href="https://chat.whatsapp.com/BRKrMZk2wWJ9rEGV7Oy06V"
