@@ -52,6 +52,7 @@
                                     <th>Luas (m²)</th>
                                     <th>Harga</th>
                                     <th>Gambar</th>
+                                    <th>Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -69,6 +70,16 @@
                                             <img src="{{ $fotoUtama }}"
                                                 alt="Foto Properti"
                                                 class="img-thumbnail" style="max-width: 80px; max-height: 80px;">
+                                        </td>
+                                        <td>
+                                            @if(isset($current) && $current->status_giliran === 'Berjalan')
+                                                <form action="" method="POST">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-success btn-sm">Pilih</button>
+                                                </form>
+                                            @else
+                                                <span class="text-muted">-</span>
+                                            @endif
                                         </td>
                                     </tr>
                                 @empty
@@ -179,7 +190,9 @@
                                     <td>{{ $row->username }}</td>
                                     <td>
                                         @if($row->waktu_tersisa > 0)
-                                            {{ gmdate('H:i:s', $row->waktu_tersisa) }}
+                                            <span class="countdown" data-waktu="{{ $row->waktu_tersisa }}">
+                                                {{-- akan di-update oleh JS --}}
+                                            </span>
                                         @else
                                             <span class="text-danger">Waktu Habis</span>
                                         @endif
@@ -278,3 +291,38 @@
     }
 }
 </style>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    function formatTime(sec) {
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = sec % 60;
+        return [h, m, s]
+            .map(v => String(v).padStart(2, '0'))
+            .join(':');
+    }
+
+    function startCountdown(el) {
+        let sisa = parseInt(el.dataset.waktu, 10);
+
+        if (sisa <= 0) {
+            el.innerHTML = '<span class="text-danger">Waktu Habis</span>';
+            return;
+        }
+
+        el.textContent = formatTime(sisa);
+
+        const interval = setInterval(() => {
+            sisa--;
+            if (sisa <= 0) {
+                clearInterval(interval);
+                el.innerHTML = '<span class="text-danger">Waktu Habis</span>';
+            } else {
+                el.textContent = formatTime(sisa);
+            }
+        }, 1000);
+    }
+
+    document.querySelectorAll('.countdown').forEach(startCountdown);
+});
+</script>

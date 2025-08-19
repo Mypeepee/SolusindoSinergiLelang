@@ -329,15 +329,20 @@ class AgentAdminController extends Controller
                 'event_invites.urutan',
             ])
             ->map(function ($invite) {
-                // Hitung waktu tersisa
                 $now = Carbon::now();
-                $waktuTersisa = $invite->selesai_giliran ? $now->diffInSeconds($invite->selesai_giliran, false) : 0;
+
+                // pastikan field di-cast jadi Carbon
+                $mulai = $invite->mulai_giliran ? Carbon::parse($invite->mulai_giliran) : null;
+                $selesai = $invite->selesai_giliran ? Carbon::parse($invite->selesai_giliran) : null;
+
+                // Hitung waktu tersisa
+                $waktuTersisa = $selesai ? $now->diffInSeconds($selesai, false) : 0;
                 $invite->waktu_tersisa = $waktuTersisa < 0 ? 0 : $waktuTersisa;
 
-                // Tentukan status giliran yang sedang berjalan
-                if ($now->between($invite->mulai_giliran, $invite->selesai_giliran)) {
+                // Tentukan status giliran
+                if ($mulai && $selesai && $now->between($mulai, $selesai)) {
                     $invite->status_giliran = 'Berjalan';
-                } elseif ($now->lt($invite->mulai_giliran)) {
+                } elseif ($mulai && $now->lt($mulai)) {
                     $invite->status_giliran = 'Menunggu';
                 } else {
                     $invite->status_giliran = 'Selesai';
@@ -345,6 +350,7 @@ class AgentAdminController extends Controller
 
                 return $invite;
             });
+
 
         $current = EventInvite::where('id_event', $idEvent)
             ->where('status_giliran', 'Berjalan')

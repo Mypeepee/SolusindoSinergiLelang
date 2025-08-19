@@ -902,22 +902,53 @@
             upList.innerHTML = `<div class="list-group-item text-muted">Tidak ada event.</div>`;
             return;
         }
-        upcoming.forEach(ev=>{
+        upcoming.forEach(ev => {
             const li = document.createElement('div');
-            li.className = 'list-group-item upcoming-item';
-            li.innerHTML = `
-                <div class="up-date">
-                    <div class="d">${String(ev._s.getDate()).padStart(2,'0')}</div>
-                    <div class="m">${MONTHS_ID[ev._s.getMonth()]}</div>
-                </div>
-                <div class="up-body">
-                    <div class="ttl">${ev.title}</div>
-                    <div class="meta">${ev.allDay ? 'All day' : `${fmtTime(ev._s)}–${fmtTime(ev._e)}`} • ${fmtDate(ev._s)}</div>
+            li.className = 'list-group-item upcoming-item d-flex justify-content-between align-items-center';
+
+            // default konten kiri
+            let leftContent = `
+                <div class="d-flex align-items-center">
+                    <div class="up-date me-2">
+                        <div class="d">${String(ev._s.getDate()).padStart(2,'0')}</div>
+                        <div class="m">${MONTHS_ID[ev._s.getMonth()]}</div>
+                    </div>
+                    <div class="up-body">
+                        <div class="ttl">${ev.title}</div>
+                        <div class="meta">${ev.allDay ? 'All day' : `${fmtTime(ev._s)}–${fmtTime(ev._e)}`} • ${fmtDate(ev._s)}</div>
+                    </div>
                 </div>
             `;
-            li.addEventListener('click', ()=> renderEventDetail(ev));
+
+            // kalau eventnya Pemilu, kasih button Join di kanan
+            let rightContent = '';
+            if(ev.title && ev.title.toLowerCase() === 'pemilu'){
+                rightContent = `<button class="btn btn-success btn-sm ms-2" id="btnJoin_${ev.id}">Join</button>`;
+            }
+
+            li.innerHTML = `
+                ${leftContent}
+                ${rightContent}
+            `;
+
+            // event detail kalau klik list (kecuali tombol join)
+            li.addEventListener('click', (e)=> {
+                if(!e.target.closest('button')){ // biar tombol join nggak ikut trigger
+                    renderEventDetail(ev);
+                }
+            }); 
+
+            // event khusus tombol join
+            if(ev.title && ev.title.toLowerCase() === 'pemilu'){
+                li.querySelector(`#btnJoin_${ev.id}`).addEventListener('click', (e)=> {
+                    e.stopPropagation(); // jangan trigger detail
+                    updateInvite(ev.id, 'join', ev.access);
+                });
+            }
+
             upList.appendChild(li);
         });
+
     }
 
     function renderTodayEvents(date){
