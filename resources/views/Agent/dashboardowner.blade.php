@@ -671,7 +671,7 @@
 
                         <!-- KANAN: EVENT 7 HARI KE DEPAN -->
                         <div class="col-lg-4 d-flex flex-column gap-3">
-                            
+
                             <!-- Event 7 Hari -->
                             <div class="card shadow-sm border-0">
                                 <div class="card-header text-white" style="background-color:#f4511e; color:#fff;">
@@ -936,7 +936,7 @@
                 if(!e.target.closest('button')){ // biar tombol join nggak ikut trigger
                     renderEventDetail(ev);
                 }
-            }); 
+            });
 
             // event khusus tombol join
             if(ev.title && ev.title.toLowerCase() === 'pemilu'){
@@ -999,8 +999,8 @@
 
         // Ambil YYYY-MM-DD dari date yang dipencet
         function formatDateOnly(d){
-            return d.getFullYear() + "-" + 
-                String(d.getMonth()+1).padStart(2,'0') + "-" + 
+            return d.getFullYear() + "-" +
+                String(d.getMonth()+1).padStart(2,'0') + "-" +
                 String(d.getDate()).padStart(2,'0');
         }
 
@@ -1118,7 +1118,7 @@
 
         if(ev.title && ev.title.toLowerCase() === 'pemilu'){
             document.getElementById('btnJoin').addEventListener('click', ()=> updateInvite(ev.id, 'join', ev.access));
-        } 
+        }
     }
 
     function updateInvite(eventId, status, access) {
