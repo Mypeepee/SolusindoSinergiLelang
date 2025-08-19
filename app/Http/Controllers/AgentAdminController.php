@@ -697,72 +697,84 @@ class AgentAdminController extends Controller
     }
 
     public function updateInvite(Request $request)
-    {
-        $validated = $request->validate([
-            'event_id' => 'required|exists:events,id_event',
-            'status'   => 'required|string|in:join',
-            'access'   => 'required|in:Terbuka,Tertutup,terbuka,tertutup',
-        ]);
+{
+    $validated = $request->validate([
+        'event_id' => 'required|exists:events,id_event',
+        'status'   => 'required|string|in:join',
+        'access'   => 'required|in:Terbuka,Tertutup,terbuka,tertutup',
+    ]);
 
-        $accountId = session('id_account') ?? Cookie::get('id_account');
-        if (!$accountId) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'User tidak terautentikasi'
-            ], 401);
-        }
+    $accountId = session('id_account') ?? Cookie::get('id_account');
+    if (!$accountId) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'User tidak terautentikasi'
+        ], 401);
+    }
 
-        $event = Event::findOrFail($validated['event_id']);
+    $event = Event::findOrFail($validated['event_id']);
 
-        // ===== Case khusus PEMILU saja =====
-        if (strtolower($event->title) !== 'pemilu') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Update undangan hanya berlaku untuk event Pemilu.'
-            ], 400);
-        }
+    // ===== Case khusus PEMILU saja =====
+    if (strtolower($event->title) !== 'pemilu') {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Update undangan hanya berlaku untuk event Pemilu.'
+        ], 400);
+    }
 
-        // === cek apakah user sudah punya invite di event ini ===
-        $existingInvite = EventInvite::where('id_event', $event->id_event)
-            ->where('id_account', $accountId)
-            ->first();
+    // --- Validasi jika waktu sudah melewati waktu mulai ---
+    $currentTime = Carbon::now();
+    $eventStartTime = Carbon::parse($event->mulai); // Ambil waktu mulai event
 
-        if ($existingInvite) {
-            return redirect()->route('pemilu.show', ['event' => $event->id_event]);
-        }
+    if ($currentTime->gt($eventStartTime)) { // Jika waktu sekarang sudah lebih besar (melebihi waktu mulai)
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Pendaftaran sudah ditutup. Event telah dimulai.'
+        ], 400);
+    }
 
-        // === kalau belum punya invite, insert baru ===
-        $lastInvite = EventInvite::where('id_event', $event->id_event)
-            ->orderByDesc('urutan')
-            ->first();
+    // === cek apakah user sudah punya invite di event ini ===
+    $existingInvite = EventInvite::where('id_event', $event->id_event)
+        ->where('id_account', $accountId)
+        ->first();
 
-        $nextOrder = $lastInvite ? $lastInvite->urutan + 1 : 1;
-
-        // hitung mulai_giliran & selesai_giliran
-        if ($lastInvite && $lastInvite->selesai_giliran) {
-            $mulaiGiliran = Carbon::parse($lastInvite->selesai_giliran);
-        } else {
-            $mulaiGiliran = Carbon::parse($event->mulai);
-        }
-
-        $durasiMenit = $event->durasi ?? 0;
-        $selesaiGiliran = $mulaiGiliran->copy()->addMinutes($durasiMenit);
-
-        // insert giliran baru
-        EventInvite::create([
-            'id_event'        => $event->id_event,
-            'id_account'      => $accountId,
-            'status'          => 'Hadir',
-            'urutan'          => $nextOrder,
-            'mulai_giliran'   => $mulaiGiliran,
-            'selesai_giliran' => $selesaiGiliran,
-            'status_giliran'  => 'Menunggu',
-            'tanggal_dibuat'  => now(),
-            'tanggal_diupdate'=> now(),
-        ]);
-
+    if ($existingInvite) {
         return redirect()->route('pemilu.show', ['event' => $event->id_event]);
     }
+
+    // === kalau belum punya invite, insert baru ===
+    $lastInvite = EventInvite::where('id_event', $event->id_event)
+        ->orderByDesc('urutan')
+        ->first();
+
+    $nextOrder = $lastInvite ? $lastInvite->urutan + 1 : 1;
+
+    // hitung mulai_giliran & selesai_giliran
+    if ($lastInvite && $lastInvite->selesai_giliran) {
+        $mulaiGiliran = Carbon::parse($lastInvite->selesai_giliran);
+    } else {
+        $mulaiGiliran = Carbon::parse($event->mulai);
+    }
+
+    $durasiMenit = $event->durasi ?? 0;
+    $selesaiGiliran = $mulaiGiliran->copy()->addMinutes($durasiMenit);
+
+    // insert giliran baru
+    EventInvite::create([
+        'id_event'        => $event->id_event,
+        'id_account'      => $accountId,
+        'status'          => 'Hadir',
+        'urutan'          => $nextOrder,
+        'mulai_giliran'   => $mulaiGiliran,
+        'selesai_giliran' => $selesaiGiliran,
+        'status_giliran'  => 'Menunggu',
+        'tanggal_dibuat'  => now(),
+        'tanggal_diupdate'=> now(),
+    ]);
+
+    return redirect()->route('pemilu.show', ['event' => $event->id_event]);
+}
+
 
 
     public function storeregister(Request $request)
