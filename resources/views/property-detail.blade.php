@@ -209,19 +209,24 @@
                                 </div>
 
                                 @php
-                                $userId = Session::get('id_account') ?? Cookie::get('id_account');
+                                    $userId = Session::get('id_account') ?? Cookie::get('id_account');
+                                    $loggedIn = !empty($userId);
 
-                                $loggedIn = !empty($userId);
+                                    $roleRaw = $loggedIn ? \App\Models\Account::where('id_account', $userId)->value('roles') : null;
+                                    $role = strtolower(trim($roleRaw ?? 'User'));
 
-                                $roleRaw = $loggedIn ? \App\Models\Account::where('id_account', $userId)->value('roles') : null;
-                                $role = strtolower(trim($roleRaw ?? 'User'));
+                                    $privilegedRoles = ['agent', 'owner', 'register'];
+                                    $showJaminan = $loggedIn && in_array($role, $privilegedRoles, true);
 
-                                $privilegedRoles = ['agent', 'owner', 'register'];
-                                $showJaminan = $loggedIn && in_array($role, $privilegedRoles, true);
+                                    $tglJaminan = $property->batas_akhir_jaminan
+                                        ? \Carbon\Carbon::parse($property->batas_akhir_jaminan)->translatedFormat('d M Y')
+                                        : '-';
 
-                                $tglJaminan = $property->batas_akhir_jaminan
-                                    ? \Carbon\Carbon::parse($property->batas_akhir_jaminan)->translatedFormat('d M Y')
-                                    : '-';
+                                    // Sertifikat: Tampilkan hanya SHM atau SHGB jika belum login
+                                    $sertifikatDisplay = $loggedIn ? $property->sertifikat : (strstr($property->sertifikat, 'SHM') ? 'SHM' : 'SHGB');
+
+                                    // Batas Penawaran: Tidak ditampilkan jika belum login
+                                    $batasPenawaranDisplay = $loggedIn ? \Carbon\Carbon::parse($property->batas_akhir_penawaran)->format('d M Y') : null;
                                 @endphp
 
                                 <!-- Detail Properti -->
@@ -233,7 +238,7 @@
 
                                     <div class="col-md-6 col-lg-4 text-center border-top border-bottom py-3">
                                         <span class="d-inline-block text-black mb-0 caption-text">Sertifikat</span>
-                                        <strong class="d-block">{{ $property->sertifikat ?? '-' }}</strong>
+                                        <strong class="d-block">{{ $sertifikatDisplay }}</strong>
                                     </div>
 
                                     <div class="col-md-6 col-lg-4 text-center border-top border-bottom py-3">
@@ -246,7 +251,6 @@
                                         @endif
                                     </div>
                                 </div>
-
 
                                 <div class="position-relative mt-4">
                                     @php
@@ -608,6 +612,7 @@
                                                         </div>
                                                     </div>
 
+                                                    <!-- Spesifikasi Properti -->
                                                     <div class="tab-pane" id="features-tab-2">
                                                         <div class="card shadow-sm border-0 p-4 mb-4">
                                                             <h4 class="text-primary mb-3">Spesifikasi Properti</h4>
@@ -625,16 +630,18 @@
                                                                         </tr>
                                                                         <tr>
                                                                             <th scope="row" class="bg-light">Sertifikat</th>
-                                                                            <td>{{ $property->sertifikat }}</td>
+                                                                            <td>{{ $sertifikatDisplay }}</td>
                                                                         </tr>
                                                                         <tr>
                                                                             <th scope="row" class="bg-light">Lokasi</th>
                                                                             <td>{{ $property->kelurahan }}, {{ $property->kota }}, {{ $property->provinsi }}</td>
                                                                         </tr>
-                                                                        <tr>
-                                                                            <th scope="row" class="bg-light">Batas Penawaran</th>
-                                                                            <td>{{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->format('d M Y') }}</td>
-                                                                        </tr>
+                                                                        @if ($batasPenawaranDisplay)
+                                                                            <tr>
+                                                                                <th scope="row" class="bg-light">Batas Penawaran</th>
+                                                                                <td>{{ $batasPenawaranDisplay }}</td>
+                                                                            </tr>
+                                                                        @endif
                                                                         <tr>
                                                                             <th scope="row" class="bg-light">Status</th>
                                                                             <td>
@@ -648,6 +655,7 @@
                                                             </div>
                                                         </div>
                                                     </div>
+
 
                                                     <div class="tab-pane" id="features-tab-3">
                                                         @php

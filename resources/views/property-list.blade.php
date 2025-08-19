@@ -505,9 +505,34 @@
     }
 </style>
 
-
 <!-- Script -->
 <script>
+
+function formatNumberInput(input) {
+        // Hapus semua karakter kecuali angka
+        let value = input.value.replace(/\D/g, "");
+        if (value === "") {
+            input.value = "";
+            return;
+        }
+        // Format ke ribuan dengan titik
+        input.value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+
+    // Terapkan ke semua input harga
+    document.querySelectorAll('input[name="min_price"], input[name="max_price"]').forEach(function (el) {
+        el.addEventListener("input", function () {
+            formatNumberInput(this);
+        });
+    });
+
+    // Optional: sebelum form submit, hapus titik biar masuk ke DB sebagai angka bersih
+    document.querySelector("form").addEventListener("submit", function () {
+        document.querySelectorAll('input[name="min_price"], input[name="max_price"]').forEach(function (el) {
+            el.value = el.value.replace(/\./g, "");
+        });
+    });
+
     document.addEventListener('DOMContentLoaded', function () {
         const provinceMobile = document.getElementById('province');
         const cityMobile = document.getElementById('city');
@@ -565,6 +590,15 @@
                 targetCityDropdown.innerHTML += `<option value="${cleanedValue}">${c}</option>`;
             });
         }
+
+        function updateDistrictDropdown(prov, selectedCity) {
+        const districtSet = locationMap.get(prov).get(selectedCity);
+        districtDesktop.disabled = false;
+        districtDesktop.innerHTML = '<option selected disabled>Pilih Kecamatan</option>';
+        districtSet.forEach(d => {
+            districtDesktop.innerHTML += `<option value="${d}">${d}</option>`;
+        });
+    }
 
         // Mobile - pilih kota
         cityMobile.addEventListener('change', function () {
