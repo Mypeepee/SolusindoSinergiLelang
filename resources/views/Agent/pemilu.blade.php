@@ -161,57 +161,56 @@
                     <div class="d-flex align-items-center">
                     <i class="bi bi-lightning-charge-fill me-2"></i>
                     <div>
-                        <div><strong>Sedang Giliran:</strong> {{ $current->id_account ?? '-' }}</div>
-                        @if($current?->mulai_giliran && $current?->selesai_giliran)
-                        <div class="small text-muted">
-                            {{ \Carbon\Carbon::parse($current->mulai_giliran)->format('H:i') }}
-                            – {{ \Carbon\Carbon::parse($current->selesai_giliran)->format('H:i') }}
-                        </div>
+                        <div><strong>Sedang Giliran:</strong> {{ $current?->username ?? '-' }}</div>
+                        @if($current)
+                          <div class="small text-muted">
+                            {{ $current->mulai_aktif->format('H:i') }} – {{ $current->selesai_aktif->format('H:i') }}
+                          </div>
                         @endif
-                    </div>
+                      </div>
                     </div>
                 </div>
 
                {{-- Tabel antrian --}}
-                <div class="table-responsive">
-                    <table class="table table-sm align-middle">
-                        <thead>
-                            <tr>
-                                <th>Urutan</th>
-                                <th>Username</th>
-                                <th>Waktu Tersisa</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($invites as $row)
-                                <tr @class(['table-primary' => isset($current) && $current->id_invite === $row->id_invite])>
-                                    <td class="fw-bold">{{ $row->urutan }}</td>
-                                    <td>{{ $row->username }}</td>
-                                    <td>
-                                        @if($row->waktu_tersisa > 0)
-                                            <span class="countdown" data-waktu="{{ $row->waktu_tersisa }}">
-                                                {{-- akan di-update oleh JS --}}
-                                            </span>
-                                        @else
-                                            <span class="text-danger">Waktu Habis</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <span class="badge
-                                            @if($row->status_giliran === 'Berjalan') bg-success
-                                            @elseif($row->status_giliran === 'Menunggu') bg-secondary
-                                            @else bg-light text-dark @endif">
-                                            {{ $row->status_giliran }}
-                                        </span>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr><td colspan="4"><em>Belum ada yang join.</em></td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+<div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>Urutan</th>
+          <th>Username</th>
+          <th>Waktu Tersisa</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        @forelse ($invites as $row)
+          @php $isCurrent = ($current?->id_invite ?? null) === $row->id_invite; @endphp
+          <tr @class(['table-primary' => $isCurrent])>
+            <td class="fw-bold">{{ $row->urutan }}</td>
+            <td>{{ $row->username }}</td>
+            <td>
+              @if($row->waktu_tersisa > 0)
+                <span class="countdown" data-waktu="{{ $row->waktu_tersisa }}"></span>
+              @else
+                <span class="text-danger">Waktu Habis</span>
+              @endif
+            </td>
+            <td>
+              <span class="badge
+                @if($row->status_giliran === 'Berjalan') bg-success
+                @elseif($row->status_giliran === 'Menunggu') bg-secondary
+                @else bg-light text-dark @endif">
+                {{ $row->status_giliran }}
+              </span>
+            </td>
+          </tr>
+        @empty
+          <tr><td colspan="4"><em>Belum ada yang join.</em></td></tr>
+        @endforelse
+      </tbody>
+    </table>
+  </div>
+
             </div>
         </div>
         {{-- Pengumuman / Transaction Log --}}
@@ -292,6 +291,29 @@
 }
 </style>
 <script>
+    document.addEventListener('DOMContentLoaded', function () {
+    const nextRefreshAtMs = {!! $nextRefreshAtMs ? $nextRefreshAtMs : 'null' !!};
+    if (!nextRefreshAtMs) return;
+
+    const now = Date.now();
+    let delay = nextRefreshAtMs - now;
+
+    // Jika sudah lewat (mis. user buka tepat di menitnya), reload segera
+    if (delay <= 0) {
+        location.reload();
+        return;
+    }
+
+    // setTimeout limit ~2,147,483,647 ms; event Anda menit-jam saja, aman.
+    if (delay > 2147483647) delay = 2147483647;
+
+    // Jadwalkan reload tepat di mulai_giliran terdekat
+    setTimeout(function () {
+        location.reload();
+    }, delay);
+});
+
+
 document.addEventListener("DOMContentLoaded", function() {
     function formatTime(sec) {
         const h = Math.floor(sec / 3600);

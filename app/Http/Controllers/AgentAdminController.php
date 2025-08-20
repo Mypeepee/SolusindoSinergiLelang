@@ -371,94 +371,155 @@ class AgentAdminController extends Controller
     }
 
     public function show($idEvent)
-{
-    // Ambil data event
-    $event = DB::table('events')->where('id_event', $idEvent)->first(['id_event','mulai', 'selesai']);
-    abort_if(!$event, 404, 'Event tidak ditemukan');
+    {
+        // 1) Event
+        $event = DB::table('events')
+            ->where('id_event', $idEvent)
+            ->first(['id_event','mulai','selesai','durasi']);
+        abort_if(!$event, 404, 'Event tidak ditemukan');
 
-    // Ambil id_account dari session
-    $accountId = session('id_account') ?? Cookie::get('id_account');
+        $now          = Carbon::now();
+        $eventMulai   = Carbon::parse($event->mulai);
+        $eventSelesai = $event->selesai ? Carbon::parse($event->selesai) : null;
+        $slotSeconds  = max(1, (int)$event->durasi) * 60;
 
-    // Ambil status giliran untuk id_account
-    $currentInvite = DB::table('event_invites')
-        ->where('id_event', $idEvent)
-        ->where('id_account', $accountId)
-        ->first();
+        // 2) User (opsional)
+        $accountId = session('id_account') ?? Cookie::get('id_account');
 
-    // Jika status giliran adalah "Berjalan", tampilkan tombol aksi
-    $isBerjalan = $currentInvite && $currentInvite->status_giliran === 'Berjalan';
+        // 3) Ambil peserta (pakai urutan)
+        $invitesRaw = DB::table('event_invites')
+            ->join('account', 'event_invites.id_account', '=', 'account.id_account')
+            ->where('event_invites.id_event', $idEvent)
+            ->orderBy('event_invites.urutan')
+            ->get([
+                'event_invites.id_invite',
+                'event_invites.id_account',
+                'account.username',
+                'event_invites.urutan',
+                'event_invites.mulai_giliran',
+                'event_invites.selesai_giliran',
+                'event_invites.status_giliran',
+            ]);
 
-    // Ambil semua invites dengan username dan hitung waktu tersisa
-    $invites = DB::table('event_invites')
-        ->join('account', 'event_invites.id_account', '=', 'account.id_account')
-        ->where('event_invites.id_event', $idEvent)
-        ->orderBy('event_invites.urutan')
-        ->get([
-            'event_invites.id_invite',
-            'event_invites.id_account',
-            'account.username',
-            'event_invites.mulai_giliran',
-            'event_invites.selesai_giliran',
-            'event_invites.status_giliran',
-            'event_invites.urutan',
-        ])
-        ->map(function ($invite) use ($event) {
-            $now = Carbon::now();
+        $jumlah = $invitesRaw->count();
+        if ($jumlah === 0) {
+            return view('Agent.pemilu', [
+                'event'           => $event,
+                'invites'         => collect(),
+                'properties'      => \App\Models\Property::select('id_listing','lokasi','luas','harga','gambar')
+                                        ->where('id_agent','AG001')->paginate(10),
+                'current'         => null,
+                'currentTime'     => $now,
+                'eventStartTime'  => $eventMulai,
+                'isBerjalan'      => false,
+                'nextRefreshAtMs' => null,
+            ]);
+        }
 
-            // Pastikan field di-cast jadi Carbon
-            $mulai = $invite->mulai_giliran ? Carbon::parse($invite->mulai_giliran) : null;
-            $selesai = $invite->selesai_giliran ? Carbon::parse($invite->selesai_giliran) : null;
+        // 4) Hitung siklus aktif dari event.mulai
+        $cycleSeconds = $slotSeconds * $jumlah;
+        $cycleIndex = 0;
+        if ($now->gte($eventMulai) && $cycleSeconds > 0) {
+            $cycleIndex = intdiv($eventMulai->diffInSeconds($now), $cycleSeconds);
+        }
 
-            // Hitung waktu tersisa
-            $waktuTersisa = $selesai ? $now->diffInSeconds($selesai, false) : 0;
-            $invite->waktu_tersisa = $waktuTersisa < 0 ? 0 : $waktuTersisa;
+        // 5) Bentuk data aktif & (nanti) tulis balik ke DB
+        $invites = $invitesRaw->map(function ($invite) use ($cycleIndex, $jumlah, $slotSeconds, $eventMulai, $now) {
+            // slot global sejak event.mulai
+            $slotGlobal = $cycleIndex * $jumlah + ($invite->urutan - 1);
 
-            // Tentukan status giliran dan update database jika diperlukan
-            if ($mulai && $selesai && $now->between($mulai, $selesai)) {
-                if ($invite->status_giliran !== 'Berjalan') {
-                    // Update status menjadi "Berjalan"
-                    EventInvite::where('id_invite', $invite->id_invite)
-                        ->update(['status_giliran' => 'Berjalan', 'tanggal_diupdate' => now()]);
-                }
-                $invite->status_giliran = 'Berjalan';
-            } elseif ($mulai && $now->lt($mulai)) {
-                if ($invite->status_giliran !== 'Menunggu') {
-                    // Update status menjadi "Menunggu"
-                    EventInvite::where('id_invite', $invite->id_invite)
-                        ->update(['status_giliran' => 'Menunggu', 'tanggal_diupdate' => now()]);
-                }
-                $invite->status_giliran = 'Menunggu';
+            $mulaiAktif   = (clone $eventMulai)->addSeconds($slotGlobal * $slotSeconds);
+            $selesaiAktif = (clone $mulaiAktif)->addSeconds($slotSeconds);
+
+            if ($now->between($mulaiAktif, $selesaiAktif)) {
+                $status = 'Berjalan';
+                $waktuTersisa = $now->diffInSeconds($selesaiAktif);
+            } elseif ($now->lt($mulaiAktif)) {
+                $status = 'Menunggu';
+                $waktuTersisa = 0;
             } else {
-                if ($invite->status_giliran !== 'Selesai') {
-                    // Update status menjadi "Selesai"
-                    EventInvite::where('id_invite', $invite->id_invite)
-                        ->update(['status_giliran' => 'Selesai', 'tanggal_diupdate' => now()]);
-                }
-                $invite->status_giliran = 'Selesai';
+                $status = 'Selesai';
+                $waktuTersisa = 0;
             }
+
+            // ====== properti untuk render realtime ======
+            $invite->mulai_aktif     = $mulaiAktif;
+            $invite->selesai_aktif   = $selesaiAktif;
+            $invite->status_now      = $status;
+            $invite->status_giliran  = $status; // <-- sinkron agar Blade pakai status_giliran saja
+            $invite->waktu_tersisa   = $waktuTersisa;
 
             return $invite;
         });
 
-    $current = EventInvite::where('id_event', $idEvent)
-        ->where('status_giliran', 'Berjalan')
-        ->first();
+        // 5b) Tulis balik ke event_invites (tanpa histori)
+        if (!$eventSelesai || $now->lt($eventSelesai)) {
+            foreach ($invites as $i) {
+                // Kurangi write jika tidak berubah
+                $newMulai   = $i->mulai_aktif->toDateTimeString();
+                $newSelesai = $i->selesai_aktif->toDateTimeString();
 
-    $properties = \App\Models\Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar')
-        ->where('id_agent', 'AG001')
-        ->paginate(10);
+                $changed = ($i->mulai_giliran   ?? null) !== $newMulai
+                        || ($i->selesai_giliran ?? null) !== $newSelesai
+                        || ($i->status_giliran  ?? null) !== $i->status_now;
 
-    // Kirim data ke frontend
-    return view('Agent.pemilu', [
-        'event'     => $event,
-        'invites'   => $invites,
-        'properties'=> $properties,
-        'current'   => $current,
-        'currentTime' => Carbon::now(), // Kirim waktu saat ini ke frontend
-        'eventStartTime' => Carbon::parse($event->mulai), // Kirim waktu mulai event ke frontend
-        'isBerjalan' => $isBerjalan // Kirim status apakah giliran sedang berjalan
-    ]);
-}
+                if ($changed) {
+                    DB::table('event_invites')
+                        ->where('id_invite', $i->id_invite)
+                        ->update([
+                            'mulai_giliran'   => $newMulai,
+                            'selesai_giliran' => $newSelesai,
+                            'status_giliran'  => $i->status_now,
+                            'tanggal_diupdate'=> now(),
+                        ]);
+                }
+            }
+        }
+
+        // 6) Siapa yang sedang berjalan? (pakai status_giliran yang sudah disinkron)
+        $current = $invites->firstWhere('status_giliran', 'Berjalan');
+
+        // 7) Next refresh tepat di boundary slot berikutnya (berbasis event.mulai)
+        $nextRefresh = null;
+        if ($eventSelesai && $now->gte($eventSelesai)) {
+            $nextRefresh = null;
+        } else {
+            if ($now->lt($eventMulai)) {
+                $nextRefresh = $eventMulai;
+            } else {
+                $slotsSinceStart = intdiv($eventMulai->diffInSeconds($now), $slotSeconds) + 1;
+                $nextRefresh = (clone $eventMulai)->addSeconds($slotsSinceStart * $slotSeconds);
+                if ($eventSelesai && $nextRefresh->gte($eventSelesai)) {
+                    $nextRefresh = null;
+                }
+            }
+        }
+        $nextRefreshAtMs = $nextRefresh ? $nextRefresh->timestamp * 1000 : null;
+
+        // 8) isBerjalan untuk akun login
+        $isBerjalan = false;
+        if ($accountId) {
+            $isBerjalan = (bool) $invites
+                ->first(fn ($i) => $i->id_account === $accountId && $i->status_giliran === 'Berjalan');
+        }
+
+        // 9) Properties (contoh)
+        $properties = \App\Models\Property::select('id_listing','lokasi','luas','harga','gambar')
+            ->where('id_agent','AG001')
+            ->paginate(10);
+
+        return view('Agent.pemilu', [
+            'event'           => $event,
+            'invites'         => $invites,          // ->mulai_aktif, ->selesai_aktif, ->status_giliran
+            'properties'      => $properties,
+            'current'         => $current,
+            'currentTime'     => $now,
+            'eventStartTime'  => $eventMulai,
+            'isBerjalan'      => $isBerjalan,
+            'nextRefreshAtMs' => $nextRefreshAtMs,
+        ]);
+    }
+
 
 
 
