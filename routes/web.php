@@ -248,5 +248,8 @@ Route::post('/events/update', [AgentAdminController::class, 'updateInvite'])->na
 
 Route::get('/pemilu', [AgentAdminController::class, 'indexpemilu'])->name('pemilu.index');
 Route::get('/pemilu/{event}', [AgentAdminController::class, 'show'])->name('pemilu.show');
+Route::post('/pemilu/{event}/{listing}/pilih', [AgentAdminController::class, 'pilihProperty'])->name('pemilu.pilih');
+
+
 Route::post('/pemilu/{event}/join', [AgentAdminController::class, 'join'])->name('pemilu.join');
 Route::get('/pemilu/{event}/state', [AgentAdminController::class, 'state'])->name('pemilu.state'); // polling ringan

@@ -73,7 +73,7 @@
                                         </td>
                                         <td>
                                             @if( ($current?->status_giliran === 'Berjalan') && ($current?->id_account === $accountId) )
-                                              <form action="{{ route('dashboard.agent', [$event->id_event, $property->id_listing]) }}" method="POST">
+                                              <form action="{{ route('pemilu.pilih', [$event->id_event, $property->id_listing]) }}" method="POST">
                                                 @csrf
                                                 <input type="hidden" name="id_event" value="{{ $event->id_event }}">
                                                 <input type="hidden" name="id_listing" value="{{ $property->id_listing }}">
@@ -224,13 +224,15 @@
             <div class="card-body">
                 {{-- List pengumuman --}}
                 <div class="list-group">
-                    {{-- @foreach ($logs as $log)
+                    @foreach ($logs as $log)
+                        @php
+                            $agentName = $log->agent_name ?? 'Nama tidak ditemukan';
+                        @endphp
                         <div class="list-group-item">
                             <i class="bi bi-bell-fill me-2 text-primary"></i>
-                            {{ json_decode($log->meta)->message ?? 'Tidak ada detail.' }}
-                            <span class="text-muted small">{{ \Carbon\Carbon::parse($log->created_at)->diffForHumans() }}</span>
+                            id {{ $log->id_listing }} telah diambil oleh {{ $agentName }}
                         </div>
-                    @endforeach --}}
+                    @endforeach
                 </div>
             </div>
         </div>

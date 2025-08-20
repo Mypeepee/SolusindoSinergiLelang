@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use Carbon\Carbon;
+use App\Models\Agent;
 use App\Models\Event;
 use App\Models\Account;
 use App\Models\Property;
 use App\Models\EventInvite;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
+use App\Models\PemiluPilihan;
 use App\Models\InformasiKlien;
 use App\Models\PropertyInterest;
 use Illuminate\Support\Facades\DB;
@@ -505,6 +507,14 @@ class AgentAdminController extends Controller
             ->where('id_agent','AG001')
             ->paginate(10);
 
+        //  Ambil log transaksi
+        $logs = PemiluPilihan::all(); // Sesuaikan query kamu
+
+        // Ambil nama agent untuk setiap log yang punya id_agent
+        $logs = $logs->map(function ($log) {
+            $log->agent_name = optional(\App\Models\Agent::find($log->id_agent))->nama; // nama agent
+            return $log;
+});
         return view('Agent.pemilu', [
             'event'           => $event,
             'invites'         => $invites,          // ->mulai_aktif, ->selesai_aktif, ->status_giliran
@@ -515,52 +525,42 @@ class AgentAdminController extends Controller
             'isBerjalan'      => $isBerjalan,
             'nextRefreshAtMs' => $nextRefreshAtMs,
             'accountId'       => $accountId,
+            'logs'            => $logs,
         ]);
     }
 
-
-
-
-
-    public function pilihProperty($idEvent, Request $request)
+    public function pilihProperty(Request $request, $eventId, $listingId)
     {
-        // Ambil ID akun/agent dari user login
-        $idAccount = auth()->user()->id_account ?? $request->string('id_account');
-
-        // Ambil data event dan pilih listing
-        $event = DB::table('events')->where('id_event', $idEvent)->first(['id_event', 'mulai']);
-        $idListing = $request->input('id_listing');  // ID Property yang dipilih
-
-        // Validasi: pastikan property tidak sudah dipilih agent lain di event yang sama
-        $existingChoice = PemiluPilihan::where('id_event', $idEvent)
-            ->where('id_listing', $idListing)
-            ->exists();
-
-        if ($existingChoice) {
-            return back()->with('error', 'Property ini sudah dipilih.');
+        $accountId = session('id_account') ?? Cookie::get('id_account');
+        if (!$accountId) {
+            return back()->with('error', 'User tidak terautentikasi.');
         }
 
-        // Simpan pilihan agent
+        // cari id_agent dari tabel agent
+        $agent = Agent::where('id_account', $accountId)->first();
+        if (!$agent) {
+            return back()->with('error', 'Akun ini tidak terhubung dengan agent.');
+        }
+
+        $idAgent = $agent->id_agent;
+
+        // update property → set id_agent + tanggal_diupdate
+        Property::where('id_listing', $listingId)->update([
+            'id_agent'        => $idAgent,
+            'tanggal_diupdate'=> now(), // pakai timezone laravel (APP_TIMEZONE)
+        ]);
+
+        // create ke pemilu_pilihan
         PemiluPilihan::create([
-            'id_event'   => $idEvent,
-            'id_agent'   => $idAccount,
-            'id_listing' => $idListing,
-            'waktu_pilih'=> now(),
+            'id_event'   => $eventId,
+            'id_agent'   => $idAgent,
+            'id_listing' => $listingId,
         ]);
 
-        // Simpan log pengumuman
-        PemiluLog::create([
-            'id_event'  => $idEvent,
-            'id_agent'  => $idAccount,
-            'action'    => 'Memilih Property',
-            'meta'      => json_encode([
-                'id_listing' => $idListing,
-                'message'    => "Agent {$idAccount} telah memilih nomor {$idListing}.",
-            ]),
-        ]);
-
-        return back()->with('status', 'Berhasil memilih property.');
+        return back()->with('success', 'Property berhasil dipilih.');
     }
+
+
     // Endpoint JSON untuk polling UI kanan-atas
     public function state($idEvent)
     {
