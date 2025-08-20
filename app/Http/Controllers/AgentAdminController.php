@@ -306,10 +306,7 @@ class AgentAdminController extends Controller
                 ->first();
 
             if (!$existingInvite) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Pendaftaran sudah ditutup. Event telah dimulai.'
-                ], 400);
+                return redirect()->back()->with('error', 'Pendaftaran sudah ditutup. Event telah dimulai.');
             }
         }
 

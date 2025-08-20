@@ -1,4 +1,23 @@
 @include('template.header')
+
+@if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show position-fixed end-0 m-3 shadow-lg"
+         role="alert" style="min-width: 300px; top: 80px; z-index: 9999;">
+        {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+@endif
+
+@if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show position-fixed end-0 m-3 shadow-lg"
+         role="alert" style="min-width: 300px; top: 80px; z-index: 9999;">
+        {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+@endif
+
+
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <!-- /#header -->
         <!-- Content -->
