@@ -517,6 +517,7 @@ class AgentAdminController extends Controller
             'eventStartTime'  => $eventMulai,
             'isBerjalan'      => $isBerjalan,
             'nextRefreshAtMs' => $nextRefreshAtMs,
+            'accountId'       => $accountId,
         ]);
     }
 

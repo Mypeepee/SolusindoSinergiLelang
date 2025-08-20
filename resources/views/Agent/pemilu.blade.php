@@ -72,15 +72,18 @@
                                                 class="img-thumbnail" style="max-width: 80px; max-height: 80px;">
                                         </td>
                                         <td>
-                                            @if(isset($current) && $current->status_giliran === 'Berjalan')
-                                                <form action="" method="POST">
-                                                    @csrf
-                                                    <button type="submit" class="btn btn-success btn-sm">Pilih</button>
-                                                </form>
+                                            @if( ($current?->status_giliran === 'Berjalan') && ($current?->id_account === $accountId) )
+                                              <form action="{{ route('dashboard.agent', [$event->id_event, $property->id_listing]) }}" method="POST">
+                                                @csrf
+                                                <input type="hidden" name="id_event" value="{{ $event->id_event }}">
+                                                <input type="hidden" name="id_listing" value="{{ $property->id_listing }}">
+                                                <button type="submit" class="btn btn-success btn-sm">Pilih</button>
+                                              </form>
                                             @else
-                                                <span class="text-muted">-</span>
+                                              <span class="text-muted">-</span>
                                             @endif
-                                        </td>
+                                          </td>
+
                                     </tr>
                                 @empty
                                     <tr>
@@ -172,44 +175,44 @@
                 </div>
 
                {{-- Tabel antrian --}}
-<div class="table-responsive">
-    <table class="table table-sm align-middle">
-      <thead>
-        <tr>
-          <th>Urutan</th>
-          <th>Username</th>
-          <th>Waktu Tersisa</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse ($invites as $row)
-          @php $isCurrent = ($current?->id_invite ?? null) === $row->id_invite; @endphp
-          <tr @class(['table-primary' => $isCurrent])>
-            <td class="fw-bold">{{ $row->urutan }}</td>
-            <td>{{ $row->username }}</td>
-            <td>
-              @if($row->waktu_tersisa > 0)
-                <span class="countdown" data-waktu="{{ $row->waktu_tersisa }}"></span>
-              @else
-                <span class="text-danger">Waktu Habis</span>
-              @endif
-            </td>
-            <td>
-              <span class="badge
-                @if($row->status_giliran === 'Berjalan') bg-success
-                @elseif($row->status_giliran === 'Menunggu') bg-secondary
-                @else bg-light text-dark @endif">
-                {{ $row->status_giliran }}
-              </span>
-            </td>
-          </tr>
-        @empty
-          <tr><td colspan="4"><em>Belum ada yang join.</em></td></tr>
-        @endforelse
-      </tbody>
-    </table>
-  </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                        <th>Urutan</th>
+                        <th>Username</th>
+                        <th>Waktu Tersisa</th>
+                        <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($invites as $row)
+                        @php $isCurrent = ($current?->id_invite ?? null) === $row->id_invite; @endphp
+                        <tr @class(['table-primary' => $isCurrent])>
+                            <td class="fw-bold">{{ $row->urutan }}</td>
+                            <td>{{ $row->username }}</td>
+                            <td>
+                            @if($row->waktu_tersisa > 0)
+                                <span class="countdown" data-waktu="{{ $row->waktu_tersisa }}"></span>
+                            @else
+                                <span class="text-danger">Waktu Habis</span>
+                            @endif
+                            </td>
+                            <td>
+                            <span class="badge
+                                @if($row->status_giliran === 'Berjalan') bg-success
+                                @elseif($row->status_giliran === 'Menunggu') bg-secondary
+                                @else bg-light text-dark @endif">
+                                {{ $row->status_giliran }}
+                            </span>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr><td colspan="4"><em>Belum ada yang join.</em></td></tr>
+                        @endforelse
+                    </tbody>
+                    </table>
+                </div>
 
             </div>
         </div>
