@@ -9,13 +9,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('pemilu_pilihan', function (Blueprint $table) {
-            $table->bigIncrements('id');
+            $table->id('id');
 
             $table->unsignedBigInteger('id_event');   // FK -> event_grup.id_event
             $table->string('id_agent', 10);           // FK -> agent.id_agent
             $table->unsignedBigInteger('id_listing'); // FK -> property.id  (ganti jika nama tabelmu berbeda)
-
-            $table->dateTime('waktu_pilih')->useCurrent();
 
             $table->foreign('id_event')->references('id_event')->on('events')->cascadeOnDelete();
             $table->foreign('id_agent')->references('id_agent')->on('agent')->cascadeOnDelete();

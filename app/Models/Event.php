@@ -43,4 +43,10 @@ class Event extends Model
     {
         return $this->hasMany(EventInvite::class, 'id_event', 'id_event');
     }
+
+    /** Satu event bisa punya banyak pilihan */
+    public function pemiluPilihan(): HasMany
+    {
+        return $this->hasMany(PemiluPilihan::class, 'id_event', 'id_event');
+    }
 }

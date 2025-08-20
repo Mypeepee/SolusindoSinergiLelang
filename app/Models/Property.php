@@ -64,6 +64,12 @@ class Property extends Model
         return $this->hasOne(Transaction::class, 'id_listing', 'id_listing');
     }
 
+    /** Satu property hanya bisa masuk satu pilihan */
+    public function pemiluPilihan(): HasOne
+    {
+        return $this->hasOne(PemiluPilihan::class, 'id_listing', 'id_listing');
+    }
+
 //     public function agents()
 // {
 //     return $this->belongsToMany(Agent::class, 'agent_listing', 'id_listing', 'id_account');

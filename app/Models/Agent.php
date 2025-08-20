@@ -56,6 +56,12 @@ class Agent extends Model
         return $this->hasMany(Transaction::class, 'id_agent', 'id_agent');
     }
 
+    /** Satu agent bisa punya banyak pilihan */
+    public function pemiluPilihan(): HasMany
+    {
+        return $this->hasMany(PemiluPilihan::class, 'id_agent', 'id_agent');
+    }
+    
     protected static function boot()
     {
         parent::boot();
