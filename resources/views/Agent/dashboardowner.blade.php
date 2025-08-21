@@ -958,7 +958,23 @@
             if(ev.title && ev.title.toLowerCase() === 'pemilu'){
                 li.querySelector(`#btnJoin_${ev.id}`).addEventListener('click', (e)=> {
                     e.stopPropagation(); // jangan trigger detail
-                    updateInvite(ev.id, 'join', ev.access);
+
+                    // Ganti tombol "Join" jadi icon loading
+                    const btnJoin = li.querySelector(`#btnJoin_${ev.id}`);
+                    btnJoin.innerHTML = '<i class="spinner-border spinner-border-sm" role="status"></i> Loading...';
+                    btnJoin.disabled = true; // disable tombol agar tidak bisa ditekan lagi
+
+                    // Panggil updateInvite dan proses
+                    updateInvite(ev.id, 'join', ev.access).then(() => {
+                        // Setelah berhasil, ganti tombol kembali menjadi "Join"
+                        btnJoin.innerHTML = 'Join';
+                        btnJoin.disabled = false; // enable kembali tombol
+                    }).catch((err) => {
+                        // Jika terjadi error, kembalikan tombol ke "Join" dan beri pesan error
+                        btnJoin.innerHTML = 'Join';
+                        btnJoin.disabled = false;
+                        alert('Terjadi kesalahan: ' + err.message);
+                    });
                 });
             }
 

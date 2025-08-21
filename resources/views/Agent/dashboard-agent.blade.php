@@ -685,7 +685,23 @@
                         if(ev.title && ev.title.toLowerCase() === 'pemilu'){
                             li.querySelector(`#btnJoin_${ev.id}`).addEventListener('click', (e)=> {
                                 e.stopPropagation(); // jangan trigger detail
-                                updateInvite(ev.id, 'join', ev.access);
+
+                                // Ganti tombol "Join" jadi icon loading
+                                const btnJoin = li.querySelector(`#btnJoin_${ev.id}`);
+                                btnJoin.innerHTML = '<i class="spinner-border spinner-border-sm" role="status"></i> Loading...';
+                                btnJoin.disabled = true; // disable tombol agar tidak bisa ditekan lagi
+
+                                // Panggil updateInvite dan proses
+                                updateInvite(ev.id, 'join', ev.access).then(() => {
+                                    // Setelah berhasil, ganti tombol kembali menjadi "Join"
+                                    btnJoin.innerHTML = 'Join';
+                                    btnJoin.disabled = false; // enable kembali tombol
+                                }).catch((err) => {
+                                    // Jika terjadi error, kembalikan tombol ke "Join" dan beri pesan error
+                                    btnJoin.innerHTML = 'Join';
+                                    btnJoin.disabled = false;
+                                    alert('Terjadi kesalahan: ' + err.message);
+                                });
                             });
                         }
 
@@ -840,7 +856,7 @@
                     let actionButtons = '';
 
                     if(ev.title && ev.title.toLowerCase() === 'pemilu'){
-                        actionButtons = `<button class="btn btn-primary btn-sm me-2" id="btnJoin">Join</button>`;
+                        actionButtons = `<button class="btn btn-primary btn-sm me-2" id="btnJoin2">Join</button>`;
                     }
 
                     containerKeduaBody.innerHTML = `
@@ -858,9 +874,28 @@
 
                     document.getElementById('btnBack').addEventListener('click', ()=> renderTodayEvents(selectedDate));
 
-                    if(ev.title && ev.title.toLowerCase() === 'pemilu'){
-                        document.getElementById('btnJoin').addEventListener('click', ()=> updateInvite(ev.id, 'join', ev.access));
-                    } 
+                    if (ev.title && ev.title.toLowerCase() === 'pemilu') {
+                        document.getElementById(`btnJoin2`).addEventListener('click', (e) => {
+                            e.stopPropagation(); // Jangan trigger detail
+
+                            const btnJoin = document.getElementById(`btnJoin2`);
+                            // Ganti tombol "Join" menjadi loading spinner
+                            btnJoin.innerHTML = '<i class="spinner-border spinner-border-sm" role="status"></i> Loading...';
+                            btnJoin.disabled = true; // Disable tombol agar tidak bisa ditekan lagi
+
+                            // Panggil updateInvite untuk proses "join"
+                            updateInvite(ev.id, 'join', ev.access).then(() => {
+                                // Jika sukses, ganti tombol kembali menjadi "Join"
+                                btnJoin.innerHTML = 'Join';
+                                btnJoin.disabled = false; // Enable kembali tombol
+                            }).catch((err) => {
+                                // Jika error, kembalikan tombol ke "Join" dan beri pesan error
+                                btnJoin.innerHTML = 'Join';
+                                btnJoin.disabled = false;
+                                alert('Terjadi kesalahan: ' + err.message);
+                            });
+                        });
+                    }
                 }
 
                 function updateInvite(eventId, status, access) {
