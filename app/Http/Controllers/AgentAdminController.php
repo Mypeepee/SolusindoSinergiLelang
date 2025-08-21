@@ -503,18 +503,19 @@ class AgentAdminController extends Controller
         }
 
         // 9) Properties (contoh)
-        $properties = \App\Models\Property::select('id_listing','lokasi','luas','harga','gambar')
+        $properties = Property::select('id_listing','lokasi','luas','harga','gambar')
             ->where('id_agent','AG001')
             ->paginate(10);
 
         //  Ambil log transaksi
-        $logs = PemiluPilihan::all(); // Sesuaikan query kamu
+        $logs = PemiluPilihan::where('id_event', $idEvent)->get();
 
         // Ambil nama agent untuk setiap log yang punya id_agent
         $logs = $logs->map(function ($log) {
-            $log->agent_name = optional(\App\Models\Agent::find($log->id_agent))->nama; // nama agent
+            $log->agent_name = optional(Agent::find($log->id_agent))->nama; // nama agent
             return $log;
-});
+        });
+
         return view('Agent.pemilu', [
             'event'           => $event,
             'invites'         => $invites,          // ->mulai_aktif, ->selesai_aktif, ->status_giliran
