@@ -36,11 +36,11 @@
 
                 <div class="card-body">
                     <!-- Search -->
-                    <form method="GET" action="{{ route('pemilu.index') }}" class="mb-3 d-flex gap-2">
-                        <input type="text" name="search" value="{{ $search ?? '' }}"
-                            class="form-control" placeholder="Cari ID Listing">
+                    <form method="GET" action="{{ route('pemilu.show', $event->id_event) }}" class="mb-3 d-flex gap-2">
+                        <input type="text" name="search" value="{{ $search ?? '' }}" class="form-control" placeholder="Cari ID Listing">
                         <button type="submit" class="btn btn-primary">Search</button>
                     </form>
+
 
                     <!-- Table -->
                     <div class="table-responsive">
@@ -73,16 +73,22 @@
                                         </td>
                                         <td>
                                             @if( ($current?->status_giliran === 'Berjalan') && ($current?->id_account === $accountId) )
-                                              <form action="{{ route('pemilu.pilih', [$event->id_event, $property->id_listing]) }}" method="POST">
+                                              <form action="{{ route('pemilu.pilih', [$event->id_event, $property->id_listing]) }}" method="POST" id="formPilih_{{ $property->id_listing }}">
                                                 @csrf
                                                 <input type="hidden" name="id_event" value="{{ $event->id_event }}">
                                                 <input type="hidden" name="id_listing" value="{{ $property->id_listing }}">
-                                                <button type="submit" class="btn btn-success btn-sm">Pilih</button>
+                                                <button type="submit" class="btn btn-success btn-sm" id="btn-pilih-{{ $property->id_listing }}">
+                                                  Pilih
+                                                </button>
+                                                <div class="spinner-border text-primary d-none" id="spinner-{{ $property->id_listing }}" role="status">
+                                                  <span class="visually-hidden">Loading...</span>
+                                                </div>
                                               </form>
                                             @else
                                               <span class="text-muted">-</span>
                                             @endif
                                           </td>
+
 
                                     </tr>
                                 @empty
@@ -296,6 +302,28 @@
 }
 </style>
 <script>
+    document.addEventListener('DOMContentLoaded', function () {
+  // Menambahkan event listener untuk tombol Pilih
+  document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', function(event) {
+      // Ambil ID listing dari form yang sedang diproses
+      var formId = form.id;
+      var propertyId = formId.split('_')[1];
+
+      // Hide tombol Pilih dan tampilkan spinner
+      var btnPilih = document.getElementById('btn-pilih-' + propertyId);
+      var spinner = document.getElementById('spinner-' + propertyId);
+
+      // Menyembunyikan tombol Pilih dan menampilkan spinner
+      btnPilih.classList.add('d-none');  // sembunyikan tombol
+      spinner.classList.remove('d-none');  // tampilkan spinner
+
+      // Form akan tetap dikirim seperti biasa setelah spinner ditampilkan
+    });
+  });
+});
+
+
     document.addEventListener('DOMContentLoaded', function () {
     const nextRefreshAtMs = {!! $nextRefreshAtMs ? $nextRefreshAtMs : 'null' !!};
     if (!nextRefreshAtMs) return;

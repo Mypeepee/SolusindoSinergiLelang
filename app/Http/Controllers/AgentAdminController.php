@@ -254,22 +254,21 @@ class AgentAdminController extends Controller
 
     public function indexpemilu(Request $request)
     {
+        // Ambil search term
         $search = trim($request->get('search'));
-
-        $properties = \App\Models\Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar')
-            ->where('id_agent', 'AG001') // filter hanya agent tertentu
+        // Ambil data properti sesuai pencarian id_listing
+        $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar')
+            ->where('id_agent', 'AG001') // Filter agent
             ->when($search !== '' && $search !== null, function ($query) use ($search) {
-                // Jika id_listing bertipe integer
-                return $query->where('id_listing', (int) $search);
-
-                // Kalau kolom id_listing bertipe string/char, ganti dengan:
-                // return $query->where('id_listing', $search);
+                return $query->where('id_listing', 'like', "%$search%"); // Pencarian ID Listing
             })
             ->paginate(10)
-            ->appends(['search' => $search]);
+            ->appends(['search' => $search]);  // Menyertakan query string search pada pagination
 
         return view('Agent.pemilu', compact('properties', 'search'));
     }
+
+
     public function updateInvite(Request $request)
     {
         $validated = $request->validate([
@@ -369,166 +368,170 @@ class AgentAdminController extends Controller
         return redirect()->route('pemilu.show', ['event' => $event->id_event]);
     }
 
-    public function show($idEvent)
-    {
-        // 1) Event
-        $event = DB::table('events')
-            ->where('id_event', $idEvent)
-            ->first(['id_event','mulai','selesai','durasi']);
-        abort_if(!$event, 404, 'Event tidak ditemukan');
+    public function show(Request $request, $idEvent)
+{
+    // 1) Ambil data event berdasarkan idEvent
+    $event = DB::table('events')
+        ->where('id_event', $idEvent)
+        ->first(['id_event', 'mulai', 'selesai', 'durasi']);
+    abort_if(!$event, 404, 'Event tidak ditemukan');
 
-        $now          = Carbon::now();
-        $eventMulai   = Carbon::parse($event->mulai);
-        $eventSelesai = $event->selesai ? Carbon::parse($event->selesai) : null;
-        $slotSeconds  = max(1, (int)$event->durasi) * 60;
+    $now = Carbon::now();
+    $eventMulai = Carbon::parse($event->mulai);
+    $eventSelesai = $event->selesai ? Carbon::parse($event->selesai) : null;
+    $slotSeconds = max(1, (int)$event->durasi) * 60;
 
-        // 2) User (opsional)
-        $accountId = session('id_account') ?? Cookie::get('id_account');
+    // 2) User (opsional)
+    $accountId = session('id_account') ?? Cookie::get('id_account');
 
-        // 3) Ambil peserta (pakai urutan)
-        $invitesRaw = DB::table('event_invites')
-            ->join('account', 'event_invites.id_account', '=', 'account.id_account')
-            ->where('event_invites.id_event', $idEvent)
-            ->orderBy('event_invites.urutan')
-            ->get([
-                'event_invites.id_invite',
-                'event_invites.id_account',
-                'account.username',
-                'event_invites.urutan',
-                'event_invites.mulai_giliran',
-                'event_invites.selesai_giliran',
-                'event_invites.status_giliran',
-            ]);
+    // 3) Ambil peserta (pakai urutan)
+    $invitesRaw = DB::table('event_invites')
+        ->join('account', 'event_invites.id_account', '=', 'account.id_account')
+        ->where('event_invites.id_event', $idEvent)
+        ->orderBy('event_invites.urutan')
+        ->get([
+            'event_invites.id_invite',
+            'event_invites.id_account',
+            'account.username',
+            'event_invites.urutan',
+            'event_invites.mulai_giliran',
+            'event_invites.selesai_giliran',
+            'event_invites.status_giliran',
+        ]);
 
-        $jumlah = $invitesRaw->count();
-        if ($jumlah === 0) {
-            return view('Agent.pemilu', [
-                'event'           => $event,
-                'invites'         => collect(),
-                'properties'      => \App\Models\Property::select('id_listing','lokasi','luas','harga','gambar')
-                                        ->where('id_agent','AG001')->paginate(10),
-                'current'         => null,
-                'currentTime'     => $now,
-                'eventStartTime'  => $eventMulai,
-                'isBerjalan'      => false,
-                'nextRefreshAtMs' => null,
-            ]);
-        }
-
-        // 4) Hitung siklus aktif dari event.mulai
-        $cycleSeconds = $slotSeconds * $jumlah;
-        $cycleIndex = 0;
-        if ($now->gte($eventMulai) && $cycleSeconds > 0) {
-            $cycleIndex = intdiv($eventMulai->diffInSeconds($now), $cycleSeconds);
-        }
-
-        // 5) Bentuk data aktif & (nanti) tulis balik ke DB
-        $invites = $invitesRaw->map(function ($invite) use ($cycleIndex, $jumlah, $slotSeconds, $eventMulai, $now) {
-            // slot global sejak event.mulai
-            $slotGlobal = $cycleIndex * $jumlah + ($invite->urutan - 1);
-
-            $mulaiAktif   = (clone $eventMulai)->addSeconds($slotGlobal * $slotSeconds);
-            $selesaiAktif = (clone $mulaiAktif)->addSeconds($slotSeconds);
-
-            if ($now->between($mulaiAktif, $selesaiAktif)) {
-                $status = 'Berjalan';
-                $waktuTersisa = $now->diffInSeconds($selesaiAktif);
-            } elseif ($now->lt($mulaiAktif)) {
-                $status = 'Menunggu';
-                $waktuTersisa = 0;
-            } else {
-                $status = 'Selesai';
-                $waktuTersisa = 0;
-            }
-
-            // ====== properti untuk render realtime ======
-            $invite->mulai_aktif     = $mulaiAktif;
-            $invite->selesai_aktif   = $selesaiAktif;
-            $invite->status_now      = $status;
-            $invite->status_giliran  = $status; // <-- sinkron agar Blade pakai status_giliran saja
-            $invite->waktu_tersisa   = $waktuTersisa;
-
-            return $invite;
-        });
-
-        // 5b) Tulis balik ke event_invites (tanpa histori)
-        if (!$eventSelesai || $now->lt($eventSelesai)) {
-            foreach ($invites as $i) {
-                // Kurangi write jika tidak berubah
-                $newMulai   = $i->mulai_aktif->toDateTimeString();
-                $newSelesai = $i->selesai_aktif->toDateTimeString();
-
-                $changed = ($i->mulai_giliran   ?? null) !== $newMulai
-                        || ($i->selesai_giliran ?? null) !== $newSelesai
-                        || ($i->status_giliran  ?? null) !== $i->status_now;
-
-                if ($changed) {
-                    DB::table('event_invites')
-                        ->where('id_invite', $i->id_invite)
-                        ->update([
-                            'mulai_giliran'   => $newMulai,
-                            'selesai_giliran' => $newSelesai,
-                            'status_giliran'  => $i->status_now,
-                            'tanggal_diupdate'=> now(),
-                        ]);
-                }
-            }
-        }
-
-        // 6) Siapa yang sedang berjalan? (pakai status_giliran yang sudah disinkron)
-        $current = $invites->firstWhere('status_giliran', 'Berjalan');
-
-        // 7) Next refresh tepat di boundary slot berikutnya (berbasis event.mulai)
-        $nextRefresh = null;
-        if ($eventSelesai && $now->gte($eventSelesai)) {
-            $nextRefresh = null;
-        } else {
-            if ($now->lt($eventMulai)) {
-                $nextRefresh = $eventMulai;
-            } else {
-                $slotsSinceStart = intdiv($eventMulai->diffInSeconds($now), $slotSeconds) + 1;
-                $nextRefresh = (clone $eventMulai)->addSeconds($slotsSinceStart * $slotSeconds);
-                if ($eventSelesai && $nextRefresh->gte($eventSelesai)) {
-                    $nextRefresh = null;
-                }
-            }
-        }
-        $nextRefreshAtMs = $nextRefresh ? $nextRefresh->timestamp * 1000 : null;
-
-        // 8) isBerjalan untuk akun login
-        $isBerjalan = false;
-        if ($accountId) {
-            $isBerjalan = (bool) $invites
-                ->first(fn ($i) => $i->id_account === $accountId && $i->status_giliran === 'Berjalan');
-        }
-
-        // 9) Properties (contoh)
-        $properties = Property::select('id_listing','lokasi','luas','harga','gambar')
-            ->where('id_agent','AG001')
-            ->paginate(10);
-
-        //  Ambil log transaksi
-        $logs = PemiluPilihan::where('id_event', $idEvent)->get();
-
-        // Ambil nama agent untuk setiap log yang punya id_agent
-        $logs = $logs->map(function ($log) {
-            $log->agent_name = optional(Agent::find($log->id_agent))->nama; // nama agent
-            return $log;
-        });
-
+    $jumlah = $invitesRaw->count();
+    if ($jumlah === 0) {
         return view('Agent.pemilu', [
-            'event'           => $event,
-            'invites'         => $invites,          // ->mulai_aktif, ->selesai_aktif, ->status_giliran
-            'properties'      => $properties,
-            'current'         => $current,
-            'currentTime'     => $now,
-            'eventStartTime'  => $eventMulai,
-            'isBerjalan'      => $isBerjalan,
-            'nextRefreshAtMs' => $nextRefreshAtMs,
-            'accountId'       => $accountId,
-            'logs'            => $logs,
+            'event' => $event,
+            'invites' => collect(),
+            'properties' => \App\Models\Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar')
+                ->where('id_agent', 'AG001')->paginate(10),
+            'current' => null,
+            'currentTime' => $now,
+            'eventStartTime' => $eventMulai,
+            'isBerjalan' => false,
+            'nextRefreshAtMs' => null,
         ]);
     }
+
+    // 4) Hitung siklus aktif dari event.mulai
+    $cycleSeconds = $slotSeconds * $jumlah;
+    $cycleIndex = 0;
+    if ($now->gte($eventMulai) && $cycleSeconds > 0) {
+        $cycleIndex = intdiv($eventMulai->diffInSeconds($now), $cycleSeconds);
+    }
+
+    // 5) Bentuk data aktif & (nanti) tulis balik ke DB
+    $invites = $invitesRaw->map(function ($invite) use ($cycleIndex, $jumlah, $slotSeconds, $eventMulai, $now) {
+        // slot global sejak event.mulai
+        $slotGlobal = $cycleIndex * $jumlah + ($invite->urutan - 1);
+
+        $mulaiAktif = (clone $eventMulai)->addSeconds($slotGlobal * $slotSeconds);
+        $selesaiAktif = (clone $mulaiAktif)->addSeconds($slotSeconds);
+
+        if ($now->between($mulaiAktif, $selesaiAktif)) {
+            $status = 'Berjalan';
+            $waktuTersisa = $now->diffInSeconds($selesaiAktif);
+        } elseif ($now->lt($mulaiAktif)) {
+            $status = 'Menunggu';
+            $waktuTersisa = 0;
+        } else {
+            $status = 'Selesai';
+            $waktuTersisa = 0;
+        }
+
+        // ====== properti untuk render realtime ======
+        $invite->mulai_aktif = $mulaiAktif;
+        $invite->selesai_aktif = $selesaiAktif;
+        $invite->status_now = $status;
+        $invite->status_giliran = $status; // <-- sinkron agar Blade pakai status_giliran saja
+        $invite->waktu_tersisa = $waktuTersisa;
+
+        return $invite;
+    });
+
+    // 5b) Tulis balik ke event_invites (tanpa histori)
+    if (!$eventSelesai || $now->lt($eventSelesai)) {
+        foreach ($invites as $i) {
+            // Kurangi write jika tidak berubah
+            $newMulai = $i->mulai_aktif->toDateTimeString();
+            $newSelesai = $i->selesai_aktif->toDateTimeString();
+
+            $changed = ($i->mulai_giliran ?? null) !== $newMulai
+                || ($i->selesai_giliran ?? null) !== $newSelesai
+                || ($i->status_giliran ?? null) !== $i->status_now;
+
+            if ($changed) {
+                DB::table('event_invites')
+                    ->where('id_invite', $i->id_invite)
+                    ->update([
+                        'mulai_giliran' => $newMulai,
+                        'selesai_giliran' => $newSelesai,
+                        'status_giliran' => $i->status_now,
+                        'tanggal_diupdate' => now(),
+                    ]);
+            }
+        }
+    }
+
+    // 6) Siapa yang sedang berjalan? (pakai status_giliran yang sudah disinkron)
+    $current = $invites->firstWhere('status_giliran', 'Berjalan');
+
+    // 7) Next refresh tepat di boundary slot berikutnya (berbasis event.mulai)
+    $nextRefresh = null;
+    if ($eventSelesai && $now->gte($eventSelesai)) {
+        $nextRefresh = null;
+    } else {
+        if ($now->lt($eventMulai)) {
+            $nextRefresh = $eventMulai;
+        } else {
+            $slotsSinceStart = intdiv($eventMulai->diffInSeconds($now), $slotSeconds) + 1;
+            $nextRefresh = (clone $eventMulai)->addSeconds($slotsSinceStart * $slotSeconds);
+            if ($eventSelesai && $nextRefresh->gte($eventSelesai)) {
+                $nextRefresh = null;
+            }
+        }
+    }
+    $nextRefreshAtMs = $nextRefresh ? $nextRefresh->timestamp * 1000 : null;
+
+    // 8) isBerjalan untuk akun login
+    $isBerjalan = false;
+    if ($accountId) {
+        $isBerjalan = (bool)$invites
+            ->first(fn($i) => $i->id_account === $accountId && $i->status_giliran === 'Berjalan');
+    }
+
+    // 9) Properties (contoh)
+    $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar')
+        ->where('id_agent', 'AG001')
+        ->when($request->get('search'), function ($query, $search) {
+            return $query->where('id_listing', '=', $search); // Pencarian exact match
+        })
+        ->paginate(10);
+
+    // Ambil log transaksi
+    $logs = PemiluPilihan::where('id_event', $idEvent)->get();
+
+    // Ambil nama agent untuk setiap log yang punya id_agent
+    $logs = $logs->map(function ($log) {
+        $log->agent_name = optional(Agent::find($log->id_agent))->nama; // nama agent
+        return $log;
+    });
+
+    return view('Agent.pemilu', [
+        'event' => $event,
+        'invites' => $invites,          // ->mulai_aktif, ->selesai_aktif, ->status_giliran
+        'properties' => $properties,
+        'current' => $current,
+        'currentTime' => $now,
+        'eventStartTime' => $eventMulai,
+        'isBerjalan' => $isBerjalan,
+        'nextRefreshAtMs' => $nextRefreshAtMs,
+        'accountId' => $accountId,
+        'logs' => $logs,
+    ]);
+}
+
 
     public function pilihProperty(Request $request, $eventId, $listingId)
     {

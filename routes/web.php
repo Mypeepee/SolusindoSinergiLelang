@@ -253,3 +253,4 @@ Route::post('/pemilu/{event}/{listing}/pilih', [AgentAdminController::class, 'pi
 
 Route::post('/pemilu/{event}/join', [AgentAdminController::class, 'join'])->name('pemilu.join');
 Route::get('/pemilu/{event}/state', [AgentAdminController::class, 'state'])->name('pemilu.state'); // polling ringan
+
