@@ -115,6 +115,30 @@
                 <div class="modal-body">
                     <div class="container">
                         <div class="row g-2">
+
+                            {{-- === Keyword search (lokasi / ID listing) === --}}
+                            <div class="col-12">
+                                <div class="input-group input-group-lg rounded-pill overflow-hidden shadow-sm mobile-search">
+                                    <span class="input-group-text bg-white border-0 ps-3">
+                                        <i class="bi bi-search"></i>
+                                    </span>
+                                    <input
+                                        type="search"
+                                        name="q"
+                                        value="{{ request('q') }}"
+                                        class="form-control border-0"
+                                        placeholder='Cari lokasi / perumahan / jalan… atau ID Listing (angka)'
+                                        autocomplete="off"
+                                        inputmode="search"
+                                        aria-label="Ketik kata kunci pencarian"
+                                    >
+                                </div>
+                                <div class="form-text mt-1">
+                                    Contoh: <em>Citraland</em>, <em>Jl. Sudirman</em>, atau <em>12345</em> (ID Listing).
+                                </div>
+                            </div>
+                            {{-- === /Keyword === --}}
+
                             <!-- Harga Minimum -->
                             <div class="col-12">
                                 <input type="text" name="min_price" id="min_price" class="form-control border-0 py-3" placeholder="Harga Minimum">
@@ -153,6 +177,7 @@
                                     <option selected disabled>Pilih Kota/Kabupaten</option>
                                 </select>
                             </div>
+
                             <!-- Kecamatan -->
                             <div class="col-12">
                                 <select id="district" class="form-select border-0 py-3" disabled>
@@ -160,6 +185,7 @@
                                 </select>
                             </div>
                         </div>
+
                         <div id="selected-cities" class="mt-3 d-flex flex-wrap gap-2"></div>
                     </div>
                 </div>
@@ -167,21 +193,19 @@
                 <div class="modal-footer flex-column">
                     <input type="hidden" name="selected_city_values" id="selected-city-values">
 
-                    <!-- Tombol Search -->
-                    <button type="submit" class="btn btn-dark w-100 py-3 mb-2">
-                        Search
-                    </button>
-
-                    <!-- Tombol Close -->
-                    <button type="button" class="btn btn-secondary w-100 py-3" data-bs-dismiss="modal">
-                        Close
-                    </button>
+                    <button type="submit" class="btn btn-dark w-100 py-3 mb-2">Search</button>
+                    <button type="button" class="btn btn-secondary w-100 py-3" data-bs-dismiss="modal">Close</button>
                 </div>
-
             </form>
+
         </div>
     </div>
 </div>
+<style>
+    .mobile-search .form-control:focus { box-shadow:none; }
+    .mobile-search .input-group-text { border:0; }
+  </style>
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const provinceSelect = document.getElementById('province');
@@ -307,52 +331,154 @@
 
 <!-- Desktop View Original Search Form (Visible Only on md and Up) -->
 <div class="container-fluid bg-primary mb-5 wow fadeIn d-none d-md-block" data-wow-delay="0.1s" style="padding: 35px;">
-    <form action="{{ route('property.list') }}#property-list-section" method="GET">
-        <div class="container">
-            <div class="row g-2">
-                <div class="col-md-3">
-                    <div class="input-group">
-                        <input type="text" name="min_price" class="form-control border-0 py-3" placeholder="Harga Min">
-                        <input type="text" name="max_price" class="form-control border-0 py-3" placeholder="Harga Max">
-                    </div>
-                </div>
-                <div class="col-md-2">
-                    <select name="property_type" class="form-select border-0 py-3">
-                        <option selected disabled>Tipe Property</option>
-                        <option value="rumah">Rumah</option>
-                        <option value="gudang">Gudang</option>
-                        <option value="apartemen">Apartemen</option>
-                        <option value="tanah">Tanah</option>
-                        <option value="pabrik">Pabrik</option>
-                        <option value="hotel dan villa">Hotel dan Villa</option>
-                        <option value="ruko">Ruko</option>
-                        <option value="sewa">Sewa</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <select id="province-desktop" name="province" class="form-select border-0 py-3">
-                        <option selected disabled>Pilih Provinsi</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <select id="city-desktop" class="form-select border-0 py-3" disabled>
-                        <option selected disabled>Pilih Kota/Kabupaten</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <select id="district-desktop" class="form-select border-0 py-3" disabled>
-                        <option selected disabled>Pilih Kecamatan</option>
-                    </select>
-                </div>
-                <div class="col-md-1">
-                    <button type="submit" class="btn btn-dark border-0 w-100 py-3">Search</button>
-                </div>
+    <form id="searchForm" method="GET" action="{{ route('property.list') }}#property-list-section" class="search-hero">
+
+        {{-- Keyword bar + buttons (replaces your input-group) --}}
+        <div class="search-rail d-flex align-items-center">
+            <i class="bi bi-search ms-3 me-2 text-muted fs-5"></i>
+
+            <input
+            type="text"
+            name="q"
+            value="{{ request('q') }}"
+            class="search-rail-input flex-grow-1"
+            placeholder='Cari lokasi / perumahan / jalan… (mis. "Citraland")'
+            autocomplete="off"
+            aria-label="Ketik kata kunci pencarian"
+            />
+
+            <div class="d-flex align-items-center gap-2 ms-2 me-2">
+            <button type="submit" class="btn btn-search px-4 fw-semibold">Search</button>
+            <button type="button" class="btn btn-filter px-3 fw-semibold"
+                    data-bs-toggle="modal" data-bs-target="#filterModals">
+                <i class="bi bi-sliders"></i><span class="ms-2 d-none d-lg-inline">Filter</span>
+            </button>
             </div>
-            <div id="selected-cities-desktop" class="mt-2 d-flex flex-wrap gap-2"></div>
-            <input type="hidden" name="selected_city_values" id="selected-city-values-desktop">
         </div>
-    </form>
+
+
+        <!-- Modal Filter -->
+        <div class="modal fade" id="filterModals" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Filter lanjutan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+
+              <div class="modal-body">
+                <div class="row g-3">
+                  <div class="col-6 col-lg-4">
+                    <input type="text" name="min_price" value="{{ request('min_price') }}" class="form-control" placeholder="Harga Min">
+                  </div>
+                  <div class="col-6 col-lg-4">
+                    <input type="text" name="max_price" value="{{ request('max_price') }}" class="form-control" placeholder="Harga Max">
+                  </div>
+                  <div class="col-12 col-lg-4">
+                    <select name="property_type" class="form-select">
+                      <option value="" {{ request('property_type') ? '' : 'selected' }} disabled>Tipe Property</option>
+                      <option value="rumah"           @selected(request('property_type')==='rumah')>Rumah</option>
+                      <option value="gudang"          @selected(request('property_type')==='gudang')>Gudang</option>
+                      <option value="apartemen"       @selected(request('property_type')==='apartemen')>Apartemen</option>
+                      <option value="tanah"           @selected(request('property_type')==='tanah')>Tanah</option>
+                      <option value="pabrik"          @selected(request('property_type')==='pabrik')>Pabrik</option>
+                      <option value="hotel dan villa" @selected(request('property_type')==='hotel dan villa')>Hotel & Villa</option>
+                      <option value="ruko"            @selected(request('property_type')==='ruko')>Ruko</option>
+                      <option value="sewa"            @selected(request('property_type')==='sewa')>Sewa</option>
+                    </select>
+                  </div>
+
+                  <div class="col-12 col-lg-4">
+                    <select id="province-desktop" name="province" class="form-select">
+                      <option disabled {{ request('province') ? '' : 'selected' }}>Pilih Provinsi</option>
+                    </select>
+                  </div>
+                  <div class="col-12 col-lg-4">
+                    <select id="city-desktop" name="city" class="form-select" {{ request('province') ? '' : 'disabled' }}>
+                      <option disabled selected>Pilih Kota/Kabupaten</option>
+                    </select>
+                  </div>
+                  <div class="col-12 col-lg-4">
+                    <select id="district-desktop" name="district" class="form-select" {{ request('city') ? '' : 'disabled' }}>
+                      <option disabled selected>Pilih Kecamatan</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="modal-footer d-flex justify-content-between">
+                <a href="{{ route('property.list') }}#property-list-section" class="btn btn-link text-danger">Reset</a>
+                <div>
+                  <button type="button" class="btn btn-light" data-bs-dismiss="modal">Tutup</button>
+                  <button type="submit" class="btn btn-primary">Terapkan</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </form>
 </div>
+<style>
+/* ====== palette */
+:root{
+  --brand-orange: #f15b2a;      /* brand/oranye */
+  --navy:         #0f2a44;      /* dark blue tombol Search */
+  --rail-ring:    rgba(15,42,68,.12);
+  --rail-border:  #ffd3c2;      /* garis halus pill */
+}
+
+/* ====== pill putih biar kontras di bg oranye */
+.search-rail{
+  height:64px;
+  width:100%;
+  background:#fff;
+  border:2px solid var(--brand-orange);
+  border-radius:40px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.06);
+  padding-right:.5rem;
+  transition: box-shadow .18s ease, border-color .18s ease;
+}
+.search-rail:focus-within{
+  box-shadow: 0 0 0 8px var(--rail-ring), 0 10px 26px rgba(0,0,0,.08);
+  border-color: var(--brand-orange);
+}
+
+/* input minimal & enak dibaca */
+.search-rail-input{
+  border:0; outline:0; background:transparent;
+  height:60px; font-size:1.1rem;
+}
+.search-rail-input::placeholder{ color:#9aa0a6; }
+
+/* tombol utama (dark blue) */
+.btn-search{
+  background: var(--navy); color:#fff; border:none;
+  height:46px; border-radius:24px;
+  transition: filter .15s ease, transform .04s ease;
+}
+.btn-search:hover{ filter:brightness(1.08); }
+.btn-search:active{ transform:translateY(1px); }
+
+/* tombol sekunder (orange outline, invert saat hover) */
+.btn-filter{
+  background:#fff; color:var(--brand-orange);
+  border:2px solid var(--brand-orange);
+  height:46px; border-radius:24px;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.btn-filter:hover{
+  background:var(--brand-orange); color:#fff; border-color:var(--brand-orange);
+}
+
+/* kecilkan di layar sedang biar proporsional */
+@media (max-width: 1400px){
+  .search-rail{ height:60px; }
+  .search-rail-input{ height:56px; font-size:1rem; }
+  .btn-search,.btn-filter{ height:42px; }
+}
+
+    </style>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const provinceDesktop = document.getElementById('province-desktop');
