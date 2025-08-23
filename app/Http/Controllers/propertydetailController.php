@@ -275,94 +275,6 @@ class propertydetailController extends Controller
     ));
 }
 
-
-
-
-
-
-
-
-//     public function update(Request $request, $id_listing)
-// {
-//     $request->validate([
-//         'gambar.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
-//         'gambar' => 'nullable|array|max:4',
-//         'harga' => 'required|string', // Karena kita mau formatting dari input 'Rp 1.000.000'
-//     ]);
-
-//     try {
-//         // Ambil properti dari database
-//         $property = DB::table('property')->where('id_listing', $id_listing)->first();
-//         if (!$property) {
-//             return back()->withErrors(['error' => 'Property tidak ditemukan']);
-//         }
-
-//         // Ambil gambar lama dari database
-//         $oldImagePaths = $property->gambar ? explode(',', $property->gambar) : [];
-//         $newImagePaths = $oldImagePaths;
-
-//         // Setup Firebase Storage
-//         $firebaseFactory = (new Factory)->withServiceAccount(storage_path('app/solusindo-website-firebase-adminsdk-fbsvc-65184b738b.json'));
-//         $storage = $firebaseFactory->createStorage();
-//         $bucket = $storage->getBucket('solusindo-website.firebasestorage.app');
-
-//         if ($request->hasFile('gambar')) {
-//             $newImagePaths = [];
-//             foreach ($request->file('gambar') as $image) {
-//                 $fileName = 'property-images/' . time() . '_' . $image->getClientOriginalName();
-//                 $bucket->upload(
-//                     file_get_contents($image->getRealPath()),
-//                     ['name' => $fileName]
-//                 );
-
-//                 $newImagePaths[] = "https://firebasestorage.googleapis.com/v0/b/solusindo-website.firebasestorage.app/o/" . urlencode($fileName) . "?alt=media";
-//             }
-
-//             // Hapus gambar lama di Firebase setelah upload baru sukses
-//             foreach ($oldImagePaths as $oldImage) {
-//                 if (!empty($oldImage)) {
-//                     $parsedUrl = parse_url($oldImage, PHP_URL_PATH);
-//                     $fileName = urldecode(basename($parsedUrl));
-//                     $object = $bucket->object('property-images/' . $fileName);
-//                     if ($object->exists()) {
-//                         $object->delete();
-//                     }
-//                 }
-//             }
-//         }
-
-//         // Format harga input ke angka (hilangkan Rp, titik, spasi)
-//         $cleanHarga = (int) str_replace(['Rp', '.', ' '], '', $request->harga);
-
-//         // Update database
-//         $updateData = [
-//             'tipe' => $request->tipe,
-//             'deskripsi' => $request->deskripsi,
-//             'kamar_tidur' => $request->kamar_tidur,
-//             'kamar_mandi' => $request->kamar_mandi,
-//             'harga' => $cleanHarga,
-//             'lokasi' => $request->lokasi,
-//             'kota' => $request->kota,
-//             'zipcode' => $request->zipcode,
-//             'kelurahan' => $request->kelurahan,
-//             'kecamatan' => $request->kecamatan,
-//             'luas_tanah' => $request->luas_tanah,
-//             'luas_bangunan' => $request->luas_bangunan,
-//             'lantai' => $request->lantai,
-//             'orientation' => $request->orientation,
-//             'sertifikat' => $request->sertifikat,
-//             'payment' => implode(',', $request->input('payment', [])),
-//             'gambar' => implode(',', $newImagePaths),
-//         ];
-
-//         // Jangan update 'status'
-//         DB::table('property')->where('id_listing', $id_listing)->update($updateData);
-
-//         return redirect()->route('property.index')->with('success', 'Property updated successfully');
-//     } catch (\Exception $e) {
-//         return back()->withErrors(['error' => 'Update failed: ' . $e->getMessage()]);
-//     }
-// }
 private function getOrCreateFolder($name, $parentId, $token)
 {
     $query = Http::withToken($token)->get('https://www.googleapis.com/drive/v3/files', [
@@ -383,7 +295,7 @@ private function getOrCreateFolder($name, $parentId, $token)
     return $create->json('id');
 }
 
-    public function update(Request $request, $id_listing)
+public function update(Request $request, $id_listing)
 {
     $request->merge([
         'harga' => str_replace('.', '', $request->harga)
@@ -403,6 +315,9 @@ private function getOrCreateFolder($name, $parentId, $token)
         'payment' => 'nullable|array',
         'gambar.*' => 'nullable|image|mimes:jpeg,png,jpg|max:8192',
         'cover_image_index' => 'nullable|string',
+
+        // ⬇️ Tambahan: validasi kolom status
+        'status' => 'required|in:Tersedia,Terjual',
     ]);
 
     $property = Property::findOrFail($id_listing);
@@ -478,9 +393,12 @@ private function getOrCreateFolder($name, $parentId, $token)
     $property->luas = $request->luas_tanah; // asumsi satuan meter persegi
     $property->payment = implode(',', $request->input('payment', []));
 
+    // ⬇️ Tambahan: set kolom status
+    $property->status = $request->status;
+
     $property->save();
 
-// === Ambil id_agent dari session ===
+    // === Ambil id_agent dari session ===
     $idAgent = session('id_agent') ?? 'DEFAULT';
 
     // Redirect ke detail
@@ -489,6 +407,7 @@ private function getOrCreateFolder($name, $parentId, $token)
         'agent' => $idAgent
     ])->with('success', 'Properti berhasil diperbarui!');
 }
+
 
     public function edit($id)
     {
