@@ -190,12 +190,15 @@
                     </div>
                 </div>
 
-                <div class="modal-footer flex-column">
+                <div class="modal-footer">
                     <input type="hidden" name="selected_city_values" id="selected-city-values">
 
-                    <button type="submit" class="btn btn-dark w-100 py-3 mb-2">Search</button>
-                    <button type="button" class="btn btn-secondary w-100 py-3" data-bs-dismiss="modal">Close</button>
-                </div>
+                    <div class="d-flex w-100 gap-2">
+                      <button type="submit" class="btn btn-dark flex-fill py-3">Search</button>
+                      <button type="button" class="btn btn-secondary flex-fill py-3" data-bs-dismiss="modal">Close</button>
+                    </div>
+                  </div>
+
             </form>
 
         </div>

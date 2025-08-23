@@ -170,12 +170,15 @@
                     </div>
                 </div>
 
-                <div class="modal-footer flex-column">
+                <div class="modal-footer">
                     <input type="hidden" name="selected_city_values" id="selected-city-values">
 
-                    <button type="submit" class="btn btn-dark w-100 py-3 mb-2">Search</button>
-                    <button type="button" class="btn btn-secondary w-100 py-3" data-bs-dismiss="modal">Close</button>
-                </div>
+                    <div class="d-flex w-100 gap-2">
+                      <button type="submit" class="btn btn-dark flex-fill py-3">Search</button>
+                      <button type="button" class="btn btn-secondary flex-fill py-3" data-bs-dismiss="modal">Close</button>
+                    </div>
+                  </div>
+
             </form>
 
         </div>
@@ -1222,7 +1225,7 @@ function formatNumberInput(input) {
                         </div>
                         <div id="collapseOne" class="collapse" data-parent="#accordion-1">
                             <div class="card-body">
-                                Tidak ada biaya tersembunyi. Harga yang tertera belum mencakup <strong>harga properti</strong>, <strong>biaya pengosongan</strong>, dan <strong>biaya pengurusan dokumen</strong> seperti <strong>Pajak BPHTB (Bea Perolehan Hak atas Tanah dan Bangunan)</strong>, <strong>biaya lelang</strong>, <strong>biaya balik nama sertifikat</strong>, dan <strong>biaya administrasi lainnya</strong>. <br><br>
+                                Tidak ada biaya tersembunyi. Harga yang tertera belum mencakup <strong>biaya pengosongan</strong>, dan <strong>biaya pengurusan dokumen</strong> seperti <strong>Pajak BPHTB (Bea Perolehan Hak atas Tanah dan Bangunan)</strong>, <strong>biaya lelang</strong>, <strong>biaya balik nama sertifikat</strong>, dan <strong>biaya administrasi lainnya</strong>. <br><br>
                                 <strong>Catatan:</strong> <strong>Tunggakan utilitas</strong> (listrik, air, dan lainnya) apabila ada, <strong>tidak termasuk</strong> dalam harga dan menjadi tanggung jawab pembeli.
                             </div>
                         </div>
