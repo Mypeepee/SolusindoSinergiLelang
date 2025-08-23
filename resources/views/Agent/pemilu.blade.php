@@ -72,18 +72,27 @@
                                                 class="img-thumbnail" style="max-width: 80px; max-height: 80px;">
                                         </td>
                                         <td>
-                                            @if( ($current?->status_giliran === 'Berjalan') && ($current?->id_account === $accountId) )
-                                              <form action="{{ route('pemilu.pilih', [$event->id_event, $property->id_listing]) }}" method="POST" id="formPilih_{{ $property->id_listing }}">
+                                            @if(($eventStatus ?? 'Berjalan') === 'Berjalan'
+                                                && ($current?->status_giliran === 'Berjalan')
+                                                && ($current?->id_account === $accountId))
+
+                                              <form action="{{ route('pemilu.pilih', [$event->id_event, $property->id_listing]) }}"
+                                                    method="POST"
+                                                    class="form-pilih"
+                                                    id="formPilih_{{ $property->id_listing }}">
                                                 @csrf
                                                 <input type="hidden" name="id_event" value="{{ $event->id_event }}">
                                                 <input type="hidden" name="id_listing" value="{{ $property->id_listing }}">
-                                                <button type="submit" class="btn btn-success btn-sm" id="btn-pilih-{{ $property->id_listing }}">
-                                                  Pilih
+
+                                                <button type="submit"
+                                                        class="btn btn-success btn-sm js-btn-pilih"
+                                                        id="btn-pilih-{{ $property->id_listing }}">
+                                                  <span class="spinner-border spinner-border-sm align-middle me-2 d-none"
+                                                        aria-hidden="true"></span>
+                                                  <span class="label">Pilih</span>
                                                 </button>
-                                                <div class="spinner-border text-primary d-none" id="spinner-{{ $property->id_listing }}" role="status">
-                                                  <span class="visually-hidden">Loading...</span>
-                                                </div>
                                               </form>
+
                                             @else
                                               <span class="text-muted">-</span>
                                             @endif
@@ -165,61 +174,66 @@
                 </div>
                 <div class="card-body">
 
-                {{-- Info yang sedang berjalan --}}
+                {{-- Info Event Status --}}
                 <div class="alert alert-info py-2">
                     <div class="d-flex align-items-center">
-                    <i class="bi bi-lightning-charge-fill me-2"></i>
-                    <div>
-                        <div><strong>Sedang Giliran:</strong> {{ $current?->username ?? '-' }}</div>
-                        @if($current)
-                          <div class="small text-muted">
-                            {{ $current->mulai_aktif->format('H:i') }} – {{ $current->selesai_aktif->format('H:i') }}
-                          </div>
-                        @endif
-                      </div>
+                        <i class="bi bi-lightning-charge-fill me-2"></i>
+                        <div>
+                            <div><strong>Sedang Giliran:</strong> {{ $current?->username ?? '-' }}</div>
+                            @if($current)
+                                <div class="small text-muted">
+                                    {{ $current->mulai_aktif->format('H:i') }} – {{ $current->selesai_aktif->format('H:i') }}
+                                </div>
+                            @endif
+                        </div>
                     </div>
                 </div>
 
-               {{-- Tabel antrian --}}
+                {{-- Tabel antrian --}}
                 <div class="table-responsive">
                     <table class="table table-sm align-middle">
-                    <thead>
-                        <tr>
-                        <th>Urutan</th>
-                        <th>Username</th>
-                        <th>Waktu Tersisa</th>
-                        <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($invites as $row)
-                        @php $isCurrent = ($current?->id_invite ?? null) === $row->id_invite; @endphp
-                        <tr @class(['table-primary' => $isCurrent])>
-                            <td class="fw-bold">{{ $row->urutan }}</td>
-                            <td>{{ $row->username }}</td>
-                            <td>
-                            @if($row->waktu_tersisa > 0)
-                                <span class="countdown" data-waktu="{{ $row->waktu_tersisa }}"></span>
-                            @else
-                                <span class="text-danger">Waktu Habis</span>
-                            @endif
-                            </td>
-                            <td>
-                            <span class="badge
-                                @if($row->status_giliran === 'Berjalan') bg-success
-                                @elseif($row->status_giliran === 'Menunggu') bg-secondary
-                                @else bg-light text-dark @endif">
-                                {{ $row->status_giliran }}
-                            </span>
-                            </td>
-                        </tr>
-                        @empty
-                        <tr><td colspan="4"><em>Belum ada yang join.</em></td></tr>
-                        @endforelse
-                    </tbody>
+                        <thead>
+                            <tr>
+                                <th>Urutan</th>
+                                <th>Username</th>
+                                <th>Waktu Tersisa</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($invites as $row)
+                            <tr @class(['table-primary' => ($current?->id_invite ?? null) === $row->id_invite])>
+                                <td class="fw-bold">{{ $row->urutan }}</td>
+                                <td>{{ $row->username }}</td>
+                                <td>
+                                    @if($row->status_giliran === 'Menunggu')
+                                      <span class="text-muted">—</span>
+                                    @elseif($row->waktu_tersisa > 0)
+                                      <span class="countdown" data-waktu="{{ $row->waktu_tersisa }}"></span>
+                                    @else
+                                      <span class="text-danger">Waktu Habis</span>
+                                    @endif
+                                  </td>
+                                <td>
+                                    <span class="badge
+                                        @if($row->status_giliran === 'Berjalan') bg-success
+                                        @elseif($row->status_giliran === 'Menunggu') bg-secondary
+                                        @else bg-light text-dark @endif">
+                                        {{ $row->status_giliran }}
+                                    </span>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr><td colspan="4"><em>Belum ada yang join.</em></td></tr>
+                            @endforelse
+                        </tbody>
                     </table>
                 </div>
 
+                {{-- Status Event --}}
+                @if($eventStatus === 'Selesai')
+                    <div class="alert alert-danger">Event sudah selesai!</div>
+                @endif
             </div>
         </div>
         {{-- Pengumuman / Transaction Log --}}
@@ -302,48 +316,47 @@
 }
 </style>
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-  // Menambahkan event listener untuk tombol Pilih
-  document.querySelectorAll('form').forEach(form => {
-    form.addEventListener('submit', function(event) {
-      // Ambil ID listing dari form yang sedang diproses
-      var formId = form.id;
-      var propertyId = formId.split('_')[1];
+document.addEventListener('DOMContentLoaded', function () {
+  // Hanya form pilih (hindari form lain)
+  document.querySelectorAll('form[id^="formPilih_"]').forEach(form => {
+    form.addEventListener('submit', function () {
+      const propertyId = form.id.split('_')[1];
 
-      // Hide tombol Pilih dan tampilkan spinner
-      var btnPilih = document.getElementById('btn-pilih-' + propertyId);
-      var spinner = document.getElementById('spinner-' + propertyId);
+      const btnPilih = document.getElementById('btn-pilih-' + propertyId);
+      const spinner  = document.getElementById('spinner-' + propertyId);
 
-      // Menyembunyikan tombol Pilih dan menampilkan spinner
-      btnPilih.classList.add('d-none');  // sembunyikan tombol
-      spinner.classList.remove('d-none');  // tampilkan spinner
+      if (btnPilih) {
+        btnPilih.disabled = true;
+        btnPilih.classList.add('d-none');         // sembunyikan tombol
+      }
+      if (spinner) {
+        spinner.classList.remove('d-none');       // tampilkan spinner
+      }
 
-      // Form akan tetap dikirim seperti biasa setelah spinner ditampilkan
-    });
+      // Kunci tombol "Pilih" lain agar tidak double-submit
+      document.querySelectorAll('button[id^="btn-pilih-"]').forEach(b => {
+        if (b !== btnPilih) { b.disabled = true; b.classList.add('disabled'); }
+      });
+    }, { once: true }); // cegah event ganda
   });
 });
 
 
-    document.addEventListener('DOMContentLoaded', function () {
-    const nextRefreshAtMs = {!! $nextRefreshAtMs ? $nextRefreshAtMs : 'null' !!};
-    if (!nextRefreshAtMs) return;
+document.addEventListener('DOMContentLoaded', function () {
+  const nextRefreshAtMs = {!! $nextRefreshAtMs ? $nextRefreshAtMs : 'null' !!};
+  const eventEndAtMs    = {!! $eventEndAtMs    ? $eventEndAtMs    : 'null' !!};
 
-    const now = Date.now();
-    let delay = nextRefreshAtMs - now;
+  const now = Date.now();
+  const targets = [nextRefreshAtMs, eventEndAtMs].filter(t => t && t > now);
+  if (!targets.length) return;
 
-    // Jika sudah lewat (mis. user buka tepat di menitnya), reload segera
-    if (delay <= 0) {
-        location.reload();
-        return;
-    }
+  let delay = Math.min(...targets) - now;
+  if (delay <= 0) { location.reload(); return; }
 
-    // setTimeout limit ~2,147,483,647 ms; event Anda menit-jam saja, aman.
-    if (delay > 2147483647) delay = 2147483647;
+  // batas maksimum setTimeout
+  if (delay > 2147483647) delay = 2147483647;
 
-    // Jadwalkan reload tepat di mulai_giliran terdekat
-    setTimeout(function () {
-        location.reload();
-    }, delay);
+  setTimeout(() => location.reload(), delay);
 });
 
 
