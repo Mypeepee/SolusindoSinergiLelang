@@ -252,23 +252,6 @@ class AgentAdminController extends Controller
 
     }
 
-    public function indexpemilu(Request $request)
-    {
-        // Ambil search term
-        $search = trim($request->get('search'));
-        // Ambil data properti sesuai pencarian id_listing
-        $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar')
-            ->where('id_agent', 'AG001') // Filter agent
-            ->when($search !== '' && $search !== null, function ($query) use ($search) {
-                return $query->where('id_listing', 'like', "%$search%"); // Pencarian ID Listing
-            })
-            ->paginate(10)
-            ->appends(['search' => $search]);  // Menyertakan query string search pada pagination
-
-        return view('Agent.pemilu', compact('properties', 'search'));
-    }
-
-
     public function updateInvite(Request $request)
     {
         $validated = $request->validate([
@@ -498,28 +481,28 @@ class AgentAdminController extends Controller
             $current = null;
         }
 
-// 7) Next refresh tepat di boundary slot berikutnya (berbasis event.mulai)
-$nextRefresh = null;
-if ($eventSelesai && $now->gte($eventSelesai)) {
-    $nextRefresh = null;
-} else {
-    if ($now->lt($eventMulai)) {
-        $nextRefresh = $eventMulai;
-    } else {
-        $slotsSinceStart = intdiv($eventMulai->diffInSeconds($now), $slotSeconds) + 1;
-        $nextRefresh = (clone $eventMulai)->addSeconds($slotsSinceStart * $slotSeconds);
+        // 7) Next refresh tepat di boundary slot berikutnya (berbasis event.mulai)
+        $nextRefresh = null;
+        if ($eventSelesai && $now->gte($eventSelesai)) {
+            $nextRefresh = null;
+        } else {
+            if ($now->lt($eventMulai)) {
+                $nextRefresh = $eventMulai;
+            } else {
+                $slotsSinceStart = intdiv($eventMulai->diffInSeconds($now), $slotSeconds) + 1;
+                $nextRefresh = (clone $eventMulai)->addSeconds($slotsSinceStart * $slotSeconds);
 
-        // ⬇️ Perbaikan: kalau boundary berikutnya >= waktu selesai event,
-        // jadwalkan refresh tepat di waktu event selesai (bukan null).
-        if ($eventSelesai && $nextRefresh->gte($eventSelesai)) {
-            $nextRefresh = (clone $eventSelesai);
+                // ⬇️ Perbaikan: kalau boundary berikutnya >= waktu selesai event,
+                // jadwalkan refresh tepat di waktu event selesai (bukan null).
+                if ($eventSelesai && $nextRefresh->gte($eventSelesai)) {
+                    $nextRefresh = (clone $eventSelesai);
+                }
+            }
         }
-    }
-}
-$nextRefreshAtMs = $nextRefresh ? $nextRefresh->timestamp * 1000 : null;
+        $nextRefreshAtMs = $nextRefresh ? $nextRefresh->timestamp * 1000 : null;
 
-// ⬇️ Kirim juga waktu selesai event sebagai target final (kalau masih di masa depan)
-$eventEndAtMs = ($eventSelesai && $now->lt($eventSelesai)) ? $eventSelesai->timestamp * 1000 : null;
+        // ⬇️ Kirim juga waktu selesai event sebagai target final (kalau masih di masa depan)
+        $eventEndAtMs = ($eventSelesai && $now->lt($eventSelesai)) ? $eventSelesai->timestamp * 1000 : null;
 
 
         // 8) isBerjalan untuk akun login
@@ -530,12 +513,34 @@ $eventEndAtMs = ($eventSelesai && $now->lt($eventSelesai)) ? $eventSelesai->time
         }
 
         // 9) Properties (contoh)
-        $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar')
-            ->where('id_agent', 'AG001')
-            ->when($request->get('search'), function ($query, $search) {
-                return $query->where('id_listing', '=', $search); // Pencarian exact match
-            })
-            ->paginate(10);
+        // ambil parameter
+$search        = trim($request->get('search', ''));           // ID Listing (exact)
+$propertyType  = $request->get('property_type');              // kolom: tipe
+$province      = $request->get('province');                   // kolom: provinsi
+$city          = $request->get('city');                       // kolom: kota
+$district      = $request->get('district');                   // kolom: kecamatan
+
+$properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar')
+    ->where('id_agent', 'AG001')
+    ->when($search !== '', function ($q) use ($search) {
+        // id_listing integer → exact match
+        return $q->where('id_listing', (int) $search);
+    })
+    ->when($propertyType, function ($q) use ($propertyType) {
+        return $q->whereRaw('LOWER(tipe) = ?', [strtolower($propertyType)]);
+    })
+    ->when($province, function ($q) use ($province) {
+        return $q->where('provinsi', $province);
+    })
+    ->when($city, function ($q) use ($city) {
+        return $q->where('kota', $city);
+    })
+    ->when($district, function ($q) use ($district) {
+        return $q->where('kecamatan', $district);
+    })
+    ->paginate(10)
+    ->appends($request->only(['search','property_type','province','city','district']));
+
 
         // Ambil log transaksi
         $logs = PemiluPilihan::where('id_event', $idEvent)->get();
