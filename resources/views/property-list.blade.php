@@ -190,19 +190,21 @@
                     </div>
                 </div>
 
-                <div class="modal-footer">
+                <!-- Fixed footer with sticky positioning -->
+                <div class="modal-footer sticky-bottom d-flex w-100 gap-2">
                     <input type="hidden" name="selected_city_values" id="selected-city-values">
 
                     <div class="d-flex w-100 gap-2">
                       <button type="button" class="btn btn-secondary flex-fill py-3" data-bs-dismiss="modal">Close</button>
                       <button type="submit" class="btn btn-dark flex-fill py-3">Search</button>
                     </div>
-                  </div>
+                </div>
             </form>
 
         </div>
     </div>
 </div>
+
 
 <style>
     .mobile-search .form-control:focus { box-shadow:none; }
