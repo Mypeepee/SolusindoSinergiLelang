@@ -172,13 +172,11 @@
 
                 <div class="modal-footer">
                     <input type="hidden" name="selected_city_values" id="selected-city-values">
-
                     <div class="d-flex w-100 gap-2">
-                      <button type="submit" class="btn btn-dark flex-fill py-3">Search</button>
-                      <button type="button" class="btn btn-secondary flex-fill py-3" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-secondary flex-fill py-3" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-dark flex-fill py-3">Search</button>
                     </div>
-                  </div>
-
+                </div>
             </form>
 
         </div>
@@ -333,74 +331,12 @@
             <div class="d-flex align-items-center gap-2 ms-2 me-2">
             <button type="submit" class="btn btn-search px-4 fw-semibold">Search</button>
             <button type="button" class="btn btn-filter px-3 fw-semibold"
-                    data-bs-toggle="modal" data-bs-target="#filterModals">
+                    data-bs-toggle="modal" data-bs-target="#filterModal">
                 <i class="bi bi-sliders"></i><span class="ms-2 d-none d-lg-inline">Filter</span>
             </button>
             </div>
         </div>
-
-
-        <!-- Modal Filter -->
-        <div class="modal fade" id="filterModals" tabindex="-1" aria-hidden="true">
-          <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title">Filter lanjutan</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-              </div>
-
-              <div class="modal-body">
-                <div class="row g-3">
-                  <div class="col-6 col-lg-4">
-                    <input type="text" name="min_price" value="{{ request('min_price') }}" class="form-control" placeholder="Harga Min">
-                  </div>
-                  <div class="col-6 col-lg-4">
-                    <input type="text" name="max_price" value="{{ request('max_price') }}" class="form-control" placeholder="Harga Max">
-                  </div>
-                  <div class="col-12 col-lg-4">
-                    <select name="property_type" class="form-select">
-                      <option value="" {{ request('property_type') ? '' : 'selected' }} disabled>Tipe Property</option>
-                      <option value="rumah"           @selected(request('property_type')==='rumah')>Rumah</option>
-                      <option value="gudang"          @selected(request('property_type')==='gudang')>Gudang</option>
-                      <option value="apartemen"       @selected(request('property_type')==='apartemen')>Apartemen</option>
-                      <option value="tanah"           @selected(request('property_type')==='tanah')>Tanah</option>
-                      <option value="pabrik"          @selected(request('property_type')==='pabrik')>Pabrik</option>
-                      <option value="hotel dan villa" @selected(request('property_type')==='hotel dan villa')>Hotel & Villa</option>
-                      <option value="ruko"            @selected(request('property_type')==='ruko')>Ruko</option>
-                      <option value="sewa"            @selected(request('property_type')==='sewa')>Sewa</option>
-                    </select>
-                  </div>
-
-                  <div class="col-12 col-lg-4">
-                    <select id="province-desktop" name="province" class="form-select">
-                      <option disabled {{ request('province') ? '' : 'selected' }}>Pilih Provinsi</option>
-                    </select>
-                  </div>
-                  <div class="col-12 col-lg-4">
-                    <select id="city-desktop" name="city" class="form-select" {{ request('province') ? '' : 'disabled' }}>
-                      <option disabled selected>Pilih Kota/Kabupaten</option>
-                    </select>
-                  </div>
-                  <div class="col-12 col-lg-4">
-                    <select id="district-desktop" name="district" class="form-select" {{ request('city') ? '' : 'disabled' }}>
-                      <option disabled selected>Pilih Kecamatan</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div class="modal-footer d-flex justify-content-between">
-                <a href="{{ route('property.list') }}#property-list-section" class="btn btn-link text-danger">Reset</a>
-                <div>
-                  <button type="button" class="btn btn-light" data-bs-dismiss="modal">Tutup</button>
-                  <button type="submit" class="btn btn-primary">Terapkan</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </form>
+    </form>
 </div>
 <style>
 /* ====== palette */
