@@ -665,7 +665,10 @@
 
                         // kalau eventnya Pemilu, kasih button Join di kanan
                         let rightContent = '';
-                        if(ev.title && ev.title.toLowerCase() === 'pemilu'){
+                        const now = new Date();
+                        const eventEnd = toDate(ev.end); // pastikan ev.end diubah ke Date object
+
+                        if(ev.title && ev.title.toLowerCase() === 'pemilu'  && now <= eventEnd){
                             rightContent = `<button class="btn btn-success btn-sm ms-2" id="btnJoin_${ev.id}">Join</button>`;
                         }
 
@@ -855,7 +858,10 @@
 
                     let actionButtons = '';
 
-                    if(ev.title && ev.title.toLowerCase() === 'pemilu'){
+                    const now = new Date();
+                    const eventEnd = toDate(ev.end); // pastikan ev.end diubah ke Date object
+
+                    if (ev.title && ev.title.toLowerCase() === 'pemilu' && now <= eventEnd) {
                         actionButtons = `<button class="btn btn-primary btn-sm me-2" id="btnJoin2">Join</button>`;
                     }
 
