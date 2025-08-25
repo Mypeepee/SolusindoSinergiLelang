@@ -112,7 +112,7 @@
             </div>
 
             <form action="{{ route('property.list') }}#property-list-section" method="GET">
-                <div class="modal-body">
+                <div class="modal-body" style="max-height: calc(100vh - 150px); overflow-y: auto;">
                     <div class="container">
                         <div class="row g-2">
 
@@ -198,12 +198,12 @@
                       <button type="submit" class="btn btn-dark flex-fill py-3">Search</button>
                     </div>
                   </div>
-
             </form>
 
         </div>
     </div>
 </div>
+
 <style>
     .mobile-search .form-control:focus { box-shadow:none; }
     .mobile-search .input-group-text { border:0; }

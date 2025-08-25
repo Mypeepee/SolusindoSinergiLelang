@@ -83,6 +83,7 @@
 </button>
 
 <!-- Modal Filter (Fullscreen on small screens) -->
+<!-- Modal Filter (Fullscreen on small screens) -->
 <div class="modal fade" id="filterModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-fullscreen-sm-down">
         <div class="modal-content">
@@ -92,7 +93,7 @@
             </div>
 
             <form action="{{ route('property.list') }}#property-list-section" method="GET">
-                <div class="modal-body">
+                <div class="modal-body" style="max-height: calc(100vh - 150px); overflow-y: auto;">
                     <div class="container">
                         <div class="row g-2">
 
@@ -172,16 +173,18 @@
 
                 <div class="modal-footer">
                     <input type="hidden" name="selected_city_values" id="selected-city-values">
+
                     <div class="d-flex w-100 gap-2">
-                        <button type="button" class="btn btn-secondary flex-fill py-3" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-dark flex-fill py-3">Search</button>
+                      <button type="button" class="btn btn-secondary flex-fill py-3" data-bs-dismiss="modal">Close</button>
+                      <button type="submit" class="btn btn-dark flex-fill py-3">Search</button>
                     </div>
-                </div>
+                  </div>
             </form>
 
         </div>
     </div>
 </div>
+
 <style>
     .mobile-search .form-control:focus { box-shadow:none; }
     .mobile-search .input-group-text { border:0; }
