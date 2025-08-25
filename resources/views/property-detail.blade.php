@@ -333,16 +333,14 @@
                                                 <i class="fa fa-calendar-alt me-2"></i>Ikuti Lelang Ini
                                             </a>
                                         @else
-<!-- Tombol untuk mendownload gambar -->
-@if ($property->gambar)
-    <a href="{{ route('property.downloadImages', ['propertyId' => $property->id_listing]) }}"
-       class="btn btn-dark-blue d-flex align-items-center justify-content-center flex-fill px-3 py-2"
-       style="min-width: 180px;">
-       <i class="fa fa-download me-2"></i>Download Gambar
-    </a>
-@endif
-
-
+                                        <!-- Tombol untuk mendownload gambar -->
+                                        @if ($property->gambar)
+                                            <a href="javascript:void(0)" onclick="downloadImages('{{ $property->gambar }}')"
+                                            class="btn btn-dark-blue d-flex align-items-center justify-content-center flex-fill px-3 py-2"
+                                            style="min-width: 180px;">
+                                            <i class="fa fa-download me-2"></i>Download Gambar
+                                            </a>
+                                        @endif
 
                                         @endif
                                         @else
@@ -354,21 +352,35 @@
                                         @endif
 
                                         <script>
-                                            // Fungsi untuk mengunduh semua gambar
                                             function downloadImages(gambarUrls) {
-                                                // Memecah URL gambar yang dipisahkan oleh koma
-                                                const urls = gambarUrls.split(',');
+    // Pisahkan URL gambar yang dipisahkan oleh koma
+    const urls = gambarUrls.split(',');
 
-                                                // Unduh setiap gambar
-                                                urls.forEach(url => {
-                                                    const a = document.createElement('a');  // Membuat elemen <a>
-                                                    a.href = url.trim();  // URL gambar
-                                                    a.download = '';       // Menandakan bahwa ini adalah unduhan
-                                                    document.body.appendChild(a);  // Menambahkan elemen ke body
-                                                    a.click();  // Memulai unduhan
-                                                    document.body.removeChild(a);  // Menghapus elemen setelah pengunduhan dimulai
-                                                });
-                                            }
+    // Unduh setiap gambar menggunakan fetch secara paralel
+    const fetchPromises = urls.map(url => {
+        return fetch(url.trim())
+            .then(response => response.blob()) // Mengambil gambar sebagai blob
+            .then(blob => {
+                // Menyimpan gambar sebagai file di sistem pengguna
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob); // Menggunakan URL.createObjectURL untuk menyimpan gambar
+                a.download = ''; // Menandakan bahwa ini adalah file yang dapat diunduh
+                document.body.appendChild(a);
+                a.click(); // Memulai pengunduhan
+                document.body.removeChild(a);
+            });
+    });
+
+    // Tunggu sampai semua gambar diunduh
+    Promise.all(fetchPromises)
+        .then(() => {
+            console.log("Semua gambar telah diunduh.");
+        })
+        .catch(err => {
+            console.error("Error saat mendownload gambar:", err);
+        });
+}
+
                                         </script>
 
                                         <!-- Tombol Share / Copy Link (Desktop) -->

@@ -9,63 +9,12 @@ use Kreait\Firebase\Factory;
 use Illuminate\Support\Facades\Http;
 use App\Models\Agent;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Response;
 
 
 use App\Models\User;
 
 class propertydetailController extends Controller
 {
-    public function downloadImages($propertyId)
-{
-    // Ambil properti berdasarkan ID
-    $property = Property::find($propertyId);
-
-    if ($property && $property->gambar) {
-        // Pisahkan URL gambar yang dipisahkan oleh koma
-        $gambarUrls = explode(',', $property->gambar);
-
-        // Array untuk menyimpan file paths sementara
-        $filePaths = [];
-
-        // Download setiap gambar
-        foreach ($gambarUrls as $url) {
-            // Trim dan download gambar dari URL
-            $url = trim($url);  // Pastikan tidak ada spasi ekstra
-            $fileContent = file_get_contents($url);
-
-            // Menentukan nama file dari URL gambar
-            $fileName = basename($url);
-
-            // Tentukan path untuk menyimpan gambar sementara
-            $tempPath = storage_path('app/public/' . $fileName);
-
-            // Simpan gambar di server sementara
-            file_put_contents($tempPath, $fileContent);
-
-            // Tambahkan path file ke array
-            $filePaths[] = $tempPath;
-        }
-
-        // Membuat zip dan mengirimnya sebagai unduhan
-        $zipFile = storage_path('app/public/images.zip');
-        $zip = new \ZipArchive();
-
-        if ($zip->open($zipFile, \ZipArchive::CREATE) === TRUE) {
-            foreach ($filePaths as $path) {
-                $zip->addFile($path, basename($path));  // Menambahkan file ke zip
-            }
-            $zip->close();
-        }
-
-        // Mengirim file zip untuk diunduh
-        return response()->download($zipFile)->deleteFileAfterSend(true);  // Menghapus zip setelah dikirim
-    }
-
-    return response()->json(['error' => 'Gambar tidak ditemukan.'], 404);
-}
-
-
     public function show($id_listing)
     {
         // Ambil data property berdasarkan id_listing
