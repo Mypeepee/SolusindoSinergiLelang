@@ -324,20 +324,52 @@
                                             </script>
                                         @endif
 
-                                        <!-- Tombol Ikuti / Login -->
-                                        @if ($userId && $userRole === 'User')
+                                        <!-- Tombol Ikuti / Login atau Tombol Download Gambar -->
+                                        @if ($userId && in_array($userRole, ['User', 'Agent', 'Register', 'Pengosongan', 'Owner']))
+                                        @if ($userRole === 'User')
                                             <a href="{{ route('property.interest.show', $property->id_listing) }}"
                                                 class="btn btn-dark d-flex align-items-center justify-content-center flex-fill px-3 py-2"
                                                 style="min-width: 180px;">
                                                 <i class="fa fa-calendar-alt me-2"></i>Ikuti Lelang Ini
                                             </a>
                                         @else
-                                            <a href="{{ url('login') }}"
-                                                class="btn btn-dark-blue d-flex align-items-center justify-content-center flex-fill px-3 py-2"
-                                                style="min-width: 180px;">
-                                                <i class="fa fa-lock me-2"></i>Login untuk Ikut Lelang
-                                            </a>
+<!-- Tombol untuk mendownload gambar -->
+@if ($property->gambar)
+    <a href="{{ route('property.downloadImages', ['propertyId' => $property->id_listing]) }}"
+       class="btn btn-dark-blue d-flex align-items-center justify-content-center flex-fill px-3 py-2"
+       style="min-width: 180px;">
+       <i class="fa fa-download me-2"></i>Download Gambar
+    </a>
+@endif
+
+
+
                                         @endif
+                                        @else
+                                        <a href="{{ url('login') }}"
+                                            class="btn btn-dark-blue d-flex align-items-center justify-content-center flex-fill px-3 py-2"
+                                            style="min-width: 180px;">
+                                            <i class="fa fa-lock me-2"></i>Login untuk Ikut Lelang
+                                        </a>
+                                        @endif
+
+                                        <script>
+                                            // Fungsi untuk mengunduh semua gambar
+                                            function downloadImages(gambarUrls) {
+                                                // Memecah URL gambar yang dipisahkan oleh koma
+                                                const urls = gambarUrls.split(',');
+
+                                                // Unduh setiap gambar
+                                                urls.forEach(url => {
+                                                    const a = document.createElement('a');  // Membuat elemen <a>
+                                                    a.href = url.trim();  // URL gambar
+                                                    a.download = '';       // Menandakan bahwa ini adalah unduhan
+                                                    document.body.appendChild(a);  // Menambahkan elemen ke body
+                                                    a.click();  // Memulai unduhan
+                                                    document.body.removeChild(a);  // Menghapus elemen setelah pengunduhan dimulai
+                                                });
+                                            }
+                                        </script>
 
                                         <!-- Tombol Share / Copy Link (Desktop) -->
                                         <a href="javascript:void(0);"

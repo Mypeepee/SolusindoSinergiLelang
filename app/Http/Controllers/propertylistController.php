@@ -48,6 +48,9 @@ class propertylistController extends Controller
                   ->orWhere('kecamatan', $likeOp, $kw);
             });
         }
+
+        // Menambahkan keyword ke selectedTags untuk ditampilkan di alert
+        $selectedTags[] = $keyword;
     }
 
     // ============== Harga ==============
@@ -67,8 +70,8 @@ class propertylistController extends Controller
     $cities = [];
     $districts = [];
     if ($request->filled('selected_city_values')) {
-        $selectedTags = explode(',', $request->selected_city_values);
-        foreach ($selectedTags as $tag) {
+        $selectedTagsFromCities = explode(',', $request->selected_city_values);
+        foreach ($selectedTagsFromCities as $tag) {
             if (strpos($tag, ' - ') !== false) {
                 [$city, $district] = explode(' - ', $tag);
                 $districts[] = ['city' => trim($city), 'district' => trim($district)];
@@ -76,6 +79,9 @@ class propertylistController extends Controller
                 $cities[] = trim($tag);
             }
         }
+
+        // Menambahkan tag kota/kecamatan ke selectedTags untuk ditampilkan di alert
+        $selectedTags = array_merge($selectedTags, $selectedTagsFromCities);
     }
 
     // ============== Filter lokasi berdasarkan tag/provinsi ==============
@@ -119,7 +125,6 @@ class propertylistController extends Controller
 
     return view('property-list', compact('properties', 'selectedTags'));
 }
-
 
 
     public function showPropertyDetail($id)

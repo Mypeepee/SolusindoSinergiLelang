@@ -733,7 +733,6 @@ function formatNumberInput(input) {
     });
     </script>
 
-
 <div class="alert alert-info">
     Menampilkan <strong>{{ $properties->total() }}</strong> properti
     @if (!empty($selectedTags))

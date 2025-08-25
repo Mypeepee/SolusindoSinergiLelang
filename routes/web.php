@@ -254,3 +254,7 @@ Route::post('/pemilu/{event}/{listing}/pilih', [AgentAdminController::class, 'pi
 Route::post('/pemilu/{event}/join', [AgentAdminController::class, 'join'])->name('pemilu.join');
 Route::get('/pemilu/{event}/state', [AgentAdminController::class, 'state'])->name('pemilu.state'); // polling ringan
 
+// web.php (Route)
+// Di dalam web.php, beri nama pada route untuk pengunduhan gambar
+Route::get('/download-images/{propertyId}', [PropertydetailController::class, 'downloadImages'])->name('property.downloadImages');
+
