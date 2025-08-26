@@ -68,6 +68,14 @@ public function showproperty(Request $request)
         $query->where('harga', '<=', str_replace('.', '', $request->max_price));
     }
 
+    // ============== Luas Tanah (Min–Max) ==============
+    if ($request->filled('min_land_size')) {
+        $query->where('luas', '>=', str_replace('.', '', $request->min_land_size));
+    }
+    if ($request->filled('max_land_size')) {
+        $query->where('luas', '<=', str_replace('.', '', $request->max_land_size));
+    }
+
     // ============== Tipe properti ==============
     if ($request->filled('property_type')) {
         $query->where('tipe', $request->property_type);
@@ -132,6 +140,7 @@ public function showproperty(Request $request)
 
     return view('property-list', compact('properties', 'selectedTags'));
 }
+
 
 
 

@@ -119,15 +119,23 @@
                             </div>
                             {{-- === /Keyword === --}}
 
-                            <!-- Harga Minimum -->
+                            <!-- Harga (Min–Max) dalam 1 row -->
                             <div class="col-12">
-                                <input type="text" name="min_price" id="min_price" class="form-control border-0 py-3" placeholder="Harga Minimum">
+                                <label class="form-label mb-1">Harga (Rp)</label>
+                                <div class="input-group">
+                                <span class="input-group-text">Rp</span>
+                                <input type="text" name="min_price" id="min_price"
+                                        class="form-control js-num js-price"
+                                        placeholder="Min" inputmode="numeric" pattern="[0-9]*"
+                                        value="{{ request('min_price') }}">
+                                <span class="input-group-text">–</span>
+                                <input type="text" name="max_price" id="max_price"
+                                        class="form-control js-num js-price"
+                                        placeholder="Max" inputmode="numeric" pattern="[0-9]*"
+                                        value="{{ request('max_price') }}">
+                                </div>
                             </div>
 
-                            <!-- Harga Maksimum -->
-                            <div class="col-12">
-                                <input type="text" name="max_price" id="max_price" class="form-control border-0 py-3" placeholder="Harga Maksimum">
-                            </div>
 
                             <!-- Tipe Properti -->
                             <div class="col-12">
@@ -143,6 +151,52 @@
                                     <option value="sewa">Sewa</option>
                                 </select>
                             </div>
+
+                            <!-- Luas Tanah (Min–Max) dalam 1 row -->
+<div class="col-12">
+    <label class="form-label mb-1">Luas Tanah (m²)</label>
+    <div class="input-group">
+        <input type="text" name="min_land_size" id="min_land_size"
+               class="form-control js-num js-area"
+               placeholder="Min" inputmode="numeric"
+               value="{{ request('min_land_size') }}"
+               oninput="validateInteger(this)" onblur="formatNumber(this)">
+        <span class="input-group-text">m²</span>
+        <span class="input-group-text">–</span>
+        <input type="text" name="max_land_size" id="max_land_size"
+               class="form-control js-num js-area"
+               placeholder="Max" inputmode="numeric"
+               value="{{ request('max_land_size') }}"
+               oninput="validateInteger(this)" onblur="formatNumber(this)">
+        <span class="input-group-text">m²</span>
+    </div>
+</div>
+
+<script>
+    // Fungsi untuk memastikan hanya angka yang bisa dimasukkan
+    function validateInteger(input) {
+        // Hapus semua karakter selain angka
+        input.value = input.value.replace(/[^0-9]/g, '');
+    }
+
+    // Fungsi untuk format angka menjadi dengan pemisah ribuan (1.000, 10.000, etc.)
+    function formatNumber(input) {
+        // Hapus karakter selain angka
+        let value = input.value.replace(/[^\d]/g, '');
+        if (value) {
+            // Format angka menggunakan Intl.NumberFormat
+            input.value = new Intl.NumberFormat('id-ID').format(value);
+        }
+    }
+
+    // Sebelum form submit, hapus titik biar masuk ke DB sebagai angka bersih
+    document.querySelector("form").addEventListener("submit", function () {
+        document.querySelectorAll('input[name="min_land_size"], input[name="max_land_size"]').forEach(function (el) {
+            el.value = el.value.replace(/\./g, "");  // Menghapus titik sebelum submit
+        });
+    });
+</script>
+
 
                             <!-- Provinsi -->
                             <div class="col-12">
