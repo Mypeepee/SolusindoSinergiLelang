@@ -223,6 +223,9 @@
         let locationMap = new Map();    // Provinsi => Kota => Set Kecamatan
         let selectedTagList = [];       // List tag terpilih {value, type}
 
+        citySelect.disabled = true;
+        districtSelect.disabled = true;
+
         // Load data lokasi
         fetch("{{ asset('data/indonesia.json') }}")
             .then(res => res.json())
@@ -248,10 +251,11 @@
                     locationMap.get(prov).get(regency).add(district);
                 });
 
-                // Isi dropdown provinsi
-                for (let prov of provinceMap.keys()) {
+                // Urutkan provinsi secara abjad
+                let sortedProvinces = Array.from(provinceMap.keys()).sort();
+                sortedProvinces.forEach(prov => {
                     provinceSelect.innerHTML += `<option value="${prov}">${prov}</option>`;
-                }
+                });
 
                 // Event provinsi
                 provinceSelect.addEventListener('change', function () {
@@ -267,14 +271,31 @@
                 // Event kecamatan
                 districtSelect.addEventListener('change', function () {
                     const city = citySelect.value;
-                    addTag(`${city} - ${this.value}`, 'district'); // Tambahkan tag kota + kecamatan
+                    addTag(`${city} - ${this.value}`, 'district'); // Tambahkan tag kecamatan
                 });
             });
 
-        function updateCityDropdown(selectedProv, targetCityDropdown) {
-            const citySet = provinceMap.get(selectedProv);
-            targetCityDropdown.disabled = false;
-            targetCityDropdown.innerHTML = '<option selected disabled>Pilih Kota/Kabupaten</option>';
+        // Fungsi untuk mengupdate dropdown kota sesuai provinsi yang dipilih
+        function updateCityDropdown(selected, targetCityDropdown) {
+            if (!selected) {
+                targetCityDropdown.disabled = true;
+                targetCityDropdown.innerHTML = '<option selected disabled>Pilih Kota/Kabupaten</option>';
+                districtSelect.disabled = true; // Disable kecamatan jika kota belum dipilih
+                districtSelect.innerHTML = '<option selected disabled>Pilih Kecamatan</option>';
+                return;
+            }
+
+            // Urutkan kota berdasarkan abjad dan prioritaskan Kota lebih dahulu
+            const citySet = Array.from(provinceMap.get(selected)).sort((a, b) => {
+                const isKotaA = a.startsWith("KOTA");
+                const isKotaB = b.startsWith("KOTA");
+                if (isKotaA && !isKotaB) return -1;
+                if (!isKotaA && isKotaB) return 1;
+                return a.localeCompare(b);
+            });
+
+            targetCityDropdown.disabled = false;  // Enable kota jika provinsi sudah dipilih
+            targetCityDropdown.innerHTML = '<option selected disabled>Pilih Kota/Kabupaten</option>';  // Tetap pertahankan opsi default
             citySet.forEach(c => {
                 const cleanedValue = c.replace(/^Kota\s|^Kabupaten\s/, '');
                 targetCityDropdown.innerHTML += `<option value="${c}">${c}</option>`;
@@ -285,11 +306,14 @@
             districtSelect.innerHTML = '<option selected disabled>Pilih Kecamatan</option>';
         }
 
+        // Fungsi untuk mengupdate dropdown kecamatan sesuai kota yang dipilih
         function updateDistrictDropdown(prov, selectedCity) {
             const districtSet = locationMap.get(prov).get(selectedCity);
+            const sortedDistricts = Array.from(districtSet).sort();
+
             districtSelect.disabled = false;
             districtSelect.innerHTML = '<option selected disabled>Pilih Kecamatan</option>';
-            districtSet.forEach(d => {
+            sortedDistricts.forEach(d => {
                 districtSelect.innerHTML += `<option value="${d}">${d}</option>`;
             });
         }
@@ -298,20 +322,19 @@
         function renderTags() {
             selectedTagsContainer.innerHTML = '';
             selectedTagList.forEach(tag => {
-                const tagElement = document.createElement('div');
-                tagElement.className = 'city-tag';
-                tagElement.innerHTML = `${tag.value} <span class="remove-tag" data-value="${tag.value}" data-type="${tag.type}">&times;</span>`;
-                selectedTagsContainer.appendChild(tagElement);
+                const tagEl = document.createElement('div');
+                tagEl.className = 'city-tag';
+                tagEl.innerHTML = `${tag.value} <span class="remove-tag" data-value="${tag.value}" data-type="${tag.type}">&times;</span>`;
+                selectedTagsContainer.appendChild(tagEl);
             });
             selectedTagsInput.value = selectedTagList.map(t => t.value).join(',');
         }
 
-        // Tambah tag (hindari duplikat berdasarkan value+type)
+        // Tambah tag (cek duplikat berdasarkan value + type)
         function addTag(value, type) {
             if (type === 'district') {
-                // Ambil nama kota dari format "KOTA SURABAYA - Tandes"
                 const cityName = value.split(' - ')[0].trim();
-                // Hapus tag kota yang sama dengan kota ini
+                // Hapus tag kota dengan nama yang sama
                 selectedTagList = selectedTagList.filter(t => !(t.type === 'city' && t.value === cityName));
             }
 
@@ -331,6 +354,7 @@
             }
         });
     });
+
 </script>
 
 
