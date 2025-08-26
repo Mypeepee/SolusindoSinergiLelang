@@ -7,27 +7,34 @@ use Illuminate\Http\Request;
 class propertylistController extends Controller
 {
     public function PropertyList(Request $request)
-    {
-        $query = \App\Models\Property::query();
+{
+    $query = \App\Models\Property::query();
 
-        // Sorting berdasarkan query string
-        if ($request->sort === 'harga_asc') {
-            $query->orderBy('harga', 'asc');
-        } elseif ($request->sort === 'harga_desc') {
-            $query->orderBy('harga', 'desc');
-        } else {
-            $query->latest(); // default (unggulan)
-        }
+    // Menambahkan kondisi status = 'Tersedia'
+    $query->where('status', 'Tersedia');
 
-        $properties = $query->paginate(18);
-
-        return view('property-list', compact('properties'));
+    // Sorting berdasarkan query string
+    if ($request->sort === 'harga_asc') {
+        $query->orderBy('harga', 'asc');
+    } elseif ($request->sort === 'harga_desc') {
+        $query->orderBy('harga', 'desc');
+    } else {
+        $query->latest(); // default (unggulan)
     }
 
-    public function showproperty(Request $request)
+    $properties = $query->paginate(18);
+
+    return view('property-list', compact('properties'));
+}
+
+
+public function showproperty(Request $request)
 {
     $query = Property::query();
     $selectedTags = [];
+
+    // Menambahkan kondisi status = 'Tersedia'
+    $query->where('status', 'Tersedia');
 
     // ============== Keyword dari search bar (q) ==============
     $keyword = trim((string) $request->input('q', ''));
@@ -125,6 +132,7 @@ class propertylistController extends Controller
 
     return view('property-list', compact('properties', 'selectedTags'));
 }
+
 
 
     public function showPropertyDetail($id)
