@@ -1,4 +1,6 @@
 // bot.js (CommonJS, TANPA top-level await)
+'use strict';
+
 const { create } = require('@open-wa/wa-automate');
 const axios = require('axios');
 
@@ -38,16 +40,16 @@ function start(client) {
 Tanggal Lelang: ${p.batas_akhir_penawaran}
 Vendor : ${p.vendor}`;
 
-        // === kirim teks (ALUR ASLI) ===
+        // === KIRIM TEKS ===
         await client.sendText(message.from, reply);
 
-        // === TAMBAHAN: kirim 1 foto pertama sebagai caption yang sama ===
+        // === KIRIM 1 FOTO PERTAMA (CAPTION SAMA) ===
         try {
           const firstImageUrl = pickFirstImageUrl(p.gambar);
           if (firstImageUrl) {
             const { data, headers } = await axios.get(firstImageUrl, {
               responseType: 'arraybuffer',
-              timeout: 20000, // sebagian server gambar agak lambat
+              timeout: 20000, // beberapa host gambar agak lambat
               maxContentLength: 20 * 1024 * 1024,
               maxBodyLength: 20 * 1024 * 1024,
               headers: {
@@ -55,6 +57,8 @@ Vendor : ${p.vendor}`;
                   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36',
                 'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
               },
+              // axios default-nya follow redirect; kita juga terima 3xx
+              validateStatus: (s) => s >= 200 && s < 400,
             });
 
             let mime = (headers['content-type'] || '').split(';')[0].toLowerCase();
@@ -82,6 +86,8 @@ Vendor : ${p.vendor}`;
           await client.sendText(message.from, `Maaf, properti dengan ID ${id} tidak ditemukan.`);
         } else if (e.code === 'ECONNREFUSED') {
           await client.sendText(message.from, `Tidak bisa konek ke API (${API_BASE}). Pastikan server Laravel jalan.`);
+        } else if (e.code === 'ETIMEDOUT' || e.message?.includes('timeout')) {
+          await client.sendText(message.from, `Permintaan ke API timeout. Coba lagi sebentar.`);
         } else {
           await client.sendText(message.from, `Gagal ambil data ID ${id}. Coba lagi nanti.`);
         }
@@ -93,35 +99,52 @@ Vendor : ${p.vendor}`;
 }
 
 /**
- * Ambil URL pertama dari kolom "gambar".
- * - Bisa berformat: "url1,url2, url3 ..."
- * - Bisa dipisah spasi/newline
- * - Kalau bentuk JSON array string, juga dicoba parse.
+ * Ambil URL gambar pertama yang valid dari kolom "gambar".
+ * - Menerima: Array URL, JSON array (string), atau string dipisah koma/spasi/newline.
  */
 function pickFirstImageUrl(gambarField) {
   if (!gambarField) return null;
 
-  // Jika JSON array
-  if (typeof gambarField === 'string' && gambarField.trim().startsWith('[')) {
-    try {
-      const arr = JSON.parse(gambarField);
-      if (Array.isArray(arr)) {
-        const first = arr.map(String).map(s => s.trim()).find(isValidUrl);
-        if (first) return first;
-      }
-    } catch (_) {}
+  // Jika sudah array
+  if (Array.isArray(gambarField)) {
+    const first = gambarField.map(String).map(cleanCandidate).find(isValidUrl);
+    if (first) return first;
   }
 
-  // Split dengan koma/spasi/newline
-  const candidates = String(gambarField)
-    .split(/[,\n\r\t ]+/)
-    .map(s => s.trim())
+  const asString = String(gambarField).trim();
+
+  // Jika JSON array (string)
+  if (asString.startsWith('[')) {
+    try {
+      const arr = JSON.parse(asString);
+      if (Array.isArray(arr)) {
+        const first = arr.map(String).map(cleanCandidate).find(isValidUrl);
+        if (first) return first;
+      }
+    } catch (_) { /* abaikan parse error */ }
+  }
+
+  // CSV / spasi / newline / tab / pipe / titik koma
+  const candidates = asString
+    .split(/[,\n\r\t ;|]+/)
+    .map(cleanCandidate)
     .filter(Boolean);
 
   const first = candidates.find(isValidUrl);
   return first || null;
 }
 
+function cleanCandidate(s) {
+  if (!s) return '';
+  // trim + buang kutip/kurung/tanda akhir yang sering nempel
+  return s.trim().replace(/^['"(]+|[)'",.]+$/g, '');
+}
+
 function isValidUrl(u) {
-  try { new URL(u); return true; } catch { return false; }
+  try {
+    const url = new URL(u);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }

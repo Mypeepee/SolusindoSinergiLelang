@@ -817,7 +817,7 @@
                                                                     </div>
 
                                                                     <!-- Diskon Properti -->
-                                                                    <div class="col-md-12 mb-4">
+                                                                    {{-- <div class="col-md-12 mb-4">
                                                                         <div class="alert alert-warning d-flex align-items-center">
                                                                             <i class="fa fa-percent me-3"></i>
                                                                             <div>
@@ -835,7 +835,7 @@
                                                                                 </div>
                                                                             </div>
                                                                         </div>
-                                                                    </div>
+                                                                    </div> --}}
                                                                 </div>
                                                             </div>
                                                         </div>
