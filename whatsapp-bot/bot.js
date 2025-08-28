@@ -1,10 +1,10 @@
-// bot.js (CommonJS, TANPA top-level await)
+// bot.js (CommonJS)
 'use strict';
 
 const { create } = require('@open-wa/wa-automate');
 const axios = require('axios');
 
-const API_BASE = 'http://127.0.0.1:8000'; // ganti kalau perlu
+const API_BASE = 'http://127.0.0.1:8000'; // sesuaikan jika perlu
 
 create().then(start).catch(console.error);
 
@@ -36,20 +36,20 @@ function start(client) {
           return;
         }
 
-        const reply = `${p.id_listing}: ${p.lokasi}
-Tanggal Lelang: ${p.batas_akhir_penawaran}
-Vendor : ${p.vendor}`;
+        const caption = `${p.id_listing}: ${p.lokasi}
+Tanggal Lelang: ${p.batas_akhir_penawaran ?? '-'}
+Vendor : ${p.vendor ?? '-'}`;
 
-        // === KIRIM TEKS ===
-        await client.sendText(message.from, reply);
+        // ——— KIRIM 1 FOTO SAJA ———
+        // Ambil URL pertama dari gambar_first (prefer), jatuh ke gambar (CSV/JSON/string)
+        const firstImageUrl =
+          pickFirstImageUrl(p.gambar_first || p.gambar || null);
 
-        // === KIRIM 1 FOTO PERTAMA (CAPTION SAMA) ===
-        try {
-          const firstImageUrl = pickFirstImageUrl(p.gambar);
-          if (firstImageUrl) {
-            const { data, headers } = await axios.get(firstImageUrl, {
+        if (firstImageUrl) {
+          try {
+            const { data, headers, status } = await axios.get(firstImageUrl, {
               responseType: 'arraybuffer',
-              timeout: 20000, // beberapa host gambar agak lambat
+              timeout: 20000,
               maxContentLength: 20 * 1024 * 1024,
               maxBodyLength: 20 * 1024 * 1024,
               headers: {
@@ -57,12 +57,13 @@ Vendor : ${p.vendor}`;
                   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36',
                 'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
               },
-              // axios default-nya follow redirect; kita juga terima 3xx
-              validateStatus: (s) => s >= 200 && s < 400,
+              validateStatus: (s) => s >= 200 && s < 400, // izinkan 3xx (redirect)
             });
 
+            // Validasi content-type
             let mime = (headers['content-type'] || '').split(';')[0].toLowerCase();
             if (!mime || !/^image\//.test(mime)) {
+              // fallback berdasarkan ekstensi
               const ext = (firstImageUrl.split('.').pop() || '').toLowerCase();
               mime =
                 ext === 'png' ? 'image/png' :
@@ -73,11 +74,17 @@ Vendor : ${p.vendor}`;
             const b64 = Buffer.from(data).toString('base64');
             const dataUrl = `data:${mime};base64,${b64}`;
 
-            await client.sendImage(message.from, dataUrl, 'foto.jpg', reply);
+            // HANYA kirim gambar (caption disisipkan). Tidak kirim teks terpisah.
+            await client.sendImage(message.from, dataUrl, 'foto.jpg', caption);
+
+          } catch (imgErr) {
+            console.error('Download/kirim gambar gagal:', imgErr.code || imgErr.message || imgErr);
+            // FALLBACK: jika gambar gagal, kirim teks saja
+            await client.sendText(message.from, caption);
           }
-        } catch (imgErr) {
-          console.error('Download/kirim gambar gagal:', imgErr.code || imgErr.message || imgErr);
-          // biarkan, minimal teks sudah terkirim
+        } else {
+          // Tidak ada URL gambar yang valid → kirim teks
+          await client.sendText(message.from, caption);
         }
 
       } catch (e) {
@@ -99,13 +106,21 @@ Vendor : ${p.vendor}`;
 }
 
 /**
- * Ambil URL gambar pertama yang valid dari kolom "gambar".
- * - Menerima: Array URL, JSON array (string), atau string dipisah koma/spasi/newline.
+ * Ambil URL gambar pertama yang valid dari:
+ * - URL tunggal (string)
+ * - Array URL
+ * - JSON array (string)
+ * - CSV / spasi / newline / tab / pipe / titik koma
  */
 function pickFirstImageUrl(gambarField) {
   if (!gambarField) return null;
 
-  // Jika sudah array
+  // Kalau sudah URL tunggal valid
+  if (typeof gambarField === 'string' && isValidUrl(cleanCandidate(gambarField))) {
+    return cleanCandidate(gambarField);
+  }
+
+  // Jika array langsung
   if (Array.isArray(gambarField)) {
     const first = gambarField.map(String).map(cleanCandidate).find(isValidUrl);
     if (first) return first;
@@ -113,7 +128,7 @@ function pickFirstImageUrl(gambarField) {
 
   const asString = String(gambarField).trim();
 
-  // Jika JSON array (string)
+  // JSON array (string)
   if (asString.startsWith('[')) {
     try {
       const arr = JSON.parse(asString);
@@ -121,7 +136,7 @@ function pickFirstImageUrl(gambarField) {
         const first = arr.map(String).map(cleanCandidate).find(isValidUrl);
         if (first) return first;
       }
-    } catch (_) { /* abaikan parse error */ }
+    } catch (_) { /* abaikan */ }
   }
 
   // CSV / spasi / newline / tab / pipe / titik koma
@@ -136,7 +151,6 @@ function pickFirstImageUrl(gambarField) {
 
 function cleanCandidate(s) {
   if (!s) return '';
-  // trim + buang kutip/kurung/tanda akhir yang sering nempel
   return s.trim().replace(/^['"(]+|[)'",.]+$/g, '');
 }
 
