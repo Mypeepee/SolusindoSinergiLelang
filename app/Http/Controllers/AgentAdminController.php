@@ -744,21 +744,66 @@ $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar'
         ->orderBy('transaction.tanggal_diupdate', 'asc')
         ->get();
 
-        // performance
-        $performanceAgents = DB::table('agent')
-            ->leftJoin('property', 'agent.id_agent', '=', 'property.id_agent')
-            ->leftJoin('transaction', 'agent.id_agent', '=', 'transaction.id_agent')
-            ->select(
-                'agent.id_agent',
-                'agent.nama',
-                'agent.jumlah_penjualan',
-                'agent.status',
-                DB::raw('COUNT(DISTINCT property.id_listing) as jumlah_listing'),
-                DB::raw('SUM(transaction.komisi_agent) as total_komisi')
-            )
-            ->groupBy('agent.id_agent', 'agent.nama', 'agent.jumlah_penjualan')
-            ->get();
+        // Aggregate: jumlah "Hadir" per account
+// 1) Ikut Pemilu: jumlah "Hadir" per account
+$eiStats = DB::table('event_invites')
+    ->select(
+        'id_account',
+        DB::raw("SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) AS ikut_pemilu_count")
+    )
+    ->groupBy('id_account');
 
+// 2) Share Listing: agregasi referral clicks per agent
+$referralStats = DB::table('referral_clicks')
+    ->select(
+        'id_agent',
+        DB::raw('COUNT(*) AS share_clicks'),                       // total klik
+        DB::raw('COUNT(DISTINCT id_listing) AS share_listing_uniq'), // jumlah listing unik
+        DB::raw('MAX(created_at) AS last_share_click_at')            // opsional: terakhir klik
+    )
+    ->groupBy('id_agent');
+
+// 3) Query utama: hanya agent Aktif
+$performanceAgents = DB::table('agent')
+    ->where('agent.status', 'Aktif')
+    ->leftJoin('property', 'agent.id_agent', '=', 'property.id_agent')
+    ->leftJoin('transaction', 'agent.id_agent', '=', 'transaction.id_agent')
+
+    // map event_invites.id_account → agent.id_account
+    ->leftJoinSub($eiStats, 'ei_stat', function ($join) {
+        $join->on('ei_stat.id_account', '=', 'agent.id_account');
+    })
+
+    // join agregat referral clicks
+    ->leftJoinSub($referralStats, 'ref_stat', function ($join) {
+        $join->on('ref_stat.id_agent', '=', 'agent.id_agent');
+    })
+
+    ->select(
+        'agent.id_agent',
+        'agent.nama',
+        'agent.status',
+        'agent.jumlah_penjualan',
+        DB::raw('COUNT(DISTINCT property.id_listing) AS jumlah_listing'),
+        DB::raw('SUM(transaction.komisi_agent) AS total_komisi'),
+
+        // Ikut Pemilu (angka)
+        DB::raw('MAX(COALESCE(ei_stat.ikut_pemilu_count, 0)) AS ikut_pemilu'),
+
+        // Share Listing (pakai total klik)
+        DB::raw('MAX(COALESCE(ref_stat.share_clicks, 0)) AS share_listing'),
+
+        // Opsional kalau nanti mau dipakai:
+        DB::raw('MAX(COALESCE(ref_stat.share_listing_uniq, 0)) AS share_listing_uniq'),
+        DB::raw('MAX(ref_stat.last_share_click_at) AS last_share_click_at')
+    )
+    ->groupBy(
+        'agent.id_agent',
+        'agent.nama',
+        'agent.status',
+        'agent.jumlah_penjualan'
+    )
+    ->get();
         //grafik
         $monthlyData = DB::table('transaction')
             ->selectRaw("DATE_TRUNC('month', tanggal_dibuat) as bulan, SUM(harga_deal) as total_pendapatan, COUNT(*) as total_transaksi")
