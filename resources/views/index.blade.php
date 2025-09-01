@@ -148,7 +148,7 @@
                                     <option value="pabrik">Pabrik</option>
                                     <option value="hotel dan villa">Hotel dan Villa</option>
                                     <option value="ruko">Ruko</option>
-                                    <option value="sewa">Sewa</option>
+                                    <option value="toko">Toko</option>
                                 </select>
                             </div>
 

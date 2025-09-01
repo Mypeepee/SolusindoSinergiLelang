@@ -632,7 +632,7 @@ $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar'
     {
         //property types
         // Semua tipe properti yang mau ditampilkan
-        $propertyTypes = ['Rumah', 'Gudang', 'Apartemen', 'Tanah', 'Pabrik', 'Hotel dan Villa', 'Ruko', 'Sewa'];
+        $propertyTypes = ['Rumah', 'Gudang', 'Apartemen', 'Tanah', 'Pabrik', 'Hotel dan Villa', 'Ruko', 'Toko'];
 
         // Ambil count dari DB per tipe (hanya yang Tersedia)
         $propertyCounts = DB::table('property')

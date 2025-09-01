@@ -11,7 +11,7 @@ class HomeController extends Controller
 {
     public function home()
     {
-        $propertyTypes = ['Rumah', 'Gudang', 'Apartemen', 'Tanah', 'Pabrik', 'Hotel dan Villa', 'Ruko', 'Sewa'];
+        $propertyTypes = ['Rumah', 'Gudang', 'Apartemen', 'Tanah', 'Pabrik', 'Hotel dan Villa', 'Ruko', 'Toko'];
 
         // Ambil count dari DB per tipe
         $propertyCounts = DB::table('property')

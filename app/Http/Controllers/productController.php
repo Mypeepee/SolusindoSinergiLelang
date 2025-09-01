@@ -134,7 +134,7 @@ class productController extends Controller
         $properties = $query->paginate(18);
 
         // Daftar tipe properti yang ingin ditampilkan
-        $propertyTypes = ['Rumah', 'Gudang', 'Apartemen', 'Tanah', 'Pabrik', 'Hotel dan Villa', 'Ruko', 'Sewa'];
+        $propertyTypes = ['Rumah', 'Gudang', 'Apartemen', 'Tanah', 'Pabrik', 'Hotel dan Villa', 'Ruko', 'Toko'];
 
         // Ambil jumlah properti per tipe dengan status available
         $propertyCountsRaw = Property::select('tipe')

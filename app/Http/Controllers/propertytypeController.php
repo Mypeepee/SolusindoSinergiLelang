@@ -26,7 +26,7 @@ class propertytypeController extends Controller
     {
         $allTypes = [
             'rumah', 'gudang', 'apartemen', 'tanah',
-            'pabrik', 'villa', 'ruko', 'sewa'
+            'pabrik', 'villa', 'ruko', 'toko'
         ];
 
         // Ambil total property untuk masing-masing tipe yang tersedia
