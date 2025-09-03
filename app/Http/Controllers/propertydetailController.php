@@ -35,15 +35,34 @@ class propertydetailController extends Controller
 
     $property = Property::where('id_listing', $id)->first();
 
-    // **Ambil kode referal dari account jika user login**
+    // Ambil data user dari session berdasarkan id_account
     if (!$isCrawler && session()->has('id_account')) {
-        $userReferral = DB::table('account')
+        $user = DB::table('account')
             ->where('id_account', session('id_account'))
-            ->value('kode_referal');
+            ->first();
 
-        if ($userReferral) {
+        // Jika user adalah agent atau register, kita abaikan kode referal dan gunakan id_agent
+        if ($user && ($user->roles === 'Agent' || $user->roles === 'Register')) {
+            // Ambil id_agent dari tabel agent berdasarkan id_account
+            $agentData = DB::table('agent')
+                ->where('id_account', session('id_account'))
+                ->first();
+
+            // Jika agent ditemukan, arahkan URL ke id_agent
+            if ($agentData) {
+                // Redirect URL dengan id_agent
+                if ($agent !== $agentData->id_agent) {
+                    return redirect()->to(url("/property-detail/{$id}/" . $agentData->id_agent));
+                }
+            }
+        } else {
+            // Kalau user adalah User, gunakan kode referal dari tabel account
+            $userReferral = DB::table('account')
+                ->where('id_account', session('id_account'))
+                ->value('kode_referal');
+
             // Kalau URL belum pakai kode referal user → redirect pakai kode itu
-            if ($agent !== $userReferral) {
+            if ($userReferral && $agent !== $userReferral) {
                 return redirect()->to(url("/property-detail/{$id}/" . $userReferral));
             }
         }

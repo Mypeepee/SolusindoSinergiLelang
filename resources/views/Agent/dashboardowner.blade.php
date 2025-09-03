@@ -633,42 +633,42 @@
                             </thead>
                             <tbody id="performanceBody">
                                 @forelse ($performanceAgents as $index => $agent)
-<tr>
-    <td>{{ $index + 1 }}</td>
-    <td class="agent-id">{{ $agent->id_agent }}</td>
-    <td class="agent-nama">{{ $agent->nama }}</td>
-    <td class="agent-status">
-        @if ($agent->status === 'Aktif')
-            <span class="badge bg-success">Aktif</span>
-        @else
-            <span class="badge bg-secondary">{{ $agent->status }}</span>
-        @endif
-    </td>
+                                <tr>
+                                    <td>{{ $index + 1 }}</td>
+                                    <td class="agent-id">{{ $agent->id_agent }}</td>
+                                    <td class="agent-nama">{{ $agent->nama }}</td>
+                                    <td class="agent-status">
+                                        @if ($agent->status === 'Aktif')
+                                            <span class="badge bg-success">Aktif</span>
+                                        @else
+                                            <span class="badge bg-secondary">{{ $agent->status }}</span>
+                                        @endif
+                                    </td>
 
-    {{-- NEW: Ikut Pemilu (ambil dari event_invites terbaru per agent) --}}
-    <td class="agent-ikut-pemilu">
-        <span class="badge bg-primary">{{ (int) ($agent->ikut_pemilu ?? 0) }}</span>
-    </td>
+                                    {{-- NEW: Ikut Pemilu (ambil dari event_invites terbaru per agent) --}}
+                                    <td class="agent-ikut-pemilu">
+                                        <span class="badge bg-primary">{{ (int) ($agent->ikut_pemilu ?? 0) }}</span>
+                                    </td>
 
 
-    <td class="agent-listing">{{ $agent->jumlah_listing }}</td>
-    <td class="agent-penjualan">{{ $agent->jumlah_penjualan }}</td>
-    <td class="agent-komisi" data-komisi="{{ $agent->total_komisi ?? 0 }}">
-        Rp {{ number_format($agent->total_komisi ?? 0, 0, ',', '.') }}
-    </td>
+                                    <td class="agent-listing">{{ $agent->jumlah_listing }}</td>
+                                    <td class="agent-penjualan">{{ $agent->jumlah_penjualan }}</td>
+                                    <td class="agent-komisi" data-komisi="{{ $agent->total_komisi ?? 0 }}">
+                                        Rp {{ number_format($agent->total_komisi ?? 0, 0, ',', '.') }}
+                                    </td>
 
-    {{-- NEW: Share Listing (placeholder; implementasi di step berikutnya) --}}
-    <td class="agent-share-listing text-center">
-        {{ (int) ($agent->share_listing ?? 0) }}  {{-- total klik referral --}}
-    </td>
-</tr>
-@empty
-<tr>
-    <td colspan="9" class="text-center text-muted py-4">
-        Tidak ada data agent tersedia saat ini.
-    </td>
-</tr>
-@endforelse
+                                    {{-- NEW: Share Listing (placeholder; implementasi di step berikutnya) --}}
+                                    <td class="agent-share-listing text-center">
+                                        {{ (int) ($agent->share_listing ?? 0) }}  {{-- total klik referral --}}
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="9" class="text-center text-muted py-4">
+                                        Tidak ada data agent tersedia saat ini.
+                                    </td>
+                                </tr>
+                                @endforelse
 
                             </tbody>
                         </table>

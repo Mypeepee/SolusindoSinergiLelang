@@ -119,7 +119,7 @@
 <div id="agent-list-section" class="container-xxl py-5">
     <div class="container">
         <div class="text-center mx-auto mb-5 wow fadeInUp" style="max-width: 600px;">
-            <h1 class="mb-3">Our Property Agents</h1>
+            <h1 class="mb-3">Agent Afiliasi Kami</h1>
         </div>
         <div class="row g-4">
             @foreach ($agents as $agent)
