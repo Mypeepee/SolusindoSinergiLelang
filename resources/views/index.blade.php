@@ -56,7 +56,97 @@
     }
 </style>
 
+<style>
+    #selected-cities, #selected-cities-desktop {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+    }
 
+    .city-tag {
+        background-color: #ffffff;
+        color: #000000;
+        border: 1px solid #ccc;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        white-space: nowrap;
+    }
+
+    .city-tag .remove-tag {
+        cursor: pointer;
+        font-weight: bold;
+        margin-left: 8px;
+        color: red;
+    }
+
+    .mobile-search .form-control:focus { box-shadow:none; }
+    .mobile-search .input-group-text { border:0; }
+</style>
+
+<style>
+    /* ====== palette */
+    :root{
+      --brand-orange: #f15b2a;      /* brand/oranye */
+      --navy:         #0f2a44;      /* dark blue tombol Search */
+      --rail-ring:    rgba(15,42,68,.12);
+      --rail-border:  #ffd3c2;      /* garis halus pill */
+    }
+
+    /* ====== pill putih biar kontras di bg oranye */
+    .search-rail{
+      height:64px;
+      width:100%;
+      background:#fff;
+      border:2px solid var(--brand-orange);
+      border-radius:40px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.06);
+      padding-right:.5rem;
+      transition: box-shadow .18s ease, border-color .18s ease;
+    }
+    .search-rail:focus-within{
+      box-shadow: 0 0 0 8px var(--rail-ring), 0 10px 26px rgba(0,0,0,.08);
+      border-color: var(--brand-orange);
+    }
+
+    /* input minimal & enak dibaca */
+    .search-rail-input{
+      border:0; outline:0; background:transparent;
+      height:60px; font-size:1.1rem;
+    }
+    .search-rail-input::placeholder{ color:#9aa0a6; }
+
+    /* tombol utama (dark blue) */
+    .btn-search{
+      background: var(--navy); color:#fff; border:none;
+      height:46px; border-radius:24px;
+      transition: filter .15s ease, transform .04s ease;
+    }
+    .btn-search:hover{ filter:brightness(1.08); }
+    .btn-search:active{ transform:translateY(1px); }
+
+    /* tombol sekunder (orange outline, invert saat hover) */
+    .btn-filter{
+      background:#fff; color:var(--brand-orange);
+      border:2px solid var(--brand-orange);
+      height:46px; border-radius:24px;
+      transition: background .15s ease, color .15s ease, border-color .15s ease;
+    }
+    .btn-filter:hover{
+      background:var(--brand-orange); color:#fff; border-color:var(--brand-orange);
+    }
+
+    /* kecilkan di layar sedang biar proporsional */
+    @media (max-width: 1400px){
+      .search-rail{ height:60px; }
+      .search-rail-input{ height:56px; font-size:1rem; }
+      .btn-search,.btn-filter{ height:42px; }
+    }
+
+</style>
 <!-- Carousel Start -->
 <div id="carousel" class="carousel slide" data-bs-ride="carousel">
     <div class="carousel-inner">
@@ -119,19 +209,18 @@
                             </div>
                             {{-- === /Keyword === --}}
 
-                            <!-- Harga (Min–Max) dalam 1 row -->
                             <div class="col-12">
                                 <label class="form-label mb-1">Harga (Rp)</label>
                                 <div class="input-group">
-                                <span class="input-group-text">Rp</span>
-                                <input type="text" name="min_price" id="min_price"
+                                    <span class="input-group-text">Rp</span>
+                                    <input type="text" name="min_price" id="min_price"
                                         class="form-control js-num js-price"
-                                        placeholder="Min" inputmode="numeric" pattern="[0-9]*"
+                                        placeholder="Min" inputmode="numeric"
                                         value="{{ request('min_price') }}">
-                                <span class="input-group-text">–</span>
-                                <input type="text" name="max_price" id="max_price"
+                                    <span class="input-group-text">–</span>
+                                    <input type="text" name="max_price" id="max_price"
                                         class="form-control js-num js-price"
-                                        placeholder="Max" inputmode="numeric" pattern="[0-9]*"
+                                        placeholder="Max" inputmode="numeric"
                                         value="{{ request('max_price') }}">
                                 </div>
                             </div>
@@ -153,50 +242,49 @@
                             </div>
 
                             <!-- Luas Tanah (Min–Max) dalam 1 row -->
-<div class="col-12">
-    <label class="form-label mb-1">Luas Tanah (m²)</label>
-    <div class="input-group">
-        <input type="text" name="min_land_size" id="min_land_size"
-               class="form-control js-num js-area"
-               placeholder="Min" inputmode="numeric"
-               value="{{ request('min_land_size') }}"
-               oninput="validateInteger(this)" onblur="formatNumber(this)">
-        <span class="input-group-text">m²</span>
-        <span class="input-group-text">–</span>
-        <input type="text" name="max_land_size" id="max_land_size"
-               class="form-control js-num js-area"
-               placeholder="Max" inputmode="numeric"
-               value="{{ request('max_land_size') }}"
-               oninput="validateInteger(this)" onblur="formatNumber(this)">
-        <span class="input-group-text">m²</span>
-    </div>
-</div>
+                            <div class="col-12">
+                                <label class="form-label mb-1">Luas Tanah (m²)</label>
+                                <div class="input-group">
+                                    <input type="text" name="min_land_size" id="min_land_size"
+                                        class="form-control js-num js-area"
+                                        placeholder="Min" inputmode="numeric"
+                                        value="{{ request('min_land_size') }}"
+                                        oninput="validateInteger(this)" onblur="formatNumber(this)">
+                                    <span class="input-group-text">m²</span>
+                                    <span class="input-group-text">–</span>
+                                    <input type="text" name="max_land_size" id="max_land_size"
+                                        class="form-control js-num js-area"
+                                        placeholder="Max" inputmode="numeric"
+                                        value="{{ request('max_land_size') }}"
+                                        oninput="validateInteger(this)" onblur="formatNumber(this)">
+                                    <span class="input-group-text">m²</span>
+                                </div>
+                            </div>
 
-<script>
-    // Fungsi untuk memastikan hanya angka yang bisa dimasukkan
-    function validateInteger(input) {
-        // Hapus semua karakter selain angka
-        input.value = input.value.replace(/[^0-9]/g, '');
-    }
+                            <script>
+                                // Fungsi untuk memastikan hanya angka yang bisa dimasukkan
+                                function validateInteger(input) {
+                                    // Hapus semua karakter selain angka
+                                    input.value = input.value.replace(/[^0-9]/g, '');
+                                }
 
-    // Fungsi untuk format angka menjadi dengan pemisah ribuan (1.000, 10.000, etc.)
-    function formatNumber(input) {
-        // Hapus karakter selain angka
-        let value = input.value.replace(/[^\d]/g, '');
-        if (value) {
-            // Format angka menggunakan Intl.NumberFormat
-            input.value = new Intl.NumberFormat('id-ID').format(value);
-        }
-    }
+                                // Fungsi untuk format angka menjadi dengan pemisah ribuan (1.000, 10.000, etc.)
+                                function formatNumber(input) {
+                                    // Hapus karakter selain angka
+                                    let value = input.value.replace(/[^\d]/g, '');
+                                    if (value) {
+                                        // Format angka menggunakan Intl.NumberFormat
+                                        input.value = new Intl.NumberFormat('id-ID').format(value);
+                                    }
+                                }
 
-    // Sebelum form submit, hapus titik biar masuk ke DB sebagai angka bersih
-    document.querySelector("form").addEventListener("submit", function () {
-        document.querySelectorAll('input[name="min_land_size"], input[name="max_land_size"]').forEach(function (el) {
-            el.value = el.value.replace(/\./g, "");  // Menghapus titik sebelum submit
-        });
-    });
-</script>
-
+                                // Sebelum form submit, hapus titik biar masuk ke DB sebagai angka bersih
+                                document.querySelector("form").addEventListener("submit", function () {
+                                    document.querySelectorAll('input[name="min_land_size"], input[name="max_land_size"]').forEach(function (el) {
+                                        el.value = el.value.replace(/\./g, "");  // Menghapus titik sebelum submit
+                                    });
+                                });
+                            </script>
 
                             <!-- Provinsi -->
                             <div class="col-12">
@@ -239,11 +327,6 @@
     </div>
 </div>
 
-
-<style>
-    .mobile-search .form-control:focus { box-shadow:none; }
-    .mobile-search .input-group-text { border:0; }
-  </style>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const provinceSelect = document.getElementById('province');
@@ -418,221 +501,8 @@ document.addEventListener('DOMContentLoaded', function () {
         </div>
     </form>
 </div>
-<style>
-/* ====== palette */
-:root{
-  --brand-orange: #f15b2a;      /* brand/oranye */
-  --navy:         #0f2a44;      /* dark blue tombol Search */
-  --rail-ring:    rgba(15,42,68,.12);
-  --rail-border:  #ffd3c2;      /* garis halus pill */
-}
 
-/* ====== pill putih biar kontras di bg oranye */
-.search-rail{
-  height:64px;
-  width:100%;
-  background:#fff;
-  border:2px solid var(--brand-orange);
-  border-radius:40px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.06);
-  padding-right:.5rem;
-  transition: box-shadow .18s ease, border-color .18s ease;
-}
-.search-rail:focus-within{
-  box-shadow: 0 0 0 8px var(--rail-ring), 0 10px 26px rgba(0,0,0,.08);
-  border-color: var(--brand-orange);
-}
-
-/* input minimal & enak dibaca */
-.search-rail-input{
-  border:0; outline:0; background:transparent;
-  height:60px; font-size:1.1rem;
-}
-.search-rail-input::placeholder{ color:#9aa0a6; }
-
-/* tombol utama (dark blue) */
-.btn-search{
-  background: var(--navy); color:#fff; border:none;
-  height:46px; border-radius:24px;
-  transition: filter .15s ease, transform .04s ease;
-}
-.btn-search:hover{ filter:brightness(1.08); }
-.btn-search:active{ transform:translateY(1px); }
-
-/* tombol sekunder (orange outline, invert saat hover) */
-.btn-filter{
-  background:#fff; color:var(--brand-orange);
-  border:2px solid var(--brand-orange);
-  height:46px; border-radius:24px;
-  transition: background .15s ease, color .15s ease, border-color .15s ease;
-}
-.btn-filter:hover{
-  background:var(--brand-orange); color:#fff; border-color:var(--brand-orange);
-}
-
-/* kecilkan di layar sedang biar proporsional */
-@media (max-width: 1400px){
-  .search-rail{ height:60px; }
-  .search-rail-input{ height:56px; font-size:1rem; }
-  .btn-search,.btn-filter{ height:42px; }
-}
-
-    </style>
-{{-- <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const provinceDesktop = document.getElementById('province-desktop');
-        const cityDesktop = document.getElementById('city-desktop');
-        const districtDesktop = document.getElementById('district-desktop');
-        const selectedCitiesDesktop = document.getElementById('selected-cities-desktop');
-        const selectedCityValuesDesktop = document.getElementById('selected-city-values-desktop');
-
-        let provinceMap = new Map();    // Provinsi => Set Kota
-        let locationMap = new Map();    // Provinsi => Kota => Set Kecamatan
-        let selectedTags = []; // List tag terpilih (punya value + type)
-
-        // Load data lokasi
-        fetch("{{ asset('data/indonesia.json') }}")
-            .then(res => res.json())
-            .then(data => {
-                data.forEach(item => {
-                    const prov = item.province.trim();
-                    const regency = item.regency.trim();
-                    const district = item.district.trim();
-
-                    // Provinsi -> Kota
-                    if (!provinceMap.has(prov)) {
-                        provinceMap.set(prov, new Set());
-                    }
-                    provinceMap.get(prov).add(regency);
-
-                    // Provinsi -> Kota -> Kecamatan
-                    if (!locationMap.has(prov)) {
-                        locationMap.set(prov, new Map());
-                    }
-                    if (!locationMap.get(prov).has(regency)) {
-                        locationMap.get(prov).set(regency, new Set());
-                    }
-                    locationMap.get(prov).get(regency).add(district);
-                });
-
-                // Isi provinsi
-                for (let prov of provinceMap.keys()) {
-                    provinceDesktop.innerHTML += `<option value="${prov}">${prov}</option>`;
-                }
-
-                // Provinsi change
-                provinceDesktop.addEventListener('change', function () {
-                    updateCityDropdown(this.value, cityDesktop);
-                });
-
-                // Kota change
-                cityDesktop.addEventListener('change', function () {
-                    updateDistrictDropdown(provinceDesktop.value, this.value);
-                    addTag(this.value, 'city'); // Tambahkan tag kota
-                });
-
-                // Kecamatan change
-                districtDesktop.addEventListener('change', function () {
-                    const city = cityDesktop.value;
-                    addTag(`${city} - ${this.value}`, 'district'); // Tambahkan tag kecamatan
-                });
-            });
-
-        function updateCityDropdown(selected, targetCityDropdown) {
-            const citySet = provinceMap.get(selected);
-            targetCityDropdown.disabled = false;
-            targetCityDropdown.innerHTML = '<option selected disabled>Pilih Kota/Kabupaten</option>';
-            citySet.forEach(c => {
-                const cleanedValue = c.replace(/^Kota\s|^Kabupaten\s/, '');
-                targetCityDropdown.innerHTML += `<option value="${c}">${c}</option>`;
-            });
-
-            // Reset kecamatan
-            districtDesktop.disabled = true;
-            districtDesktop.innerHTML = '<option selected disabled>Pilih Kecamatan</option>';
-        }
-
-        function updateDistrictDropdown(prov, selectedCity) {
-            const districtSet = locationMap.get(prov).get(selectedCity);
-            districtDesktop.disabled = false;
-            districtDesktop.innerHTML = '<option selected disabled>Pilih Kecamatan</option>';
-            districtSet.forEach(d => {
-                districtDesktop.innerHTML += `<option value="${d}">${d}</option>`;
-            });
-        }
-
-        // Render tag
-        function renderTags() {
-            selectedCitiesDesktop.innerHTML = '';
-            selectedTags.forEach(tag => {
-                const tagEl = document.createElement('div');
-                tagEl.className = 'city-tag';
-                tagEl.innerHTML = `${tag.value} <span class="remove-tag" data-value="${tag.value}" data-type="${tag.type}">&times;</span>`;
-                selectedCitiesDesktop.appendChild(tagEl);
-            });
-            selectedCityValuesDesktop.value = selectedTags.map(t => t.value).join(',');
-        }
-
-        // Tambah tag (cek duplikat berdasarkan value + type)
-        function addTag(value, type) {
-    if (type === 'district') {
-        const cityName = value.split(' - ')[0].trim();
-        // Hapus tag kota dengan nama yang sama
-        selectedTags = selectedTags.filter(t => !(t.type === 'city' && t.value === cityName));
-    }
-
-    if (!selectedTags.find(t => t.value === value && t.type === type)) {
-        selectedTags.push({ value, type });
-        renderTags();
-    }
-}
-
-
-        // Hapus tag
-        selectedCitiesDesktop.addEventListener('click', function (e) {
-            if (e.target.classList.contains('remove-tag')) {
-                const value = e.target.dataset.value;
-                const type = e.target.dataset.type;
-                selectedTags = selectedTags.filter(t => !(t.value === value && t.type === type));
-                renderTags();
-            }
-        });
-    });
-    </script>
- --}}
-
-<!-- Styling Tag Kota (Tetap Berlaku di Modal dan Desktop) -->
-<style>
-    #selected-cities, #selected-cities-desktop {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 8px;
-    }
-
-    .city-tag {
-        background-color: #ffffff;
-        color: #000000;
-        border: 1px solid #ccc;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        white-space: nowrap;
-    }
-
-    .city-tag .remove-tag {
-        cursor: pointer;
-        font-weight: bold;
-        margin-left: 8px;
-        color: red;
-    }
-</style>
-
-<!-- Script -->
 <script>
-
 function formatNumberInput(input) {
         // Hapus semua karakter kecuali angka
         let value = input.value.replace(/\D/g, "");

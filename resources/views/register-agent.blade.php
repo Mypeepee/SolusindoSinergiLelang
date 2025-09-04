@@ -466,7 +466,7 @@
 
                     <!-- Tombol Submit -->
                     <div class="col-12">
-                        <button class="btn btn-primary w-100 py-3" type="submit">Daftar Sebagai Agen</button>
+                        <button class="btn btn-primary w-100 py-3" type="submit" id="submitBtn">Daftar Sebagai Agen</button>
                     </div>
                 </div>
             </form>
@@ -498,6 +498,57 @@
         @endif
     </div>
 </div>
+<script>
+    document.getElementById('agentForm').addEventListener('submit', function(e) {
+        let valid = true;
+
+        // Elemen yang perlu diperiksa
+        const provinsi = document.getElementById('province');
+        const kota = document.getElementById('city');
+        const ktp = document.getElementById('gambar_ktp');
+        const npwp = document.getElementById('gambar_npwp');
+        const profil = document.getElementById('profileImageInput');
+        const croppedKTP = document.getElementById('cropped_image');
+        const croppedNPWP = document.getElementById('cropped_image_npwp');
+        const croppedProfileImage = document.getElementById('croppedProfileImage');
+
+        // Reset validasi sebelumnya
+        [provinsi, kota, ktp, npwp, profil].forEach(el => el.classList.remove('is-invalid'));
+
+        // Validasi inputan provinsi, kota, dan file
+        if (!provinsi.value) {
+            provinsi.classList.add('is-invalid');
+            valid = false;
+        }
+        if (!kota.value) {
+            kota.classList.add('is-invalid');
+            valid = false;
+        }
+        if (ktp.files.length === 0 || !croppedKTP.value) {  // Pastikan file KTP ada dan sudah dicrop
+            ktp.classList.add('is-invalid');
+            valid = false;
+        }
+        if (npwp.files.length === 0 || !croppedNPWP.value) {  // Pastikan file NPWP ada dan sudah dicrop
+            npwp.classList.add('is-invalid');
+            valid = false;
+        }
+        if (profil.files.length === 0 || !croppedProfileImage.value) {  // Pastikan foto profil ada dan sudah dicrop
+            profil.classList.add('is-invalid');
+            valid = false;
+        }
+
+        // Jika form tidak valid, tampilkan alert dan stop submit
+        if (!valid) {
+            e.preventDefault();  // Menghentikan proses submit
+            alert('Harap lengkapi semua field wajib sebelum mengirim.');
+        } else {
+            // Jika validasi berhasil, ubah tombol menjadi loading
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Mengirim...'; // Spinner Loading
+            submitBtn.disabled = true; // Nonaktifkan tombol agar tidak bisa diklik dua kali
+        }
+    });
+    </script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {

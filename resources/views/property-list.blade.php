@@ -143,15 +143,15 @@
                             <div class="col-12">
                                 <label class="form-label mb-1">Harga (Rp)</label>
                                 <div class="input-group">
-                                <span class="input-group-text">Rp</span>
-                                <input type="text" name="min_price" id="min_price"
+                                    <span class="input-group-text">Rp</span>
+                                    <input type="text" name="min_price" id="min_price"
                                         class="form-control js-num js-price"
-                                        placeholder="Min" inputmode="numeric" pattern="[0-9]*"
+                                        placeholder="Min" inputmode="numeric"
                                         value="{{ request('min_price') }}">
-                                <span class="input-group-text">–</span>
-                                <input type="text" name="max_price" id="max_price"
+                                    <span class="input-group-text">–</span>
+                                    <input type="text" name="max_price" id="max_price"
                                         class="form-control js-num js-price"
-                                        placeholder="Max" inputmode="numeric" pattern="[0-9]*"
+                                        placeholder="Max" inputmode="numeric"
                                         value="{{ request('max_price') }}">
                                 </div>
                             </div>
