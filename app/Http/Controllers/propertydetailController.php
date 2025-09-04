@@ -9,6 +9,7 @@ use Kreait\Firebase\Factory;
 use Illuminate\Support\Facades\Http;
 use App\Models\Agent;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 
 use App\Models\User;
@@ -22,6 +23,22 @@ class propertydetailController extends Controller
 
         return view('propertyDetail', compact('property'));
     }
+
+    public function markAsSold($id)
+{
+    // Cari properti berdasarkan ID
+    $property = Property::findOrFail($id);
+
+    // Pastikan statusnya adalah 'Tersedia' sebelum mengubahnya
+    if ($property->status == 'Tersedia') {
+        $property->status = 'Terjual';
+        $property->tanggal_diupdate = Carbon::now(); // Mengubah kolom tanggal_diupdate menjadi waktu saat ini
+        $property->save();
+    }
+
+    // Redirect ke halaman properti
+    return redirect()->route('property.list')->with('status', 'Properti berhasil diubah menjadi Terjual');
+}
 
     public function PropertyDetail(Request $request, $id, $agent = null)
 {

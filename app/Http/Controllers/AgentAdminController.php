@@ -22,7 +22,21 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class AgentAdminController extends Controller
 {
     private int $intervalSeconds = 300;
+    public function markAsSold($id)
+    {
+        // Cari properti berdasarkan ID
+        $property = Property::findOrFail($id);
 
+        // Pastikan statusnya adalah 'Tersedia' sebelum mengubahnya
+        if ($property->status == 'Tersedia') {
+            $property->status = 'Terjual';
+            $property->tanggal_diupdate = Carbon::now(); // Mengubah kolom tanggal_diupdate menjadi waktu saat ini
+            $property->save();
+        }
+
+        // Redirect ke halaman properti
+        return redirect()->route('dashboard.agent')->with('status', 'Properti berhasil diubah menjadi Terjual');
+    }
     public function index()
     {
         $idAccount = session('id_account');
@@ -154,6 +168,35 @@ class AgentAdminController extends Controller
                 ->orderBy('transaction.tanggal_diupdate', 'asc')
                 ->get();
         }
+
+        // **Penambahan untuk Stoker**
+    if ($role === 'Stoker') {
+        $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar', 'status')
+        ->when(request()->get('search'), function ($query, $search) {
+            return $query->where('id_listing', (int) $search);
+        })
+        ->when(request()->get('property_type'), function ($query, $propertyType) {
+            return $query->whereRaw('LOWER(tipe) = ?', [strtolower($propertyType)]);
+        })
+        ->when(request()->get('province'), function ($query, $province) {
+            return $query->where('provinsi', $province);
+        })
+        ->when(request()->get('city'), function ($query, $city) {
+            return $query->where('kota', $city);
+        })
+        ->when(request()->get('district'), function ($query, $district) {
+            return $query->where('kecamatan', $district);
+        })
+        ->paginate(10)
+        ->appends(request()->only(['search', 'property_type', 'province', 'city', 'district']));
+    }
+    // Fetch sold properties with update history
+    $soldProperties = DB::table('property')
+    ->where('status', 'Terjual') // Only fetch sold properties
+    ->orderBy('tanggal_diupdate', 'desc') // Order by update date
+    ->select('id_listing', 'lokasi', 'tanggal_diupdate') // Select only the needed fields
+    ->paginate(15); // Paginate with 15 properties per page
+
         $salesData = $salesData ?? [];
         $transactions = $transactions ?? [];
         // Siapkan label bulan
@@ -232,6 +275,14 @@ class AgentAdminController extends Controller
             ];
         });
 
+
+    // Fetch sold properties directly from the property table
+    $soldProperties = DB::table('property')
+    ->where('status', 'Terjual') // Only fetch sold properties
+    ->orderBy('tanggal_diupdate', 'desc') // Order by update date
+    ->select('id_listing', 'lokasi', 'tanggal_diupdate') // Select only the needed fields
+    ->get();
+
         // Kirim ke view
         return view('Agent.dashboard-agent', [
             'totalKomisi' => $totalKomisi,
@@ -241,6 +292,7 @@ class AgentAdminController extends Controller
             'clients' => $clients,
             'clientsClosing' => $clientsClosing,
             'clientsPengosongan' => $clientsPengosongan,
+            'properties' => $properties ?? null,
             'salesData' => json_encode($salesData),         // <--- dijamin ada
             'transactions' => json_encode($transactions),
             'labels' => $labels,
@@ -248,8 +300,9 @@ class AgentAdminController extends Controller
             'transactions' => $transactions,
             'statusCounts' => (array) $statusCounts,
             'pendingAgents' => $pendingAgents,
-            'events' => $eventsFormatted ]);
-
+            'events' => $eventsFormatted,
+            'soldProperties' => $soldProperties, // <-- Make sure to include this inside the main array
+        ]);
     }
 
     public function updateInvite(Request $request)

@@ -94,54 +94,53 @@
                   @endif
                 </div>
               </div>
-
             @endif
 
-@if(in_array(session('role'), ['Agent', 'Register', 'Pengosongan']))
-{{-- === KTP === --}}
-<div class="row g-3 mb-4">
-    {{-- === KTP === --}}
-    <div class="col-md-6">
-      <div class="card shadow-sm border-0 rounded-4 h-100">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-          <h6 class="mb-0"><i class="bi bi-person-vcard me-2"></i>Data KTP</h6>
-          <button class="btn btn-sm btn-secondary-theme" data-bs-toggle="modal" data-bs-target="#modalKTPView">
-            <i class="bi bi-pencil-square me-1"></i>Edit
-          </button>
-        </div>
-        <div class="card-body text-center">
-            @if (!empty($informasi_klien) && !empty($informasi_klien->gambar_ktp))
-  <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_ktp }}" alt="KTP"
-       class="img-thumbnail me-4" style="max-height: 250px; object-fit: contain;">
-@else
-            <p class="text-muted fst-italic">Belum ada data KTP.</p>
-          @endif
-        </div>
-      </div>
-    </div>
+            @if(in_array(session('role'), ['Agent', 'Register', 'Pengosongan','Stoker', 'Owner', 'Principal']))
+                {{-- === KTP === --}}
+                <div class="row g-3 mb-4">
+                    {{-- === KTP === --}}
+                    <div class="col-md-6">
+                    <div class="card shadow-sm border-0 rounded-4 h-100">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i class="bi bi-person-vcard me-2"></i>Data KTP</h6>
+                        <button class="btn btn-sm btn-secondary-theme" data-bs-toggle="modal" data-bs-target="#modalKTPView">
+                            <i class="bi bi-pencil-square me-1"></i>Edit
+                        </button>
+                        </div>
+                        <div class="card-body text-center">
+                            @if (!empty($informasi_klien) && !empty($informasi_klien->gambar_ktp))
+                <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_ktp }}" alt="KTP"
+                    class="img-thumbnail me-4" style="max-height: 250px; object-fit: contain;">
+                @else
+                            <p class="text-muted fst-italic">Belum ada data KTP.</p>
+                        @endif
+                        </div>
+                    </div>
+                    </div>
 
-    {{-- === NPWP === --}}
-    <div class="col-md-6">
-      <div class="card shadow-sm border-0 rounded-4 h-100">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-          <h6 class="mb-0"><i class="bi bi-credit-card-2-back me-2"></i>Data NPWP</h6>
-          <button class="btn btn-sm btn-secondary-theme" data-bs-toggle="modal" data-bs-target="#modalNPWPView">
-            <i class="bi bi-pencil-square me-1"></i>Edit
-          </button>
-        </div>
-        <div class="card-body text-center">
-            @if (!empty($informasi_klien) && !empty($informasi_klien->gambar_npwp))
-            <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_npwp }}" alt="NPWP"
-         class="img-thumbnail me-4" style="max-height: 250px; object-fit: contain;">
-        @else
-            <p class="text-muted fst-italic">Belum ada data NPWP.</p>
-          @endif
-        </div>
-      </div>
-    </div>
-  </div>
-@endif
-</div>
+                    {{-- === NPWP === --}}
+                    <div class="col-md-6">
+                    <div class="card shadow-sm border-0 rounded-4 h-100">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i class="bi bi-credit-card-2-back me-2"></i>Data NPWP</h6>
+                        <button class="btn btn-sm btn-secondary-theme" data-bs-toggle="modal" data-bs-target="#modalNPWPView">
+                            <i class="bi bi-pencil-square me-1"></i>Edit
+                        </button>
+                        </div>
+                        <div class="card-body text-center">
+                            @if (!empty($informasi_klien) && !empty($informasi_klien->gambar_npwp))
+                            <img src="https://drive.google.com/thumbnail?id={{ $informasi_klien->gambar_npwp }}" alt="NPWP"
+                        class="img-thumbnail me-4" style="max-height: 250px; object-fit: contain;">
+                        @else
+                            <p class="text-muted fst-italic">Belum ada data NPWP.</p>
+                        @endif
+                        </div>
+                    </div>
+                    </div>
+                </div>
+                @endif
+            </div>
 
 {{-- === Modal Edit KTP === --}}
 <div id="modalKTPView" class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modalKTPViewLabel" aria-hidden="true">
@@ -588,18 +587,21 @@
 
               <div class="mb-3">
                 <label for="kode_referal" class="form-label">Kode Referal</label>
-                @if ($user->roles === 'Agent')
-                    {{-- AGENT: tampilkan kode referal + tombol copy --}}
-                    <div class="input-group">
-                        <input type="text" class="form-control text-center fw-bold" value="{{ $informasi_klien->id_agent ?? '' }}" readonly>
-                        <button class="btn btn-outline-primary fw-bold" type="button" onclick="copyShareLink()">Copy Link</button>
-                    </div>
-                    <div class="form-text text-muted">
-                        Bagikan link ini ke calon klien. Mereka akan otomatis terdaftar dengan kode referal Anda.
-                    </div>
-                    <!-- Hidden input untuk copy -->
-                    <input type="hidden" id="share_link" value="{{ url('/register?ref=' . ($informasi_klien->id_agent ?? '')) }}">
-                @else
+                @if (in_array($user->roles, ['Agent', 'Stoker', 'Pengosongan', 'Principal', 'Register']))
+                        {{-- Tampilkan kode referral dan tombol salin untuk berbagai roles --}}
+                        <div class="input-group">
+                            <!-- Menampilkan id_agent berdasarkan id_account -->
+                            <input type="text" class="form-control text-center fw-bold" value="{{ App\Models\Agent::where('id_account', session('id_account'))->first()->id_agent ?? '' }}" readonly>
+                            <button class="btn btn-outline-primary fw-bold" type="button" onclick="copyShareLink()">Copy Link</button>
+                        </div>
+                        <div class="form-text text-muted">
+                            Bagikan link ini ke calon klien. Mereka akan otomatis terdaftar dengan kode referal Anda.
+                        </div>
+                        <!-- Hidden input untuk copy -->
+                        <input type="hidden" id="share_link" value="{{ url('/register?ref=' . App\Models\Agent::where('id_account', session('id_account'))->first()->id_agent ?? '') }}">
+                    @else
+
+
                     @if (empty($user->kode_referal))
                         {{-- USER: Belum ada kode referal, bisa input --}}
                         <div class="input-group">

@@ -182,14 +182,16 @@
                             Session::get('role') === 'Register' ||
                             Session::get('role') === 'Pengosongan' ||
                             Session::get('role') === 'Owner' ||
+                            Session::get('role') === 'Stoker' ||
+                            Session::get('role') === 'Principal' ||
                             Cookie::get('role') === 'Agent' ||
                             Cookie::get('role') === 'Register'
                         )
-                            @if(session('role') === 'Owner')
-                                <a href="{{ route('dashboard.owner') }}"
-                                    class="nav-item nav-link {{ Request::is('dashboard/owner*') ? 'active' : '' }}">
-                                    Dashboard
-                                </a>
+                            @if(in_array(session('role'), ['Owner', 'Principal']))
+                            <a href="{{ route('dashboard.owner') }}"
+                                class="nav-item nav-link {{ Request::is('dashboard/owner*') ? 'active' : '' }}">
+                                Dashboard
+                            </a>
                             @else
                                 <a href="{{ route('dashboard.agent') }}"
                                     class="nav-item nav-link {{ Request::is('dashboard/agent*') ? 'active' : '' }}">
@@ -224,7 +226,7 @@
                         $role = Session::get('role') ?? Cookie::get('role');
                         @endphp
 
-                        @if ($idAccount && in_array($role, ['User', 'Agent', 'Register', 'Owner', 'Pengosongan']))
+                        @if ($idAccount && in_array($role, ['User', 'Agent', 'Register', 'Owner', 'Pengosongan','Stoker','Principal']))
                         <!-- Logged-in User Dropdown -->
                         <ul class="navbar-nav">
                             <li class="nav-item dropdown d-flex align-items-center">
@@ -242,7 +244,7 @@
                                         </a>
                                     </li>
 
-                                    @if (in_array($role, ['Agent', 'Register']))
+                                    @if (in_array($role, ['Agent', 'Register','Stoker','Principal']))
                                         <li>
                                             <a class="dropdown-item {{ Request::is('agent/properties*') ? 'active bg-orange text-white' : '' }}"
                                                 href="{{ route('agent.properties') }}">
@@ -304,6 +306,8 @@
                             @if (
                                 Session::get('role') === 'Agent' ||
                                 Session::get('role') === 'Register' ||
+                                Session::get('role') === 'Principal' ||
+                                Session::get('role') === 'Stoker' ||
                                 Cookie::get('role') === 'Agent' ||
                                 Cookie::get('role') === 'Register'
                             )

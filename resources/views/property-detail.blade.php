@@ -281,18 +281,45 @@
                                             ]);       // fallback ke 'User' kalau kosong
                                         @endphp
                                         @if (!$loggedIn || $role === 'User')
-                                            <!-- Untuk User: tetap tombol WA ke Agent -->
-                                            <a href="{{ $targetAgent && $targetAgent->nomor_telepon
-                                                    ? 'https://wa.me/62' . ltrim($targetAgent->nomor_telepon) . '?text=' . urlencode('Halo ' . $targetAgent->nama . ', saya melihat property "' . $property->lokasi . '" di website. Bisa minta info lebih lengkap tentang property tersebut? Link properti: ' . url('/property-detail/' . $property->id_listing))
-                                                    : '#' }}"
-                                                class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
-                                                style="min-width: 180px;"
-                                                {{ $targetAgent && $targetAgent->nomor_telepon ? '' : 'onclick="return false;"' }}>
-                                                <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
-                                            </a>
+                                        <!-- Untuk User: tetap tombol WA ke Agent -->
+                                        <a href="{{ $targetAgent && $targetAgent->nomor_telepon
+                                                ? 'https://wa.me/62' . ltrim($targetAgent->nomor_telepon) . '?text=' . urlencode('Halo ' . $targetAgent->nama . ', saya melihat property "' . $property->lokasi . '" di website. Bisa minta info lebih lengkap tentang property tersebut? Link properti: ' . url('/property-detail/' . $property->id_listing))
+                                                : '#' }}"
+                                            class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
+                                            style="min-width: 180px;"
+                                            {{ $targetAgent && $targetAgent->nomor_telepon ? '' : 'onclick="return false;"' }}>
+                                            <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
+                                        </a>
+                                    @else
+                                        <!-- Untuk Owner dan Stoker: tombol Hapus Listing -->
+                                        @if(in_array($role, ['Owner', 'Stoker']))
+                                        <a href="javascript:void(0)"
+                                        onclick="submitForm('{{ $property->id_listing }}')"
+                                        class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
+                                        style="min-width: 180px;"
+                                        id="delete-button-{{ $property->id_listing }}">
+                                         <i class="fa fa-trash-alt me-2"></i>Hapus Listing
+                                     </a>
+
+                                     <form id="delete-form-{{ $property->id_listing }}" action="{{ route('listing.delete', $property->id_listing) }}" method="POST" style="display: none;">
+                                         @csrf
+                                         @method('POST')
+                                     </form>
+
+                                     <script>
+                                         function submitForm(id) {
+                                             // Ganti tombol menjadi loading
+                                             let button = document.getElementById('delete-button-' + id);
+                                             button.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i> Loading...';
+                                             button.disabled = true;  // Disable button while loading
+
+                                             // Submit form untuk mengupdate status
+                                             document.getElementById('delete-form-' + id).submit();
+                                         }
+                                     </script>
 
                                         @else
-                                            <!-- Untuk selain User: tombol copy & buka grup -->
+                                            <!-- Untuk selain Owner dan Stoker: tombol Tanyakan Stok -->
                                             <a href="https://chat.whatsapp.com/BRKrMZk2wWJ9rEGV7Oy06V"
                                                 onclick="copyTanyakanStok('{{ $property->id_listing }}', `{{ $property->lokasi }}`, `{{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->translatedFormat('d F Y') }}`, `{{ $propertyUrl }}`)"
                                                 target="_blank"
@@ -300,47 +327,49 @@
                                                 style="min-width: 180px;">
                                                 <i class="fa fa-question-circle me-2"></i>Tanyakan Stok
                                             </a>
+                                        @endif
 
-                                            <script>
-                                                function copyTanyakanStok(id, lokasi, tanggalLelang, urlSumber) {
-                                                  const lines = [
+                                        <script>
+                                            function copyTanyakanStok(id, lokasi, tanggalLelang, urlSumber) {
+                                                const lines = [
                                                     `📍 *${id}*: ${lokasi}`,
                                                     `📅 *Tanggal Lelang*: ${tanggalLelang}`,
                                                     `📢 Mohon update stok please`,
                                                     `🔗 Detail: ${urlSumber}`
-                                                  ];
+                                                ];
 
-                                                  const teks = lines.join("\n");
+                                                const teks = lines.join("\n");
 
-                                                  navigator.clipboard.writeText(teks)
+                                                navigator.clipboard.writeText(teks)
                                                     .then(() => {
-                                                      alert("✅ Pesan berhasil disalin. Tinggal paste di grup WhatsApp.");
+                                                        alert("✅ Pesan berhasil disalin. Tinggal paste di grup WhatsApp.");
                                                     })
                                                     .catch(err => {
-                                                      console.error(err);
-                                                      alert("❌ Gagal menyalin pesan. Browser mungkin memblokir akses clipboard.");
+                                                        console.error(err);
+                                                        alert("❌ Gagal menyalin pesan. Browser mungkin memblokir akses clipboard.");
                                                     });
-                                                }
-                                            </script>
-                                        @endif
+                                            }
+                                        </script>
+                                    @endif
+
 
                                         <!-- Tombol Ikuti / Login atau Tombol Download Gambar -->
-                                        @if ($userId && in_array($userRole, ['User', 'Agent', 'Register', 'Pengosongan', 'Owner']))
-                                        @if ($userRole === 'User')
-                                            <a href="{{ route('property.interest.show', $property->id_listing) }}"
-                                                class="btn btn-dark d-flex align-items-center justify-content-center flex-fill px-3 py-2"
-                                                style="min-width: 180px;">
-                                                <i class="fa fa-calendar-alt me-2"></i>Ikuti Lelang Ini
-                                            </a>
-                                        @else
+                                        @if ($userId && in_array($userRole, ['User', 'Agent', 'Register', 'Pengosongan', 'Owner', 'Stoker', 'Principal']))
+                                            @if ($userRole === 'User')
+                                                <a href="{{ route('property.interest.show', $property->id_listing) }}"
+                                                    class="btn btn-dark d-flex align-items-center justify-content-center flex-fill px-3 py-2"
+                                                    style="min-width: 180px;">
+                                                    <i class="fa fa-calendar-alt me-2"></i>Ikuti Lelang Ini
+                                                </a>
+                                            @else
                                         <!-- Tombol untuk mendownload gambar -->
-                                        @if ($property->gambar)
-                                            <a href="javascript:void(0)" onclick="downloadImages('{{ $property->gambar }}')"
-                                            class="btn btn-dark-blue d-flex align-items-center justify-content-center flex-fill px-3 py-2"
-                                            style="min-width: 180px;">
-                                            <i class="fa fa-download me-2"></i>Download Gambar
-                                            </a>
-                                        @endif
+                                            @if ($property->gambar)
+                                                <a href="javascript:void(0)" onclick="downloadImages('{{ $property->gambar }}')"
+                                                class="btn btn-dark-blue d-flex align-items-center justify-content-center flex-fill px-3 py-2"
+                                                style="min-width: 180px;">
+                                                <i class="fa fa-download me-2"></i>Download Gambar
+                                                </a>
+                                            @endif
 
                                         @endif
                                         @else
@@ -353,33 +382,33 @@
 
                                         <script>
                                             function downloadImages(gambarUrls) {
-    // Pisahkan URL gambar yang dipisahkan oleh koma
-    const urls = gambarUrls.split(',');
+                                            // Pisahkan URL gambar yang dipisahkan oleh koma
+                                            const urls = gambarUrls.split(',');
 
-    // Unduh setiap gambar menggunakan fetch secara paralel
-    const fetchPromises = urls.map(url => {
-        return fetch(url.trim())
-            .then(response => response.blob()) // Mengambil gambar sebagai blob
-            .then(blob => {
-                // Menyimpan gambar sebagai file di sistem pengguna
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob); // Menggunakan URL.createObjectURL untuk menyimpan gambar
-                a.download = ''; // Menandakan bahwa ini adalah file yang dapat diunduh
-                document.body.appendChild(a);
-                a.click(); // Memulai pengunduhan
-                document.body.removeChild(a);
-            });
-    });
+                                            // Unduh setiap gambar menggunakan fetch secara paralel
+                                            const fetchPromises = urls.map(url => {
+                                                return fetch(url.trim())
+                                                    .then(response => response.blob()) // Mengambil gambar sebagai blob
+                                                    .then(blob => {
+                                                        // Menyimpan gambar sebagai file di sistem pengguna
+                                                        const a = document.createElement('a');
+                                                        a.href = URL.createObjectURL(blob); // Menggunakan URL.createObjectURL untuk menyimpan gambar
+                                                        a.download = ''; // Menandakan bahwa ini adalah file yang dapat diunduh
+                                                        document.body.appendChild(a);
+                                                        a.click(); // Memulai pengunduhan
+                                                        document.body.removeChild(a);
+                                                    });
+                                            });
 
-    // Tunggu sampai semua gambar diunduh
-    Promise.all(fetchPromises)
-        .then(() => {
-            console.log("Semua gambar telah diunduh.");
-        })
-        .catch(err => {
-            console.error("Error saat mendownload gambar:", err);
-        });
-}
+                                            // Tunggu sampai semua gambar diunduh
+                                            Promise.all(fetchPromises)
+                                                .then(() => {
+                                                    console.log("Semua gambar telah diunduh.");
+                                                })
+                                                .catch(err => {
+                                                    console.error("Error saat mendownload gambar:", err);
+                                                });
+                                        }
 
                                         </script>
 

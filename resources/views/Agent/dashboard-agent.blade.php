@@ -209,7 +209,285 @@
                                 </div>
                             </div>
                             @endif
-   
+
+                            <!-- Stoker -->
+@if (session('role') === 'Stoker')
+<div class="row">
+    <!-- 3/4 Bagian Kiri: Tabel Properti -->
+    <div class="col-lg-9">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-semibold text-primary">📋 Daftar Properti</h5>
+            </div>
+            <div class="card-body table-responsive">
+                <!-- Tabel Pencarian Properti -->
+                <form method="GET" action="{{ route('dashboard.agent') }}" class="row g-2 p-3 rounded shadow-sm bg-white">
+    {{-- ID Listing --}}
+    <div class="col-12 col-lg-3">
+        <label for="search" class="form-label d-block">Cari ID Listing</label>
+        <input type="text" name="search" id="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Cari ID Listing">
+    </div>
+
+    {{-- Tipe Property --}}
+    <div class="col-6 col-lg-2">
+        <label for="property_type" class="form-label d-block">Tipe Property</label>
+        <select name="property_type" id="property_type" class="form-select form-select-sm">
+            <option value="" {{ request('property_type') ? '' : 'selected' }} disabled>Tipe Property</option>
+            <option value="rumah" @selected(request('property_type') === 'rumah')>Rumah</option>
+            <option value="gudang" @selected(request('property_type') === 'gudang')>Gudang</option>
+            <option value="apartemen" @selected(request('property_type') === 'apartemen')>Apartemen</option>
+            <option value="tanah" @selected(request('property_type') === 'tanah')>Tanah</option>
+            <option value="pabrik" @selected(request('property_type') === 'pabrik')>Pabrik</option>
+            <option value="hotel dan villa" @selected(request('property_type') === 'hotel dan villa')>Hotel dan Villa</option>
+            <option value="ruko" @selected(request('property_type') === 'ruko')>Ruko</option>
+            <option value="sewa" @selected(request('property_type') === 'sewa')>Sewa</option>
+        </select>
+    </div>
+
+    {{-- Provinsi --}}
+    <div class="col-6 col-lg-2">
+        <label for="province-desktop" class="form-label d-block">Pilih Provinsi</label>
+        <select id="province-desktop" name="province" class="form-select form-select-sm">
+            <option disabled {{ request('province') ? '' : 'selected' }}>Pilih Provinsi</option>
+        </select>
+    </div>
+
+    {{-- Kota/Kabupaten --}}
+    <div class="col-6 col-lg-2">
+        <label for="city-desktop" class="form-label d-block">Pilih Kota/Kabupaten</label>
+        <select id="city-desktop" name="city" class="form-select form-select-sm" {{ request('province') ? '' : 'disabled' }}>
+            <option disabled selected>Pilih Kota/Kabupaten</option>
+        </select>
+    </div>
+
+    {{-- Kecamatan --}}
+    <div class="col-6 col-lg-2">
+        <label for="district-desktop" class="form-label d-block">Pilih Kecamatan</label>
+        <select id="district-desktop" name="district" class="form-select form-select-sm" {{ request('city') ? '' : 'disabled' }}>
+            <option disabled selected>Pilih Kecamatan</option>
+        </select>
+    </div>
+
+    {{-- Tombol --}}
+    <div class="col-12 col-lg-1 d-grid">
+        <button type="submit" class="btn btn-dark btn-sm">Search</button>
+    </div>
+</form>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const provinceDesktop = document.getElementById('province-desktop');
+      const cityDesktop     = document.getElementById('city-desktop');
+      const districtDesktop = document.getElementById('district-desktop');
+
+      const provinceMap = new Map(); // Provinsi => Set Kota
+      const locationMap = new Map(); // Provinsi => (Kota => Set Kecamatan)
+
+      // Load data lokasi (file harus ada di public/data/indonesia.json)
+      fetch("{{ asset('data/indonesia.json') }}", { cache: 'no-store' })
+        .then(res => {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        })
+        .then(data => {
+          // Susun struktur data
+          data.forEach(item => {
+            const prov = (item.province || '').trim();
+            const reg  = (item.regency  || '').trim();
+            const dist = (item.district || '').trim();
+            if (!prov || !reg || !dist) return;
+
+            if (!provinceMap.has(prov)) provinceMap.set(prov, new Set());
+            provinceMap.get(prov).add(reg);
+
+            if (!locationMap.has(prov)) locationMap.set(prov, new Map());
+            if (!locationMap.get(prov).has(reg)) locationMap.get(prov).set(reg, new Set());
+            locationMap.get(prov).get(reg).add(dist);
+          });
+
+          // Isi pilihan provinsi
+          for (const prov of provinceMap.keys()) {
+            provinceDesktop.insertAdjacentHTML('beforeend', `<option value="${prov}">${prov}</option>`);
+          }
+
+          // Restore dari query string (opsional)
+          const params = new URLSearchParams(location.search);
+          const savedProv = params.get('province');
+          const savedCity = params.get('city');
+          const savedDist = params.get('district');
+
+          if (savedProv && provinceMap.has(savedProv)) {
+            provinceDesktop.value = savedProv;
+            updateCityDropdown(savedProv, cityDesktop);
+            if (savedCity && provinceMap.get(savedProv).has(savedCity)) {
+              cityDesktop.value = savedCity;
+              cityDesktop.disabled = false;
+              updateDistrictDropdown(savedProv, savedCity);
+              if (savedDist) {
+                districtDesktop.value = savedDist;
+                districtDesktop.disabled = false;
+              }
+            }
+          }
+        })
+        .catch(err => {
+          console.error('Gagal load indonesia.json:', err);
+        });
+
+      // Events
+      provinceDesktop.addEventListener('change', function () {
+        updateCityDropdown(this.value, cityDesktop);
+      });
+
+      cityDesktop.addEventListener('change', function () {
+        updateDistrictDropdown(provinceDesktop.value, this.value);
+      });
+
+      // Helpers
+      function updateCityDropdown(prov, targetCityDropdown) {
+        const citySet = provinceMap.get(prov) || new Set();
+        targetCityDropdown.disabled = false;
+        targetCityDropdown.innerHTML = '<option value="" selected>Pilih Kota/Kabupaten</option>';
+        for (const c of citySet) {
+          targetCityDropdown.insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`);
+        }
+        // Reset kecamatan
+        districtDesktop.disabled = true;
+        districtDesktop.innerHTML = '<option value="" selected>Pilih Kecamatan</option>';
+      }
+
+      function updateDistrictDropdown(prov, selectedCity) {
+        const districtSet = (locationMap.get(prov) && locationMap.get(prov).get(selectedCity)) || new Set();
+        districtDesktop.disabled = false;
+        districtDesktop.innerHTML = '<option value="" selected>Pilih Kecamatan</option>';
+        for (const d of districtSet) {
+          districtDesktop.insertAdjacentHTML('beforeend', `<option value="${d}">${d}</option>`);
+        }
+      }
+    }); // <-- ini yang hilang tadi
+    </script>
+
+                <!-- Tabel Properti -->
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover align-middle text-center">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Lokasi</th>
+                                <th>Luas (m²)</th>
+                                <th>Harga</th>
+                                <th>Gambar</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($properties as $property)
+                                <tr>
+                                    <td>{{ $property->id_listing }}</td>
+                                    <td>{{ $property->lokasi }}</td>
+                                    <td>{{ $property->luas ?? '-' }}</td>
+                                    <td>Rp {{ number_format($property->harga, 0, ',', '.') }}</td>
+                                    <td>
+                                        @php
+                                            $fotoArray = explode(',', $property->gambar);
+                                            $fotoUtama = $fotoArray[0] ?? 'default.jpg';
+                                        @endphp
+                                        <img src="{{ $fotoUtama }}"
+                                             alt="Foto Properti"
+                                             class="img-thumbnail" style="max-width: 80px; max-height: 80px;">
+                                    </td>
+                                    <td>
+                                        <form action="{{ route('listing.deletes', $property->id_listing) }}" method="POST">
+                                            @csrf
+                                            <button type="submit" class="btn btn-warning btn-sm">Tandai Terjual</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="text-center">Tidak ada data ditemukan.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Pagination -->
+                <div class="col-12">
+                    <div class="pagination d-flex justify-content-center mt-4 gap-1 overflow-auto">
+                        {{-- Previous --}}
+                        @if ($properties->onFirstPage())
+                            <a class="btn btn-sm btn-light rounded disabled">&laquo;</a>
+                        @else
+                            <a href="{{ $properties->appends(request()->query())->previousPageUrl() }}" class="btn btn-sm btn-light rounded">&laquo;</a>
+                        @endif
+
+                        {{-- Pages --}}
+                        @php
+                            $currentPage = $properties->currentPage();
+                            $lastPage = $properties->lastPage();
+                            $start = max($currentPage - 2, 1);
+                            $end = min($currentPage + 2, $lastPage);
+                        @endphp
+
+                        @if ($start > 1)
+                            <a href="{{ $properties->appends(request()->query())->url(1) }}" class="btn btn-sm btn-light rounded">1</a>
+                            @if ($start > 2)
+                                <span class="btn btn-sm btn-light rounded disabled">...</span>
+                            @endif
+                        @endif
+
+                        @for ($i = $start; $i <= $end; $i++)
+                            <a href="{{ $properties->appends(request()->query())->url($i) }}" class="btn btn-sm rounded {{ $i === $currentPage ? 'btn-primary text-white' : 'btn-light' }}">
+                                {{ $i }}
+                            </a>
+                        @endfor
+
+                        @if ($end < $lastPage)
+                            @if ($end < $lastPage - 1)
+                                <span class="btn btn-sm btn-light rounded disabled">...</span>
+                            @endif
+                            <a href="{{ $properties->appends(request()->query())->url($lastPage) }}" class="btn btn-sm btn-light rounded">{{ $lastPage }}</a>
+                        @endif
+
+                        {{-- Next --}}
+                        @if ($properties->hasMorePages())
+                            <a href="{{ $properties->appends(request()->query())->nextPageUrl() }}" class="btn btn-sm btn-light rounded">&raquo;</a>
+                        @else
+                            <a class="btn btn-sm btn-light rounded disabled">&raquo;</a>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3">
+        <!-- Riwayat properti, untuk dikembangkan lebih lanjut -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-semibold text-primary">📝 Riwayat Properti</h5>
+            </div>
+            <div class="card-body">
+                @if($soldProperties->isEmpty())
+                    <p class="text-center text-muted">Belum ada riwayat yang ditampilkan.</p>
+                @else
+                    <ul class="list-group list-group-flush">
+                        @foreach($soldProperties as $property)
+                            <li class="list-group-item">
+                                <strong>{{ \Carbon\Carbon::parse($property->tanggal_diupdate)->format('d M Y') }}</strong>
+                                ({{ $property->id_listing }}) terjual
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
+        </div>
+    </div>
+
+
+</div>
+@endif
+
+
                             <!-- REGISTER -->
                             @if (session('role') === 'Register')
                             <div class="card shadow-sm border-0 mb-4">
@@ -284,6 +562,7 @@
                                     </table>
                                 </div>
                             </div>
+
                             @endif
 
                             @if (session('role') === 'Pengosongan')
@@ -414,7 +693,7 @@
 
                                     <!-- KANAN: EVENT 7 HARI KE DEPAN -->
                                     <div class="col-lg-4 d-flex flex-column gap-3">
-                                        
+
                                         <!-- Event 7 Hari -->
                                         <div class="card shadow-sm border-0">
                                             <div class="card-header text-white" style="background-color:#f4511e; color:#fff;">
@@ -760,8 +1039,8 @@
 
                     // Ambil YYYY-MM-DD dari date yang dipencet
                     function formatDateOnly(d){
-                        return d.getFullYear() + "-" + 
-                            String(d.getMonth()+1).padStart(2,'0') + "-" + 
+                        return d.getFullYear() + "-" +
+                            String(d.getMonth()+1).padStart(2,'0') + "-" +
                             String(d.getDate()).padStart(2,'0');
                     }
 
@@ -960,7 +1239,7 @@
                 </div>
             </div>
 
-            
+
 <div class="card shadow-sm border-0 mb-4">
     <div class="row">
         <!-- Line Chart -->
