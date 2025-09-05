@@ -254,7 +254,9 @@ Route::post('/pemilu/{event}/{listing}/pilih', [AgentAdminController::class, 'pi
 Route::post('/pemilu/{event}/join', [AgentAdminController::class, 'join'])->name('pemilu.join');
 Route::get('/pemilu/{event}/state', [AgentAdminController::class, 'state'])->name('pemilu.state'); // polling ringan
 
-Route::post('/property/{id}/delete', [PropertyDetailController::class, 'markAsSold'])->name('listing.delete');
+Route::post('/property/{id}/terjual', [PropertyDetailController::class, 'markAsSold'])
+    ->name('listing.terjual');
+
 Route::post('/property/{id}/delete', [AgentAdminController::class, 'markAsSold'])->name('listing.deletes');
 // Rute untuk menampilkan daftar properti dengan filter pencarian
 Route::get('/properties', [PropertyController::class, 'index'])->name('property.index');

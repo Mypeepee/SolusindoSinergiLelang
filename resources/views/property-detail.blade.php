@@ -301,7 +301,9 @@
                                          <i class="fa fa-trash-alt me-2"></i>Hapus Listing
                                      </a>
 
-                                     <form id="delete-form-{{ $property->id_listing }}" action="{{ route('listing.delete', $property->id_listing) }}" method="POST" style="display: none;">
+                                     <form id="delete-form-{{ $property->id_listing }}"
+                                        action="{{ route('listing.terjual', $property->id_listing) }}"
+                                        method="POST" class="d-inline">
                                          @csrf
                                          @method('POST')
                                      </form>
