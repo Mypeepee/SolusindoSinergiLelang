@@ -30,59 +30,66 @@ class propertylistController extends Controller
 
 public function showproperty(Request $request)
 {
-        // JOIN agent agar dapat nama & picture
-        $query = Property::query()
-        ->leftJoin('agent', 'agent.id_agent', '=', 'property.id_agent')
-        ->select('property.*', 'agent.nama as agent_nama', 'agent.picture as agent_picture');
+    // >>> Hilangkan JOIN, pakai subselect agar bebas ambiguitas
+    $query = Property::query()
+        ->select('property.*')
+        ->addSelect([
+            'agent_nama' => \DB::table('agent')
+                ->select('nama')
+                ->whereColumn('agent.id_agent', 'property.id_agent')
+                ->limit(1),
+            'agent_picture' => \DB::table('agent')
+                ->select('picture')
+                ->whereColumn('agent.id_agent', 'property.id_agent')
+                ->limit(1),
+        ]);
 
     $selectedTags = [];
 
-    // Menambahkan kondisi status = 'Tersedia'
+    // Hanya status Tersedia
     $query->where('property.status', 'Tersedia');
 
     // ============== Keyword dari search bar (q) ==============
     $keyword = trim((string) $request->input('q', ''));
     if ($keyword !== '') {
-        // Deteksi driver untuk LIKE case-insensitive (Postgres pakai ILIKE)
         $likeOp = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
 
         if (preg_match('/^\d+$/', $keyword)) {
             // Semua digit -> cari id_listing (exact)
-            $query->where('id_listing', (int) $keyword);
+            $query->where('property.id_listing', (int) $keyword);
         } else {
             // String -> cari di lokasi (kota/lokasi/provinsi/kecamatan)
             $kw = '%' . $keyword . '%';
             $query->where(function ($q) use ($kw, $likeOp) {
-                $q->where('kota', $likeOp, $kw)
-                  ->orWhere('lokasi', $likeOp, $kw)
-                  ->orWhere('provinsi', $likeOp, $kw)
-                  ->orWhere('kecamatan', $likeOp, $kw);
+                $q->where('property.kota', $likeOp, $kw)
+                  ->orWhere('property.lokasi', $likeOp, $kw)
+                  ->orWhere('property.provinsi', $likeOp, $kw)
+                  ->orWhere('property.kecamatan', $likeOp, $kw);
             });
         }
 
-        // Menambahkan keyword ke selectedTags untuk ditampilkan di alert
         $selectedTags[] = $keyword;
     }
 
     // ============== Harga ==============
     if ($request->filled('min_price')) {
-        $query->where('harga', '>=', str_replace('.', '', $request->min_price));
+        $query->where('property.harga', '>=', str_replace('.', '', $request->min_price));
     }
     if ($request->filled('max_price')) {
-        $query->where('harga', '<=', str_replace('.', '', $request->max_price));
+        $query->where('property.harga', '<=', str_replace('.', '', $request->max_price));
     }
 
     // ============== Luas Tanah (Min–Max) ==============
     if ($request->filled('min_land_size')) {
-        $query->where('luas', '>=', str_replace('.', '', $request->min_land_size));
+        $query->where('property.luas', '>=', str_replace('.', '', $request->min_land_size));
     }
     if ($request->filled('max_land_size')) {
-        $query->where('luas', '<=', str_replace('.', '', $request->max_land_size));
+        $query->where('property.luas', '<=', str_replace('.', '', $request->max_land_size));
     }
 
     // ============== Tipe properti ==============
     if ($request->filled('property_type')) {
-        $query->where('tipe', $request->property_type);
+        $query->where('property.tipe', $request->property_type);
     }
 
     // ============== Ambil tag kota/kecamatan ==============
@@ -98,8 +105,6 @@ public function showproperty(Request $request)
                 $cities[] = trim($tag);
             }
         }
-
-        // Menambahkan tag kota/kecamatan ke selectedTags untuk ditampilkan di alert
         $selectedTags = array_merge($selectedTags, $selectedTagsFromCities);
     }
 
@@ -109,8 +114,8 @@ public function showproperty(Request $request)
         $query->where(function ($q) use ($districts, $likeOp) {
             foreach ($districts as $d) {
                 $q->orWhere(function ($sub) use ($d, $likeOp) {
-                    $sub->where('kota', $likeOp, '%' . $d['city'] . '%')
-                        ->where('kecamatan', $likeOp, '%' . $d['district'] . '%');
+                    $sub->where('property.kota', $likeOp, '%' . $d['city'] . '%')
+                        ->where('property.kecamatan', $likeOp, '%' . $d['district'] . '%');
                 });
             }
         });
@@ -118,25 +123,25 @@ public function showproperty(Request $request)
         $likeOp = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
         $query->where(function ($q) use ($cities, $likeOp) {
             foreach ($cities as $city) {
-                $q->orWhere('kota', $likeOp, '%' . $city . '%');
+                $q->orWhere('property.kota', $likeOp, '%' . $city . '%');
             }
         });
     } elseif ($request->filled('province')) {
         $likeOp = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
         $prov = '%' . $request->province . '%';
         $query->where(function ($q) use ($prov, $likeOp) {
-            $q->where('provinsi', $likeOp, $prov)
-              ->orWhere('lokasi', $likeOp, $prov);
+            $q->where('property.provinsi', $likeOp, $prov)
+              ->orWhere('property.lokasi',   $likeOp, $prov);
         });
     }
 
     // ============== Sorting ==============
     if ($request->sort === 'harga_asc') {
-        $query->orderBy('harga', 'asc');
+        $query->orderBy('property.harga', 'asc');
     } elseif ($request->sort === 'harga_desc') {
-        $query->orderBy('harga', 'desc');
+        $query->orderBy('property.harga', 'desc');
     } else {
-        $query->orderBy('tanggal_dibuat', 'desc');
+        $query->orderBy('property.tanggal_dibuat', 'desc');
     }
 
     // Pagination + bawa semua query string (q, filter, sort, dst.)
@@ -144,6 +149,7 @@ public function showproperty(Request $request)
 
     return view('property-list', compact('properties', 'selectedTags'));
 }
+
 
 
 
