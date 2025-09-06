@@ -124,33 +124,82 @@
 
 <div class="container-fluid">
 
-    <!-- Tabs Utama -->
-    <ul class="nav nav-tabs" id="mainTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="verifikasi-tab" data-bs-toggle="tab" data-bs-target="#verifikasi" type="button" role="tab" aria-controls="verifikasi" aria-selected="true">
-                ✅ Verifikasi
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="progress-tab" data-bs-toggle="tab" data-bs-target="#progress" type="button" role="tab" aria-controls="progress" aria-selected="false">
-                📦 Progress Lelang
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="performance-tab" data-bs-toggle="tab" data-bs-target="#performance" type="button" role="tab" aria-controls="performance" aria-selected="false">
-                📈 Performance
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="calendar-tab" data-bs-toggle="tab" data-bs-target="#calendar" type="button" role="tab" aria-controls="calendar" aria-selected="false">
-                🗓️ Calendar
-            </button>
-        </li>
-    </ul>
+    @php
+    $allowed = ['verifikasi','progress','performance','stoker','calendar'];
+    $tab = request('tab');
+    if (!in_array($tab, $allowed, true)) {
+        $tab = 'verifikasi'; // default benar2 fresh
+    }
+
+    // Kalau tab=stoker tapi TIDAK ada filter Stoker, paksa balik ke verifikasi
+    if ($tab === 'stoker' && !request()->hasAny(['search','property_type','province','city','district'])) {
+        $tab = 'verifikasi';
+    }
+  @endphp
+<script>
+    (function(){
+      const url = new URL(window.location.href);
+      const p = url.searchParams;
+      const hasFilters = ['search','property_type','province','city','district'].some(k => p.has(k));
+      if (p.get('tab') === 'stoker' && !hasFilters) {
+        p.delete('tab');
+        const qs = p.toString();
+        history.replaceState({}, '', url.pathname + (qs ? '?' + qs : ''));
+      }
+    })();
+    </script>
+
+
+  <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {{ $tab==='verifikasi' ? 'active' : '' }}"
+              id="verifikasi-tab" data-bs-toggle="tab" data-bs-target="#verifikasi"
+              type="button" role="tab" aria-controls="verifikasi"
+              aria-selected="{{ $tab==='verifikasi' ? 'true' : 'false' }}">
+        ✅ Verifikasi
+      </button>
+    </li>
+
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {{ $tab==='progress' ? 'active' : '' }}"
+              id="progress-tab" data-bs-toggle="tab" data-bs-target="#progress"
+              type="button" role="tab" aria-controls="progress"
+              aria-selected="{{ $tab==='progress' ? 'true' : 'false' }}">
+        📦 Progress Lelang
+      </button>
+    </li>
+
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {{ $tab==='performance' ? 'active' : '' }}"
+              id="performance-tab" data-bs-toggle="tab" data-bs-target="#performance"
+              type="button" role="tab" aria-controls="performance"
+              aria-selected="{{ $tab==='performance' ? 'true' : 'false' }}">
+        📈 Performance
+      </button>
+    </li>
+
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {{ $tab==='stoker' ? 'active' : '' }}"
+              id="stoker-tab" data-bs-toggle="tab" data-bs-target="#stoker"
+              type="button" role="tab" aria-controls="stoker"
+              aria-selected="{{ $tab==='stoker' ? 'true' : 'false' }}">
+        🏠 Stoker
+      </button>
+    </li>
+
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {{ $tab==='calendar' ? 'active' : '' }}"
+              id="calendar-tab" data-bs-toggle="tab" data-bs-target="#calendar"
+              type="button" role="tab" aria-controls="calendar"
+              aria-selected="{{ $tab==='calendar' ? 'true' : 'false' }}">
+        🗓️ Calendar
+      </button>
+    </li>
+  </ul>
 
     <div class="tab-content mt-3" id="mainTabsContent">
         <!-- Verifikasi -->
-        <div class="tab-pane fade show active" id="verifikasi" role="tabpanel" aria-labelledby="verifikasi-tab">
+        <div class="tab-pane fade {{ $tab==='verifikasi' ? 'show active' : '' }}" id="verifikasi" role="tabpanel" aria-labelledby="verifikasi-tab">
             <!-- Sub Tabs Verifikasi -->
             <ul class="nav nav-pills mb-3" id="verifikasiSubTabs" role="tablist">
                 <li class="nav-item" role="presentation">
@@ -164,6 +213,7 @@
                     </button>
                 </li>
             </ul>
+
             <div class="tab-content" id="verifikasiSubTabsContent">
                 <!-- Client Table -->
                 <div class="tab-pane fade show active" id="verifikasi-client" role="tabpanel" aria-labelledby="verifikasi-client-tab">
@@ -312,7 +362,7 @@
         </div>
 
         <!-- Progress Lelang -->
-        <div class="tab-pane fade" id="progress" role="tabpanel" aria-labelledby="progress-tab">
+        <div class="tab-pane fade {{ $tab==='progress' ? 'show active' : '' }}" id="progress" role="tabpanel" aria-labelledby="progress-tab">
             <!-- Sub Tabs Progress -->
             <ul class="nav nav-pills mb-3" id="progressSubTabs" role="tablist">
                 <li class="nav-item" role="presentation">
@@ -571,113 +621,475 @@
         </div>
 
         <!-- Performance -->
-        <div class="tab-pane fade" id="performance" role="tabpanel" aria-labelledby="performance-tab">
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-semibold text-primary">📊 Performance Agent</h5>
-                </div>
+        @php
+  $ptab = request('ptab', 'agent'); // sub-tab performance
+@endphp
+<div class="tab-pane fade {{ $tab==='performance' ? 'show active' : '' }}" id="performance" role="tabpanel" aria-labelledby="performance-tab">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-semibold text-primary">📊 Performance</h5>
+      </div>
 
-                <div class="card-body">
-                    <!-- Filter Controls -->
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <input type="text" id="filterIdAgent" class="form-control" placeholder="Cari ID Agent">
-                        </div>
-                        <div class="col-md-3">
-                            <input type="text" id="filterNama" class="form-control" placeholder="Cari Nama">
-                        </div>
-                        <div class="col-md-2">
-                            <select id="filterStatus" class="form-select">
-                                <option value="">Semua Status</option>
-                                <option value="Aktif">Aktif</option>
-                                <option value="Nonaktif">Nonaktif</option>
-                                <option value="Pending">Pending</option>
-                            </select>
-                        </div>
+      <div class="card-body">
+        <!-- Sub Tabs Performance -->
+        <ul class="nav nav-pills mb-3" id="performanceSubTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link {{ $ptab==='agent' ? 'active' : '' }}"
+                    id="performance-agent-tab"
+                    data-bs-toggle="pill"
+                    data-bs-target="#performance-agent"
+                    type="button" role="tab"
+                    aria-controls="performance-agent"
+                    aria-selected="{{ $ptab==='agent' ? 'true' : 'false' }}">
+              🧑‍💼 Agent
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link {{ $ptab==='client' ? 'active' : '' }}"
+                    id="performance-client-tab"
+                    data-bs-toggle="pill"
+                    data-bs-target="#performance-client"
+                    type="button" role="tab"
+                    aria-controls="performance-client"
+                    aria-selected="{{ $ptab==='client' ? 'true' : 'false' }}">
+              👤 Client
+            </button>
+          </li>
+        </ul>
 
-                        <!-- 3 Dropdown Sort -->
-                        <div class="col-md-4 d-flex gap-2">
-                            <select id="sortListing" class="form-select">
-                                <option value="">Sort Listing</option>
-                                <option value="asc">Low → High</option>
-                                <option value="desc">High → Low</option>
-                            </select>
-                            <select id="sortPenjualan" class="form-select">
-                                <option value="">Sort Penjualan</option>
-                                <option value="asc">Low → High</option>
-                                <option value="desc">High → Low</option>
-                            </select>
-                            <select id="sortKomisi" class="form-select">
-                                <option value="">Sort Komisi</option>
-                                <option value="asc">Low → High</option>
-                                <option value="desc">High → Low</option>
-                            </select>
-                        </div>
-                    </div>
+        <div class="tab-content" id="performanceSubTabsContent">
 
-                    <!-- Tabel -->
-                    <div class="table-responsive">
-                        <table class="table align-middle table-hover" id="performanceTable">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>#</th>
-                                    <th>ID Agent</th>
-                                    <th>Nama</th>
-                                    <th>Status</th>
-                                    <th>Ikut Pemilu</th>
-                                    <th>Jumlah Listing</th>
-                                    <th>Jumlah Penjualan</th>
-                                    <th>Total Komisi</th>
-                                    <th>Referral Click</th>
-                                </tr>
-                            </thead>
-                            <tbody id="performanceBody">
-                                @forelse ($performanceAgents as $index => $agent)
-                                <tr>
-                                    <td>{{ $index + 1 }}</td>
-                                    <td class="agent-id">{{ $agent->id_agent }}</td>
-                                    <td class="agent-nama">{{ $agent->nama }}</td>
-                                    <td class="agent-status">
-                                        @if ($agent->status === 'Aktif')
-                                            <span class="badge bg-success">Aktif</span>
-                                        @else
-                                            <span class="badge bg-secondary">{{ $agent->status }}</span>
-                                        @endif
-                                    </td>
+          {{-- ========== Performance - Agent (konten lama kamu dipindah ke sini) ========== --}}
+          <div class="tab-pane fade {{ $ptab==='agent' ? 'show active' : '' }}" id="performance-agent" role="tabpanel" aria-labelledby="performance-agent-tab">
 
-                                    {{-- NEW: Ikut Pemilu (ambil dari event_invites terbaru per agent) --}}
-                                    <td class="agent-ikut-pemilu">
-                                        <span class="badge bg-primary">{{ (int) ($agent->ikut_pemilu ?? 0) }}</span>
-                                    </td>
-
-
-                                    <td class="agent-listing">{{ $agent->jumlah_listing }}</td>
-                                    <td class="agent-penjualan">{{ $agent->jumlah_penjualan }}</td>
-                                    <td class="agent-komisi" data-komisi="{{ $agent->total_komisi ?? 0 }}">
-                                        Rp {{ number_format($agent->total_komisi ?? 0, 0, ',', '.') }}
-                                    </td>
-
-                                    {{-- NEW: Share Listing (placeholder; implementasi di step berikutnya) --}}
-                                    <td class="agent-share-listing text-center">
-                                        {{ (int) ($agent->share_listing ?? 0) }}  {{-- total klik referral --}}
-                                    </td>
-                                </tr>
-                                @empty
-                                <tr>
-                                    <td colspan="9" class="text-center text-muted py-4">
-                                        Tidak ada data agent tersedia saat ini.
-                                    </td>
-                                </tr>
-                                @endforelse
-
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+            {{-- Filter Controls (tetap) --}}
+            <div class="row mb-3">
+              <div class="col-md-3">
+                <input type="text" id="filterIdAgent" class="form-control" placeholder="Cari ID Agent">
+              </div>
+              <div class="col-md-3">
+                <input type="text" id="filterNama" class="form-control" placeholder="Cari Nama">
+              </div>
+              <div class="col-md-2">
+                <select id="filterStatus" class="form-select">
+                  <option value="">Semua Status</option>
+                  <option value="Aktif">Aktif</option>
+                  <option value="Nonaktif">Nonaktif</option>
+                  <option value="Pending">Pending</option>
+                </select>
+              </div>
+              <div class="col-md-4 d-flex gap-2">
+                <select id="sortListing" class="form-select">
+                  <option value="">Sort Listing</option>
+                  <option value="asc">Low → High</option>
+                  <option value="desc">High → Low</option>
+                </select>
+                <select id="sortPenjualan" class="form-select">
+                  <option value="">Sort Penjualan</option>
+                  <option value="asc">Low → High</option>
+                  <option value="desc">High → Low</option>
+                </select>
+                <select id="sortKomisi" class="form-select">
+                  <option value="">Sort Komisi</option>
+                  <option value="asc">Low → High</option>
+                  <option value="desc">High → Low</option>
+                </select>
+              </div>
             </div>
+
+            <div class="table-responsive">
+              <table class="table align-middle table-hover" id="performanceTable">
+                <thead class="table-light">
+                  <tr>
+                    <th>#</th>
+                    <th>ID Agent</th>
+                    <th>Nama</th>
+                    <th>Status</th>
+                    <th>Ikut Pemilu</th>
+                    <th>Jumlah Listing</th>
+                    <th>Jumlah Penjualan</th>
+                    <th>Total Komisi</th>
+                    <th>Referral Click</th>
+                  </tr>
+                </thead>
+                <tbody id="performanceBody">
+                  @forelse ($performanceAgents as $index => $agent)
+                    <tr>
+                      <td>{{ $index + 1 }}</td>
+                      <td class="agent-id">{{ $agent->id_agent }}</td>
+                      <td class="agent-nama">{{ $agent->nama }}</td>
+                      <td class="agent-status">
+                        @if ($agent->status === 'Aktif')
+                          <span class="badge bg-success">Aktif</span>
+                        @else
+                          <span class="badge bg-secondary">{{ $agent->status }}</span>
+                        @endif
+                      </td>
+                      <td class="agent-ikut-pemilu">
+                        <span class="badge bg-primary">{{ (int) ($agent->ikut_pemilu ?? 0) }}</span>
+                      </td>
+                      <td class="agent-listing">{{ $agent->jumlah_listing }}</td>
+                      <td class="agent-penjualan">{{ $agent->jumlah_penjualan }}</td>
+                      <td class="agent-komisi" data-komisi="{{ $agent->total_komisi ?? 0 }}">
+                        Rp {{ number_format($agent->total_komisi ?? 0, 0, ',', '.') }}
+                      </td>
+                      <td class="agent-share-listing text-center">
+                        {{ (int) ($agent->share_listing ?? 0) }}
+                      </td>
+                    </tr>
+                  @empty
+                    <tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data agent.</td></tr>
+                  @endforelse
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {{-- ========== /Performance - Agent ========== --}}
+
+          {{-- ========== Performance - Client (baru) ========== --}}
+          <div class="tab-pane fade {{ $ptab==='client' ? 'show active' : '' }}" id="performance-client" role="tabpanel" aria-labelledby="performance-client-tab">
+            <div class="table-responsive">
+                <table class="table align-middle table-hover">
+                    <thead class="table-light">
+                      <tr>
+                        <th>#</th>
+                        <th>ID Account</th>
+                        <th>Nama</th>
+                        <th>Referral (Nama Agent)</th>
+                        <th>Kota</th>
+                        <th>Pekerjaan</th>
+                        {{-- <th>Status</th> --}}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @forelse($performanceClients as $i => $c)
+                        <tr>
+                          <td>{{ $i + 1 }}</td>
+                          <td><span class="badge bg-light text-dark">{{ $c->id_account }}</span></td>
+                          <td>{{ $c->nama }}</td>
+                          <td>{{ $c->nama_agent }}</td>
+                          <td>{{ $c->kota }}</td>
+                          <td>{{ $c->pekerjaan ?? '-' }}</td>
+                          {{-- <td>
+                            @php
+                              $status = $c->status_verifikasi ?? '-';
+                              $map = [
+                                'Pending' => 'warning',
+                                'Verified' => 'success',
+                                'Ditolak' => 'danger',
+                              ];
+                              $cls = $map[$status] ?? 'secondary';
+                            @endphp
+                            <span class="badge bg-{{ $cls }}">{{ $status }}</span>
+                          </td> --}}
+                        </tr>
+                      @empty
+                        <tr><td colspan="7" class="text-center text-muted py-4">Tidak ada data client.</td></tr>
+                      @endforelse
+                    </tbody>
+                  </table>
+
+            </div>
+          </div>
+          {{-- ========== /Performance - Client ========== --}}
+
         </div>
+      </div>
+    </div>
+  </div>
+
+        {{-- ========== Stoker ========== --}}
+        <div class="tab-pane fade {{ $tab==='stoker' ? 'show active' : '' }}" id="stoker" role="tabpanel" aria-labelledby="stoker-tab">
+
+            <div class="row">
+                <!-- 3/4 Bagian Kiri: Tabel Properti -->
+                <div class="col-lg-9">
+                  <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                      <h5 class="mb-0 fw-semibold text-primary">📋 Daftar Properti</h5>
+                    </div>
+                    <div class="card-body table-responsive">
+
+                      <!-- Form Pencarian (kirim ke owner, tapi pertahankan tab=stoker) -->
+                      <form method="GET" action="{{ route('dashboard.owner') }}" class="row g-2 p-3 rounded shadow-sm bg-white">
+                        <input type="hidden" name="tab" value="stoker" />
+                        {{-- ID Listing --}}
+                        <div class="col-12 col-lg-3">
+                          <label for="search" class="form-label d-block">Cari ID Listing</label>
+                          <input type="text" name="search" id="search" value="{{ request('search') }}"
+                                 class="form-control form-control-sm" placeholder="Cari ID Listing">
+                        </div>
+
+                        {{-- Tipe Property --}}
+                        <div class="col-6 col-lg-2">
+                          <label for="property_type" class="form-label d-block">Tipe Property</label>
+                          <select name="property_type" id="property_type" class="form-select form-select-sm">
+                            <option value="" {{ request('property_type') ? '' : 'selected' }} disabled>Tipe Property</option>
+                            <option value="rumah" @selected(request('property_type') === 'rumah')>Rumah</option>
+                            <option value="gudang" @selected(request('property_type') === 'gudang')>Gudang</option>
+                            <option value="apartemen" @selected(request('property_type') === 'apartemen')>Apartemen</option>
+                            <option value="tanah" @selected(request('property_type') === 'tanah')>Tanah</option>
+                            <option value="pabrik" @selected(request('property_type') === 'pabrik')>Pabrik</option>
+                            <option value="hotel dan villa" @selected(request('property_type') === 'hotel dan villa')>Hotel dan Villa</option>
+                            <option value="ruko" @selected(request('property_type') === 'ruko')>Ruko</option>
+                            <option value="toko" @selected(request('property_type') === 'toko')>Toko</option>
+                            <option value="lain-lain" @selected(request('property_type') === 'lain-lain')>Lainnya</option>
+                          </select>
+                        </div>
+
+                        {{-- Provinsi --}}
+                        <div class="col-6 col-lg-2">
+                          <label for="province-desktop" class="form-label d-block">Pilih Provinsi</label>
+                          <select id="province-desktop" name="province" class="form-select form-select-sm">
+                            <option disabled {{ request('province') ? '' : 'selected' }}>Pilih Provinsi</option>
+                          </select>
+                        </div>
+
+                        {{-- Kota/Kabupaten --}}
+                        <div class="col-6 col-lg-2">
+                          <label for="city-desktop" class="form-label d-block">Pilih Kota/Kabupaten</label>
+                          <select id="city-desktop" name="city" class="form-select form-select-sm" {{ request('province') ? '' : 'disabled' }}>
+                            <option disabled selected>Pilih Kota/Kabupaten</option>
+                          </select>
+                        </div>
+
+                        {{-- Kecamatan --}}
+                        <div class="col-6 col-lg-2">
+                          <label for="district-desktop" class="form-label d-block">Pilih Kecamatan</label>
+                          <select id="district-desktop" name="district" class="form-select form-select-sm" {{ request('city') ? '' : 'disabled' }}>
+                            <option disabled selected>Pilih Kecamatan</option>
+                          </select>
+                        </div>
+
+                        {{-- Tombol --}}
+                        <div class="col-12 col-lg-1 d-grid">
+                          <button type="submit" class="btn btn-dark btn-sm">Search</button>
+                        </div>
+                      </form>
+
+                      {{-- Script lokasi (biarkan sesuai punyamu) --}}
+                      <script>
+                        document.addEventListener('DOMContentLoaded', function () {
+                          const provinceDesktop = document.getElementById('province-desktop');
+                          const cityDesktop     = document.getElementById('city-desktop');
+                          const districtDesktop = document.getElementById('district-desktop');
+
+                          const provinceMap = new Map(); // Provinsi => Set Kota
+                          const locationMap = new Map(); // Provinsi => (Kota => Set Kecamatan)
+
+                          // Load data lokasi (file harus ada di public/data/indonesia.json)
+                          fetch("{{ asset('data/indonesia.json') }}", { cache: 'no-store' })
+                            .then(res => {
+                              if (!res.ok) throw new Error('HTTP ' + res.status);
+                              return res.json();
+                            })
+                            .then(data => {
+                              // Susun struktur data
+                              data.forEach(item => {
+                                const prov = (item.province || '').trim();
+                                const reg  = (item.regency  || '').trim();
+                                const dist = (item.district || '').trim();
+                                if (!prov || !reg || !dist) return;
+
+                                if (!provinceMap.has(prov)) provinceMap.set(prov, new Set());
+                                provinceMap.get(prov).add(reg);
+
+                                if (!locationMap.has(prov)) locationMap.set(prov, new Map());
+                                if (!locationMap.get(prov).has(reg)) locationMap.get(prov).set(reg, new Set());
+                                locationMap.get(prov).get(reg).add(dist);
+                              });
+
+                              // Isi pilihan provinsi
+                              for (const prov of provinceMap.keys()) {
+                                provinceDesktop.insertAdjacentHTML('beforeend', `<option value="${prov}">${prov}</option>`);
+                              }
+
+                              // Restore dari query string (opsional)
+                              const params = new URLSearchParams(location.search);
+                              const savedProv = params.get('province');
+                              const savedCity = params.get('city');
+                              const savedDist = params.get('district');
+
+                              if (savedProv && provinceMap.has(savedProv)) {
+                                provinceDesktop.value = savedProv;
+                                updateCityDropdown(savedProv, cityDesktop);
+                                if (savedCity && provinceMap.get(savedProv).has(savedCity)) {
+                                  cityDesktop.value = savedCity;
+                                  cityDesktop.disabled = false;
+                                  updateDistrictDropdown(savedProv, savedCity);
+                                  if (savedDist) {
+                                    districtDesktop.value = savedDist;
+                                    districtDesktop.disabled = false;
+                                  }
+                                }
+                              }
+                            })
+                            .catch(err => {
+                              console.error('Gagal load indonesia.json:', err);
+                            });
+
+                          // Events
+                          provinceDesktop.addEventListener('change', function () {
+                            updateCityDropdown(this.value, cityDesktop);
+                          });
+
+                          cityDesktop.addEventListener('change', function () {
+                            updateDistrictDropdown(provinceDesktop.value, this.value);
+                          });
+
+                          // Helpers
+                          function updateCityDropdown(prov, targetCityDropdown) {
+                            const citySet = provinceMap.get(prov) || new Set();
+                            targetCityDropdown.disabled = false;
+                            targetCityDropdown.innerHTML = '<option value="" selected>Pilih Kota/Kabupaten</option>';
+                            for (const c of citySet) {
+                              targetCityDropdown.insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`);
+                            }
+                            // Reset kecamatan
+                            districtDesktop.disabled = true;
+                            districtDesktop.innerHTML = '<option value="" selected>Pilih Kecamatan</option>';
+                          }
+
+                          function updateDistrictDropdown(prov, selectedCity) {
+                            const districtSet = (locationMap.get(prov) && locationMap.get(prov).get(selectedCity)) || new Set();
+                            districtDesktop.disabled = false;
+                            districtDesktop.innerHTML = '<option value="" selected>Pilih Kecamatan</option>';
+                            for (const d of districtSet) {
+                              districtDesktop.insertAdjacentHTML('beforeend', `<option value="${d}">${d}</option>`);
+                            }
+                          }
+                        }); // <-- ini yang hilang tadi
+                        </script>
+
+                      <!-- Tabel Properti -->
+                      <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle text-center">
+                          <thead class="table-light">
+                            <tr>
+                              <th>ID</th>
+                              <th>Lokasi</th>
+                              <th>Luas (m²)</th>
+                              <th>Harga</th>
+                              <th>Gambar</th>
+                              <th>Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                          @forelse($stokerProperties as $property)
+                            <tr>
+                              <td>{{ $property->id_listing }}</td>
+                              <td>{{ $property->lokasi }}</td>
+                              <td>{{ $property->luas ?? '-' }}</td>
+                              <td>Rp {{ number_format($property->harga, 0, ',', '.') }}</td>
+                              <td>
+                                @php
+                                  $fotoArray = explode(',', $property->gambar);
+                                  $fotoUtama = trim($fotoArray[0] ?? 'default.jpg');
+                                @endphp
+                                <img src="{{ $fotoUtama }}" alt="Foto Properti"
+                                     class="img-thumbnail" style="max-width: 80px; max-height: 80px;">
+                              </td>
+                              <td>
+                                <form action="{{ route('listing.deletes', $property->id_listing) }}" method="POST" onsubmit="return confirm('Tandai listing ini sebagai Terjual?');">
+                                    @csrf
+                                    <input type="hidden" name="redirect" value="{{ request()->fullUrlWithQuery(['tab' => 'stoker']) }}">
+                                    <button type="submit" class="btn btn-warning btn-sm" {{ $property->status === 'Terjual' ? 'disabled' : '' }}>
+                                      Tandai Terjual
+                                    </button>
+                                  </form>
+                              </td>
+                            </tr>
+                          @empty
+                            <tr>
+                              <td colspan="6" class="text-center">Tidak ada data ditemukan.</td>
+                            </tr>
+                          @endforelse
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <!-- Pagination -->
+                      <div class="col-12">
+                        <div class="pagination d-flex justify-content-center mt-4 gap-1 overflow-auto">
+                          @php
+                            $currentPage = $stokerProperties->currentPage();
+                            $lastPage = $stokerProperties->lastPage();
+                            $start = max($currentPage - 2, 1);
+                            $end = min($currentPage + 2, $lastPage);
+                          @endphp
+
+                          {{-- Previous --}}
+                          @if ($stokerProperties->onFirstPage())
+                            <a class="btn btn-sm btn-light rounded disabled">&laquo;</a>
+                          @else
+                            <a href="{{ $stokerProperties->appends(request()->query())->previousPageUrl() }}" class="btn btn-sm btn-light rounded">&laquo;</a>
+                          @endif
+
+                          {{-- Pages --}}
+                          @if ($start > 1)
+                            <a href="{{ $stokerProperties->appends(request()->query())->url(1) }}" class="btn btn-sm btn-light rounded">1</a>
+                            @if ($start > 2)
+                              <span class="btn btn-sm btn-light rounded disabled">...</span>
+                            @endif
+                          @endif
+
+                          @for ($i = $start; $i <= $end; $i++)
+                            <a href="{{ $stokerProperties->appends(request()->query())->url($i) }}"
+                               class="btn btn-sm rounded {{ $i === $currentPage ? 'btn-primary text-white' : 'btn-light' }}">
+                              {{ $i }}
+                            </a>
+                          @endfor
+
+                          @if ($end < $lastPage)
+                            @if ($end < $lastPage - 1)
+                              <span class="btn btn-sm btn-light rounded disabled">...</span>
+                            @endif
+                            <a href="{{ $stokerProperties->appends(request()->query())->url($lastPage) }}" class="btn btn-sm btn-light rounded">{{ $lastPage }}</a>
+                          @endif
+
+                          {{-- Next --}}
+                          @if ($stokerProperties->hasMorePages())
+                            <a href="{{ $stokerProperties->appends(request()->query())->nextPageUrl() }}" class="btn btn-sm btn-light rounded">&raquo;</a>
+                          @else
+                            <a class="btn btn-sm btn-light rounded disabled">&raquo;</a>
+                          @endif
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 1/4 Bagian Kanan: Riwayat -->
+                <div class="col-lg-3">
+                    <!-- Riwayat properti, untuk dikembangkan lebih lanjut -->
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0 fw-semibold text-primary">📝 Riwayat Properti</h5>
+                        </div>
+                        <div class="card-body">
+                            @if($soldProperties->isEmpty())
+                                <p class="text-center text-muted">Belum ada riwayat yang ditampilkan.</p>
+                            @else
+                            <ul class="list-group list-group-flush small" style="max-height: 360px; overflow:auto;">
+                                @foreach($soldProperties as $property)
+                                    <li class="list-group-item">
+                                        <strong>{{ \Carbon\Carbon::parse($property->tanggal_diupdate)->format('d M Y') }}</strong>
+                                        ({{ $property->id_listing }}) terjual
+                                    </li>
+                                @endforeach
+                            </ul>
+
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div> {{-- /row --}}
+
+        </div> {{-- /tab-pane stoker --}}
+
         <!-- Calendar -->
-        <div class="tab-pane fade" id="calendar" role="tabpanel" aria-labelledby="calendar-tab">
+        <div class="tab-pane fade {{ $tab==='calendar' ? 'show active' : '' }}" id="calendar" role="tabpanel" aria-labelledby="calendar-tab">
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center gap-2">

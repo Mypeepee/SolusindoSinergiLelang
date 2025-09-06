@@ -5,7 +5,7 @@ use App\Models\Agent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class propertyagentController extends Controller
 {
@@ -24,26 +24,38 @@ class propertyagentController extends Controller
 
     public function showPropertyAgent(Request $request)
 {
-    // Ambil semua agent yang status-nya 'Aktif'
+    // daftar agent (untuk grid/selector) – ambil field yang dipakai di blade
     $agents = DB::table('agent')
-        ->where('status', 'Aktif') // Filter hanya agent aktif
+        ->where('status', 'Aktif')
+        ->select('id_agent', 'nama', 'picture')
+        ->orderBy('nama')
         ->get();
 
-    $properties = [];
     $selectedAgent = null;
 
-    // Jika ada agent_id di query, ambil property milik agent itu
+    // default: paginator kosong biar blade yang expect paginator tetap aman
+    $properties = new LengthAwarePaginator([], 0, 18, 1);
+
     if ($request->filled('agent_id')) {
+        // pastikan agent valid + aktif
         $selectedAgent = DB::table('agent')
             ->where('id_agent', $request->agent_id)
-            ->where('status', 'Aktif') // Pastikan agent yang dipilih juga aktif
+            ->where('status', 'Aktif')
             ->first();
 
         if ($selectedAgent) {
             $properties = DB::table('property')
-                ->where('id_agent', $selectedAgent->id_agent)
-                ->where('status', 'Tersedia')
-                ->paginate(12);
+                ->leftJoin('agent', 'agent.id_agent', '=', 'property.id_agent')
+                ->where('property.id_agent', $selectedAgent->id_agent)
+                ->where('property.status', 'Tersedia') // prefix table!
+                ->select(
+                    'property.*',
+                    'agent.nama as agent_nama',
+                    'agent.picture as agent_picture'
+                )
+                ->orderByDesc('property.tanggal_dibuat')
+                ->paginate(18)
+                ->appends($request->query());
         }
     }
 

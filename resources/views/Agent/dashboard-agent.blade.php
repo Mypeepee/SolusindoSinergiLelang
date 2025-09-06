@@ -240,7 +240,8 @@
             <option value="pabrik" @selected(request('property_type') === 'pabrik')>Pabrik</option>
             <option value="hotel dan villa" @selected(request('property_type') === 'hotel dan villa')>Hotel dan Villa</option>
             <option value="ruko" @selected(request('property_type') === 'ruko')>Ruko</option>
-            <option value="sewa" @selected(request('property_type') === 'sewa')>Sewa</option>
+            <option value="toko" @selected(request('property_type') === 'toko')>Toko</option>
+            <option value="lain-lain" @selected(request('property_type') === 'lain-lain')>Lain-lain</option>
         </select>
     </div>
 
@@ -396,10 +397,11 @@
                                              class="img-thumbnail" style="max-width: 80px; max-height: 80px;">
                                     </td>
                                     <td>
-                                        <form action="{{ route('listing.deletes', $property->id_listing) }}" method="POST">
+                                        <form action="{{ route('listing.deletes', $property->id_listing) }}" method="POST" onsubmit="return confirm('Tandai listing ini sebagai Terjual?');">
                                             @csrf
+                                            <input type="hidden" name="redirect" value="{{ url()->full() }}">
                                             <button type="submit" class="btn btn-warning btn-sm">Tandai Terjual</button>
-                                        </form>
+                                          </form>
                                     </td>
                                 </tr>
                             @empty
@@ -470,14 +472,15 @@
                 @if($soldProperties->isEmpty())
                     <p class="text-center text-muted">Belum ada riwayat yang ditampilkan.</p>
                 @else
-                    <ul class="list-group list-group-flush">
-                        @foreach($soldProperties as $property)
-                            <li class="list-group-item">
-                                <strong>{{ \Carbon\Carbon::parse($property->tanggal_diupdate)->format('d M Y') }}</strong>
-                                ({{ $property->id_listing }}) terjual
-                            </li>
-                        @endforeach
-                    </ul>
+                <ul class="list-group list-group-flush small" style="max-height: 360px; overflow:auto;">
+                    @foreach($soldProperties as $property)
+                        <li class="list-group-item">
+                            <strong>{{ \Carbon\Carbon::parse($property->tanggal_diupdate)->format('d M Y') }}</strong>
+                            ({{ $property->id_listing }}) terjual
+                        </li>
+                    @endforeach
+                </ul>
+
                 @endif
             </div>
         </div>

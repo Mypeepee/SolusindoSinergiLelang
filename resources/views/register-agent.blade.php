@@ -470,6 +470,14 @@
                     </div>
                 </div>
             </form>
+
+<script>
+    document.getElementById('register-agent-form')?.addEventListener('submit', () => {
+      const url = new URL(window.location.href);
+      url.searchParams.set('scroll', 'agent-status-box');
+      history.replaceState({}, '', url); // pastikan Referer mengandung ?scroll=...
+    });
+  </script>
             <script>
                 document.getElementById('agentForm').addEventListener('submit', function(e) {
                     let valid = true;

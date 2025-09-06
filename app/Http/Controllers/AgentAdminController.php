@@ -22,21 +22,21 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class AgentAdminController extends Controller
 {
     private int $intervalSeconds = 300;
-    public function markAsSold($id)
-    {
-        // Cari properti berdasarkan ID
-        $property = Property::findOrFail($id);
+    public function markAsSold(Request $request, $id)
+{
+    $property = Property::findOrFail($id);
 
-        // Pastikan statusnya adalah 'Tersedia' sebelum mengubahnya
-        if ($property->status == 'Tersedia') {
-            $property->status = 'Terjual';
-            $property->tanggal_diupdate = Carbon::now(); // Mengubah kolom tanggal_diupdate menjadi waktu saat ini
-            $property->save();
-        }
-
-        // Redirect ke halaman properti
-        return redirect()->route('dashboard.agent')->with('status', 'Properti berhasil diubah menjadi Terjual');
+    if (strcasecmp($property->status, 'Tersedia') === 0) {
+        $property->status = 'Terjual';
+        $property->tanggal_diupdate = Carbon::now();
+        $property->save();
     }
+
+    // Kembali ke URL asal (beserta query & tab)
+    $to = $request->input('redirect') ?: url()->previous();
+
+    return redirect()->to($to)->with('status', 'Properti berhasil diubah menjadi Terjual');
+}
     public function index()
     {
         $idAccount = session('id_account');
@@ -170,26 +170,22 @@ class AgentAdminController extends Controller
         }
 
         // **Penambahan untuk Stoker**
-    if ($role === 'Stoker') {
-        $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar', 'status')
-        ->when(request()->get('search'), function ($query, $search) {
-            return $query->where('id_listing', (int) $search);
-        })
-        ->when(request()->get('property_type'), function ($query, $propertyType) {
-            return $query->whereRaw('LOWER(tipe) = ?', [strtolower($propertyType)]);
-        })
-        ->when(request()->get('province'), function ($query, $province) {
-            return $query->where('provinsi', $province);
-        })
-        ->when(request()->get('city'), function ($query, $city) {
-            return $query->where('kota', $city);
-        })
-        ->when(request()->get('district'), function ($query, $district) {
-            return $query->where('kecamatan', $district);
-        })
-        ->paginate(10)
-        ->appends(request()->only(['search', 'property_type', 'province', 'city', 'district']));
-    }
+        if ($role === 'Stoker') {
+            $properties = Property::select('id_listing','lokasi','luas','harga','gambar','status')
+                ->where('status', 'Tersedia')
+                ->when(request()->get('search'), function ($query, $search) {
+                    return $query->where('id_listing', (int) $search);
+                })
+                ->when(request()->get('property_type'), function ($query, $propertyType) {
+                    return $query->whereRaw('LOWER(tipe) = ?', [strtolower($propertyType)]);
+                })
+                ->when(request()->get('province'), fn($q,$v) => $q->where('provinsi', $v))
+                ->when(request()->get('city'), fn($q,$v) => $q->where('kota', $v))
+                ->when(request()->get('district'), fn($q,$v) => $q->where('kecamatan', $v))
+                ->paginate(15)
+                ->appends(request()->only(['search','property_type','province','city','district']));
+        }
+
     // Fetch sold properties with update history
     $soldProperties = DB::table('property')
     ->where('status', 'Terjual') // Only fetch sold properties
@@ -797,6 +793,30 @@ $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar'
         ->orderBy('transaction.tanggal_diupdate', 'asc')
         ->get();
 
+        // ---------- BLOK STOKER (SELALU DISIAPKAN, TIDAK TERGANTUNG ROLE) ----------
+        $stokerProperties = Property::select('id_listing','lokasi','luas','harga','gambar','status','tipe','provinsi','kota','kecamatan')
+        ->whereRaw('LOWER(status) = ?', ['tersedia'])
+        ->when(request('search'), function ($query, $search) {
+            return is_numeric($search)
+                ? $query->where('id_listing', (int)$search)
+                : $query->whereRaw('1=0');
+        })
+        ->when(request('property_type'), fn($q,$v) => $q->whereRaw('LOWER(tipe)=?', [strtolower($v)]))
+        ->when(request('province'), fn($q,$v) => $q->where('provinsi', $v))
+        ->when(request('city'), fn($q,$v) => $q->where('kota', $v))
+        ->when(request('district'), fn($q,$v) => $q->where('kecamatan', $v))
+        ->orderByDesc('id_listing')
+        ->paginate(10)
+        ->appends(array_merge(request()->only(['search','property_type','province','city','district']), ['tab'=>'stoker']));
+
+
+$soldProperties = DB::table('property')
+    ->where('status', 'Terjual')
+    ->orderBy('tanggal_diupdate', 'desc')
+    ->select('id_listing', 'lokasi', 'tanggal_diupdate')
+    ->limit(15)
+    ->get();
+
         // Aggregate: jumlah "Hadir" per account
 // 1) Ikut Pemilu: jumlah "Hadir" per account
 $eiStats = DB::table('event_invites')
@@ -864,6 +884,24 @@ $performanceAgents = DB::table('agent')
             ->orderByRaw("DATE_TRUNC('month', tanggal_dibuat)")
             ->get();
 
+            $performanceClients = DB::table('account')
+    ->leftJoin('informasi_klien as ik', 'ik.id_account', '=', 'account.id_account')
+    ->leftJoin('agent', 'agent.id_agent', '=', 'account.kode_referal')
+    ->where('account.roles', 'User') // ⬅️ hanya akun ber-role User
+    ->select(
+        'account.id_account',
+        'account.nama',
+        'account.kode_referal',
+        DB::raw("COALESCE(agent.nama, '-') AS nama_agent"),
+        DB::raw("COALESCE(account.kota, '-') AS kota"),
+        'ik.pekerjaan',
+        'ik.status_verifikasi'
+    )
+    ->orderBy('account.id_account')
+    ->get();
+
+
+
         $labels = $monthlyData->map(fn($d) => \Carbon\Carbon::parse($d->bulan)->isoFormat('MMM YYYY'));
         $revenue = $monthlyData->pluck('total_pendapatan');
         $transactions = $monthlyData->pluck('total_transaksi');
@@ -925,13 +963,71 @@ $performanceAgents = DB::table('agent')
                                             'clientsClosing' => $clientsClosing,
                                             'clientsPengosongan' => $clientsPengosongan,
                                             'performanceAgents' => $performanceAgents,
+                                            'performanceClients' => $performanceClients,
                                             'properties' => $properties,
                                             'labels' => $labels,
                                             'revenue' => $revenue,
                                             'transactions' => $transactions,
                                             'statusCounts' => $statusCounts,
+                                            'stokerProperties'    => $stokerProperties,
+                                            'soldProperties'      => $soldProperties,
                                             'events' => $eventsFormatted ]);
     }
+
+    public function updateAgentStatus(Request $request, $id_agent)
+    {
+        $request->validate([
+            'status'   => 'required|in:Aktif,Diterminasi',
+            'redirect' => 'nullable|string',
+        ]);
+
+        $agent = DB::table('agent')->where('id_agent', $id_agent)->first();
+        if (!$agent) {
+            return back()->with('error', 'Agent tidak ditemukan');
+        }
+
+        // opsional: jadikan 'AG001' konstanta / config kalau mau
+        $defaultAgentId = 'AG001';
+
+        $movedCount = 0;
+
+        DB::transaction(function () use ($request, $agent, $id_agent, $defaultAgentId, &$movedCount) {
+            // Update status agent
+            DB::table('agent')->where('id_agent', $id_agent)->update([
+                'status'            => $request->status,
+                'tanggal_diupdate'  => now(), // opsional kalau kolom ada
+            ]);
+
+            if ($request->status === 'Diterminasi') {
+                // Demote role account → User
+                DB::table('account')->where('id_account', $agent->id_account)->update([
+                    'roles' => 'User', // ganti ke nama kolommu jika berbeda
+                ]);
+
+                // Re-assign semua property milik agent ini ke AG001
+                if ($id_agent !== $defaultAgentId) {
+                    $movedCount = DB::table('property')
+                        ->where('id_agent', $id_agent)
+                        ->update(['id_agent' => $defaultAgentId, 'tanggal_diupdate' => now()]); // set kolom waktu jika ada
+                }
+            } else { // Aktif
+                // (opsional) Promote role account → Agent
+                DB::table('account')->where('id_account', $agent->id_account)->update([
+                    'roles' => 'Agent',
+                ]);
+                // Catatan: kita TIDAK mengembalikan property ke agent ini
+            }
+        });
+
+        $msg = 'Status agent berhasil diperbarui.';
+        if ($request->status === 'Diterminasi') {
+            $msg .= " $movedCount properti dipindahkan ke {$defaultAgentId}.";
+        }
+
+        $to = $request->input('redirect') ?: route('dashboard.owner', ['tab' => 'performance']);
+        return redirect()->to($to)->with('status', $msg);
+    }
+
 
     public function store(Request $request)
     {

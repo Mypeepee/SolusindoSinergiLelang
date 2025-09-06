@@ -261,6 +261,7 @@ Route::post('/property/{id}/delete', [AgentAdminController::class, 'markAsSold']
 // Rute untuk menampilkan daftar properti dengan filter pencarian
 Route::get('/properties', [PropertyController::class, 'index'])->name('property.index');
 
-
+Route::post('/agent/{id_agent}/status', [AgentAdminController::class, 'updateAgentStatus'])
+    ->name('agent.updateStatus');
 
 

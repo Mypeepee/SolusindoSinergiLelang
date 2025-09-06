@@ -30,11 +30,15 @@ class propertylistController extends Controller
 
 public function showproperty(Request $request)
 {
-    $query = Property::query();
+        // JOIN agent agar dapat nama & picture
+        $query = Property::query()
+        ->leftJoin('agent', 'agent.id_agent', '=', 'property.id_agent')
+        ->select('property.*', 'agent.nama as agent_nama', 'agent.picture as agent_picture');
+
     $selectedTags = [];
 
     // Menambahkan kondisi status = 'Tersedia'
-    $query->where('status', 'Tersedia');
+    $query->where('property.status', 'Tersedia');
 
     // ============== Keyword dari search bar (q) ==============
     $keyword = trim((string) $request->input('q', ''));
