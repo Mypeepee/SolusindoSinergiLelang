@@ -24,20 +24,27 @@ class propertyagentController extends Controller
 
     public function showPropertyAgent(Request $request)
 {
-    // daftar agent (untuk grid/selector) – ambil field yang dipakai di blade
+    // daftar agent untuk grid/selector
     $agents = DB::table('agent')
         ->where('status', 'Aktif')
-        ->select('id_agent', 'nama', 'picture')
+        ->select(
+            'id_agent',
+            'nama',
+            'picture',
+            'facebook',
+            'instagram',
+            'nomor_telepon' // <<< tambahkan ini
+        )
         ->orderBy('nama')
         ->get();
 
     $selectedAgent = null;
 
-    // default: paginator kosong biar blade yang expect paginator tetap aman
+    // paginator kosong default
     $properties = new LengthAwarePaginator([], 0, 18, 1);
 
     if ($request->filled('agent_id')) {
-        // pastikan agent valid + aktif
+        // ambil agent terpilih (tanpa select -> semua kolom ikut, termasuk nomor_telepon)
         $selectedAgent = DB::table('agent')
             ->where('id_agent', $request->agent_id)
             ->where('status', 'Aktif')
@@ -47,11 +54,12 @@ class propertyagentController extends Controller
             $properties = DB::table('property')
                 ->leftJoin('agent', 'agent.id_agent', '=', 'property.id_agent')
                 ->where('property.id_agent', $selectedAgent->id_agent)
-                ->where('property.status', 'Tersedia') // prefix table!
+                ->where('property.status', 'Tersedia')
                 ->select(
                     'property.*',
                     'agent.nama as agent_nama',
-                    'agent.picture as agent_picture'
+                    'agent.picture as agent_picture',
+                    'agent.nomor_telepon as agent_nomor_telepon' // <<< kalau butuh di kartu
                 )
                 ->orderByDesc('property.tanggal_dibuat')
                 ->paginate(18)
@@ -61,6 +69,7 @@ class propertyagentController extends Controller
 
     return view('property-agent', compact('agents', 'properties', 'selectedAgent'));
 }
+
 
 
 

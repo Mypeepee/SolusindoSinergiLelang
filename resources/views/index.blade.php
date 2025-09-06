@@ -238,6 +238,7 @@
                                     <option value="hotel dan villa">Hotel dan Villa</option>
                                     <option value="ruko">Ruko</option>
                                     <option value="toko">Toko</option>
+                                    <option value="lain-lain">Lain-lain</option>
                                 </select>
                             </div>
 
@@ -830,7 +831,7 @@ function formatNumberInput(input) {
       <div class="img-bottom-fade"></div>
 
       {{-- CHIP AGENT: avatar + nama (pakai file ID Drive dari agent_picture) --}}
-      @if(!empty($property->agent_nama) || !empty($property->agent_picture))
+      {{-- @if(!empty($property->agent_nama) || !empty($property->agent_picture))
         @php
           $fid      = $property->agent_picture;
           $imgThumb = $fid ? 'https://drive.google.com/thumbnail?id='.$fid.'&sz=w64' : asset('images/default-profile.png');
@@ -850,7 +851,7 @@ function formatNumberInput(input) {
             </span>
           </div>
         </div>
-      @endif
+      @endif --}}
     </div>
 
     <div class="p-4 pb-0">

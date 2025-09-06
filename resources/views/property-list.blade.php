@@ -168,7 +168,8 @@
                                     <option value="pabrik">Pabrik</option>
                                     <option value="hotel dan villa">Hotel dan Villa</option>
                                     <option value="ruko">Ruko</option>
-                                    <option value="sewa">Sewa</option>
+                                    <option value="toko">Toko</option>
+                                    <option value="lain-lain">Lain-lain</option>
                                 </select>
                             </div>
 
@@ -901,7 +902,7 @@ function formatNumberInput(input) {
 
 
       {{-- CHIP AGENT: kanan-bawah, ukuran terkunci 26×26 --}}
-@if(!empty($property->agent_nama) || !empty($property->agent_picture))
+{{-- @if(!empty($property->agent_nama) || !empty($property->agent_picture))
 @php
   $fileId   = $property->agent_picture;
   $agentImg = $fileId
@@ -929,7 +930,7 @@ function formatNumberInput(input) {
     </span>
   </div>
 </div>
-@endif
+@endif --}}
 
     </div>
 

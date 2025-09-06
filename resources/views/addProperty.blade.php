@@ -115,7 +115,7 @@
                                         <span class="input-group-text"><i class="bi bi-house-door"></i></span>
                                         <select name="tipe" class="form-select" required>
                                             <option value="">Pilih tipe</option>
-                                            @foreach(['rumah', 'hotel dan villa', 'pabrik', 'ruko', 'tanah', 'gudang', 'apartemen', 'sewa'] as $type)
+                                            @foreach(['rumah', 'hotel dan villa', 'pabrik', 'ruko', 'tanah', 'gudang', 'apartemen', 'toko'] as $type)
                                                 <option value="{{ $type }}" {{ old('tipe') == $type ? 'selected' : '' }}>{{ ucfirst($type) }}</option>
                                             @endforeach
                                         </select>
