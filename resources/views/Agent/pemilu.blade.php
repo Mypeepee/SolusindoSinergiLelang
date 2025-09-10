@@ -38,11 +38,7 @@
                     <form method="GET" action="{{ route('pemilu.show', $event->id_event) }}" class="row g-2 align-items-center mb-3" id="search-form">
                         {{-- ID Listing --}}
                         <div class="col-12 col-lg-3">
-                          <input type="text"
-                                 name="search"
-                                 class="form-control form-control-sm"
-                                 placeholder="Cari ID Listing"
-                                 value="{{ old('search', '') }}">
+                          <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari ID Listing" value="{{ old('search', '') }}">
                         </div>
 
                         {{-- Tipe Property --}}
@@ -84,154 +80,161 @@
 
                         {{-- Tombol --}}
                         <div class="col-12 col-lg-1 d-grid">
-                          <button type="submit" class="btn btn-dark btn-sm" id="search-btn">Search</button>
+                          <button type="submit" class="btn btn-dark btn-sm" id="search-btn">
+                            <span id="search-text">Search</span>
+                            <span id="loading-spinner" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display:none;"></span>
+                          </button>
                         </div>
                       </form>
 
-
-
-
                       <script>
-document.addEventListener('DOMContentLoaded', function () {
-  const provinceDesktop = document.getElementById('province-desktop');
-  const cityDesktop     = document.getElementById('city-desktop');
-  const districtDesktop = document.getElementById('district-desktop');
-  const searchForm = document.getElementById('search-form');
+                      document.addEventListener('DOMContentLoaded', function () {
+                        const provinceDesktop = document.getElementById('province-desktop');
+                        const cityDesktop     = document.getElementById('city-desktop');
+                        const districtDesktop = document.getElementById('district-desktop');
+                        const searchForm = document.getElementById('search-form');
+                        const searchBtn = document.getElementById('search-btn');
+                        const searchText = document.getElementById('search-text');
+                        const loadingSpinner = document.getElementById('loading-spinner');
 
-  const provinceMap = new Map(); // Provinsi => Set Kota
-  const locationMap = new Map(); // Provinsi => (Kota => Set Kecamatan)
+                        const provinceMap = new Map(); // Provinsi => Set Kota
+                        const locationMap = new Map(); // Provinsi => (Kota => Set Kecamatan)
 
-  let searchQuery = '';  // Variable to temporarily store search query values
-  let propertyType = '';
-  let province = '';
-  let city = '';
-  let district = '';
+                        let searchQuery = '';  // Variable to temporarily store search query values
+                        let propertyType = '';
+                        let province = '';
+                        let city = '';
+                        let district = '';
 
-  // Load data lokasi (file harus ada di public/data/indonesia.json)
-  fetch("{{ asset('data/indonesia.json') }}", { cache: 'no-store' })
-    .then(res => {
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
-    })
-    .then(data => {
-      // Susun struktur data
-      data.forEach(item => {
-        const prov = (item.province || '').trim();
-        const reg  = (item.regency  || '').trim();
-        const dist = (item.district || '').trim();
-        if (!prov || !reg || !dist) return;
+                        // Load data lokasi (file harus ada di public/data/indonesia.json)
+                        fetch("{{ asset('data/indonesia.json') }}", { cache: 'no-store' })
+                          .then(res => {
+                            if (!res.ok) throw new Error('HTTP ' + res.status);
+                            return res.json();
+                          })
+                          .then(data => {
+                            // Susun struktur data
+                            data.forEach(item => {
+                              const prov = (item.province || '').trim();
+                              const reg  = (item.regency  || '').trim();
+                              const dist = (item.district || '').trim();
+                              if (!prov || !reg || !dist) return;
 
-        if (!provinceMap.has(prov)) provinceMap.set(prov, new Set());
-        provinceMap.get(prov).add(reg);
+                              if (!provinceMap.has(prov)) provinceMap.set(prov, new Set());
+                              provinceMap.get(prov).add(reg);
 
-        if (!locationMap.has(prov)) locationMap.set(prov, new Map());
-        if (!locationMap.get(prov).has(reg)) locationMap.get(prov).set(reg, new Set());
-        locationMap.get(prov).get(reg).add(dist);
-      });
+                              if (!locationMap.has(prov)) locationMap.set(prov, new Map());
+                              if (!locationMap.get(prov).has(reg)) locationMap.get(prov).set(reg, new Set());
+                              locationMap.get(prov).get(reg).add(dist);
+                            });
 
-      // Isi pilihan provinsi
-      for (const prov of provinceMap.keys()) {
-        provinceDesktop.insertAdjacentHTML('beforeend', `<option value="${prov}">${prov}</option>`);
-      }
+                            // Isi pilihan provinsi
+                            for (const prov of provinceMap.keys()) {
+                              provinceDesktop.insertAdjacentHTML('beforeend', `<option value="${prov}">${prov}</option>`);
+                            }
 
-      // Restore from query string (optional)
-      const params = new URLSearchParams(location.search);
-      const savedProv = params.get('province');
-      const savedCity = params.get('city');
-      const savedDist = params.get('district');
+                            // Restore from query string (optional)
+                            const params = new URLSearchParams(location.search);
+                            const savedProv = params.get('province');
+                            const savedCity = params.get('city');
+                            const savedDist = params.get('district');
 
-      // If there is a query string, remove it by resetting the form values
-      if (savedProv || savedCity || savedDist) {
-        resetForm(); // Reset form if query string is found
-      }
-    })
-    .catch(err => {
-      console.error('Gagal load indonesia.json:', err);
-    });
+                            // If there is a query string, remove it by resetting the form values
+                            if (savedProv || savedCity || savedDist) {
+                              resetForm(); // Reset form if query string is found
+                            }
+                          })
+                          .catch(err => {
+                            console.error('Gagal load indonesia.json:', err);
+                          });
 
-  // Capture the form data before reset
-  searchForm.addEventListener('submit', function (e) {
-    // Prevent form submission
-    e.preventDefault();
+                        // Capture the form data before reset
+                        searchForm.addEventListener('submit', function (e) {
+                          // Prevent form submission
+                          e.preventDefault();
 
-    // Store the current values before resetting
-    searchQuery = document.querySelector('[name="search"]').value;
-    propertyType = document.querySelector('[name="property_type"]').value;
-    province = provinceDesktop.value;
-    city = cityDesktop.value;
-    district = districtDesktop.value;
+                          // Show loading spinner and hide the "Search" text
+                          searchText.style.display = 'none';
+                          loadingSpinner.style.display = 'inline-block';
 
-    // Reset the form values
-    resetForm();
+                          // Store the current values before resetting
+                          searchQuery = document.querySelector('[name="search"]').value;
+                          propertyType = document.querySelector('[name="property_type"]').value;
+                          province = provinceDesktop.value;
+                          city = cityDesktop.value;
+                          district = districtDesktop.value;
 
-    // After resetting, perform the search query with the captured values
-    runSearchQuery();
-  });
+                          // Reset the form values
+                          resetForm();
 
-  // Reset form values and dropdowns
-  function resetForm() {
-    // Reset form values
-    provinceDesktop.value = '';
-    cityDesktop.value = '';
-    districtDesktop.value = '';
-    cityDesktop.disabled = true;
-    districtDesktop.disabled = true;
+                          // After resetting, perform the search query with the captured values
+                          runSearchQuery();
+                        });
 
-    // Reset the options to the default 'Pilih' text
-    cityDesktop.innerHTML = '<option value="" selected disabled>Pilih Kota/Kabupaten</option>';
-    districtDesktop.innerHTML = '<option value="" selected disabled>Pilih Kecamatan</option>';
-  }
+                        // Reset form values and dropdowns
+                        function resetForm() {
+                          // Reset form values
+                          provinceDesktop.value = '';
+                          cityDesktop.value = '';
+                          districtDesktop.value = '';
+                          cityDesktop.disabled = true;
+                          districtDesktop.disabled = true;
 
-  // Perform the search query with the captured values
-  function runSearchQuery() {
-    // Construct the URL with query parameters based on captured form values
-    let searchUrl = `{{ route('pemilu.show', $event->id_event) }}?search=${searchQuery}`;
+                          // Reset the options to the default 'Pilih' text
+                          cityDesktop.innerHTML = '<option value="" selected disabled>Pilih Kota/Kabupaten</option>';
+                          districtDesktop.innerHTML = '<option value="" selected disabled>Pilih Kecamatan</option>';
+                        }
 
-    if (propertyType) searchUrl += `&property_type=${propertyType}`;
-    if (province) searchUrl += `&province=${province}`;
-    if (city) searchUrl += `&city=${city}`;
-    if (district) searchUrl += `&district=${district}`;
+                        // Perform the search query with the captured values
+                        function runSearchQuery() {
+                          // Construct the URL with query parameters based on captured form values
+                          let searchUrl = `{{ route('pemilu.show', $event->id_event) }}?search=${searchQuery}`;
 
-    // Perform the search by redirecting to the URL with query parameters
-    window.location.href = searchUrl;
+                          if (propertyType) searchUrl += `&property_type=${propertyType}`;
+                          if (province) searchUrl += `&province=${province}`;
+                          if (city) searchUrl += `&city=${city}`;
+                          if (district) searchUrl += `&district=${district}`;
 
-    // Remove query parameters from the URL after search to avoid input restore on reload
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
+                          // Perform the search by redirecting to the URL with query parameters
+                          window.location.href = searchUrl;
 
-  // Events for handling dropdown changes
-  provinceDesktop.addEventListener('change', function () {
-    updateCityDropdown(this.value, cityDesktop);
-  });
+                          // Remove query parameters from the URL after search to avoid input restore on reload
+                          window.history.replaceState({}, document.title, window.location.pathname);
+                        }
 
-  cityDesktop.addEventListener('change', function () {
-    updateDistrictDropdown(provinceDesktop.value, this.value);
-  });
+                        // Events for handling dropdown changes
+                        provinceDesktop.addEventListener('change', function () {
+                          updateCityDropdown(this.value, cityDesktop);
+                        });
 
-  // Helpers to update dropdowns based on previous selections
-  function updateCityDropdown(prov, targetCityDropdown) {
-    const citySet = provinceMap.get(prov) || new Set();
-    targetCityDropdown.disabled = false;
-    targetCityDropdown.innerHTML = '<option value="" selected>Pilih Kota/Kabupaten</option>';
-    for (const c of citySet) {
-      targetCityDropdown.insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`);
-    }
-    // Reset kecamatan
-    districtDesktop.disabled = true;
-    districtDesktop.innerHTML = '<option value="" selected>Pilih Kecamatan</option>';
-  }
+                        cityDesktop.addEventListener('change', function () {
+                          updateDistrictDropdown(provinceDesktop.value, this.value);
+                        });
 
-  function updateDistrictDropdown(prov, selectedCity) {
-    const districtSet = (locationMap.get(prov) && locationMap.get(prov).get(selectedCity)) || new Set();
-    districtDesktop.disabled = false;
-    districtDesktop.innerHTML = '<option value="" selected>Pilih Kecamatan</option>';
-    for (const d of districtSet) {
-      districtDesktop.insertAdjacentHTML('beforeend', `<option value="${d}">${d}</option>`);
-    }
-  }
-});
+                        // Helpers to update dropdowns based on previous selections
+                        function updateCityDropdown(prov, targetCityDropdown) {
+                          const citySet = provinceMap.get(prov) || new Set();
+                          targetCityDropdown.disabled = false;
+                          targetCityDropdown.innerHTML = '<option value="" selected>Pilih Kota/Kabupaten</option>';
+                          for (const c of citySet) {
+                            targetCityDropdown.insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`);
+                          }
+                          // Reset kecamatan
+                          districtDesktop.disabled = true;
+                          districtDesktop.innerHTML = '<option value="" selected>Pilih Kecamatan</option>';
+                        }
 
-                        </script>
+                        function updateDistrictDropdown(prov, selectedCity) {
+                          const districtSet = (locationMap.get(prov) && locationMap.get(prov).get(selectedCity)) || new Set();
+                          districtDesktop.disabled = false;
+                          districtDesktop.innerHTML = '<option value="" selected>Pilih Kecamatan</option>';
+                          for (const d of districtSet) {
+                            districtDesktop.insertAdjacentHTML('beforeend', `<option value="${d}">${d}</option>`);
+                          }
+                        }
+                      });
+                      </script>
+
 
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover align-middle text-center">
