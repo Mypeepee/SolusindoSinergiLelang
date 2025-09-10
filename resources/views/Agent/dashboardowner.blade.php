@@ -1553,6 +1553,132 @@
 
     }
 
+    function renderEditEvent(ev){
+        containerKedua.style.display = 'block';
+        containerKeduaHeader.textContent = `Edit Event`;
+
+        // Ambil YYYY-MM-DD dari start event
+        function formatDateOnly(d){
+            return d.getFullYear() + "-" +
+                String(d.getMonth()+1).padStart(2,'0') + "-" +
+                String(d.getDate()).padStart(2,'0');
+        }
+
+        function formatTimeForInput(d){
+            const h = String(d.getHours()).padStart(2,'0');
+            const m = String(d.getMinutes()).padStart(2,'0');
+            return `${h}:${m}`;
+        }
+
+        const startDate = toDate(ev.start);
+        const endDate = toDate(ev.end);
+        const dateOnlyStart = formatDateOnly(startDate);
+        const dateOnlyEnd = formatDateOnly(endDate);
+
+        containerKeduaBody.innerHTML = `
+            <form id="editEventForm">
+                <div class="mb-2"><label>Judul</label><input type="text" class="form-control" name="title" required value="${ev.title || ''}"></div>
+                <div class="mb-2"><label>Deskripsi</label><textarea class="form-control" name="description">${ev.description || ''}</textarea></div>
+                <div class="mb-2"><label>Mulai</label>
+                    <input type="datetime-local" class="form-control" name="start" id="evEditStart" required 
+                        value="${dateOnlyStart}T${formatTimeForInput(startDate)}">
+                </div>
+                <div class="mb-2"><label>Selesai</label>
+                    <input type="datetime-local" class="form-control" name="end" id="evEditEnd" required 
+                        value="${dateOnlyEnd}T${formatTimeForInput(endDate)}">
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="evEditAllDay" name="allDay" ${ev.allDay ? 'checked' : ''}>
+                    <label class="form-check-label">All Day</label>
+                </div>
+                <div class="mb-2"><label>Lokasi</label><input type="text" class="form-control" name="location" value="${ev.location || ''}"></div>
+                <div class="mb-2"><label>Akses Event</label>
+                    <select class="form-select" name="access">
+                        <option value="Terbuka" ${ev.access==='Terbuka' ? 'selected' : ''}>Terbuka</option>
+                        <option value="Tertutup" ${ev.access==='Tertutup' ? 'selected' : ''}>Tertutup</option>
+                    </select>
+                </div>
+                <div class="mb-2"><label>Durasi (menit)</label><input type="number" class="form-control" name="duration" id="evEditDuration" value="${ev.duration || ''}"></div>
+                <button type="submit" class="btn btn-success btn-sm">Simpan</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btnCancelEdit">Batal</button>
+            </form>
+        `;
+
+        // Handle All Day checkbox
+        const allDayEl = document.getElementById('evEditAllDay');
+        const startEl = document.getElementById('evEditStart');
+        const endEl = document.getElementById('evEditEnd');
+        const durationEl = document.getElementById('evEditDuration');
+
+        allDayEl.addEventListener('change', function(){
+            const dis = this.checked;
+            startEl.disabled = dis;
+            endEl.disabled = dis;
+            if(dis){ startEl.value=''; endEl.value=''; }
+        });
+
+        function updateDuration(){
+            const s = new Date(startEl.value);
+            const e = new Date(endEl.value);
+            if(s && e && e > s && !durationEl.matches(':focus')){
+                const diffMin = Math.floor((e - s) / (1000*60));
+                durationEl.value = diffMin;
+            }
+        }
+
+        startEl.addEventListener('change', updateDuration);
+        endEl.addEventListener('change', updateDuration);
+
+        // Cancel button
+        document.getElementById('btnCancelEdit').addEventListener('click', ()=>{
+            renderEventDetail(ev); // kembali ke detail
+        });
+
+        // Submit form -> PUT request
+        document.getElementById('editEventForm').addEventListener('submit', async function(e){
+            e.preventDefault();
+            const formData = new FormData(this);
+            const url = "{{ route('events.update', ['id' => '_ID_']) }}".replace('_ID_', ev.id);
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST', // Laravel bisa PUT, tapi fetch kadang pakai POST + _method
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: formData
+                });
+
+                if(!res.ok) throw new Error('Gagal update event');
+                const data = await res.json();
+
+                // Update array events di front-end
+                const index = events.findIndex(x=>x.id === ev.id);
+                if(index !== -1){
+                    events[index] = {
+                        ...events[index],
+                        title: data.event.title,
+                        description: data.event.description,
+                        start: data.event.mulai,
+                        end: data.event.selesai,
+                        allDay: !!data.event.all_day,
+                        location: data.event.location,
+                        access: data.event.akses,
+                        duration: data.event.durasi
+                    };
+                }
+
+                alert('Event berhasil diupdate');
+                renderTodayEvents(selectedDate);
+                renderCalendar();
+                renderUpcoming();
+            } catch(err){
+                alert(err.message);
+            }
+        });
+    }
+
+
     function renderEventDetail(ev){
         containerKedua.style.display = 'block';
         containerKeduaHeader.textContent = `Detail Event`;
@@ -1574,11 +1700,13 @@
             <p>Akses: ${ev.access || '-'}</p>
             <div class="mt-3">
                 ${actionButtons}
+                <button class="btn btn-warning btn-sm me-2" id="btnEdit">Edit</button>
                 <button class="btn btn-secondary btn-sm" id="btnBack">Kembali</button>
             </div>
         `;
 
         document.getElementById('btnBack').addEventListener('click', ()=> renderTodayEvents(selectedDate));
+        document.getElementById('btnEdit').addEventListener('click', ()=> renderEditEvent(ev));
 
         if(ev.title && ev.title.toLowerCase() === 'pemilu'){
             document.getElementById('btnJoin').addEventListener('click', ()=> updateInvite(ev.id, 'join', ev.access));

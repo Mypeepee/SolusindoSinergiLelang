@@ -14,6 +14,7 @@ use App\Models\PemiluPilihan;
 use App\Models\InformasiKlien;
 use App\Models\PropertyInterest;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Session;
@@ -268,6 +269,8 @@ class AgentAdminController extends Controller
                 'location' => $event->location,
                 'access'   => $event->akses,
                 'created_by'  => $event->creator_name,
+                'created_by_id' => $event->created_by, 
+                'duration' => $event->durasi,
             ];
         });
 
@@ -960,6 +963,7 @@ $performanceAgents = DB::table('agent')
                 'access'   => $event->akses,
                 'created_by'  => $event->creator_name,
                 'invite_status' => $invite->status ?? null,
+                'duration' => $event->durasi,
             ];
         });
 
@@ -1089,6 +1093,51 @@ $performanceAgents = DB::table('agent')
             'event'   => $event
         ]);
     }
+
+    public function updateevent(Request $request, $id)
+    {
+        // Cari event berdasarkan id
+        $event = Event::find($id);
+
+        if (!$event) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Event tidak ditemukan'
+            ], 404);
+        }
+
+        // Validasi input
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'start' => 'required|date',
+            'end' => 'required|date|after_or_equal:start',
+            'allDay' => 'nullable|boolean',
+            'location' => 'nullable|string|max:255',
+            'access' => 'required|in:Terbuka,Tertutup',
+            'duration' => 'nullable|integer|min:0'
+        ]);
+
+        // Update field event
+        $event->title = $validated['title'];
+        $event->description = $validated['description'] ?? null;
+        $event->mulai = $validated['start'];
+        $event->selesai = $validated['end'];
+        $event->all_day = $request->has('allDay') ? (bool)$request->allDay : false;
+        $event->location = $validated['location'] ?? null;
+        $event->akses = $validated['access'];
+        $event->durasi = $validated['duration'] ?? null;
+        $event->tanggal_diupdate = now(); 
+
+        $event->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Event berhasil diperbarui',
+            'event' => $event
+        ]);
+    }
+
 
     public function storeregister(Request $request)
     {
