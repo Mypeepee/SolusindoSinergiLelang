@@ -564,13 +564,18 @@ class AgentAdminController extends Controller
                 ->first(fn($i) => $i->id_account === $accountId && $i->status_giliran === 'Berjalan');
         }
 
-        // 9) Properties (contoh)
-        // ambil parameter
+// 9) Properties (contoh)
+// ambil parameter
 $search        = trim($request->get('search', ''));           // ID Listing (exact)
 $propertyType  = $request->get('property_type');              // kolom: tipe
 $province      = $request->get('province');                   // kolom: provinsi
 $city          = $request->get('city');                       // kolom: kota
 $district      = $request->get('district');                   // kolom: kecamatan
+
+// Jika user isi ID Listing, abaikan filter lokasi dan tipe property
+if ($search !== '') {
+    $propertyType = $province = $city = $district = null;  // Reset filter lokasi dan tipe
+}
 
 $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar')
     ->where('id_agent', 'AG001')
@@ -592,6 +597,7 @@ $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar'
     })
     ->paginate(10)
     ->appends($request->only(['search','property_type','province','city','district']));
+
 
 
         // Ambil log transaksi

@@ -35,154 +35,206 @@
                 </div>
 
                 <div class="card-body">
-                    <form method="GET" action="{{ route('pemilu.show', $event->id_event) }}" class="row g-2 align-items-center mb-3">
-
-                        {{-- ID Listing (kecil di kiri) --}}
+                    <form method="GET" action="{{ route('pemilu.show', $event->id_event) }}" class="row g-2 align-items-center mb-3" id="search-form">
+                        {{-- ID Listing --}}
                         <div class="col-12 col-lg-3">
-                          <input type="text"
-                                 name="search"
-                                 value="{{ request('search') }}"
-                                 class="form-control form-control-sm"
-                                 placeholder="Cari ID Listing">
+                          <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari ID Listing" value="{{ old('search', '') }}">
                         </div>
 
                         {{-- Tipe Property --}}
                         <div class="col-6 col-lg-2">
                           <select name="property_type" class="form-select form-select-sm">
-                            <option value="" {{ request('property_type') ? '' : 'selected' }} disabled>Tipe Property</option>
-                            <option value="rumah"           @selected(request('property_type')==='rumah')>Rumah</option>
-                            <option value="gudang"          @selected(request('property_type')==='gudang')>Gudang</option>
-                            <option value="apartemen"       @selected(request('property_type')==='apartemen')>Apartemen</option>
-                            <option value="tanah"           @selected(request('property_type')==='tanah')>Tanah</option>
-                            <option value="pabrik"          @selected(request('property_type')==='pabrik')>Pabrik</option>
-                            <option value="hotel dan villa" @selected(request('property_type')==='hotel dan villa')>Hotel dan Villa</option>
-                            <option value="ruko"            @selected(request('property_type')==='ruko')>Ruko</option>
-                            <option value="sewa"            @selected(request('property_type')==='sewa')>Sewa</option>
+                            <option value="" selected disabled>Tipe Property</option>
+                            <option value="rumah" @if (old('property_type') === 'rumah') selected @endif>Rumah</option>
+                            <option value="gudang" @if (old('property_type') === 'gudang') selected @endif>Gudang</option>
+                            <option value="apartemen" @if (old('property_type') === 'apartemen') selected @endif>Apartemen</option>
+                            <option value="tanah" @if (old('property_type') === 'tanah') selected @endif>Tanah</option>
+                            <option value="pabrik" @if (old('property_type') === 'pabrik') selected @endif>Pabrik</option>
+                            <option value="hotel dan villa" @if (old('property_type') === 'hotel dan villa') selected @endif>Hotel dan Villa</option>
+                            <option value="ruko" @if (old('property_type') === 'ruko') selected @endif>Ruko</option>
+                            <option value="sewa" @if (old('property_type') === 'sewa') selected @endif>Sewa</option>
                           </select>
                         </div>
 
                         {{-- Provinsi --}}
                         <div class="col-6 col-lg-2">
                           <select id="province-desktop" name="province" class="form-select form-select-sm">
-                            <option disabled {{ request('province') ? '' : 'selected' }}>Pilih Provinsi</option>
+                            <option value="" selected disabled>Pilih Provinsi</option>
+                            {{-- options diisi via JS --}}
                           </select>
                         </div>
 
                         {{-- Kota/Kabupaten --}}
                         <div class="col-6 col-lg-2">
-                          <select id="city-desktop" name="city"
-                                  class="form-select form-select-sm" {{ request('province') ? '' : 'disabled' }}>
-                            <option disabled selected>Pilih Kota/Kabupaten</option>
+                          <select id="city-desktop" name="city" class="form-select form-select-sm" disabled>
+                            <option value="" selected disabled>Pilih Kota/Kabupaten</option>
                           </select>
                         </div>
 
                         {{-- Kecamatan --}}
                         <div class="col-6 col-lg-2">
-                          <select id="district-desktop" name="district"
-                                  class="form-select form-select-sm" {{ request('city') ? '' : 'disabled' }}>
-                            <option disabled selected>Pilih Kecamatan</option>
+                          <select id="district-desktop" name="district" class="form-select form-select-sm" disabled>
+                            <option value="" selected disabled>Pilih Kecamatan</option>
                           </select>
                         </div>
 
                         {{-- Tombol --}}
                         <div class="col-12 col-lg-1 d-grid">
-                          <button type="submit" class="btn btn-dark btn-sm">Search</button>
+                          <button type="submit" class="btn btn-dark btn-sm" id="search-btn">
+                            <span id="search-text">Search</span>
+                            <span id="loading-spinner" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display:none;"></span>
+                          </button>
                         </div>
                       </form>
 
-
                       <script>
-                        document.addEventListener('DOMContentLoaded', function () {
-                          const provinceDesktop = document.getElementById('province-desktop');
-                          const cityDesktop     = document.getElementById('city-desktop');
-                          const districtDesktop = document.getElementById('district-desktop');
+                      document.addEventListener('DOMContentLoaded', function () {
+                        const provinceDesktop = document.getElementById('province-desktop');
+                        const cityDesktop     = document.getElementById('city-desktop');
+                        const districtDesktop = document.getElementById('district-desktop');
+                        const searchForm = document.getElementById('search-form');
+                        const searchBtn = document.getElementById('search-btn');
+                        const searchText = document.getElementById('search-text');
+                        const loadingSpinner = document.getElementById('loading-spinner');
 
-                          const provinceMap = new Map(); // Provinsi => Set Kota
-                          const locationMap = new Map(); // Provinsi => (Kota => Set Kecamatan)
+                        const provinceMap = new Map(); // Provinsi => Set Kota
+                        const locationMap = new Map(); // Provinsi => (Kota => Set Kecamatan)
 
-                          // Load data lokasi (file harus ada di public/data/indonesia.json)
-                          fetch("{{ asset('data/indonesia.json') }}", { cache: 'no-store' })
-                            .then(res => {
-                              if (!res.ok) throw new Error('HTTP ' + res.status);
-                              return res.json();
-                            })
-                            .then(data => {
-                              // Susun struktur data
-                              data.forEach(item => {
-                                const prov = (item.province || '').trim();
-                                const reg  = (item.regency  || '').trim();
-                                const dist = (item.district || '').trim();
-                                if (!prov || !reg || !dist) return;
+                        let searchQuery = '';  // Variable to temporarily store search query values
+                        let propertyType = '';
+                        let province = '';
+                        let city = '';
+                        let district = '';
 
-                                if (!provinceMap.has(prov)) provinceMap.set(prov, new Set());
-                                provinceMap.get(prov).add(reg);
+                        // Load data lokasi (file harus ada di public/data/indonesia.json)
+                        fetch("{{ asset('data/indonesia.json') }}", { cache: 'no-store' })
+                          .then(res => {
+                            if (!res.ok) throw new Error('HTTP ' + res.status);
+                            return res.json();
+                          })
+                          .then(data => {
+                            // Susun struktur data
+                            data.forEach(item => {
+                              const prov = (item.province || '').trim();
+                              const reg  = (item.regency  || '').trim();
+                              const dist = (item.district || '').trim();
+                              if (!prov || !reg || !dist) return;
 
-                                if (!locationMap.has(prov)) locationMap.set(prov, new Map());
-                                if (!locationMap.get(prov).has(reg)) locationMap.get(prov).set(reg, new Set());
-                                locationMap.get(prov).get(reg).add(dist);
-                              });
+                              if (!provinceMap.has(prov)) provinceMap.set(prov, new Set());
+                              provinceMap.get(prov).add(reg);
 
-                              // Isi pilihan provinsi
-                              for (const prov of provinceMap.keys()) {
-                                provinceDesktop.insertAdjacentHTML('beforeend', `<option value="${prov}">${prov}</option>`);
-                              }
-
-                              // Restore dari query string (opsional)
-                              const params = new URLSearchParams(location.search);
-                              const savedProv = params.get('province');
-                              const savedCity = params.get('city');
-                              const savedDist = params.get('district');
-
-                              if (savedProv && provinceMap.has(savedProv)) {
-                                provinceDesktop.value = savedProv;
-                                updateCityDropdown(savedProv, cityDesktop);
-                                if (savedCity && provinceMap.get(savedProv).has(savedCity)) {
-                                  cityDesktop.value = savedCity;
-                                  cityDesktop.disabled = false;
-                                  updateDistrictDropdown(savedProv, savedCity);
-                                  if (savedDist) {
-                                    districtDesktop.value = savedDist;
-                                    districtDesktop.disabled = false;
-                                  }
-                                }
-                              }
-                            })
-                            .catch(err => {
-                              console.error('Gagal load indonesia.json:', err);
+                              if (!locationMap.has(prov)) locationMap.set(prov, new Map());
+                              if (!locationMap.get(prov).has(reg)) locationMap.get(prov).set(reg, new Set());
+                              locationMap.get(prov).get(reg).add(dist);
                             });
 
-                          // Events
-                          provinceDesktop.addEventListener('change', function () {
-                            updateCityDropdown(this.value, cityDesktop);
+                            // Isi pilihan provinsi
+                            for (const prov of provinceMap.keys()) {
+                              provinceDesktop.insertAdjacentHTML('beforeend', `<option value="${prov}">${prov}</option>`);
+                            }
+
+                            // Restore from query string (optional)
+                            const params = new URLSearchParams(location.search);
+                            const savedProv = params.get('province');
+                            const savedCity = params.get('city');
+                            const savedDist = params.get('district');
+
+                            // If there is a query string, remove it by resetting the form values
+                            if (savedProv || savedCity || savedDist) {
+                              resetForm(); // Reset form if query string is found
+                            }
+                          })
+                          .catch(err => {
+                            console.error('Gagal load indonesia.json:', err);
                           });
 
-                          cityDesktop.addEventListener('change', function () {
-                            updateDistrictDropdown(provinceDesktop.value, this.value);
-                          });
+                        // Capture the form data before reset
+                        searchForm.addEventListener('submit', function (e) {
+                          // Prevent form submission
+                          e.preventDefault();
 
-                          // Helpers
-                          function updateCityDropdown(prov, targetCityDropdown) {
-                            const citySet = provinceMap.get(prov) || new Set();
-                            targetCityDropdown.disabled = false;
-                            targetCityDropdown.innerHTML = '<option value="" selected>Pilih Kota/Kabupaten</option>';
-                            for (const c of citySet) {
-                              targetCityDropdown.insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`);
-                            }
-                            // Reset kecamatan
-                            districtDesktop.disabled = true;
-                            districtDesktop.innerHTML = '<option value="" selected>Pilih Kecamatan</option>';
-                          }
+                          // Show loading spinner and hide the "Search" text
+                          searchText.style.display = 'none';
+                          loadingSpinner.style.display = 'inline-block';
 
-                          function updateDistrictDropdown(prov, selectedCity) {
-                            const districtSet = (locationMap.get(prov) && locationMap.get(prov).get(selectedCity)) || new Set();
-                            districtDesktop.disabled = false;
-                            districtDesktop.innerHTML = '<option value="" selected>Pilih Kecamatan</option>';
-                            for (const d of districtSet) {
-                              districtDesktop.insertAdjacentHTML('beforeend', `<option value="${d}">${d}</option>`);
-                            }
+                          // Store the current values before resetting
+                          searchQuery = document.querySelector('[name="search"]').value;
+                          propertyType = document.querySelector('[name="property_type"]').value;
+                          province = provinceDesktop.value;
+                          city = cityDesktop.value;
+                          district = districtDesktop.value;
+
+                          // Reset the form values
+                          resetForm();
+
+                          // After resetting, perform the search query with the captured values
+                          runSearchQuery();
+                        });
+
+                        // Reset form values and dropdowns
+                        function resetForm() {
+                          // Reset form values
+                          provinceDesktop.value = '';
+                          cityDesktop.value = '';
+                          districtDesktop.value = '';
+                          cityDesktop.disabled = true;
+                          districtDesktop.disabled = true;
+
+                          // Reset the options to the default 'Pilih' text
+                          cityDesktop.innerHTML = '<option value="" selected disabled>Pilih Kota/Kabupaten</option>';
+                          districtDesktop.innerHTML = '<option value="" selected disabled>Pilih Kecamatan</option>';
+                        }
+
+                        // Perform the search query with the captured values
+                        function runSearchQuery() {
+                          // Construct the URL with query parameters based on captured form values
+                          let searchUrl = `{{ route('pemilu.show', $event->id_event) }}?search=${searchQuery}`;
+
+                          if (propertyType) searchUrl += `&property_type=${propertyType}`;
+                          if (province) searchUrl += `&province=${province}`;
+                          if (city) searchUrl += `&city=${city}`;
+                          if (district) searchUrl += `&district=${district}`;
+
+                          // Perform the search by redirecting to the URL with query parameters
+                          window.location.href = searchUrl;
+
+                          // Remove query parameters from the URL after search to avoid input restore on reload
+                          window.history.replaceState({}, document.title, window.location.pathname);
+                        }
+
+                        // Events for handling dropdown changes
+                        provinceDesktop.addEventListener('change', function () {
+                          updateCityDropdown(this.value, cityDesktop);
+                        });
+
+                        cityDesktop.addEventListener('change', function () {
+                          updateDistrictDropdown(provinceDesktop.value, this.value);
+                        });
+
+                        // Helpers to update dropdowns based on previous selections
+                        function updateCityDropdown(prov, targetCityDropdown) {
+                          const citySet = provinceMap.get(prov) || new Set();
+                          targetCityDropdown.disabled = false;
+                          targetCityDropdown.innerHTML = '<option value="" selected>Pilih Kota/Kabupaten</option>';
+                          for (const c of citySet) {
+                            targetCityDropdown.insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`);
                           }
-                        }); // <-- ini yang hilang tadi
-                        </script>
+                          // Reset kecamatan
+                          districtDesktop.disabled = true;
+                          districtDesktop.innerHTML = '<option value="" selected>Pilih Kecamatan</option>';
+                        }
+
+                        function updateDistrictDropdown(prov, selectedCity) {
+                          const districtSet = (locationMap.get(prov) && locationMap.get(prov).get(selectedCity)) || new Set();
+                          districtDesktop.disabled = false;
+                          districtDesktop.innerHTML = '<option value="" selected>Pilih Kecamatan</option>';
+                          for (const d of districtSet) {
+                            districtDesktop.insertAdjacentHTML('beforeend', `<option value="${d}">${d}</option>`);
+                          }
+                        }
+                      });
+                      </script>
+
 
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover align-middle text-center">
@@ -380,23 +432,23 @@
         {{-- Pengumuman / Transaction Log --}}
         <div class="card shadow-sm rounded mb-3">
             <div class="card-header text-white fw-bold" style="background-color: #3949ab;">
-                <i class="bi bi-file-earmark-text-fill me-2"></i> Pengumuman Pilihan
+              <i class="bi bi-file-earmark-text-fill me-2"></i> Pengumuman Pilihan
             </div>
             <div class="card-body">
-                {{-- List pengumuman --}}
-                <div class="list-group">
-                    @foreach ($logs as $log)
-                        @php
-                            $agentName = $log->agent_name ?? 'Nama tidak ditemukan';
-                        @endphp
-                        <div class="list-group-item">
-                            <i class="bi bi-bell-fill me-2 text-primary"></i>
-                            id {{ $log->id_listing }} telah diambil oleh {{ $agentName }}
-                        </div>
-                    @endforeach
-                </div>
+              {{-- List pengumuman --}}
+              <div class="list-group overflow-auto" style="max-height: 320px;">
+                @foreach ($logs as $log)
+                  @php
+                    $agentName = $log->agent_name ?? 'Nama tidak ditemukan';
+                  @endphp
+                  <div class="list-group-item">
+                    <i class="bi bi-bell-fill me-2 text-primary"></i>
+                    id {{ $log->id_listing }} telah diambil oleh {{ $agentName }}
+                  </div>
+                @endforeach
+              </div>
             </div>
-        </div>
+          </div>
     </div>
 
 
