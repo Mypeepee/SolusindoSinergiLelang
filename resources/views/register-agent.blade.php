@@ -325,10 +325,11 @@
                         <label class="form-label">Kode Referral</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="fa fa-user-plus"></i></span>
-                            <input type="text" name="kode_referral" value="{{ old('kode_referral') }}" class="form-control" placeholder="Masukkan Kode Referral (Opsional)">
+                            <input type="number" name="kode_referral" value="{{ old('kode_referral') }}" class="form-control" placeholder="Masukkan Kode Referral (Opsional)" min="0" step="1">
                         </div>
                         <div class="form-text text-muted">Masukkan kode dari agen yang mereferensikan Anda.</div>
                     </div>
+
 
                     <!-- Tombol Submit -->
                     <div class="col-12">
@@ -433,13 +434,12 @@
                         <label class="form-label">Kode Referal</label>
                         <div class="input-group">
                             <span class="input-group-text">AG</span>
-                            <input type="text"
+                            <input type="number"
                                    id="kode_referal"
                                    name="kode_referal"
                                    class="form-control @error('kode_referal') is-invalid @enderror"
                                    value="{{ old('kode_referal') }}"
                                    placeholder="Hubungi agent anda untuk mendapatkan kode referal"
-                                   pattern="[0-9]{3}"
                                    title="Masukkan 3 digit angka (contoh: 001)">
                         </div>
                         <small class="text-muted">Opsional. Isi jika memiliki kode referal dari Agent.</small>
@@ -447,6 +447,7 @@
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
                     </div>
+
 
                     <script>
                     document.addEventListener('DOMContentLoaded', function () {
