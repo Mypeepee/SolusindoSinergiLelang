@@ -1,4 +1,32 @@
 @include('template.header')
+@section('meta')
+    <meta name="description" content="Cari {{ $property_type }} di {{ $city }}, harga di bawah {{ $price_range }}. Temukan properti impianmu di {{ $province }} hanya di Solusindo Lelang.">
+    <meta name="keywords" content="{{ $property_type }}, {{ $city }}, {{ $province }}, jual properti murah, harga properti {{ $price_range }}">
+    <meta property="og:title" content="Jual {{ $property_type }} di {{ $city }} - Harga Terjangkau">
+    <meta property="og:description" content="Temukan {{ $property_type }} di {{ $city }} dengan harga mulai dari {{ $price_range }} di Solusindo Lelang. Segera cek daftar properti kami.">
+    <meta property="og:url" content="{{ request()->fullUrl() }}">
+@endsection
+
+@section('structured_data')
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "RealEstateListing",
+        "name": "{{ $property->deskripsi }}",
+        "price": "{{ number_format($property->harga, 0, ',', '.') }}",
+        "priceCurrency": "IDR",
+        "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "{{ $property->lokasi }}",
+            "addressLocality": "{{ $property->kota }}",
+            "addressRegion": "{{ $property->provinsi }}"
+        },
+        "image": "{{ explode(',', $property->gambar)[0] }}",
+        "url": "{{ route('property-detail', $property->id_listing) }}"
+    }
+    </script>
+@endsection
+
 <!-- Header Start -->
 <style>
     .header-banner {
@@ -111,7 +139,14 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
-            <form action="{{ route('property.list') }}#property-list-section" method="GET">
+            <form action="{{ route('property.list', [
+    'property_type' => request('property_type', 'rumah'),
+    'city' => request('city', 'semua'),  {{-- Default fallback ke 'semua' --}}
+    'price_range' => 'harga-dibawah-' . str_replace('.', '', request('max_price', '0')),  {{-- Format harga --}}
+    'land_size' => 'luas-tanah-max-' . str_replace('.', '', request('max_land_size', '0')),  {{-- Format luas tanah --}}
+    'province' => request('province', 'semua'),  {{-- Provinsi --}}
+    'page' => 1  {{-- Menambahkan page untuk pagination --}}
+]) }}" method="GET">
                 <div class="modal-body" style="max-height: calc(100vh - 150px); overflow-y: auto;">
                     <div class="container">
                         <div class="row g-2">
@@ -193,32 +228,6 @@
     </div>
 </div>
 
-<script>
-    // Fungsi untuk memastikan hanya angka yang bisa dimasukkan
-    function validateInteger(input) {
-        // Hapus semua karakter selain angka
-        input.value = input.value.replace(/[^0-9]/g, '');
-    }
-
-    // Fungsi untuk format angka menjadi dengan pemisah ribuan (1.000, 10.000, etc.)
-    function formatNumber(input) {
-        // Hapus karakter selain angka
-        let value = input.value.replace(/[^\d]/g, '');
-        if (value) {
-            // Format angka menggunakan Intl.NumberFormat
-            input.value = new Intl.NumberFormat('id-ID').format(value);
-        }
-    }
-
-    // Sebelum form submit, hapus titik biar masuk ke DB sebagai angka bersih
-    document.querySelector("form").addEventListener("submit", function () {
-        document.querySelectorAll('input[name="min_land_size"], input[name="max_land_size"]').forEach(function (el) {
-            el.value = el.value.replace(/\./g, "");  // Menghapus titik sebelum submit
-        });
-    });
-</script>
-
-
                             <!-- Provinsi -->
                             <div class="col-12">
                                 <select id="province" name="province" class="form-select border-0 py-3">
@@ -260,7 +269,30 @@
     </div>
 </div>
 
+<script>
+    // Fungsi untuk memastikan hanya angka yang bisa dimasukkan
+    function validateInteger(input) {
+        // Hapus semua karakter selain angka
+        input.value = input.value.replace(/[^0-9]/g, '');
+    }
 
+    // Fungsi untuk format angka menjadi dengan pemisah ribuan (1.000, 10.000, etc.)
+    function formatNumber(input) {
+        // Hapus karakter selain angka
+        let value = input.value.replace(/[^\d]/g, '');
+        if (value) {
+            // Format angka menggunakan Intl.NumberFormat
+            input.value = new Intl.NumberFormat('id-ID').format(value);
+        }
+    }
+
+    // Sebelum form submit, hapus titik biar masuk ke DB sebagai angka bersih
+    document.querySelector("form").addEventListener("submit", function () {
+        document.querySelectorAll('input[name="min_land_size"], input[name="max_land_size"]').forEach(function (el) {
+            el.value = el.value.replace(/\./g, "");  // Menghapus titik sebelum submit
+        });
+    });
+</script>
 <style>
     .mobile-search .form-control:focus { box-shadow:none; }
     .mobile-search .input-group-text { border:0; }

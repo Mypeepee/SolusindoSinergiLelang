@@ -64,7 +64,11 @@ Route::get('/property-agent', [propertyagentController::class, 'showagent']);
 Route::get('/property-agent', [PropertyAgentController::class, 'showPropertyAgent'])->name('property.agent');
 // Filter property milik agent
 Route::get('/property-agent/filter', [PropertyAgentController::class, 'filterPropertyByAgent'])->name('property.agent.filter');
-Route::get('/property-list', [propertylistController::class, 'showproperty'])->name('property.list');
+
+Route::get('/jual/{city}/{price_range}/{property_type}/{page?}', [PropertyListController::class, 'showproperty'])
+    ->name('property.list');
+
+
 Route::get('/property-type', [propertytypeController::class, 'tipeproperty']);
 Route::get('/property/{id}', [propertylistController::class, 'showPropertyDetail'])->name('property-detail');
 

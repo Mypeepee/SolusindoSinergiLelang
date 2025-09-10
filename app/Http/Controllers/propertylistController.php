@@ -28,7 +28,14 @@ class propertylistController extends Controller
 }
 
 
-public function showproperty(Request $request)
+public function showproperty(Request $request,
+                             $property_type = 'rumah',
+                             $province = 'semua',
+                             $city = 'semua',
+                             $district = 'semua',
+                             $price_range = 'harga-max-0',
+                             $land_size = 'luas-tanah-max-0',
+                             $page = 1)
 {
     // >>> Hilangkan JOIN, pakai subselect agar bebas ambiguitas
     $query = Property::query()
@@ -88,8 +95,9 @@ public function showproperty(Request $request)
     }
 
     // ============== Tipe properti ==============
-    if ($request->filled('property_type')) {
-        $query->where('property.tipe', $request->property_type);
+    $propertyType = $request->input('property_type', 'rumah'); // Default ke rumah jika tidak ada
+    if ($propertyType) {
+        $query->where('property.tipe', $propertyType);
     }
 
     // ============== Ambil tag kota/kecamatan ==============
@@ -109,8 +117,9 @@ public function showproperty(Request $request)
     }
 
     // ============== Filter lokasi berdasarkan tag/provinsi ==============
+    $urlFilters = [];
+    $likeOp = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
     if (!empty($districts)) {
-        $likeOp = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
         $query->where(function ($q) use ($districts, $likeOp) {
             foreach ($districts as $d) {
                 $q->orWhere(function ($sub) use ($d, $likeOp) {
@@ -119,20 +128,21 @@ public function showproperty(Request $request)
                 });
             }
         });
+        $urlFilters[] = strtolower(str_replace(' ', '-', implode('/', array_column($districts, 'city'))));
     } elseif (!empty($cities)) {
-        $likeOp = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
         $query->where(function ($q) use ($cities, $likeOp) {
             foreach ($cities as $city) {
                 $q->orWhere('property.kota', $likeOp, '%' . $city . '%');
             }
         });
+        $urlFilters[] = strtolower(str_replace(' ', '-', implode('/', $cities)));
     } elseif ($request->filled('province')) {
-        $likeOp = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
         $prov = '%' . $request->province . '%';
         $query->where(function ($q) use ($prov, $likeOp) {
             $q->where('property.provinsi', $likeOp, $prov)
               ->orWhere('property.lokasi',   $likeOp, $prov);
         });
+        $urlFilters[] = strtolower(str_replace(' ', '-', $request->province));
     }
 
     // ============== Sorting ==============
@@ -144,13 +154,22 @@ public function showproperty(Request $request)
         $query->orderBy('property.tanggal_dibuat', 'desc');
     }
 
+    // Ambil salah satu properti untuk digunakan dalam meta dan structured data
+    $property = $query->first();
+
     // Pagination + bawa semua query string (q, filter, sort, dst.)
     $properties = $query->paginate(18)->appends($request->query());
 
-    return view('property-list', compact('properties', 'selectedTags'));
+    // Generate URL based on filters
+    $baseUrl = 'https://solusindolelang.com/jual-' . strtolower($propertyType); // Menyesuaikan dengan tipe properti
+    $url = $baseUrl . '/' . implode('/', $urlFilters);
+
+    // Append pagination to URL
+    $urlWithPagination = $url . '/page/' . $properties->currentPage();
+
+    // Pass data ke view
+    return view('property-list', compact('properties', 'selectedTags', 'urlWithPagination', 'property', 'property_type', 'province', 'city', 'price_range'));
 }
-
-
 
 
 
