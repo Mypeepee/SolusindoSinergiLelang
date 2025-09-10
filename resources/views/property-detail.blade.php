@@ -322,7 +322,17 @@
 
                                         @else
                                             <!-- Untuk selain Owner dan Stoker: tombol Tanyakan Stok -->
-                                            <a href="https://chat.whatsapp.com/BRKrMZk2wWJ9rEGV7Oy06V"
+                                            <!-- kirim di grup -->
+                                            {{-- <a href="https://chat.whatsapp.com/BRKrMZk2wWJ9rEGV7Oy06V"
+                                                onclick="copyTanyakanStok('{{ $property->id_listing }}', `{{ $property->lokasi }}`, `{{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->translatedFormat('d F Y') }}`, `{{ $propertyUrl }}`)"
+                                                target="_blank"
+                                                class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
+                                                style="min-width: 180px;">
+                                                <i class="fa fa-question-circle me-2"></i>Tanyakan Stok
+                                            </a> --}}
+
+                                            <!-- kirim di ce shin -->
+                                            <a href="https://wa.me/6285707379606"
                                                 onclick="copyTanyakanStok('{{ $property->id_listing }}', `{{ $property->lokasi }}`, `{{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->translatedFormat('d F Y') }}`, `{{ $propertyUrl }}`)"
                                                 target="_blank"
                                                 class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
@@ -344,7 +354,7 @@
 
                                                 navigator.clipboard.writeText(teks)
                                                     .then(() => {
-                                                        alert("✅ Pesan berhasil disalin. Tinggal paste di grup WhatsApp.");
+                                                        alert("✅ Pesan berhasil disalin. Tinggal paste di bagian Stoker kami.");
                                                     })
                                                     .catch(err => {
                                                         console.error(err);
@@ -448,32 +458,32 @@
                                         </button>
                                     </div>
                                     <!-- Share + Edit (Mobile Only) -->
-                                    <div class="d-flex d-md-none gap-2 mt-3">
-                                        <!-- Share dengan teks -->
-                                        <a href="javascript:void(0);"
-                                        id="shareBtnMobile"
-                                        class="btn btn-outline-secondary d-flex align-items-center justify-content-center px-3 py-2"
-                                        style="min-width: 180px; height: 50px;"
-                                        title="Bagikan">
-                                        <i class="fa fa-share-alt me-2"></i> Bagikan
-                                     </a>
+<div class="d-flex d-md-none flex-column gap-3 mt-3">
+    <!-- Share dengan teks -->
+    <a href="javascript:void(0);"
+       id="shareBtnMobile"
+       class="btn btn-outline-secondary d-flex align-items-center justify-content-center px-3 py-2"
+       style="min-width: 180px; height: 50px;"
+       title="Bagikan">
+        <i class="fa fa-share-alt me-2"></i> Bagikan
+    </a>
 
+    <!-- Edit (Hanya Pemilik) -->
+    @if (Session::has('id_account'))
+        @php
+            $loggedInId = Session::get('id_account');
+            $loggedInAgentId = \App\Models\Agent::where('id_account', $loggedInId)->value('id_agent');
+        @endphp
+        @if ($property->id_agent === $loggedInAgentId)
+            <a href="{{ route('editproperty', $property->id_listing) }}"
+               class="btn btn-warning text-black d-flex align-items-center justify-content-center flex-fill"
+               title="Edit Properti">
+               <i class="fa fa-edit me-2"></i>Edit
+            </a>
+        @endif
+    @endif
+</div>
 
-                                        <!-- Edit (Hanya Pemilik) -->
-                                        @if (Session::has('id_account'))
-                                            @php
-                                                $loggedInId = Session::get('id_account');
-                                                $loggedInAgentId = \App\Models\Agent::where('id_account', $loggedInId)->value('id_agent');
-                                            @endphp
-                                            @if ($property->id_agent === $loggedInAgentId)
-                                                <a href="{{ route('editproperty', $property->id_listing) }}"
-                                                   class="btn btn-warning text-black d-flex align-items-center justify-content-center flex-fill"
-                                                   title="Edit Properti">
-                                                   <i class="fa fa-edit me-2"></i>Edit
-                                                </a>
-                                            @endif
-                                        @endif
-                                    </div>
 
                                     <!-- Edit (Desktop) -->
                                     @if (Session::has('id_account'))
