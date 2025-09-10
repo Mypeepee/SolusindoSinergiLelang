@@ -424,7 +424,7 @@ public function update(Request $request, $id_listing)
     $property->lokasi = $request->lokasi;
     $property->provinsi = $request->provinsi;
     $property->kota = $request->kota;
-    $property->kelurahan = $request->kelurahan;
+    $property->kecamatan = $request->kelurahan;
     $property->sertifikat = $request->sertifikat;
     $property->luas = $request->luas_tanah; // asumsi satuan meter persegi
     $property->payment = implode(',', $request->input('payment', []));

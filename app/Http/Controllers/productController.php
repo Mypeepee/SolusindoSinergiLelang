@@ -348,7 +348,7 @@ private function getOrCreateFolder($folderName, $parentId, $accessToken)
         'lokasi' => $request->lokasi,
         'provinsi' => $request->provinsi,
         'kota' => $request->kota,
-        'kelurahan' => $request->kelurahan,
+        'kecamatan' => $request->kelurahan,
         'sertifikat' => $request->sertifikat,
         'status' => 'Tersedia',
         'gambar' => $imageString,
