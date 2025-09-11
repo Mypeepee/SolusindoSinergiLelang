@@ -636,7 +636,43 @@
                                 max-width:160px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
                               }
                             </style>
+<style>
+    .property-item {
+        display: flex;
+        flex-direction: column;
+    }
 
+    .property-item img {
+        width: 100%;
+        height: 300px;
+        object-fit: cover;
+        object-position: center;
+    }
+
+    .property-item .p-4 {
+        flex-grow: 1;
+    }
+
+    @media (max-width: 576px) {
+        .property-item img {
+            height: 220px;
+        }
+
+        .property-item h5, .property-item a.d-block {
+            font-size: 1rem;
+        }
+
+        .property-item .text-primary.mb-3 {
+            font-size: 1rem;
+        }
+    }
+    .property-image-wrapper img {
+        width: 100%;
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+</style>
 
 
 
