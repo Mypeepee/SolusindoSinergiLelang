@@ -885,45 +885,202 @@ function formatNumberInput(input) {
                 </div>
             </div>
             <div class="col-lg-6">
-                <div class="filter-buttons d-flex flex-wrap justify-content-start justify-content-lg-end gap-2 mb-4">
-                    <!-- Sort Dropdown -->
-                    <div class="dropdown">
-                        <button class="btn btn-custom dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            <span id="selectedSortOption">Urutkan</span> <i class="bi bi-chevron-down"></i>
-                        </button>
-                        <ul class="dropdown-menu" aria-labelledby="sortDropdown">
-                            <!-- Sorting Options -->
-                            <li>
-                                <a class="dropdown-item {{ request('sort') === 'harga_asc' ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['sort' => 'harga_asc']) }}">
-                                    Dari Harga Paling Rendah
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item {{ request('sort') === 'harga_desc' ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['sort' => 'harga_desc']) }}">
-                                    Dari Harga Paling Tinggi
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item {{ request('sort') === 'tanggal_terdekat' ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['sort' => 'tanggal_terdekat']) }}">
-                                    Dari Tanggal Lelang Terdekat
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item {{ request('sort') === 'tanggal_terjauh' ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['sort' => 'tanggal_terjauh']) }}">
-                                    Dari Tanggal Lelang Terjauh
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
+                <div class="d-flex flex-wrap justify-content-start justify-content-lg-end gap-2 mb-4">
+                    <!-- Date Toggle Buttons (visible when sorting by date) -->
+<!-- Date Toggle Buttons (visible when sorting by date) -->
+<div id="date-toggle" class="{{ request('sort') === 'tanggal_terdekat' ? '' : 'd-none' }}">
+    <button class="btn btn-date-toggle {{ request('sort') === 'tanggal_sekarang' ? 'active' : '' }}" id="from-now">Dari Tanggal Sekarang</button>
+    <button class="btn btn-date-toggle {{ request('sort') === 'semua' ? 'active' : '' }}" id="all">Semua</button>
+</div>
+
+<!-- Sort Dropdown -->
+<div class="dropdown">
+    <button class="btn btn-custom dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+        <span id="selectedSortOption">Urutkan</span>
+    </button>
+    <ul class="dropdown-menu" aria-labelledby="sortDropdown">
+        <!-- Sorting Options -->
+        <li>
+            <a class="dropdown-item {{ request('sort') === 'harga_asc' ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['sort' => 'harga_asc']) }}">
+                Dari Harga Paling Rendah
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item {{ request('sort') === 'harga_desc' ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['sort' => 'harga_desc']) }}">
+                Dari Harga Paling Tinggi
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item {{ request('sort') === 'tanggal_terdekat' ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['sort' => 'tanggal_terdekat']) }}">
+                Dari Tanggal Lelang Terdekat
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item {{ request('sort') === 'tanggal_terjauh' ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['sort' => 'tanggal_terjauh']) }}">
+                Dari Tanggal Lelang Terjauh
+            </a>
+        </li>
+    </ul>
+</div>
+
+
                 </div>
             </div>
 
-
-        </div>
-
-
         <div class="row g-4">
+            <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const dateToggleContainer = document.getElementById('date-toggle');
+    const fromNowButton = document.getElementById('from-now');
+    const allButton = document.getElementById('all');
+    const selectedSortOption = document.getElementById('selectedSortOption');
+
+    // Tampilkan tombol "Dari Tanggal Sekarang" dan "Semua" saat "Dari Tanggal Lelang Terdekat" dipilih
+    const dateOptionButton = document.querySelector('a[href*="tanggal_terdekat"]');
+    if (dateOptionButton) {
+        dateOptionButton.addEventListener('click', function () {
+            dateToggleContainer.classList.remove('d-none');
+            // Menetapkan tombol "Dari Tanggal Sekarang" aktif ketika filter tanggal terdekat dipilih
+            fromNowButton.classList.add('active');
+            allButton.classList.remove('active');
+        });
+    }
+
+    // Sembunyikan tombol "Dari Tanggal Sekarang" dan "Semua" jika opsi lain dipilih
+    const otherSortOptions = document.querySelectorAll('.dropdown-item:not([href*="tanggal_terdekat"])');
+    otherSortOptions.forEach(option => {
+        option.addEventListener('click', function () {
+            dateToggleContainer.classList.add('d-none');
+            fromNowButton.classList.remove('active');
+            allButton.classList.remove('active');
+        });
+    });
+
+    // Menangani klik tombol "Dari Tanggal Sekarang"
+    if (fromNowButton) {
+        fromNowButton.addEventListener('click', function () {
+            const url = new URL(window.location.href);
+            url.searchParams.set('sort', 'tanggal_sekarang');
+            window.location.href = url.toString();
+        });
+    }
+
+    // Menangani klik tombol "Semua"
+    if (allButton) {
+        allButton.addEventListener('click', function () {
+            const url = new URL(window.location.href);
+            url.searchParams.set('sort', 'semua');
+            window.location.href = url.toString();
+        });
+    }
+
+    // Memperbarui dropdown sesuai dengan pilihan yang ada di URL
+    if (selectedSortOption) {
+        const currentSort = new URLSearchParams(window.location.search).get('sort');
+
+        // Mengubah teks tombol dropdown sesuai dengan filter yang dipilih
+        if (currentSort === 'harga_asc') {
+            selectedSortOption.textContent = 'Dari Harga Paling Rendah';
+        } else if (currentSort === 'harga_desc') {
+            selectedSortOption.textContent = 'Dari Harga Paling Tinggi';
+        } else if (currentSort === 'tanggal_terdekat') {
+            selectedSortOption.textContent = 'Dari Tanggal Lelang Terdekat';
+            // Tombol "Dari Tanggal Sekarang" aktif
+            fromNowButton.classList.add('active');
+            allButton.classList.remove('active');
+        } else if (currentSort === 'tanggal_terjauh') {
+            selectedSortOption.textContent = 'Dari Tanggal Lelang Terjauh';
+        } else if (currentSort === 'tanggal_sekarang') {
+            selectedSortOption.textContent = 'Dari Tanggal Sekarang';
+            fromNowButton.classList.add('active');
+            allButton.classList.remove('active');
+        }
+         else {
+            selectedSortOption.textContent = 'Urutkan';  // Tampilkan "Urutkan" jika belum ada pilihan
+        }
+    }
+});
+
+                </script>
             <style>
+/* Style for the 'Dari Tanggal Sekarang' and 'Semua' toggle buttons */
+#date-toggle {
+    display: flex;
+    gap: 5px;
+}
+/* --primary: #dc3545;
+    --secondary: #f35525;
+    --light: #fdefef;
+    --dark: #0E2E50; */
+.btn-date-toggle {
+    background-color: #f35525; /* Use a color similar to Solusindo Lelang's theme (blue) */
+    color: white;
+    padding: 8px 20px;
+    font-weight: 600;
+    border-radius: 30px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-date-toggle.active {
+    background-color: #0E2E50; /* Red background for active option */
+    color: white;
+}
+
+.btn-date-toggle:hover {
+    background-color: #dc3545; /* Darker blue on hover */
+}
+
+/* Ensure the toggle buttons are hidden by default */
+.d-none {
+    display: none;
+}
+
+/* Style for the dropdown button */
+.btn-custom {
+    background-color: transparent;
+    color: #333;
+    border: 2px solid #008CBA; /* Match the website's primary color */
+    border-radius: 30px;
+    font-weight: 600;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Custom dropdown menu style */
+.dropdown-menu {
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Dropdown item style */
+.dropdown-item {
+    font-size: 14px;
+    padding: 10px 20px;
+    color: #333;
+}
+
+/* Hover effect for dropdown items */
+.dropdown-item:hover {
+    background-color: #f1f1f1;
+    color: #008CBA;
+}
+
+/* Active state for dropdown items */
+.dropdown-item.active {
+    background-color: #f53b57;
+    color: black;
+}
+
+/* Chevron icon style */
+.bi-chevron-down {
+    font-size: 14px;
+}
+
+
                 /* Custom button style for dropdown */
 .btn-custom {
     background-color: transparent; /* Transparent background */

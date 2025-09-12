@@ -145,19 +145,29 @@ public function showproperty(Request $request,
         $urlFilters[] = strtolower(str_replace(' ', '-', $request->province));
     }
 
-    // ============== Sorting ==============
-    if ($request->sort === 'harga_asc') {
-        $query->orderBy('property.harga', 'asc');
-    } elseif ($request->sort === 'harga_desc') {
-        $query->orderBy('property.harga', 'desc');
-    } elseif ($request->sort === 'tanggal_terdekat') {
-        $query->orderBy('property.tanggal_dibuat', 'asc'); // Assuming this is the creation date
-    } elseif ($request->sort === 'tanggal_terjauh') {
-        $query->orderBy('property.tanggal_dibuat', 'desc'); // Assuming this is the creation date
-    } else {
-        // Default to "Newest" if no sort is specified
-        $query->orderBy('property.tanggal_dibuat', 'desc');
-    }
+// ============== Sorting ==============
+if ($request->sort === 'harga_asc') {
+    $query->orderBy('property.harga', 'asc');
+} elseif ($request->sort === 'harga_desc') {
+    $query->orderBy('property.harga', 'desc');
+} elseif ($request->sort === 'tanggal_terdekat') {
+    // Sort by 'batas_akhir_penawaran' for the nearest auction date
+    $query->where('property.batas_akhir_penawaran', '>=', now())
+          ->orderBy('property.batas_akhir_penawaran', 'asc'); // Add sorting
+} elseif ($request->sort === 'tanggal_terjauh') {
+    // Sort by 'batas_akhir_penawaran' for the furthest auction date
+    $query->orderBy('property.batas_akhir_penawaran', 'desc');
+} elseif ($request->sort === 'tanggal_sekarang') {
+    // Only show future auctions from today and ensure they're sorted in ascending order
+    $query->where('property.batas_akhir_penawaran', '>=', now())
+          ->orderBy('property.batas_akhir_penawaran', 'asc'); // Add sorting
+} elseif ($request->sort === 'semua') {
+    // Show all auctions, including past ones, sorted by auction date
+    $query->orderBy('property.batas_akhir_penawaran', 'asc');
+} else {
+    // Default to "Newest" if no sort is specified, using 'batas_akhir_penawaran'
+    $query->orderBy('property.batas_akhir_penawaran', 'desc');
+}
 
     // Ambil salah satu properti untuk digunakan dalam meta dan structured data
     $property = $query->first();
