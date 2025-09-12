@@ -167,9 +167,24 @@ public function showproperty(Request $request,
             return $property->batas_akhir_penawaran;
         });
     } elseif ($request->sort === 'tanggal_sekarang') {
-        $properties->getCollection()->sortBy(function ($property) {
-            return $property->batas_akhir_penawaran;
+        // Filter hanya properti yang memiliki batas_akhir_penawaran >= hari ini
+        $query->where('property.batas_akhir_penawaran', '>=', now());
+
+        // Urutkan berdasarkan batas_akhir_penawaran yang paling dekat dengan hari ini
+        $properties = $query->get(); // Ambil semua properti setelah filter tanggal
+        $properties = collect($properties)->sortBy(function ($property) {
+            // Gunakan Carbon untuk menghitung tanggal yang terdekat
+            return \Carbon\Carbon::parse($property->batas_akhir_penawaran)->timestamp;
         });
+
+        // Terapkan hasil sortir ke paginator
+        $properties = new \Illuminate\Pagination\LengthAwarePaginator(
+            $properties->forPage($page, 18),
+            $properties->count(),
+            18,
+            $page,
+            ['path' => url()->current()]
+        );
     } elseif ($request->sort === 'semua') {
         $properties->getCollection()->sortBy(function ($property) {
             return $property->batas_akhir_penawaran;

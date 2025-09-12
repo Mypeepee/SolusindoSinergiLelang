@@ -1038,7 +1038,7 @@ document.addEventListener('DOMContentLoaded', function () {
 }
 
 .btn-date-toggle.active {
-    background-color: #0E2E50; /* Red background for active option */
+    background-color: #f35525; /* Red background for active option */
     color: white;
 }
 
