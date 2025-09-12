@@ -145,35 +145,36 @@ public function showproperty(Request $request,
         $urlFilters[] = strtolower(str_replace(' ', '-', $request->province));
     }
 
-// ============== Sorting ==============
-if ($request->sort === 'harga_asc') {
-    $query->orderBy('property.harga', 'asc');
-} elseif ($request->sort === 'harga_desc') {
-    $query->orderBy('property.harga', 'desc');
-} elseif ($request->sort === 'tanggal_terdekat') {
-    // Sort by 'batas_akhir_penawaran' for the nearest auction date
-    $query->where('property.batas_akhir_penawaran', '>=', now())
-          ->orderBy('property.batas_akhir_penawaran', 'asc'); // Add sorting
-} elseif ($request->sort === 'tanggal_terjauh') {
-    // Sort by 'batas_akhir_penawaran' for the furthest auction date
-    $query->orderBy('property.batas_akhir_penawaran', 'desc');
-} elseif ($request->sort === 'tanggal_sekarang') {
-    // Only show future auctions from today and ensure they're sorted in ascending order
-    $query->where('property.batas_akhir_penawaran', '>=', now())
-          ->orderBy('property.batas_akhir_penawaran', 'asc'); // Add sorting
-} elseif ($request->sort === 'semua') {
-    // Show all auctions, including past ones, sorted by auction date
-    $query->orderBy('property.batas_akhir_penawaran', 'asc');
-} else {
-    // Default to "Newest" if no sort is specified, using 'batas_akhir_penawaran'
-    $query->orderBy('property.batas_akhir_penawaran', 'desc');
-}
-
-    // Ambil salah satu properti untuk digunakan dalam meta dan structured data
-    $property = $query->first();
-
-    // Pagination + bawa semua query string (q, filter, sort, dst.)
+    // Ambil hasil properti tanpa sortir terlebih dahulu
     $properties = $query->paginate(18)->appends($request->query());
+
+    // ========================== Sorting ==========================
+    // Setelah hasil diambil, lakukan sortir berdasarkan pilihan
+    if ($request->sort === 'harga_asc') {
+        $properties->getCollection()->sortBy(function ($property) {
+            return $property->harga;
+        });
+    } elseif ($request->sort === 'harga_desc') {
+        $properties->getCollection()->sortByDesc(function ($property) {
+            return $property->harga;
+        });
+    } elseif ($request->sort === 'tanggal_terdekat') {
+        $properties->getCollection()->sortBy(function ($property) {
+            return $property->batas_akhir_penawaran;
+        });
+    } elseif ($request->sort === 'tanggal_terjauh') {
+        $properties->getCollection()->sortByDesc(function ($property) {
+            return $property->batas_akhir_penawaran;
+        });
+    } elseif ($request->sort === 'tanggal_sekarang') {
+        $properties->getCollection()->sortBy(function ($property) {
+            return $property->batas_akhir_penawaran;
+        });
+    } elseif ($request->sort === 'semua') {
+        $properties->getCollection()->sortBy(function ($property) {
+            return $property->batas_akhir_penawaran;
+        });
+    }
 
     // Generate URL based on filters
     $baseUrl = 'https://solusindolelang.com/jual-' . strtolower($propertyType); // Menyesuaikan dengan tipe properti
@@ -182,9 +183,13 @@ if ($request->sort === 'harga_asc') {
     // Append pagination to URL
     $urlWithPagination = $url . '/page/' . $properties->currentPage();
 
+    // Ambil salah satu properti untuk digunakan dalam meta dan structured data
+    $property = $query->first();
+
     // Pass data ke view
     return view('property-list', compact('properties', 'selectedTags', 'urlWithPagination', 'property', 'property_type', 'province', 'city', 'price_range'));
 }
+
 
 
 

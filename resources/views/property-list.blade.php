@@ -875,6 +875,22 @@ function formatNumberInput(input) {
     @endif
 </div>
 
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Cek apakah ada query string 'q' (search)
+        const urlParams = new URLSearchParams(window.location.search);
+        const searchQuery = urlParams.get('q');
+
+        if (searchQuery) {
+            // Jika ada pencarian, scroll ke bagian daftar properti
+            const propertyList = document.getElementById("property-list-section");
+            if (propertyList) {
+                propertyList.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+        }
+    });
+</script>
+
 <div id="property-list-section" class="container-xxl py-5">
     <div class="container">
         <div class="row g-0 gx-5 align-items-end">
@@ -922,8 +938,6 @@ function formatNumberInput(input) {
         </li>
     </ul>
 </div>
-
-
                 </div>
             </div>
 
