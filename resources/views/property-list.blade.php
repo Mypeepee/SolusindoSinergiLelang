@@ -7,7 +7,7 @@
     <meta property="og:url" content="{{ request()->fullUrl() }}">
 @endsection
 
-@section('structured_data')
+{{-- @section('structured_data')
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
@@ -25,7 +25,7 @@
         "url": "{{ route('property-detail', $property->id_listing) }}"
     }
     </script>
-@endsection
+@endsection --}}
 
 <!-- Header Start -->
 <style>
