@@ -150,7 +150,12 @@ public function showproperty(Request $request,
         $query->orderBy('property.harga', 'asc');
     } elseif ($request->sort === 'harga_desc') {
         $query->orderBy('property.harga', 'desc');
+    } elseif ($request->sort === 'tanggal_terdekat') {
+        $query->orderBy('property.tanggal_dibuat', 'asc'); // Assuming this is the creation date
+    } elseif ($request->sort === 'tanggal_terjauh') {
+        $query->orderBy('property.tanggal_dibuat', 'desc'); // Assuming this is the creation date
     } else {
+        // Default to "Newest" if no sort is specified
         $query->orderBy('property.tanggal_dibuat', 'desc');
     }
 

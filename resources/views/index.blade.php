@@ -168,9 +168,33 @@
 
 
 <!-- Tombol baru (UI konsisten seperti desktop) -->
-<button type="button" class="btn btn-dark w-100 py-3 d-md-none mb-3 fw-semibold" data-bs-toggle="modal" data-bs-target="#filterModal">
-    Klik Untuk Filter Pencarian
-</button>
+<!-- Updated Mobile View for Search and Filter (Always Visible) -->
+<div class="container-fluid bg-primary mb-5 wow fadeIn d-md-none" data-wow-delay="0.1s" style="padding: 35px;">
+    <form id="searchForm" method="GET" action="{{ route('property.list') }}#property-list-section" class="search-hero">
+        <div class="search-rail d-flex align-items-center">
+            <i class="bi bi-search ms-3 me-2 text-muted fs-5"></i>
+            <input
+                type="text"
+                name="q"
+                value="{{ request('q') }}"
+                class="search-rail-input flex-grow-1"
+                placeholder="Cari lokasi / perumahan / jalan… (mis. 'Citraland')"
+                autocomplete="off"
+                aria-label="Ketik kata kunci pencarian"
+            />
+            <div class="d-flex align-items-center gap-2 ms-2">
+                <button type="submit" class="btn btn-search px-4 fw-semibold">
+                    <i class="bi bi-search"></i> <!-- Bootstrap icon for magnifying glass -->
+                </button>
+                <button type="button" class="btn btn-filter px-3 fw-semibold"
+                        data-bs-toggle="modal" data-bs-target="#filterModal">
+                    <i class="bi bi-sliders"></i>
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
 
 <!-- Modal Filter (Fullscreen on small screens) -->
 <div class="modal fade" id="filterModal" tabindex="-1" aria-hidden="true">
@@ -459,7 +483,6 @@ document.addEventListener('DOMContentLoaded', function () {
 <!-- Desktop View Original Search Form (Visible Only on md and Up) -->
 <div class="container-fluid bg-primary mb-5 wow fadeIn d-none d-md-block" data-wow-delay="0.1s" style="padding: 35px;">
     <form id="searchForm" method="GET" action="{{ route('property.list') }}#property-list-section" class="search-hero">
-
         {{-- Keyword bar + buttons (replaces your input-group) --}}
         <div class="search-rail d-flex align-items-center">
             <i class="bi bi-search ms-3 me-2 text-muted fs-5"></i>

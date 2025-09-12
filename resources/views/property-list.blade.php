@@ -125,10 +125,34 @@
 </div>
 <!-- Header End -->
 
+
 <!-- Tombol baru (UI konsisten seperti desktop) -->
-<button type="button" class="btn btn-dark w-100 py-3 d-md-none mb-3 fw-semibold" data-bs-toggle="modal" data-bs-target="#filterModal">
-    Klik Untuk Filter Pencarian
-</button>
+<!-- Updated Mobile View for Search and Filter (Always Visible) -->
+<div class="container-fluid bg-primary mb-5 wow fadeIn d-md-none" data-wow-delay="0.1s" style="padding: 35px;">
+    <form id="searchForm" method="GET" action="{{ route('property.list') }}#property-list-section" class="search-hero">
+        <div class="search-rail d-flex align-items-center">
+            <i class="bi bi-search ms-3 me-2 text-muted fs-5"></i>
+            <input
+                type="text"
+                name="q"
+                value="{{ request('q') }}"
+                class="search-rail-input flex-grow-1"
+                placeholder="Cari lokasi / perumahan / jalan… (mis. 'Citraland')"
+                autocomplete="off"
+                aria-label="Ketik kata kunci pencarian"
+            />
+            <div class="d-flex align-items-center gap-2 ms-2">
+                <button type="submit" class="btn btn-search px-4 fw-semibold">
+                    <i class="bi bi-search"></i> <!-- Bootstrap icon for magnifying glass -->
+                </button>
+                <button type="button" class="btn btn-filter px-3 fw-semibold"
+                        data-bs-toggle="modal" data-bs-target="#filterModal">
+                    <i class="bi bi-sliders"></i>
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
 
 <!-- Modal Filter (Fullscreen on small screens) -->
 <div class="modal fade" id="filterModal" tabindex="-1" aria-hidden="true">
@@ -862,21 +886,93 @@ function formatNumberInput(input) {
             </div>
             <div class="col-lg-6">
                 <div class="filter-buttons d-flex flex-wrap justify-content-start justify-content-lg-end gap-2 mb-4">
-                    <a class="btn {{ request('sort') === null ? 'btn-primary' : 'btn-outline-primary' }}"
-                        href="{{ request()->fullUrlWithQuery(['sort' => null]) }}">Unggulan</a>
-
-                    <a class="btn {{ request('sort') === 'harga_asc' ? 'btn-primary' : 'btn-outline-primary' }}"
-                        href="{{ request()->fullUrlWithQuery(['sort' => 'harga_asc']) }}">Dari Harga Paling Rendah</a>
-
-                    <a class="btn {{ request('sort') === 'harga_desc' ? 'btn-primary' : 'btn-outline-primary' }}"
-                        href="{{ request()->fullUrlWithQuery(['sort' => 'harga_desc']) }}">Dari Harga Paling Tinggi</a>
+                    <!-- Sort Dropdown -->
+                    <div class="dropdown">
+                        <button class="btn btn-custom dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span id="selectedSortOption">Urutkan</span> <i class="bi bi-chevron-down"></i>
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="sortDropdown">
+                            <!-- Sorting Options -->
+                            <li>
+                                <a class="dropdown-item {{ request('sort') === 'harga_asc' ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['sort' => 'harga_asc']) }}">
+                                    Dari Harga Paling Rendah
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {{ request('sort') === 'harga_desc' ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['sort' => 'harga_desc']) }}">
+                                    Dari Harga Paling Tinggi
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {{ request('sort') === 'tanggal_terdekat' ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['sort' => 'tanggal_terdekat']) }}">
+                                    Dari Tanggal Lelang Terdekat
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {{ request('sort') === 'tanggal_terjauh' ? 'active' : '' }}" href="{{ request()->fullUrlWithQuery(['sort' => 'tanggal_terjauh']) }}">
+                                    Dari Tanggal Lelang Terjauh
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </div>
+
+
         </div>
 
 
         <div class="row g-4">
             <style>
+                /* Custom button style for dropdown */
+.btn-custom {
+    background-color: transparent; /* Transparent background */
+    color: #333; /* Black text */
+    border: 2px solid #d74949; /* Blue border for better visibility */
+    border-radius: 30px; /* Rounded corners */
+    font-weight: 600; /* Slightly bold font */
+    padding: 10px 20px; /* Padding for the button */
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Space between the text and the icon */
+}
+
+/* Button text color when option is selected */
+#selectedSortOption {
+    color: #333; /* Black color for selected option text */
+}
+
+/* Custom style for the dropdown menu */
+.dropdown-menu {
+    border-radius: 8px; /* Rounded corners */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Soft shadow for depth */
+}
+
+/* Custom item styles for the dropdown */
+.dropdown-item {
+    font-size: 14px; /* Adjusted font size */
+    padding: 10px 20px; /* Padding for better spacing */
+    color: #333; /* Black text */
+}
+
+/* Hover effect for the dropdown items */
+.dropdown-item:hover {
+    background-color: #f1f1f1; /* Light gray background on hover */
+    color: #d9534f; /* Red text color on hover */
+}
+
+/* Active state for the selected option */
+.dropdown-item.active {
+    background-color: #d9534f; /* Red background for active item */
+    color: black; /* Keep the text black when selected */
+}
+
+/* Down arrow icon */
+.bi-chevron-down {
+    font-size: 14px; /* Icon size */
+    margin-left: 5px; /* Space between text and icon */
+}
+
                 .property-item {
                     display: flex;
                     flex-direction: column;
