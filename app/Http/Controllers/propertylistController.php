@@ -29,7 +29,7 @@ class propertylistController extends Controller
 
 
 public function showproperty(Request $request,
-                             $property_type = 'rumah',
+                             $property_type = 'semua',   // default jadi 'semua'
                              $province = 'semua',
                              $city = 'semua',
                              $district = 'semua',
@@ -94,11 +94,31 @@ public function showproperty(Request $request,
         $query->where('property.luas', '<=', str_replace('.', '', $request->max_land_size));
     }
 
-    // ============== Tipe properti ==============
-    $propertyType = $request->input('property_type', 'rumah'); // Default ke rumah jika tidak ada
-    if ($propertyType) {
-        $query->where('property.tipe', $propertyType);
+    // ============== Tipe properti (PERBAIKAN: default semua) ==============
+    // Ambil dari query (?property_type=...) atau dari path param $property_type
+    $resolvedType = strtolower((string) $request->input('property_type', $property_type));
+
+    // Normalisasi ejaan/alias
+    $aliases = [
+        'apartement' => 'apartemen',
+        'apartment'  => 'apartemen',
+    ];
+    if (isset($aliases[$resolvedType])) {
+        $resolvedType = $aliases[$resolvedType];
     }
+
+    // Jika 'semua' / 'all' / kosong => JANGAN filter tipe
+    if ($resolvedType === '' || in_array($resolvedType, ['semua','all','properti','any'], true)) {
+        $resolvedType = null;
+    }
+
+    // Jika ada tipe valid => filter case-insensitive
+    if (!is_null($resolvedType)) {
+        $query->whereRaw('LOWER(property.tipe) = ?', [$resolvedType]);
+    }
+
+    // Simpan untuk dikirim ke view
+    $property_type = $resolvedType ?? 'semua';
 
     // ============== Ambil tag kota/kecamatan ==============
     $cities = [];
@@ -107,8 +127,8 @@ public function showproperty(Request $request,
         $selectedTagsFromCities = explode(',', $request->selected_city_values);
         foreach ($selectedTagsFromCities as $tag) {
             if (strpos($tag, ' - ') !== false) {
-                [$city, $district] = explode(' - ', $tag);
-                $districts[] = ['city' => trim($city), 'district' => trim($district)];
+                [$cityName, $districtName] = explode(' - ', $tag);
+                $districts[] = ['city' => trim($cityName), 'district' => trim($districtName)];
             } else {
                 $cities[] = trim($tag);
             }
@@ -131,8 +151,8 @@ public function showproperty(Request $request,
         $urlFilters[] = strtolower(str_replace(' ', '-', implode('/', array_column($districts, 'city'))));
     } elseif (!empty($cities)) {
         $query->where(function ($q) use ($cities, $likeOp) {
-            foreach ($cities as $city) {
-                $q->orWhere('property.kota', $likeOp, '%' . $city . '%');
+            foreach ($cities as $cityName) {
+                $q->orWhere('property.kota', $likeOp, '%' . $cityName . '%');
             }
         });
         $urlFilters[] = strtolower(str_replace(' ', '-', implode('/', $cities)));
@@ -145,65 +165,63 @@ public function showproperty(Request $request,
         $urlFilters[] = strtolower(str_replace(' ', '-', $request->province));
     }
 
-    // Ambil hasil properti tanpa sortir terlebih dahulu
+    // Ambil hasil properti
     $properties = $query->paginate(18)->appends($request->query());
 
     // ========================== Sorting ==========================
-    // Setelah hasil diambil, lakukan sortir berdasarkan pilihan
+    // (biarkan sesuai logic awal)
     if ($request->sort === 'harga_asc') {
-        $properties->getCollection()->sortBy(function ($property) {
-            return $property->harga;
-        });
+        $properties->setCollection($properties->getCollection()->sortBy('harga')->values());
     } elseif ($request->sort === 'harga_desc') {
-        $properties->getCollection()->sortByDesc(function ($property) {
-            return $property->harga;
-        });
+        $properties->setCollection($properties->getCollection()->sortByDesc('harga')->values());
     } elseif ($request->sort === 'tanggal_terdekat') {
-        $properties->getCollection()->sortBy(function ($property) {
-            return $property->batas_akhir_penawaran;
-        });
+        $properties->setCollection($properties->getCollection()->sortBy('batas_akhir_penawaran')->values());
     } elseif ($request->sort === 'tanggal_terjauh') {
-        $properties->getCollection()->sortByDesc(function ($property) {
-            return $property->batas_akhir_penawaran;
-        });
+        $properties->setCollection($properties->getCollection()->sortByDesc('batas_akhir_penawaran')->values());
     } elseif ($request->sort === 'tanggal_sekarang') {
-        // Filter hanya properti yang memiliki batas_akhir_penawaran >= hari ini
-        $query->where('property.batas_akhir_penawaran', '>=', now());
+        $filtered = (clone $query)->where('property.batas_akhir_penawaran', '>=', now())->get()
+                    ->sortBy(function ($p) {
+                        return \Carbon\Carbon::parse($p->batas_akhir_penawaran)->timestamp;
+                    })->values();
 
-        // Urutkan berdasarkan batas_akhir_penawaran yang paling dekat dengan hari ini
-        $properties = $query->get(); // Ambil semua properti setelah filter tanggal
-        $properties = collect($properties)->sortBy(function ($property) {
-            // Gunakan Carbon untuk menghitung tanggal yang terdekat
-            return \Carbon\Carbon::parse($property->batas_akhir_penawaran)->timestamp;
-        });
-
-        // Terapkan hasil sortir ke paginator
         $properties = new \Illuminate\Pagination\LengthAwarePaginator(
-            $properties->forPage($page, 18),
-            $properties->count(),
+            $filtered->forPage($page, 18),
+            $filtered->count(),
             18,
             $page,
-            ['path' => url()->current()]
+            ['path' => url()->current(), 'pageName' => 'page']
         );
+        $properties->appends($request->query());
     } elseif ($request->sort === 'semua') {
-        $properties->getCollection()->sortBy(function ($property) {
-            return $property->batas_akhir_penawaran;
-        });
+        $properties->setCollection($properties->getCollection()->sortBy('batas_akhir_penawaran')->values());
     }
 
     // Generate URL based on filters
-    $baseUrl = 'https://solusindolelang.com/jual-' . strtolower($propertyType); // Menyesuaikan dengan tipe properti
-    $url = $baseUrl . '/' . implode('/', $urlFilters);
+    $baseUrl = $property_type !== 'semua'
+        ? 'https://solusindolelang.com/jual-' . strtolower($property_type)
+        : 'https://solusindolelang.com/jual-properti';
+
+    $url = rtrim($baseUrl . '/' . implode('/', array_filter($urlFilters)), '/');
 
     // Append pagination to URL
     $urlWithPagination = $url . '/page/' . $properties->currentPage();
 
-    // Ambil salah satu properti untuk digunakan dalam meta dan structured data
+    // Ambil salah satu properti untuk meta/structured data
     $property = $query->first();
 
     // Pass data ke view
-    return view('property-list', compact('properties', 'selectedTags', 'urlWithPagination', 'property', 'property_type', 'province', 'city', 'price_range'));
+    return view('property-list', compact(
+        'properties',
+        'selectedTags',
+        'urlWithPagination',
+        'property',
+        'property_type',
+        'province',
+        'city',
+        'price_range'
+    ));
 }
+
 
 
 
