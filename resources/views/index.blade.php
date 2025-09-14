@@ -26,26 +26,66 @@
         z-index: 10;
     }
 
-    @media (max-width: 768px) {
-        .carousel,
-        .carousel-inner,
-        .carousel-item {
-            height: 60vh; /* lebih pendek untuk mobile */
-        }
+    @media (max-width: 576px){
 
-        .carousel-caption h1 {
-            font-size: 1.3rem;
-        }
+/* Pill search rapi & gak nembus */
+.d-md-none .search-rail{
+  display:flex; align-items:center; gap:.5rem;
+  height:56px; width:100%;
+  padding:8px 8px 8px 12px;
+  border-radius:999px;
+  overflow:hidden;                      /* cegah isi tembus */
+  border:1.5px solid var(--rail-border);
+  box-shadow:0 8px 24px rgba(0,0,0,.06);
+  background:#fff;
+}
 
-        .carousel-caption p {
-            font-size: 0.9rem;
-        }
+/* icon kaca pembesar kiri */
+.d-md-none .search-rail i.bi-search:first-child{
+  flex:0 0 auto;
+  font-size:1.15rem; color:#8a949f;
+  margin-right:.25rem;
+}
 
-        .carousel-caption .btn {
-            padding: 0.6rem 1.2rem;
-            font-size: 0.9rem;
-        }
-    }
+/* input fleksibel & boleh mengecil */
+.d-md-none .search-rail-input{
+  flex:1 1 auto;
+  min-width:0;                          /* kunci: biar bisa menyusut */
+  height:40px; font-size:1rem;
+  border:0; outline:0; background:transparent;
+}
+
+/* grup tombol kanan (yang .d-flex itu) jangan menyusut */
+.d-md-none .search-rail > .d-flex{
+  flex:0 0 auto;
+  gap:.5rem;
+}
+
+/* ukuran tombol: target sentuh 44px */
+.d-md-none .search-rail .btn{
+  flex:0 0 auto;
+  width:44px; height:44px; padding:0;
+  border-radius:999px;
+  display:inline-flex; align-items:center; justify-content:center;
+}
+
+/* style tombol (tetap pakai var warna brand) */
+.d-md-none .btn-search{
+  background:var(--navy); color:#fff; border:0;
+  transition:filter .15s ease, transform .04s ease;
+}
+.d-md-none .btn-search:hover{ filter:brightness(1.08); }
+.d-md-none .btn-search:active{ transform:translateY(1px); }
+
+.d-md-none .btn-filter{
+  background:#fff; color:var(--brand-orange);
+  border:2px solid var(--brand-orange);
+  transition:background .15s ease, color .15s ease, border-color .15s ease;
+}
+.d-md-none .btn-filter:hover{
+  background:var(--brand-orange); color:#fff; border-color:var(--brand-orange);
+}
+}
 
     body {
         padding-top: 0 !important;
