@@ -53,8 +53,11 @@ public function showproperty(Request $request,
 
     $selectedTags = [];
 
-    // Hanya status Tersedia
-    $query->where('property.status', 'Tersedia');
+// Hanya status Tersedia
+$query->where('property.status', 'Tersedia');
+
+// Sort terbaru (id terbesar dulu)
+$query->orderBy('property.id_listing', 'desc');
 
     // ============== Keyword dari search bar (q) ==============
     $keyword = trim((string) $request->input('q', ''));
