@@ -441,9 +441,27 @@ public function showProfile()
         return view("register");
     }
 
-    public function Login()
+    public function Login(Request $request)
     {
-        return view("login");
+        // Kalau sudah login, jangan tampilkan form—lempar ke list/detail (bebas)
+        if (session()->has('id_account')) {
+            $to = session('intended_url', url('/property-list')); // ganti dengan route list kamu
+            return redirect($to);
+        }
+
+        // Simpan intended_url sekali (bisa pakai Referer)
+        if (!$request->session()->has('intended_url')) {
+            $prev = $request->headers->get('referer') ?: url()->previous();
+            if ($prev) {
+                $host = parse_url($prev, PHP_URL_HOST);
+                $sameHost = !$host || $host === $request->getHost();
+                if ($sameHost && !Str::contains($prev, ['/login','/logout','/register'])) {
+                    $request->session()->put('intended_url', $prev);
+                }
+            }
+        }
+
+        return view('login');
     }
 
     public function loginrequest(Request $request)
@@ -464,7 +482,7 @@ public function showProfile()
         if ($account && $user['password'] === $account->password) {
             $remember = $request->has('remember'); // Cek apakah "remember me" dicentang
 
-            // Simpan di session atau cookie
+            // Simpan di session atau cookie (punyamu tetap)
             if ($remember) {
                 Cookie::queue('id_account', $account->id_account, 60 * 24 * 7);
                 Cookie::queue('username', $account->username, 60 * 24 * 7);
@@ -481,12 +499,109 @@ public function showProfile()
                 session()->put('id_agent', $agent->id_agent);
             }
 
-            return redirect('/')->with('success', 'Login Successful!');
-        }
+            // Penting: cegah session fixation
+            $request->session()->regenerate();
 
+            // Tentukan tujuan balik (ganti sesuai route list kamu kalau perlu)
+            $fallbackList = url('/property-list');
+            $redirectTo = session()->pull('intended_url', $fallbackList);
+
+            // Simpan flash message untuk halaman berikutnya
+            session()->flash('success', 'Login Successful!');
+
+            // ====== Redirect screen dengan spinner oranye (tanpa Blade) ======
+$to = $redirectTo; // tujuan akhir
+$toJs   = json_encode($to);                               // aman untuk JavaScript
+$toHtml = htmlspecialchars($to, ENT_QUOTES, 'UTF-8');     // aman untuk HTML
+
+$html = <<<HTML
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="robots" content="noindex">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mengalihkan…</title>
+  <style>
+    :root { --brand: #f97316; /* orange-500 */ }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      background: #0b0d12;
+      color: #e5e7eb;
+    }
+    .wrap {
+      min-height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      padding: 32px;
+    }
+    .card {
+      width: 100%;
+      max-width: 520px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 28px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      text-align: center;
+    }
+    .spinner {
+      width: 64px; height: 64px; margin: 4px auto 18px auto;
+      border-radius: 50%;
+      border: 6px solid rgba(249,115,22,0.2);
+      border-top-color: var(--brand);
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    h1 {
+      margin: 0 0 8px 0; font-size: 20px; font-weight: 700; color: #fff;
+    }
+    p { margin: 6px 0; color: #cbd5e1; font-size: 14px; line-height: 1.5; }
+    .hint {
+      margin-top: 12px; font-size: 12px; color: #94a3b8;
+    }
+    a.link {
+      color: var(--brand); text-decoration: none; font-weight: 600;
+    }
+    a.link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="wrap" role="status" aria-live="polite">
+    <div class="card">
+      <div class="spinner" aria-hidden="true"></div>
+      <h1>Mengalihkan…</h1>
+      <p>Anda akan dialihkan ke halaman yang diminta.</p>
+      <p class="hint">Tidak otomatis? <a class="link" href="{$toHtml}">Klik di sini</a>.</p>
+    </div>
+  </div>
+
+  <script>
+    // Sedikit delay agar spinner sempat terlihat & history diganti (replace)
+    var to = {$toJs};
+    setTimeout(function () {
+      try { window.location.replace(to); }
+      catch (e) { window.location.href = to; }
+    }, 60);
+  </script>
+  <noscript>
+    <meta http-equiv="refresh" content="0; url={$toHtml}">
+  </noscript>
+</body>
+</html>
+HTML;
+
+return response($html, 200)
+  ->header('Content-Type', 'text/html')
+  ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+
+        }
 
         return redirect('login')->with('error', 'Login Failed! Please Try Again.');
     }
+
+
 
     public function logoutrequest(Request $request)
     {
