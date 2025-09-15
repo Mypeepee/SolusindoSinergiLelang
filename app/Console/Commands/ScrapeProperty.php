@@ -386,15 +386,31 @@ try {
                             $kelurahan = null;
                         }
 
+                        // ================== PARSE KOTA/KAB DARI JUDUL (tanpa fallback alamat) ==================
                         $kabupaten = null;
-                        if (!empty($details['judul'])) {
-                            if (preg_match('/di\s+(Kota|Kab\.?|Kabupaten)\s+([a-zA-Z\s]+)/i', $details['judul'], $judulMatch)) {
-                                $namaKab = strtoupper(trim($judulMatch[2]));
-                                if (stripos($judulMatch[1], 'kota') !== false) {
-                                    $kabupaten = "KOTA " . $namaKab;
-                                } else {
-                                    $kabupaten = "KAB. " . $namaKab;
-                                }
+                        $judul = $details['judul'] ?? '';
+
+                        // 1) Prioritas: "Kota Adm. Jakarta {Utara/Selatan/Timur/Barat/Pusat}"
+                        if (preg_match('/Kota\s+Adm(?:inistrasi)?\.?\s+Jakarta\s*[,.;-]?\s*(Utara|Selatan|Timur|Barat|Pusat)\b/i', $judul, $m)) {
+                            $arah = ucwords(strtolower(trim($m[1])));
+                            $kabupaten = 'Kota Adm. Jakarta ' . $arah;
+
+                            // opsional: set provinsi jika belum ada
+                            if (empty($provinsi)) { $provinsi = 'DKI JAKARTA'; }
+                        }
+                        // 2) Fallback generik dari JUDUL saja: "di Kota/Kota Adm./Kab/Kabupaten {Nama}"
+                        elseif (preg_match('/\bdi\s+(Kota(?:\s+Adm(?:inistrasi)?\.?)?|Kab(?:\.|upaten)?)\s+([A-Za-z.\s]+?)(?=[,;.]|$)/i', $judul, $jm)) {
+                            $label = strtolower($jm[1]);
+                            // bersihkan {Nama} dari kata lanjutan (Prov/Kec/Kab/Kota)
+                            $nama  = preg_replace('/\s+\b(Prov(?:insi)?|Prop(?:insi)?|Kec(?:amatan)?|Kab(?:\.|upaten)?|Kota)\b.*$/i', '', trim($jm[2]));
+                            $nama  = ucwords(strtolower($nama));
+
+                            if (strpos($label, 'kota') === 0) {
+                                $kabupaten = (stripos($label, 'adm') !== false)
+                                    ? 'Kota Adm. ' . $nama
+                                    : 'Kota '      . $nama;
+                            } else {
+                                $kabupaten = 'Kab. ' . $nama;
                             }
                         }
 
