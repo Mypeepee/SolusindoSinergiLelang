@@ -119,6 +119,7 @@ class propertydetailController extends Controller
     $similarProperties = DB::table('property')
         ->where('id_listing', '!=', $property->id_listing)
         ->whereRaw('LOWER(kecamatan) = ?', [strtolower($property->kecamatan)])
+        ->where('luas', '>', 0)
         ->whereBetween(DB::raw('harga / luas'), [$lowerBound, $upperBound])
         ->limit(10)
         ->get();
