@@ -80,75 +80,88 @@ class ScrapeProperty extends Command
     public function handle()
 {
     // Pastikan sequence id_listing sesuai
-    DB::statement("
-        SELECT setval(
-            pg_get_serial_sequence('property', 'id_listing'),
-            COALESCE(MAX(id_listing), 1),
-            true
-        ) FROM property
-    ");
+DB::statement("
+SELECT setval(
+    pg_get_serial_sequence('property', 'id_listing'),
+    COALESCE(MAX(id_listing), 1),
+    true
+) FROM property
+");
 
-    $baseUrl = 'https://lelang.go.id';
-    $kategori = $this->argument('kategori') ?? 'Rumah';
-    $page = 1;
-    $allLinks = [];
+$baseUrl = 'https://lelang.go.id';
+$kategori = $this->argument('kategori') ?? 'Rumah';
+$page = 1;
+$allLinks = [];
 
-    $this->info("📄 Mulai scrape semua halaman kategori: $kategori");
+$this->info("📄 Mulai scrape semua halaman kategori: $kategori");
 
-    $tipeProperti = strtolower($kategori);
+$tipeProperti = strtolower($kategori);
 
-    // Ambil semua link existing sekali di awal
-    $existingLinks = DB::table('property')->pluck('link')->toArray();
-    $existingLinks = array_map('trim', $existingLinks);
+// Ambil semua link existing sekali di awal
+$existingLinks = DB::table('property')->pluck('link')->toArray();
+$existingLinks = array_map('trim', $existingLinks);
 
-    while (true) {
-        $listUrl = "$baseUrl/lot-lelang/katalog-lot-lelang?kategori=" . urlencode($kategori) . "&page=$page";
-        $this->info("🌐 Scraping halaman ke-$page: $listUrl");
+while (true) {
+$listUrl = "$baseUrl/lot-lelang/katalog-lot-lelang?kategori=" . urlencode($kategori) . "&page=$page";
+$this->info("🌐 Scraping halaman ke-$page: $listUrl");
 
-        try {
-            $html = \Spatie\Browsershot\Browsershot::url($listUrl)
-                ->waitUntilNetworkIdle()
-                ->waitForFunction('document.querySelectorAll("a[href*=\"/detail-auction/\"]").length > 0')
-                ->userAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/119 Safari/537.36')
-                ->setOption('headless', true)
-                ->timeout(90)
-                ->bodyHtml();
-        } catch (\Exception $e) {
-            $this->warn("⚠️ Tidak ada data di halaman ke-$page. Stop scraping.");
-            break;
-        }
+try {
+    $html = \Spatie\Browsershot\Browsershot::url($listUrl)
+        ->waitUntilNetworkIdle()
+        ->waitForFunction('document.querySelectorAll("a[href*=\"/detail-auction/\"]").length > 0')
+        ->userAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/119 Safari/537.36')
+        ->setOption('headless', true)
+        ->timeout(90)
+        ->bodyHtml();
+} catch (\Exception $e) {
+    $this->warn("⚠️ Tidak ada data di halaman ke-$page. Stop scraping.");
+    break;
+}
 
-        $crawler = new \Symfony\Component\DomCrawler\Crawler($html);
+$crawler = new \Symfony\Component\DomCrawler\Crawler($html);
 
-        $pageLinks = $crawler->filter('a')->each(function ($linkNode) use ($baseUrl) {
-            $href = $linkNode->attr('href');
-            if (str_contains($href, '/detail-auction/')) {
+$pageLinks = $crawler->filter('a')->each(function ($linkNode) use ($baseUrl, $tipeProperti) {
+    $href = $linkNode->attr('href');
+    if (str_contains($href, '/detail-auction/')) {
+        // ✅ Tambahan filter khusus untuk tipe lain-lain
+        if ($tipeProperti === 'lain-lain') {
+            $descNode = $linkNode->filter('p')->first();
+            $desc = $descNode->count() ? strtolower($descNode->text()) : '';
+
+            if (str_contains($desc, 'tanah') && str_contains($desc, 'luas')) {
                 return rtrim(trim($baseUrl . $href), '/');
+            } else {
+                return null; // skip kalau bukan properti
             }
-            return null;
-        });
-
-        $pageLinks = array_unique(array_filter($pageLinks));
-
-        if (empty($pageLinks)) {
-            $this->warn("❌ Tidak ada link detail property di halaman ke-$page.");
-            break;
         }
 
-        // Hanya ambil link yang belum ada di DB
-        $pageLinks = array_diff($pageLinks, $existingLinks);
+        return rtrim(trim($baseUrl . $href), '/');
+    }
+    return null;
+});
 
-        if (empty($pageLinks)) {
-            $this->info("⏭️ Semua link di halaman $page sudah ada di database. Skip.");
-            $page++;
-            continue;
-        }
+$pageLinks = array_unique(array_filter($pageLinks));
 
-        $this->info("🔗 Ditemukan " . count($pageLinks) . " link baru di halaman $page.");
-        foreach ($pageLinks as $detailUrl) {
-            if (!in_array($detailUrl, $allLinks)) {
-                $allLinks[] = $detailUrl;
-                $this->info("➡️ $detailUrl");
+if (empty($pageLinks)) {
+    $this->warn("❌ Tidak ada link detail property di halaman ke-$page.");
+    break;
+}
+
+// Hanya ambil link yang belum ada di DB
+$pageLinks = array_diff($pageLinks, $existingLinks);
+
+if (empty($pageLinks)) {
+    $this->info("⏭️ Semua link di halaman $page sudah ada di database. Skip.");
+    $page++;
+    continue;
+}
+
+$this->info("🔗 Ditemukan " . count($pageLinks) . " link baru di halaman $page.");
+foreach ($pageLinks as $detailUrl) {
+    if (!in_array($detailUrl, $allLinks)) {
+        $allLinks[] = $detailUrl;
+        $this->info("➡️ $detailUrl");
+
 
 // 🔥 MASUK KE DETAIL & SCRAPE GAMBAR
 try {
@@ -300,17 +313,6 @@ try {
                             return null;
                         })(),
 
-                        // 📏 Luas tanah (integer)
-                        luas_tanah: (function(){
-                            const div = Array.from(document.querySelectorAll("div.text-xs"))
-                                .find(el => /Luas/i.test(el.textContent));
-                            if (div) {
-                                const match = div.innerText.match(/Luas:\s*(\d+)/i);
-                                return match ? parseInt(match[1]) : null;
-                            }
-                            return null;
-                        })(),
-
                         // 🗺️ Alamat lengkap
                         alamat: (function(){
                             const div = Array.from(document.querySelectorAll("div.text-xs"))
@@ -321,7 +323,23 @@ try {
                     ');
                     $details = json_decode($detailsJson, true);
 
+                    // ✅ Ambil luas tanah dari judul
+                    $luasDariJudul = null;
+                    if (!empty($judul) && preg_match('/luas[^0-9]*([\d\.]+)/i', $judul, $m)) {
+                        $angka = $m[1];
 
+                        if (strpos($angka, '.') !== false) {
+                            // Jika format ribuan (misal 10.000)
+                            if (preg_match('/\.\d{3}\b/', $angka)) {
+                                $luasDariJudul = (int) str_replace('.', '', $angka);
+                            } else {
+                                // Jika format desimal (misal 8.8 atau 634.82)
+                                $luasDariJudul = (int) floor($angka); // ambil integer depan saja
+                            }
+                        } else {
+                            $luasDariJudul = (int) $angka;
+                        }
+                    }
 
                     // 🆕 Convert harga & uang_jaminan ke integer
                     $hargaInt = null;
@@ -434,16 +452,40 @@ try {
                     // ✅ Jika kelurahan kosong tapi kecamatan ada, fallback ke kecamatan
                     $kelurahanFinal = $kelurahan ?: $kecamatan;
 
+                    // 🏷️ Mapping emoji per tipe
+                    $emojiMap = [
+                        'rumah'          => '🏡',
+                        'apartemen'      => '🏢',
+                        'gudang'         => '📦',
+                        'pabrik'         => '🏭',
+                        'toko'           => '🏬',
+                        'tanah'          => '🌱',
+                        'hotel dan villa'=> '🏨',
+                        'ruko'           => '🏢',
+                        'lain-lain'      => '✨',
+                    ];
+
+                    $tipe = strtolower($tipeProperti);
+                    $emoji = $emojiMap[$tipe] ?? '✨';
+
+                    // 📝 Buat deskripsi pendek & eye-catching (pakai LT biar jelas bukan harga)
+                    if ($tipe === 'hotel dan villa' || $tipe === 'lain-lain') {
+                        $deskripsi = "{$emoji} Lelang Properti Murah – LT {$luasDariJudul} m² – {$kabupaten}";
+                    } else {
+                        $ucTipe = ucwords($tipe);
+                        $deskripsi = "{$emoji} Lelang {$ucTipe} Murah – LT {$luasDariJudul} m² – {$kabupaten}";
+                    }
+
                     // 🗄️ INSERT KE DATABASE
                     DB::table('property')->insert([
                     'id_agent' => 'AG001',
                     'vendor' => $details['penjual'] ?? null, // 🆕 isi vendor dari penjual
                     'judul' => $details['judul'] ?? 'Property Rumah Lelang',
-                    'deskripsi' => "Lelang properti dengan luas tanah {$details['luas_tanah']} m2 di {$kabupaten}, {$provinsi}. Sertifikat: " . ($buktiKepemilikan ?? 'Tidak tersedia') . ". Batas penawaran hingga {$details['batas_penawaran']}.",
+                    'deskripsi' => $deskripsi,
                     'tipe' => $tipeProperti,
                     'harga' => $hargaInt,
                     'lokasi' => substr($details['alamat'] ?? 'Lokasi tidak diketahui', 0, 500),
-                    'luas' => $details['luas_tanah'] ?? null,
+                    'luas' => $luasDariJudul,
                     'provinsi' => $provinsi ?? null,
                     'kota' => $kabupaten ?? null,
                     'kecamatan' => $kecamatan ?? null,
