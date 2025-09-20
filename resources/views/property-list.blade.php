@@ -173,39 +173,16 @@
 
 <div class="header-banner">
     <div class="header-content">
-        <h1 class="mb-3">
-            @if($property_type !== 'semua' && $city !== 'semua')
-                Jual {{ ucfirst($property_type) }} di {{ ucfirst($city) }}
-            @elseif($property_type !== 'semua' && $city === 'semua')
-                Jual {{ ucfirst($property_type) }} di Indonesia
-            @elseif($property_type === 'semua' && $city !== 'semua')
-                Jual Properti di {{ ucfirst($city) }}
-            @else
-                Jual Properti Murah di Indonesia
-            @endif
-        </h1>
-
+        <h1 class="mb-3">List Property</h1>
         <div class="breadcrumb-custom">
-            <a href="/">Home</a>
+            <a href="/">HOME</a>
             <span class="breadcrumb-divider">/</span>
-            <a href="/properti">Properti</a>
+            <a href="#">PROPERTY</a>
             <span class="breadcrumb-divider">/</span>
-            <span class="active">
-                @if($property_type !== 'semua' && $city !== 'semua')
-                    Jual {{ ucfirst($property_type) }} di {{ ucfirst($city) }}
-                @elseif($property_type !== 'semua')
-                    Jual {{ ucfirst($property_type) }} di Indonesia
-                @elseif($city !== 'semua')
-                    Jual Properti di {{ ucfirst($city) }}
-                @else
-                    Semua Properti
-                @endif
-            </span>
+            <span class="active">LIST PROPERTY</span>
         </div>
     </div>
 </div>
-
-
 <!-- Header End -->
 
 
