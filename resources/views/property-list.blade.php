@@ -241,7 +241,21 @@
 
 <!-- Updated Mobile View for Search and Filter (Always Visible) -->
 <div class="container-fluid bg-primary mb-5 wow fadeIn d-md-none" data-wow-delay="0.1s" style="padding: 35px;">
-    <form id="searchForm" method="GET" action="{{ route('property.list') }}#property-list-section" class="search-hero">
+    <form action="{{ route('property.list', [
+        'property_type' => old('property_type', request()->input('property_type', 'semua')),
+        'province'      => old('province', request()->input('province', 'semua')),
+        'city'          => old('city', request()->input('city', 'semua')),
+        'district'      => old('district', request()->input('district', 'semua')),
+        'price'         => (request('min_price') && request('max_price'))
+            ? 'antara-' . str_replace('.', '', request('min_price')) . '-dan-' . str_replace('.', '', request('max_price'))
+            : (request('min_price')
+                ? 'di-atas-' . str_replace('.', '', request('min_price'))
+                : (request('max_price')
+                    ? 'di-bawah-' . str_replace('.', '', request('max_price'))
+                    : null))
+    ]) }}" method="GET">
+
+
         <div class="search-rail d-flex align-items-center">
             <i class="bi bi-search ms-3 me-2 text-muted fs-5"></i>
             <input
@@ -275,14 +289,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
-            <form action="{{ route('property.list', [
-    'property_type' => request('property_type', 'rumah'),
-    'city' => request('city', 'semua'),  {{-- Default fallback ke 'semua' --}}
-    'price_range' => 'harga-dibawah-' . str_replace('.', '', request('max_price', '0')),  {{-- Format harga --}}
-    'land_size' => 'luas-tanah-max-' . str_replace('.', '', request('max_land_size', '0')),  {{-- Format luas tanah --}}
-    'province' => request('province', 'semua'),  {{-- Provinsi --}}
-    'page' => 1  {{-- Menambahkan page untuk pagination --}}
-]) }}" method="GET">
+            <form id="filterForm" method="GET">
                 <div class="modal-body" style="max-height: calc(100vh - 150px); overflow-y: auto;">
                     <div class="container">
                         <div class="row g-2">
@@ -327,63 +334,58 @@
                                 </div>
                             </div>
 
-
                             <!-- Tipe Properti -->
                             <div class="col-12">
                                 <select name="property_type" class="form-select border-0 py-3">
-                                    <option selected disabled>Tipe Property</option>
-                                    <option value="rumah">Rumah</option>
-                                    <option value="gudang">Gudang</option>
-                                    <option value="apartemen">Apartemen</option>
-                                    <option value="tanah">Tanah</option>
-                                    <option value="pabrik">Pabrik</option>
-                                    <option value="hotel dan villa">Hotel dan Villa</option>
-                                    <option value="ruko">Ruko</option>
-                                    <option value="toko">Toko</option>
-                                    <option value="lain-lain">Lain-lain</option>
+                                    <option value="property" {{ request('property_type','property')=='property'?'selected':'' }}>Tipe Property</option>
+                                    <option value="rumah" {{ request('property_type')=='rumah'?'selected':'' }}>Rumah</option>
+                                    <option value="gudang" {{ request('property_type')=='gudang'?'selected':'' }}>Gudang</option>
+                                    <option value="apartemen" {{ request('property_type')=='apartemen'?'selected':'' }}>Apartemen</option>
+                                    <option value="tanah" {{ request('property_type')=='tanah'?'selected':'' }}>Tanah</option>
+                                    <option value="pabrik" {{ request('property_type')=='pabrik'?'selected':'' }}>Pabrik</option>
+                                    <option value="hotel-dan-villa" {{ request('property_type')=='hotel-dan-villa'?'selected':'' }}>Hotel dan Villa</option>
+                                    <option value="ruko" {{ request('property_type')=='ruko'?'selected':'' }}>Ruko</option>
+                                    <option value="toko" {{ request('property_type')=='toko'?'selected':'' }}>Toko</option>
+                                    <option value="lain-lain" {{ request('property_type')=='lain-lain'?'selected':'' }}>Lain-lain</option>
                                 </select>
                             </div>
 
                             <!-- Luas Tanah (Min–Max) dalam 1 row -->
-<div class="col-12">
-    <label class="form-label mb-1">Luas Tanah (m²)</label>
-    <div class="input-group">
-        <input type="text" name="min_land_size" id="min_land_size"
-               class="form-control js-num js-area"
-               placeholder="Min" inputmode="numeric"
-               value="{{ request('min_land_size') }}"
-               oninput="validateInteger(this)" onblur="formatNumber(this)">
-        <span class="input-group-text">m²</span>
-        <span class="input-group-text">–</span>
-        <input type="text" name="max_land_size" id="max_land_size"
-               class="form-control js-num js-area"
-               placeholder="Max" inputmode="numeric"
-               value="{{ request('max_land_size') }}"
-               oninput="validateInteger(this)" onblur="formatNumber(this)">
-        <span class="input-group-text">m²</span>
-    </div>
-</div>
+                            <div class="col-12">
+                                <label class="form-label mb-1">Luas Tanah (m²)</label>
+                                <div class="input-group">
+                                    <input type="text" name="min_land_size" id="min_land_size"
+                                        class="form-control js-num js-area"
+                                        placeholder="Min" inputmode="numeric"
+                                        value="{{ request('min_land_size') }}"
+                                        oninput="validateInteger(this)" onblur="formatNumber(this)">
+                                    <span class="input-group-text">m²</span>
+                                    <span class="input-group-text">–</span>
+                                    <input type="text" name="max_land_size" id="max_land_size"
+                                        class="form-control js-num js-area"
+                                        placeholder="Max" inputmode="numeric"
+                                        value="{{ request('max_land_size') }}"
+                                        oninput="validateInteger(this)" onblur="formatNumber(this)">
+                                    <span class="input-group-text">m²</span>
+                                </div>
+                            </div>
+
 
                             <!-- Provinsi -->
-                            <div class="col-12">
-                                <select id="province" name="province" class="form-select border-0 py-3">
-                                    <option selected disabled>Pilih Provinsi</option>
-                                </select>
-                            </div>
+                            <select id="province" name="province" class="form-select border-0 py-3">
+                                <option value="di-indonesia" {{ request('province','di-indonesia')=='di-indonesia'?'selected':'' }}>Pilih Provinsi</option>
+                                {{-- inject pilihan provinsi via JS --}}
+                            </select>
 
                             <!-- Kota -->
-                            <div class="col-12">
-                                <select id="city" class="form-select border-0 py-3" disabled>
-                                    <option selected disabled>Pilih Kota/Kabupaten</option>
-                                </select>
-                            </div>
+                            <select id="city" name="city" class="form-select border-0 py-3" disabled>
+                                <option value="di-indonesia" {{ request('city','di-indonesia')=='di-indonesia'?'selected':'' }}>Pilih Kota/Kabupaten</option>
+                            </select>
 
                             <!-- Kecamatan -->
-                            <div class="col-12">
-                                <select id="district" class="form-select border-0 py-3" disabled>
-                                    <option selected disabled>Pilih Kecamatan</option>
-                                </select>
-                            </div>
+                            <select id="district" name="district" class="form-select border-0 py-3" disabled>
+                                <option value="di-indonesia" {{ request('district','di-indonesia')=='di-indonesia'?'selected':'' }}>Pilih Kecamatan</option>
+                            </select>
                         </div>
 
                         <div id="selected-cities" class="mt-3 d-flex flex-wrap gap-2"></div>
@@ -395,15 +397,45 @@
                     <input type="hidden" name="selected_city_values" id="selected-city-values">
 
                     <div class="d-flex w-100 gap-2">
-                      <button type="button" class="btn btn-secondary flex-fill py-3" data-bs-dismiss="modal">Close</button>
-                      <button type="submit" class="btn btn-dark flex-fill py-3">Search</button>
+                        <button type="button" class="btn btn-secondary flex-fill py-3" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-dark flex-fill py-3">Search</button>
                     </div>
                 </div>
             </form>
-
         </div>
     </div>
 </div>
+
+<script>
+    document.getElementById('filterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        let propertyType = document.querySelector('[name="property_type"]').value || 'property';
+        let tags = document.getElementById('selected-city-values').value; // isi dari hidden input
+
+        // Ambil lokasi dari tag (pakai slug biar URL friendly)
+        let location = tags ? tags.replace(/\s+/g, '-').toLowerCase() : 'di-indonesia';
+
+        // Ambil harga (opsional)
+        let minPrice = document.getElementById('min_price').value.replace(/\./g, '');
+        let maxPrice = document.getElementById('max_price').value.replace(/\./g, '');
+        let price = '';
+        if (minPrice && maxPrice) {
+            price = `antara-${minPrice}-dan-${maxPrice}`;
+        } else if (minPrice) {
+            price = `di-atas-${minPrice}`;
+        } else if (maxPrice) {
+            price = `di-bawah-${maxPrice}`;
+        } else {
+            price = 'semua';
+        }
+
+        // Build URL SEO
+        let url = `/jual/${propertyType}/${location}/${price}`;
+        window.location.href = url + '?' + new URLSearchParams(new FormData(this)).toString();
+    });
+    </script>
+
 
 <script>
     // Fungsi untuk memastikan hanya angka yang bisa dimasukkan
@@ -432,7 +464,7 @@
 <style>
     .mobile-search .form-control:focus { box-shadow:none; }
     .mobile-search .input-group-text { border:0; }
-  </style>
+</style>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -589,7 +621,21 @@
 
 <!-- Desktop View Original Search Form (Visible Only on md and Up) -->
 <div class="container-fluid bg-primary mb-5 wow fadeIn d-none d-md-block" data-wow-delay="0.1s" style="padding: 35px;">
-    <form id="searchForm" method="GET" action="{{ route('property.list') }}#property-list-section" class="search-hero">
+    <form action="{{ route('property.list', [
+        'property_type' => old('property_type', request()->input('property_type', 'semua')),
+        'province'      => old('province', request()->input('province', 'semua')),
+        'city'          => old('city', request()->input('city', 'semua')),
+        'district'      => old('district', request()->input('district', 'semua')),
+        'price'         => (request('min_price') && request('max_price'))
+            ? 'antara-' . str_replace('.', '', request('min_price')) . '-dan-' . str_replace('.', '', request('max_price'))
+            : (request('min_price')
+                ? 'di-atas-' . str_replace('.', '', request('min_price'))
+                : (request('max_price')
+                    ? 'di-bawah-' . str_replace('.', '', request('max_price'))
+                    : null))
+    ]) }}" method="GET">
+
+
 
         {{-- Keyword bar + buttons (replaces your input-group) --}}
         <div class="search-rail d-flex align-items-center">

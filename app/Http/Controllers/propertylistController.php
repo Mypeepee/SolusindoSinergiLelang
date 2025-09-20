@@ -6,6 +6,24 @@ use Illuminate\Http\Request;
 
 class propertylistController extends Controller
 {
+    private function slugHarga($min, $max) {
+        $format = function($val) {
+            $val = (int) $val;
+            if ($val >= 1000000000) {
+                return ($val / 1000000000) . '-milyar';
+            } elseif ($val >= 1000000) {
+                return ($val / 1000000) . '-juta';
+            }
+            return $val;
+        };
+
+        if ($min && $max) return 'antara-' . $format($min) . '-' . $format($max);
+        if ($min) return 'di-atas-' . $format($min);
+        if ($max) return 'di-bawah-' . $format($max);
+
+        return null;
+    }
+
     public function PropertyList(Request $request)
 {
     $query = \App\Models\Property::query();
@@ -29,7 +47,7 @@ class propertylistController extends Controller
 
 
 public function showproperty(Request $request,
-                             $property_type = 'semua',   // default jadi 'semua'
+                             $property_type = 'property',
                              $province = 'semua',
                              $city = 'semua',
                              $district = 'semua',
@@ -53,11 +71,11 @@ public function showproperty(Request $request,
 
     $selectedTags = [];
 
-// Hanya status Tersedia
-$query->where('property.status', 'Tersedia');
+    // Hanya status Tersedia
+    $query->where('property.status', 'Tersedia');
 
-// Sort terbaru (id terbesar dulu)
-$query->orderBy('property.id_listing', 'desc');
+    // Sort terbaru (id terbesar dulu)
+    $query->orderBy('property.id_listing', 'desc');
 
     // ============== Keyword dari search bar (q) ==============
     $keyword = trim((string) $request->input('q', ''));
@@ -65,10 +83,8 @@ $query->orderBy('property.id_listing', 'desc');
         $likeOp = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
 
         if (preg_match('/^\d+$/', $keyword)) {
-            // Semua digit -> cari id_listing (exact)
             $query->where('property.id_listing', (int) $keyword);
         } else {
-            // String -> cari di lokasi (kota/lokasi/provinsi/kecamatan)
             $kw = '%' . $keyword . '%';
             $query->where(function ($q) use ($kw, $likeOp) {
                 $q->where('property.kota', $likeOp, $kw)
@@ -77,7 +93,6 @@ $query->orderBy('property.id_listing', 'desc');
                   ->orWhere('property.kecamatan', $likeOp, $kw);
             });
         }
-
         $selectedTags[] = $keyword;
     }
 
@@ -97,11 +112,8 @@ $query->orderBy('property.id_listing', 'desc');
         $query->where('property.luas', '<=', str_replace('.', '', $request->max_land_size));
     }
 
-    // ============== Tipe properti (PERBAIKAN: default semua) ==============
-    // Ambil dari query (?property_type=...) atau dari path param $property_type
-    $resolvedType = strtolower((string) $request->input('property_type', $property_type));
-
-    // Normalisasi ejaan/alias
+    // ============== Tipe properti ==============
+    $resolvedType = str_replace('-', ' ', strtolower($request->input('property_type', $property_type)));
     $aliases = [
         'apartement' => 'apartemen',
         'apartment'  => 'apartemen',
@@ -109,70 +121,87 @@ $query->orderBy('property.id_listing', 'desc');
     if (isset($aliases[$resolvedType])) {
         $resolvedType = $aliases[$resolvedType];
     }
-
-    // Jika 'semua' / 'all' / kosong => JANGAN filter tipe
-    if ($resolvedType === '' || in_array($resolvedType, ['semua','all','properti','any'], true)) {
+    if ($resolvedType === '' || in_array($resolvedType, ['all','any'], true)) {
         $resolvedType = null;
     }
-
-    // Jika ada tipe valid => filter case-insensitive
-    if (!is_null($resolvedType)) {
+    if (!is_null($resolvedType) && $resolvedType !== 'property') {
         $query->whereRaw('LOWER(property.tipe) = ?', [$resolvedType]);
     }
+    $property_type = $resolvedType ?? 'property'; // ✅ fallback default "property"
 
-    // Simpan untuk dikirim ke view
-    $property_type = $resolvedType ?? 'semua';
-
-    // ============== Ambil tag kota/kecamatan ==============
-    $cities = [];
-    $districts = [];
-    if ($request->filled('selected_city_values')) {
-        $selectedTagsFromCities = explode(',', $request->selected_city_values);
-        foreach ($selectedTagsFromCities as $tag) {
-            if (strpos($tag, ' - ') !== false) {
-                [$cityName, $districtName] = explode(' - ', $tag);
-                $districts[] = ['city' => trim($cityName), 'district' => trim($districtName)];
-            } else {
+// ============== Ambil tag kota/kecamatan ==============
+$cities = [];
+$districts = [];
+if ($request->filled('selected_city_values')) {
+    $selectedTagsFromCities = explode(',', $request->selected_city_values);
+    foreach ($selectedTagsFromCities as $tag) {
+        if (strpos($tag, ' - ') !== false) {
+            [$districtName, $cityName] = explode(' - ', $tag);
+            $districts[] = ['city' => trim($cityName), 'district' => trim($districtName)];
+        } else {
+            // ✅ Jangan masukin ke $cities kalau sama dengan province
+            if (strtolower(trim($tag)) !== strtolower(trim($request->province))) {
                 $cities[] = trim($tag);
             }
         }
-        $selectedTags = array_merge($selectedTags, $selectedTagsFromCities);
+    }
+    $selectedTags = array_merge($selectedTags, $selectedTagsFromCities);
+}
+
+// ============== Filter lokasi ==============
+$urlFilters = [];
+
+if (!empty($districts)) {
+    // filter kecamatan + kota (EXACT match)
+    $query->where(function ($q) use ($districts) {
+        foreach ($districts as $d) {
+            $q->orWhere(function ($sub) use ($d) {
+                $sub->whereRaw('LOWER(TRIM(property.kota)) = ?', [strtolower(trim($d['city']))])
+                    ->whereRaw('LOWER(TRIM(property.kecamatan)) = ?', [strtolower(trim($d['district']))]);
+            });
+        }
+    });
+
+    foreach ($districts as $d) {
+        // ✅ gabung kecamatan + kota → rapikan, tanpa spasi aneh
+        $urlFilters[] = \Str::slug(trim($d['district']).' '.trim($d['city']));
     }
 
-    // ============== Filter lokasi berdasarkan tag/provinsi ==============
-    $urlFilters = [];
-    $likeOp = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
-    if (!empty($districts)) {
-        $query->where(function ($q) use ($districts, $likeOp) {
-            foreach ($districts as $d) {
-                $q->orWhere(function ($sub) use ($d, $likeOp) {
-                    $sub->where('property.kota', $likeOp, '%' . $d['city'] . '%')
-                        ->where('property.kecamatan', $likeOp, '%' . $d['district'] . '%');
-                });
-            }
-        });
-        $urlFilters[] = strtolower(str_replace(' ', '-', implode('/', array_column($districts, 'city'))));
-    } elseif (!empty($cities)) {
-        $query->where(function ($q) use ($cities, $likeOp) {
-            foreach ($cities as $cityName) {
-                $q->orWhere('property.kota', $likeOp, '%' . $cityName . '%');
-            }
-        });
-        $urlFilters[] = strtolower(str_replace(' ', '-', implode('/', $cities)));
-    } elseif ($request->filled('province')) {
-        $prov = '%' . $request->province . '%';
-        $query->where(function ($q) use ($prov, $likeOp) {
-            $q->where('property.provinsi', $likeOp, $prov)
-              ->orWhere('property.lokasi',   $likeOp, $prov);
-        });
-        $urlFilters[] = strtolower(str_replace(' ', '-', $request->province));
+} elseif (!empty($cities)) {
+    // filter kota (EXACT match)
+    $query->where(function ($q) use ($cities) {
+        foreach ($cities as $cityName) {
+            $q->orWhereRaw('LOWER(TRIM(property.kota)) = ?', [strtolower(trim($cityName))]);
+        }
+    });
+
+    foreach ($cities as $c) {
+        $urlFilters[] = \Str::slug(trim($c));
     }
+
+} elseif (
+    $request->filled('province')
+    && strtolower(trim($request->province)) !== 'di-indonesia'
+    && strtolower(trim($request->province)) !== 'semua'
+) {
+    // filter provinsi (EXACT match)
+    $provName = strtolower(trim($request->province));
+    $query->whereRaw('LOWER(TRIM(property.provinsi)) = ?', [$provName]);
+
+    $urlFilters[] = \Str::slug(trim($request->province));
+}
+
+// fallback SEO: kalau semua kosong, taruh "di-indonesia"
+if (empty($urlFilters)) {
+    $urlFilters[] = 'di-indonesia';
+}
+
+
 
     // Ambil hasil properti
     $properties = $query->paginate(18)->appends($request->query());
 
     // ========================== Sorting ==========================
-    // (biarkan sesuai logic awal)
     if ($request->sort === 'harga_asc') {
         $properties->setCollection($properties->getCollection()->sortBy('harga')->values());
     } elseif ($request->sort === 'harga_desc') {
@@ -186,7 +215,6 @@ $query->orderBy('property.id_listing', 'desc');
                     ->sortBy(function ($p) {
                         return \Carbon\Carbon::parse($p->batas_akhir_penawaran)->timestamp;
                     })->values();
-
         $properties = new \Illuminate\Pagination\LengthAwarePaginator(
             $filtered->forPage($page, 18),
             $filtered->count(),
@@ -199,20 +227,24 @@ $query->orderBy('property.id_listing', 'desc');
         $properties->setCollection($properties->getCollection()->sortBy('batas_akhir_penawaran')->values());
     }
 
-    // Generate URL based on filters
-    $baseUrl = $property_type !== 'semua'
-        ? 'https://solusindolelang.com/jual-' . strtolower($property_type)
-        : 'https://solusindolelang.com/jual-properti';
+    // ========================== URL SEO ==========================
+    $baseUrl = 'https://solusindolelang.com/jual/' . \Str::slug($property_type);
 
+    // Tambah lokasi
     $url = rtrim($baseUrl . '/' . implode('/', array_filter($urlFilters)), '/');
 
-    // Append pagination to URL
+    // Tambah harga
+    $priceSlug = $this->slugHarga($request->min_price, $request->max_price);
+    if ($priceSlug) {
+        $url .= '/' . $priceSlug;
+    }
+
+    // Pagination
     $urlWithPagination = $url . '/page/' . $properties->currentPage();
 
     // Ambil salah satu properti untuk meta/structured data
     $property = $query->first();
 
-    // Pass data ke view
     return view('property-list', compact(
         'properties',
         'selectedTags',
@@ -228,8 +260,6 @@ $query->orderBy('property.id_listing', 'desc');
 
 
 
-
-
     public function showPropertyDetail($id)
     {
     // Fetch the property based on ID
@@ -237,6 +267,6 @@ $query->orderBy('property.id_listing', 'desc');
 
     // Pass the property data to the view
     return view('property-detail', compact('property'));
-    }
+}
 
 }

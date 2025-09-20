@@ -65,10 +65,20 @@ Route::get('/property-agent', [PropertyAgentController::class, 'showPropertyAgen
 // Filter property milik agent
 Route::get('/property-agent/filter', [PropertyAgentController::class, 'filterPropertyByAgent'])->name('property.agent.filter');
 
-Route::get('/jual/{property_type}/{province?}/{city?}/{district?}/{price?}',
-    [PropertyListController::class, 'showproperty'])
-    ->name('property.list');
+// Route::get('/jual/{property_type}/{province?}/{city?}/{district?}/{price?}',
+//     [PropertyListController::class, 'showproperty'])
+//     ->name('property.list');
 
+// Route::get('/property-list', [propertylistController::class, 'showproperty'])->name('property.list');
+
+// Default versi query string (backup)
+Route::get('/property-list', [PropertyListController::class, 'showproperty'])
+    ->name('property.list.query');
+
+
+    Route::get('/jual/{property_type?}/{location?}/{price?}',
+    [PropertyListController::class, 'showproperty']
+)->name('property.list');
 
 
 Route::get('/property-type', [propertytypeController::class, 'tipeproperty']);
@@ -130,7 +140,6 @@ Route::get('/property-interest/{id_listing}', [ProductController::class, 'showIn
 Route::post('/property/{id_listing}/interest', [ProductController::class, 'submitInterestForm'])->name('property.interest.submit');
 
 Route::get('/property/interest/{id_listing}', [ProductController::class, 'showPropertyInterest'])->name('property.interest');
-Route::get('/property-list', [propertylistController::class, 'showproperty'])->name('property.list');
 
 Route::get('/cart', function () {
     return view('cart');
