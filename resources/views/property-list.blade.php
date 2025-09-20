@@ -238,7 +238,7 @@
     </div>
 </div>
 
-<!-- Tombol baru (UI konsisten seperti desktop) -->
+
 <!-- Updated Mobile View for Search and Filter (Always Visible) -->
 <div class="container-fluid bg-primary mb-5 wow fadeIn d-md-none" data-wow-delay="0.1s" style="padding: 35px;">
     <form id="searchForm" method="GET" action="{{ route('property.list') }}#property-list-section" class="search-hero">
