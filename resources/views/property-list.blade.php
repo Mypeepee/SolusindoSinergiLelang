@@ -1,11 +1,24 @@
 @include('template.header')
 @section('meta')
-    <meta name="description" content="Cari {{ $property_type }} di {{ $city }}, harga di bawah {{ $price_range }}. Temukan properti impianmu di {{ $province }} hanya di Solusindo Lelang.">
-    <meta name="keywords" content="{{ $property_type }}, {{ $city }}, {{ $province }}, jual properti murah, harga properti {{ $price_range }}">
-    <meta property="og:title" content="Jual {{ $property_type }} di {{ $city }} - Harga Terjangkau">
-    <meta property="og:description" content="Temukan {{ $property_type }} di {{ $city }} dengan harga mulai dari {{ $price_range }} di Solusindo Lelang. Segera cek daftar properti kami.">
+    <title>Jual {{ ucfirst($property_type) }} di {{ ucfirst($city) }} | Harga {{ $price_range }} | Solusindo Lelang</title>
+
+    <meta name="description" content="Temukan {{ $property_type }} terbaik di {{ $city }}, {{ $province }}. Harga mulai {{ $price_range }}. Lelang resmi, aman, & transparan bersama Solusindo Lelang.">
+
+    <meta name="keywords" content="jual {{ $property_type }} {{ $city }}, properti {{ $city }}, lelang rumah {{ $city }}, harga properti {{ $province }}, Solusindo Lelang">
+
+    <meta property="og:title" content="Jual {{ $property_type }} di {{ $city }} - Harga {{ $price_range }}">
+    <meta property="og:description" content="Cari {{ $property_type }} di {{ $city }} dengan harga mulai {{ $price_range }}. Lelang resmi & legal di Solusindo Lelang.">
     <meta property="og:url" content="{{ request()->fullUrl() }}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Solusindo Lelang">
+    <meta property="og:image" content="{{ $property->foto ?? asset('default.jpg') }}">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Jual {{ $property_type }} di {{ $city }} - Harga {{ $price_range }}">
+    <meta name="twitter:description" content="Temukan {{ $property_type }} murah di {{ $city }}. Lelang resmi, harga mulai {{ $price_range }}.">
+    <meta name="twitter:image" content="{{ $property->foto ?? asset('default.jpg') }}">
 @endsection
+
 
 {{-- @section('structured_data')
     <script type="application/ld+json">
@@ -160,16 +173,39 @@
 
 <div class="header-banner">
     <div class="header-content">
-        <h1 class="mb-3">List Property</h1>
+        <h1 class="mb-3">
+            @if($property_type !== 'semua' && $city !== 'semua')
+                Jual {{ ucfirst($property_type) }} di {{ ucfirst($city) }}
+            @elseif($property_type !== 'semua' && $city === 'semua')
+                Jual {{ ucfirst($property_type) }} di Indonesia
+            @elseif($property_type === 'semua' && $city !== 'semua')
+                Jual Properti di {{ ucfirst($city) }}
+            @else
+                Jual Properti Murah di Indonesia
+            @endif
+        </h1>
+
         <div class="breadcrumb-custom">
-            <a href="/">HOME</a>
+            <a href="/">Home</a>
             <span class="breadcrumb-divider">/</span>
-            <a href="#">PROPERTY</a>
+            <a href="/properti">Properti</a>
             <span class="breadcrumb-divider">/</span>
-            <span class="active">LIST PROPERTY</span>
+            <span class="active">
+                @if($property_type !== 'semua' && $city !== 'semua')
+                    Jual {{ ucfirst($property_type) }} di {{ ucfirst($city) }}
+                @elseif($property_type !== 'semua')
+                    Jual {{ ucfirst($property_type) }} di Indonesia
+                @elseif($city !== 'semua')
+                    Jual Properti di {{ ucfirst($city) }}
+                @else
+                    Semua Properti
+                @endif
+            </span>
         </div>
     </div>
 </div>
+
+
 <!-- Header End -->
 
 
