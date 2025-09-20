@@ -242,7 +242,7 @@
 <!-- Updated Mobile View for Search and Filter (Always Visible) -->
 <div class="container-fluid bg-primary mb-5 wow fadeIn d-md-none" data-wow-delay="0.1s" style="padding: 35px;">
     <form action="{{ route('property.list', [
-        'property_type' => old('property_type', request()->input('property_type', 'semua')),
+        'property_type' => old('property_type', request()->input('property_type', 'property')),
         'province'      => old('province', request()->input('province', 'semua')),
         'city'          => old('city', request()->input('city', 'semua')),
         'district'      => old('district', request()->input('district', 'semua')),
@@ -622,7 +622,7 @@
 <!-- Desktop View Original Search Form (Visible Only on md and Up) -->
 <div class="container-fluid bg-primary mb-5 wow fadeIn d-none d-md-block" data-wow-delay="0.1s" style="padding: 35px;">
     <form action="{{ route('property.list', [
-        'property_type' => old('property_type', request()->input('property_type', 'semua')),
+        'property_type' => old('property_type', request()->input('property_type', 'property')),
         'province'      => old('province', request()->input('province', 'semua')),
         'city'          => old('city', request()->input('city', 'semua')),
         'district'      => old('district', request()->input('district', 'semua')),

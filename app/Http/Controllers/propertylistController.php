@@ -80,21 +80,24 @@ public function showproperty(Request $request,
     // ============== Keyword dari search bar (q) ==============
     $keyword = trim((string) $request->input('q', ''));
     if ($keyword !== '') {
-        $likeOp = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
-
         if (preg_match('/^\d+$/', $keyword)) {
+            // ✅ Kalau keyword angka → langsung cari id_listing
             $query->where('property.id_listing', (int) $keyword);
         } else {
-            $kw = '%' . $keyword . '%';
-            $query->where(function ($q) use ($kw, $likeOp) {
-                $q->where('property.kota', $likeOp, $kw)
-                  ->orWhere('property.lokasi', $likeOp, $kw)
-                  ->orWhere('property.provinsi', $likeOp, $kw)
-                  ->orWhere('property.kecamatan', $likeOp, $kw);
+            // ✅ Kalau keyword teks → cari di lokasi, provinsi, kota, kecamatan
+            $kw = '%' . strtolower(trim($keyword)) . '%';
+
+            $query->where(function ($q) use ($kw) {
+                $q->orWhereRaw('LOWER(COALESCE(TRIM(property.lokasi), \'\')) LIKE ?', [$kw])
+                  ->orWhereRaw('LOWER(TRIM(property.provinsi)) LIKE ?', [$kw])
+                  ->orWhereRaw('LOWER(TRIM(property.kota)) LIKE ?', [$kw])
+                  ->orWhereRaw('LOWER(TRIM(property.kecamatan)) LIKE ?', [$kw]);
             });
         }
+
         $selectedTags[] = $keyword;
     }
+
 
     // ============== Harga ==============
     if ($request->filled('min_price')) {
