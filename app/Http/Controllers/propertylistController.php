@@ -221,6 +221,7 @@ $query->orderBy('property.id_listing', 'desc');
         'property_type',
         'province',
         'city',
+        'district',
         'price_range'
     ));
 }

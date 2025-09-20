@@ -173,18 +173,70 @@
 
 <div class="header-banner">
     <div class="header-content">
-        <h1 class="mb-3">List Property</h1>
+        <h1 class="mb-3 text-white">
+            @php
+                // Helper format harga singkat
+                function formatHargaSingkat($value) {
+                    // pastikan string angka bersih
+                    $value = (int) str_replace('.', '', $value);
+
+                    if ($value >= 1000000000) {
+                        $num = $value / 1000000000;
+                        return (floor($num) == $num
+                            ? number_format($num, 0, ',', '.')
+                            : number_format($num, 1, ',', '.')) . ' Milyar';
+                    } elseif ($value >= 1000000) {
+                        $num = $value / 1000000;
+                        return (floor($num) == $num
+                            ? number_format($num, 0, ',', '.')
+                            : number_format($num, 1, ',', '.')) . ' Juta';
+                    } else {
+                        return number_format($value, 0, ',', '.');
+                    }
+                }
+
+                $type = $property_type ?? 'semua';
+                $h1 = $type !== 'semua'
+                    ? ucfirst($type) . ' Dijual'
+                    : 'Properti Dijual';
+
+                // Lokasi
+                if (!empty($selectedTags)) {
+                    $h1 .= ' di ' . implode(', ', $selectedTags);
+                } else {
+                    $h1 .= ' di Indonesia';
+                }
+
+                // Harga text (untuk H2)
+                $hargaText = '';
+                $minPrice = request('min_price');
+                $maxPrice = request('max_price');
+                if ($minPrice && !$maxPrice) {
+                    $hargaText = 'di atas ' . formatHargaSingkat($minPrice);
+                } elseif (!$minPrice && $maxPrice) {
+                    $hargaText = 'di bawah ' . formatHargaSingkat($maxPrice);
+                } elseif ($minPrice && $maxPrice) {
+                    $hargaText = 'antara ' . formatHargaSingkat($minPrice) .
+                                 ' – ' . formatHargaSingkat($maxPrice);
+                }
+            @endphp
+
+            {{ $h1 }}
+        </h1>
+
+        @if($hargaText)
+            <h2 class="mb-2 text-white">{{ $hargaText }}</h2>
+        @endif
+
         <div class="breadcrumb-custom">
-            <a href="/">HOME</a>
+            <a href="/">Home</a>
             <span class="breadcrumb-divider">/</span>
-            <a href="#">PROPERTY</a>
+            <a href="/properti">Properti</a>
             <span class="breadcrumb-divider">/</span>
-            <span class="active">LIST PROPERTY</span>
+            <span class="active">{{ $h1 }} {{ $hargaText ? '(' . $hargaText . ')' : '' }}</span>
         </div>
     </div>
 </div>
-<!-- Header End -->
-
 
 <!-- Tombol baru (UI konsisten seperti desktop) -->
 <!-- Updated Mobile View for Search and Filter (Always Visible) -->
@@ -431,18 +483,19 @@
                 // Event provinsi
                 provinceSelect.addEventListener('change', function () {
                     updateCityDropdown(this.value, citySelect);
+                    addTag(this.value, 'province'); // Tambah tag provinsi
                 });
 
                 // Event kota
                 citySelect.addEventListener('change', function () {
                     updateDistrictDropdown(provinceSelect.value, this.value);
-                    addTag(this.value, 'city'); // Tambahkan tag kota
+                    addTag(this.value, 'city'); // Tambahkan hanya nama kota
                 });
 
                 // Event kecamatan
                 districtSelect.addEventListener('change', function () {
                     const city = citySelect.value;
-                    addTag(`${city} - ${this.value}`, 'district'); // Tambahkan tag kecamatan
+                    addTag(`${this.value} - ${city}`, 'district'); // Kecamatan - Kota (tanpa provinsi)
                 });
             });
 
@@ -451,24 +504,23 @@
             if (!selected) {
                 targetCityDropdown.disabled = true;
                 targetCityDropdown.innerHTML = '<option selected disabled>Pilih Kota/Kabupaten</option>';
-                districtSelect.disabled = true; // Disable kecamatan jika kota belum dipilih
+                districtSelect.disabled = true;
                 districtSelect.innerHTML = '<option selected disabled>Pilih Kecamatan</option>';
                 return;
             }
 
-            // Urutkan kota berdasarkan abjad dan prioritaskan Kota lebih dahulu
+            // Urutkan kota berdasarkan abjad, prioritaskan "KOTA" lebih dulu
             const citySet = Array.from(provinceMap.get(selected)).sort((a, b) => {
-                const isKotaA = a.startsWith("KOTA");
-                const isKotaB = b.startsWith("KOTA");
+                const isKotaA = a.toUpperCase().startsWith("KOTA");
+                const isKotaB = b.toUpperCase().startsWith("KOTA");
                 if (isKotaA && !isKotaB) return -1;
                 if (!isKotaA && isKotaB) return 1;
                 return a.localeCompare(b);
             });
 
-            targetCityDropdown.disabled = false;  // Enable kota jika provinsi sudah dipilih
-            targetCityDropdown.innerHTML = '<option selected disabled>Pilih Kota/Kabupaten</option>';  // Tetap pertahankan opsi default
+            targetCityDropdown.disabled = false;
+            targetCityDropdown.innerHTML = '<option selected disabled>Pilih Kota/Kabupaten</option>';
             citySet.forEach(c => {
-                const cleanedValue = c.replace(/^Kota\s|^Kabupaten\s/, '');
                 targetCityDropdown.innerHTML += `<option value="${c}">${c}</option>`;
             });
 
@@ -503,12 +555,20 @@
 
         // Tambah tag (cek duplikat berdasarkan value + type)
         function addTag(value, type) {
+            // Jika pilih district → hapus city/province biar nggak dobel
             if (type === 'district') {
-                const cityName = value.split(' - ')[0].trim();
-                // Hapus tag kota dengan nama yang sama
-                selectedTagList = selectedTagList.filter(t => !(t.type === 'city' && t.value === cityName));
+                selectedTagList = selectedTagList.filter(t => t.type !== 'city' && t.type !== 'province');
+            }
+            // Jika pilih city → hapus province biar nggak dobel
+            else if (type === 'city') {
+                selectedTagList = selectedTagList.filter(t => t.type !== 'province');
+            }
+            // Jika pilih province → hapus semua city/district
+            else if (type === 'province') {
+                selectedTagList = selectedTagList.filter(t => t.type === 'province');
             }
 
+            // Tambah kalau belum ada
             if (!selectedTagList.find(t => t.value === value && t.type === type)) {
                 selectedTagList.push({ value, type });
                 renderTags();
@@ -525,9 +585,7 @@
             }
         });
     });
-
-</script>
-
+    </script>
 
 <!-- Desktop View Original Search Form (Visible Only on md and Up) -->
 <div class="container-fluid bg-primary mb-5 wow fadeIn d-none d-md-block" data-wow-delay="0.1s" style="padding: 35px;">
@@ -771,8 +829,7 @@
 
 <!-- Script -->
 <script>
-
-function formatNumberInput(input) {
+    function formatNumberInput(input) {
         // Hapus semua karakter kecuali angka
         let value = input.value.replace(/\D/g, "");
         if (value === "") {
@@ -800,17 +857,20 @@ function formatNumberInput(input) {
     document.addEventListener('DOMContentLoaded', function () {
         const provinceMobile = document.getElementById('province');
         const cityMobile = document.getElementById('city');
+        const districtMobile = document.getElementById('district');
         const selectedCities = document.getElementById('selected-cities');
         const selectedCityValues = document.getElementById('selected-city-values');
-        const selectedCityList = [];
+        let selectedLocation = {}; // { province, city, district }
 
         const provinceDesktop = document.getElementById('province-desktop');
         const cityDesktop = document.getElementById('city-desktop');
+        const districtDesktop = document.getElementById('district-desktop');
         const selectedCitiesDesktop = document.getElementById('selected-cities-desktop');
         const selectedCityValuesDesktop = document.getElementById('selected-city-values-desktop');
-        const selectedCityListDesktop = [];
+        let selectedLocationDesktop = {};
 
         let provinceMap = new Map(); // Map provinsi => Set kota
+        let locationMap = new Map(); // Map provinsi => Map kota => Set kecamatan
 
         // Load data lokasi
         fetch("{{ asset('data/indonesia.json') }}")
@@ -819,14 +879,22 @@ function formatNumberInput(input) {
                 data.forEach(item => {
                     const prov = item.province;
                     const regency = item.regency;
+                    const district = item.district;
 
                     if (!provinceMap.has(prov)) {
                         provinceMap.set(prov, new Set());
+                        locationMap.set(prov, new Map());
                     }
+
                     provinceMap.get(prov).add(regency);
+
+                    if (!locationMap.get(prov).has(regency)) {
+                        locationMap.get(prov).set(regency, new Set());
+                    }
+                    locationMap.get(prov).get(regency).add(district);
                 });
 
-                // Populate both dropdowns
+                // Populate dropdown provinsi
                 for (let prov of provinceMap.keys()) {
                     provinceMobile.innerHTML += `<option value="${prov}">${prov}</option>`;
                     provinceDesktop.innerHTML += `<option value="${prov}">${prov}</option>`;
@@ -835,11 +903,19 @@ function formatNumberInput(input) {
                 // Mobile - provinsi change
                 provinceMobile.addEventListener('change', function () {
                     updateCityDropdown(this.value, cityMobile);
+                    selectedLocation.province = this.value;
+                    selectedLocation.city = null;
+                    selectedLocation.district = null;
+                    renderSelectedLocation(selectedCities, selectedCityValues, selectedLocation);
                 });
 
                 // Desktop - provinsi change
                 provinceDesktop.addEventListener('change', function () {
                     updateCityDropdown(this.value, cityDesktop);
+                    selectedLocationDesktop.province = this.value;
+                    selectedLocationDesktop.city = null;
+                    selectedLocationDesktop.district = null;
+                    renderSelectedLocation(selectedCitiesDesktop, selectedCityValuesDesktop, selectedLocationDesktop);
                 });
             });
 
@@ -851,70 +927,83 @@ function formatNumberInput(input) {
 
             citySet.forEach(c => {
                 const cleanedValue = c.replace(/^Kota\s|^Kabupaten\s/, '');
-                targetCityDropdown.innerHTML += `<option value="${cleanedValue}">${c}</option>`;
+                targetCityDropdown.innerHTML += `<option value="${c}">${c}</option>`;
             });
         }
 
-        function updateDistrictDropdown(prov, selectedCity) {
-        const districtSet = locationMap.get(prov).get(selectedCity);
-        districtDesktop.disabled = false;
-        districtDesktop.innerHTML = '<option selected disabled>Pilih Kecamatan</option>';
-        districtSet.forEach(d => {
-            districtDesktop.innerHTML += `<option value="${d}">${d}</option>`;
-        });
-    }
+        function updateDistrictDropdown(prov, selectedCity, targetDistrictDropdown) {
+            const districtSet = locationMap.get(prov).get(selectedCity);
+            targetDistrictDropdown.disabled = false;
+            targetDistrictDropdown.innerHTML = '<option selected disabled>Pilih Kecamatan</option>';
+            districtSet.forEach(d => {
+                targetDistrictDropdown.innerHTML += `<option value="${d}">${d}</option>`;
+            });
+        }
 
         // Mobile - pilih kota
         cityMobile.addEventListener('change', function () {
-            const selectedCity = this.value;
-            if (!selectedCityList.includes(selectedCity)) {
-                selectedCityList.push(selectedCity);
-                renderSelectedCities(selectedCities, selectedCityValues, selectedCityList);
-            }
+            selectedLocation.city = this.value;
+            selectedLocation.district = null;
+            updateDistrictDropdown(provinceMobile.value, this.value, districtMobile);
+            renderSelectedLocation(selectedCities, selectedCityValues, selectedLocation);
         });
 
         // Desktop - pilih kota
         cityDesktop.addEventListener('change', function () {
-            const selectedCity = this.value;
-            if (!selectedCityListDesktop.includes(selectedCity)) {
-                selectedCityListDesktop.push(selectedCity);
-                renderSelectedCities(selectedCitiesDesktop, selectedCityValuesDesktop, selectedCityListDesktop);
-            }
+            selectedLocationDesktop.city = this.value;
+            selectedLocationDesktop.district = null;
+            updateDistrictDropdown(provinceDesktop.value, this.value, districtDesktop);
+            renderSelectedLocation(selectedCitiesDesktop, selectedCityValuesDesktop, selectedLocationDesktop);
         });
 
-        // Render tag kota
-        function renderSelectedCities(container, hiddenInput, cityList) {
+        // Mobile - pilih kecamatan
+        districtMobile.addEventListener('change', function () {
+            selectedLocation.district = this.value;
+            renderSelectedLocation(selectedCities, selectedCityValues, selectedLocation);
+        });
+
+        // Desktop - pilih kecamatan
+        districtDesktop.addEventListener('change', function () {
+            selectedLocationDesktop.district = this.value;
+            renderSelectedLocation(selectedCitiesDesktop, selectedCityValuesDesktop, selectedLocationDesktop);
+        });
+
+        // Render lokasi ke tag
+        function renderSelectedLocation(container, hiddenInput, location) {
             container.innerHTML = '';
-            cityList.forEach(city => {
+            let label = '';
+
+            if (location.district && location.city && location.province) {
+                label = `${location.district} - ${location.city}, ${location.province}`;
+            } else if (location.city && location.province) {
+                label = `${location.city}, ${location.province}`;
+            } else if (location.province) {
+                label = `${location.province}`;
+            }
+
+            if (label !== '') {
                 const tag = document.createElement('div');
                 tag.className = 'city-tag';
-                tag.innerHTML = `${city} <span class="remove-tag" data-city="${city}">&times;</span>`;
+                tag.innerHTML = `${label} <span class="remove-tag" data-city="${label}">&times;</span>`;
                 container.appendChild(tag);
-            });
-            hiddenInput.value = cityList.join(',');
+            }
+
+            hiddenInput.value = label;
         }
 
         // Remove tag - mobile
         selectedCities.addEventListener('click', function (e) {
             if (e.target.classList.contains('remove-tag')) {
-                const cityToRemove = e.target.dataset.city;
-                const index = selectedCityList.indexOf(cityToRemove);
-                if (index > -1) {
-                    selectedCityList.splice(index, 1);
-                    renderSelectedCities(selectedCities, selectedCityValues, selectedCityList);
-                }
+                selectedLocation = {};
+                renderSelectedLocation(selectedCities, selectedCityValues, selectedLocation);
             }
         });
 
         // Remove tag - desktop
         selectedCitiesDesktop.addEventListener('click', function (e) {
             if (e.target.classList.contains('remove-tag')) {
-                const cityToRemove = e.target.dataset.city;
-                const index = selectedCityListDesktop.indexOf(cityToRemove);
-                if (index > -1) {
-                    selectedCityListDesktop.splice(index, 1);
-                    renderSelectedCities(selectedCitiesDesktop, selectedCityValuesDesktop, selectedCityListDesktop);
-                }
+                selectedLocationDesktop = {};
+                renderSelectedLocation(selectedCitiesDesktop, selectedCityValuesDesktop, selectedLocationDesktop);
             }
         });
 
