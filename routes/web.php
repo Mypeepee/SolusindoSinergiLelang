@@ -76,9 +76,7 @@ Route::get('/property-list', [PropertyListController::class, 'showproperty'])
     ->name('property.list.query');
 
 
-    Route::get('/jual/{property_type?}/{location?}/{price?}',
-    [PropertyListController::class, 'showproperty']
-)->name('property.list');
+    Route::get('/jual/{property_type?}/{province?}/{city?}/{district?}/{price?}', [PropertyListController::class, 'showproperty'])->name('property.list');
 
 
 Route::get('/property-type', [propertytypeController::class, 'tipeproperty']);

@@ -411,30 +411,61 @@
         e.preventDefault();
 
         let propertyType = document.querySelector('[name="property_type"]').value || 'property';
-        let tags = document.getElementById('selected-city-values').value; // isi dari hidden input
+        let tags = document.getElementById('selected-city-values').value; // Isi dari hidden input
 
-        // Ambil lokasi dari tag (pakai slug biar URL friendly)
-        let location = tags ? tags.replace(/\s+/g, '-').toLowerCase() : 'di-indonesia';
+        // Ambil lokasi dari tag (menghapus spasi dan mengganti "-" dengan "/")
+        let location = tags ? tags.replace(/\s+/g, '').replace(/-/g, '/') : 'di-indonesia';  // Menghapus spasi dan mengganti "-" dengan "/"
 
         // Ambil harga (opsional)
         let minPrice = document.getElementById('min_price').value.replace(/\./g, '');
         let maxPrice = document.getElementById('max_price').value.replace(/\./g, '');
         let price = '';
+
+        // Helper function untuk mengubah harga ke format ramah SEO (misalnya 400000000 -> 400-juta, 1000000000 -> 1-milyar)
+        function convertPriceToSEOFormat(price) {
+            let priceNumber = parseInt(price);
+            if (priceNumber >= 1000000000) {
+                return Math.floor(priceNumber / 1000000000) + '-milyar'; // Convert to milyar
+            } else if (priceNumber >= 1000000) {
+                return Math.floor(priceNumber / 1000000) + '-juta'; // Convert to juta
+            }
+            return priceNumber;  // For values under 1 juta, return the number directly
+        }
+
+        // Menentukan price range berdasarkan minPrice dan maxPrice
         if (minPrice && maxPrice) {
-            price = `antara-${minPrice}-dan-${maxPrice}`;
+            price = `antara-${convertPriceToSEOFormat(minPrice)}-dan-${convertPriceToSEOFormat(maxPrice)}`;
         } else if (minPrice) {
-            price = `di-atas-${minPrice}`;
+            price = `di-atas-${convertPriceToSEOFormat(minPrice)}`;
         } else if (maxPrice) {
-            price = `di-bawah-${maxPrice}`;
+            price = `di-bawah-${convertPriceToSEOFormat(maxPrice)}`;
         } else {
             price = 'semua';
         }
 
-        // Build URL SEO
+        // Bangun URL SEO
         let url = `/jual/${propertyType}/${location}/${price}`;
-        window.location.href = url + '?' + new URLSearchParams(new FormData(this)).toString();
+
+        // Menambahkan query hanya jika parameter lain diisi
+        let queryParams = [];
+        let minLandSize = document.getElementById('min_land_size').value.replace(/\./g, '');
+        let maxLandSize = document.getElementById('max_land_size').value.replace(/\./g, '');
+
+        if (minLandSize) {
+            queryParams.push('min_land_size=' + minLandSize);
+        }
+        if (maxLandSize) {
+            queryParams.push('max_land_size=' + maxLandSize);
+        }
+
+        // Menambahkan query string
+        if (queryParams.length > 0) {
+            window.location.href = url + '?' + queryParams.join('&');
+        } else {
+            window.location.href = url;
+        }
     });
-    </script>
+</script>
 
 
 <script>
