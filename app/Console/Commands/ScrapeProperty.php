@@ -323,9 +323,9 @@ try {
                     ');
                     $details = json_decode($detailsJson, true);
 
-                    // ✅ Ambil luas tanah dari judul
+                    // ✅ Ambil luas tanah dari judul (pakai $details['judul'])
                     $luasDariJudul = null;
-                    if (!empty($judul) && preg_match('/luas[^0-9]*([\d\.]+)\s*m2/i', $judul, $m)) {
+                    if (!empty($details['judul']) && preg_match('/luas[^0-9]*([\d\.]+)\s*m2/i', $details['judul'], $m)) {
                         $angka = $m[1];  // Ambil angka pertama yang ditemukan
 
                         // Cek jika angka mengandung titik desimal
@@ -334,7 +334,7 @@ try {
                             $luasDariJudul = (int) ((float)$angka);  // Ambil integer tanpa pembulatan
                         } else {
                             // Jika tidak ada desimal, langsung ambil angka bulat
-                            $luasDariJudul = (int) $angka;  // Jika format ribuan atau tanpa desimal
+                            $luasDariJudul = (int) $angka;
                         }
                     }
 
