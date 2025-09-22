@@ -407,32 +407,54 @@
 </div>
 
 <script>
-    document.getElementById('filterForm').addEventListener('submit', function(e) {
-        e.preventDefault();
+    document.getElementById('filterForm').addEventListener('submit', function (e) {
+      e.preventDefault();
 
-        let propertyType = document.querySelector('[name="property_type"]').value || 'property';
-        let tags = document.getElementById('selected-city-values').value; // isi dari hidden input
+      const form = this;
 
-        // Ambil lokasi dari tag (pakai slug biar URL friendly)
-        let location = tags ? tags.replace(/\s+/g, '-').toLowerCase() : 'di-indonesia';
+      // 1) Tipe properti
+      const propertyType = (form.querySelector('[name="property_type"]').value || 'property').trim();
 
-        // Ambil harga (opsional)
-        let minPrice = document.getElementById('min_price').value.replace(/\./g, '');
-        let maxPrice = document.getElementById('max_price').value.replace(/\./g, '');
-        let price = '';
-        if (minPrice && maxPrice) {
-            price = `antara-${minPrice}-dan-${maxPrice}`;
-        } else if (minPrice) {
-            price = `di-atas-${minPrice}`;
-        } else if (maxPrice) {
-            price = `di-bawah-${maxPrice}`;
-        } else {
-            price = 'semua';
-        }
+      // 2) Lokasi (kecamatan dan kota dipisahkan dengan "/")
+      const tags = (document.getElementById('selected-city-values').value || '').trim();
+      // Menangani pemisahan kecamatan dan kota, menghapus spasi dan memastikan satu tanda hubung
+      let location = tags ? tags.replace(/\s+/g, '').replace(/-+/g, '/') : 'diindonesia'; // Menghapus spasi dan mengganti "-" menjadi "/"
 
-        // Build URL SEO
-        let url = `/jual/${propertyType}/${location}/${price}`;
-        window.location.href = url + '?' + new URLSearchParams(new FormData(this)).toString();
+      // Menjamin kita hanya mengganti spasi dengan "/" dan menjaga "/"
+      location = location.replace('/', '/');  // Pastikan '/' tetap ditampilkan dengan benar
+
+      // 3) Ambil harga dari input dan normalkan jadi angka (tanpa titik)
+      const rawMin = (form.min_price?.value || '').replace(/\./g, '');
+      const rawMax = (form.max_price?.value || '').replace(/\./g, '');
+
+      // 4) Konversi harga menjadi slug SEO: 400000000 -> 400-juta, 1000000000 -> 1-milyar
+      const toSEO = (s) => {
+        const n = parseInt(s || '0', 10);
+        if (!n) return '';
+        if (n % 1000000000 === 0) return (n / 1000000000) + '-milyar';
+        if (n >= 1000000000)      return Math.floor(n / 1000000000) + '-milyar';
+        if (n % 1000000 === 0)    return (n / 1000000) + '-juta';
+        if (n >= 1000000)         return Math.floor(n / 1000000) + '-juta';
+        return String(n);
+      };
+
+      // 5) Bentuk segmen harga di URL
+      let price = 'semua';
+      if (rawMin && rawMax)      price = `antara-${toSEO(rawMin)}-dan-${toSEO(rawMax)}`;
+      else if (rawMin)           price = `di-atas-${toSEO(rawMin)}`;
+      else if (rawMax)           price = `di-bawah-${toSEO(rawMax)}`;
+
+      // 6) Path cantik (tanpa encodeURIComponent untuk location)
+      const url = `/jual/${propertyType}/${location}/${price}`;
+
+      // 7) === Query string tetap Dikirim supaya backend bisa filter pakai angka mentah ===
+      // rebuild dari form, lalu override min/max pakai angka tanpa titik
+      const params = new URLSearchParams(new FormData(form));
+      if (rawMin) params.set('min_price', rawMin);
+      if (rawMax) params.set('max_price', rawMax);
+
+      // 8) Redirect ke URL yang dihasilkan
+      window.location.href = params.toString() ? `${url}?${params.toString()}` : url;
     });
     </script>
 

@@ -325,19 +325,16 @@ try {
 
                     // ✅ Ambil luas tanah dari judul
                     $luasDariJudul = null;
-                    if (!empty($judul) && preg_match('/luas[^0-9]*([\d\.]+)/i', $judul, $m)) {
-                        $angka = $m[1];
+                    if (!empty($judul) && preg_match('/luas[^0-9]*([\d\.]+)\s*m2/i', $judul, $m)) {
+                        $angka = $m[1];  // Ambil angka pertama yang ditemukan
 
+                        // Cek jika angka mengandung titik desimal
                         if (strpos($angka, '.') !== false) {
-                            // Jika format ribuan (misal 10.000)
-                            if (preg_match('/\.\d{3}\b/', $angka)) {
-                                $luasDariJudul = (int) str_replace('.', '', $angka);
-                            } else {
-                                // Jika format desimal (misal 8.8 atau 634.82)
-                                $luasDariJudul = (int) floor($angka); // ambil integer depan saja
-                            }
+                            // Jika format desimal (misal 74.8 atau 74.3)
+                            $luasDariJudul = (int) ((float)$angka);  // Ambil integer tanpa pembulatan
                         } else {
-                            $luasDariJudul = (int) $angka;
+                            // Jika tidak ada desimal, langsung ambil angka bulat
+                            $luasDariJudul = (int) $angka;  // Jika format ribuan atau tanpa desimal
                         }
                     }
 
