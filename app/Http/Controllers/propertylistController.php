@@ -52,9 +52,9 @@ public function showproperty(Request $request,
                              $city = 'semua',
                              $district = 'semua',
                              $price_range = 'harga-max-0',
+                             $land_size = 'luas-tanah-max-0',
                              $page = 1)
 {
-
     // >>> Hilangkan JOIN, pakai subselect agar bebas ambiguitas
     $query = Property::query()
         ->select('property.*')
@@ -151,7 +151,7 @@ if ($request->filled('selected_city_values')) {
     $selectedTags = array_merge($selectedTags, $selectedTagsFromCities);
 }
 
-// ========================== Filter lokasi ==========================
+// ============== Filter lokasi ==============
 $urlFilters = [];
 
 if (!empty($districts)) {
@@ -166,8 +166,8 @@ if (!empty($districts)) {
     });
 
     foreach ($districts as $d) {
-        $urlFilters[] = \Str::slug(trim($d['district'])); // ✅ segmen kecamatan
-        $urlFilters[] = \Str::slug(trim($d['city']));     // ✅ segmen kota
+        // ✅ gabung kecamatan + kota → rapikan, tanpa spasi aneh
+        $urlFilters[] = \Str::slug(trim($d['district']).' '.trim($d['city']));
     }
 
 } elseif (!empty($cities)) {
@@ -179,7 +179,7 @@ if (!empty($districts)) {
     });
 
     foreach ($cities as $c) {
-        $urlFilters[] = \Str::slug(trim($c)); // ✅ segmen kota
+        $urlFilters[] = \Str::slug(trim($c));
     }
 
 } elseif (
@@ -191,13 +191,15 @@ if (!empty($districts)) {
     $provName = strtolower(trim($request->province));
     $query->whereRaw('LOWER(TRIM(property.provinsi)) = ?', [$provName]);
 
-    $urlFilters[] = \Str::slug(trim($request->province)); // ✅ segmen provinsi
+    $urlFilters[] = \Str::slug(trim($request->province));
 }
 
-// Fallback SEO jika URL kosong, untuk provinsi default
+// fallback SEO: kalau semua kosong, taruh "di-indonesia"
 if (empty($urlFilters)) {
     $urlFilters[] = 'di-indonesia';
 }
+
+
 
     // Ambil hasil properti
     $properties = $query->paginate(18)->appends($request->query());
@@ -229,19 +231,19 @@ if (empty($urlFilters)) {
     }
 
     // ========================== URL SEO ==========================
-$baseUrl = 'https://solusindolelang.com/jual/' . \Str::slug($property_type);
+    $baseUrl = 'https://solusindolelang.com/jual/' . \Str::slug($property_type);
 
-// Gabungkan URL SEO pakai "/" antar segmen, dengan penanganan untuk `-` lebih rapat
-$url = rtrim($baseUrl . '/' . implode('/', array_filter($urlFilters)), '/');
+    // Tambah lokasi
+    $url = rtrim($baseUrl . '/' . implode('/', array_filter($urlFilters)), '/');
 
-// Tambah harga (jika ada)
-$priceSlug = $this->slugHarga($request->min_price, $request->max_price);
-if ($priceSlug) {
-    $url .= '/' . $priceSlug;
-}
+    // Tambah harga
+    $priceSlug = $this->slugHarga($request->min_price, $request->max_price);
+    if ($priceSlug) {
+        $url .= '/' . $priceSlug;
+    }
 
-// Pagination
-$urlWithPagination = $url . '/page/' . $properties->currentPage();
+    // Pagination
+    $urlWithPagination = $url . '/page/' . $properties->currentPage();
 
     // Ambil salah satu properti untuk meta/structured data
     $property = $query->first();
