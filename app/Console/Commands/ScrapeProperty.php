@@ -255,7 +255,7 @@ try {
                             return el ? el.innerText.trim() : null;
                         })(),
 
-                        // 💰 Harga +26.8%
+                        // 💰 Harga +27.8%
                         harga: (function(){
                             const h = document.querySelectorAll("h6.text-primary-500")[0];
                             if (h) {
@@ -323,7 +323,7 @@ try {
                     ');
                     $details = json_decode($detailsJson, true);
 
-                    // ✅ Ambil luas tanah dari judul (pakai $details['judul'])
+                    // Ambil luas tanah dari judul (pakai $details['judul'])
                     $luasDariJudul = null;
                     if (!empty($details['judul']) && preg_match('/luas[^0-9]*([\d\.]+)\s*m2/i', $details['judul'], $m)) {
                         $angka = $m[1];  // Ambil angka pertama yang ditemukan
