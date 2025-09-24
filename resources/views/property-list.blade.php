@@ -1158,7 +1158,6 @@
                 </div>
             </div>
 
-        <div class="row g-4">
             <script>
 document.addEventListener('DOMContentLoaded', function () {
     const dateToggleContainer = document.getElementById('date-toggle');
