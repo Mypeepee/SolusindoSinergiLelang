@@ -1513,60 +1513,142 @@ document.addEventListener('DOMContentLoaded', function () {
   .agent-chip-name{
     max-width:160px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
+  /* Gaya umum */
+.pagination{ gap:.4rem; flex-wrap:nowrap; }
+.pagination a, .pagination span{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width: 40px; height: 40px;
+  padding:0 .6rem; border:2px solid #f35525; border-radius:8px;
+  text-decoration:none; font-weight:600; background:#fff; color:#333;
+  font-size: clamp(.85rem, 1vw + .6rem, 1rem);
+}
+.pagination .active{ background:#f35525; color:#fff; }
+.pagination .disabled{ opacity:.5; pointer-events:none; }
+
+/* HP: kompres maksimal */
+@media (max-width: 576px){
+  .pagination{ gap:.3rem; }
+  .pagination a, .pagination span{
+    min-width: 32px; height: 32px; padding: 0 .45rem; border-radius:6px;
+    font-size: .8rem;
+  }
+}
+
+/* HP sangat kecil: sembunyikan first/last & dots supaya pasti muat */
+@media (max-width: 380px){
+  .pagination .page-first,
+  .pagination .page-last,
+  .pagination .page-dots{
+    display:none !important;
+  }
+  .pagination a, .pagination span{
+    min-width: 30px; height: 30px; padding: 0 .35rem; font-size:.75rem;
+  }
+}
+
 </style>
 
 
+            {{-- pagination--}}
+            <div class="col-12 mt-5">
 
-            <!-- Pagination -->
-            <div class="col-12">
-                <div class="pagination d-flex justify-content-center mt-5">
-                    {{-- Previous --}}
-                    @if ($properties->onFirstPage())
-                        <a class="rounded disabled">&laquo;</a>
-                    @else
-                        <a href="{{ $properties->appends(request()->query())->previousPageUrl() }}" class="rounded">&laquo;</a>
-                    @endif
+            {{-- === DESKTOP/TABLET (≥576px) — banyak angka === --}}
+            @php
+                $currentPage = $properties->currentPage();
+                $lastPage    = $properties->lastPage();
+                $wDesk       = 3; // 3 kiri + 3 kanan
+                $sDesk       = max($currentPage - $wDesk, 1);
+                $eDesk       = min($currentPage + $wDesk, $lastPage);
+            @endphp
+            <div class="pagination d-none d-sm-flex justify-content-center">
+                {{-- Prev --}}
+                @if ($properties->onFirstPage())
+                <span class="rounded disabled">&laquo;</span>
+                @else
+                <a class="rounded" href="{{ $properties->appends(request()->query())->previousPageUrl() }}">&laquo;</a>
+                @endif
 
-                    {{-- Pages --}}
-                    @php
-                        $currentPage = $properties->currentPage();
-                        $lastPage = $properties->lastPage();
-                        $start = max($currentPage - 3, 1);
-                        $end = min($currentPage + 3, $lastPage);
-                    @endphp
+                {{-- First + dots --}}
+                @if ($sDesk > 1)
+                <a class="rounded page-first" href="{{ $properties->appends(request()->query())->url(1) }}">1</a>
+                @if ($sDesk > 2)
+                    <span class="rounded disabled page-dots">…</span>
+                @endif
+                @endif
 
-                    @if ($start > 1)
-                        <a href="{{ $properties->appends(request()->query())->url(1) }}" class="rounded">1</a>
-                        @if ($start > 2)
-                            <span class="rounded disabled">...</span>
-                        @endif
-                    @endif
+                {{-- Numbers --}}
+                @for ($i = $sDesk; $i <= $eDesk; $i++)
+                <a class="rounded {{ $i === $currentPage ? 'active' : '' }}"
+                    href="{{ $properties->appends(request()->query())->url($i) }}">{{ $i }}</a>
+                @endfor
 
-                    @for ($i = $start; $i <= $end; $i++)
-                        <a href="{{ $properties->appends(request()->query())->url($i) }}"
-                            class="rounded {{ $i === $currentPage ? 'active' : '' }}">{{ $i }}</a>
-                    @endfor
+                {{-- dots + Last --}}
+                @if ($eDesk < $lastPage)
+                @if ($eDesk < $lastPage - 1)
+                    <span class="rounded disabled page-dots">…</span>
+                @endif
+                <a class="rounded page-last" href="{{ $properties->appends(request()->query())->url($lastPage) }}">{{ $lastPage }}</a>
+                @endif
 
-                    @if ($end < $lastPage)
-                        @if ($end < $lastPage - 1)
-                            <span class="rounded disabled">...</span>
-                        @endif
-                        <a href="{{ $properties->appends(request()->query())->url($lastPage) }}" class="rounded">{{ $lastPage }}</a>
-                    @endif
-
-                    {{-- Next --}}
-                    @if ($properties->hasMorePages())
-                        <a href="{{ $properties->appends(request()->query())->nextPageUrl() }}" class="rounded">&raquo;</a>
-                    @else
-                        <a class="rounded disabled">&raquo;</a>
-                    @endif
-                </div>
+                {{-- Next --}}
+                @if ($properties->hasMorePages())
+                <a class="rounded" href="{{ $properties->appends(request()->query())->nextPageUrl() }}">&raquo;</a>
+                @else
+                <span class="rounded disabled">&raquo;</span>
+                @endif
             </div>
+
+            {{-- === MOBILE (<576px) — ringkas tapi tetap kotak === --}}
+            @php
+                $wMob = 1; // 1 kiri + 1 kanan
+                $sMob = max($currentPage - $wMob, 1);
+                $eMob = min($currentPage + $wMob, $lastPage);
+            @endphp
+            <div class="pagination d-flex d-sm-none justify-content-center">
+                {{-- Prev --}}
+                @if ($properties->onFirstPage())
+                <span class="rounded disabled">&laquo;</span>
+                @else
+                <a class="rounded" href="{{ $properties->appends(request()->query())->previousPageUrl() }}">&laquo;</a>
+                @endif
+
+                {{-- First + dots (punya class supaya bisa disembunyikan di layar sempit) --}}
+                @if ($sMob > 1)
+                <a class="rounded page-first" href="{{ $properties->appends(request()->query())->url(1) }}">1</a>
+                @if ($sMob > 2)
+                    <span class="rounded disabled page-dots">…</span>
+                @endif
+                @endif
+
+                {{-- Numbers (hanya 1 kiri + current + 1 kanan) --}}
+                @for ($i = $sMob; $i <= $eMob; $i++)
+                <a class="rounded {{ $i === $currentPage ? 'active' : '' }}"
+                    href="{{ $properties->appends(request()->query())->url($i) }}">{{ $i }}</a>
+                @endfor
+
+                {{-- dots + Last --}}
+                @if ($eMob < $lastPage)
+                @if ($eMob < $lastPage - 1)
+                    <span class="rounded disabled page-dots">…</span>
+                @endif
+                <a class="rounded page-last" href="{{ $properties->appends(request()->query())->url($lastPage) }}">{{ $lastPage }}</a>
+                @endif
+
+                {{-- Next --}}
+                @if ($properties->hasMorePages())
+                <a class="rounded" href="{{ $properties->appends(request()->query())->nextPageUrl() }}">&raquo;</a>
+                @else
+                <span class="rounded disabled">&raquo;</span>
+                @endif
+            </div>
+
+            </div>
+
+
         </div>
     </div>
 </div>
 <!-- Property List End -->
-
 
 
         <!-- Call to Action Start -->
