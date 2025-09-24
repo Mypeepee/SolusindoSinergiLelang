@@ -1396,7 +1396,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     border-radius: 8px;
                 }
             </style>
-
+            
+<div class="row g-4">
 @foreach ($properties as $property)
 <div class="col-lg-4 col-md-6 col-sm-6 d-flex align-items-stretch">
   <div class="property-item rounded overflow-hidden flex-fill d-flex flex-column">
