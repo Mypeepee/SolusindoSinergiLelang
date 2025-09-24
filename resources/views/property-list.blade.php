@@ -1397,7 +1397,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             </style>
             
-<div class="row g-4">
+<div id="property-list-section" class="py-5">
+  <div class="container">
+    <div class="row g-4 justify-content-center">
 @foreach ($properties as $property)
 <div class="col-lg-4 col-md-6 col-sm-6 d-flex align-items-stretch">
   <div class="property-item rounded overflow-hidden flex-fill d-flex flex-column">
@@ -1480,8 +1482,24 @@ document.addEventListener('DOMContentLoaded', function () {
   </div>
 </div>
 @endforeach
+</div>
+</div>
 
 <style>
+    /* Lebarkan semua .container di layar besar */
+@media (min-width:1200px){
+  .container, .container-lg, .container-xl, .container-xxl { max-width: 1280px; }
+}
+@media (min-width:1400px){
+  .container, .container-lg, .container-xl, .container-xxl { max-width: 1440px; } /* boleh 1360–1500 */
+}
+
+/* Kecilkan padding samping biar ga “tebal” */
+.container, .container-fluid { padding-left: 12px; padding-right: 12px; }
+
+/* Optional: rapatkan jarak antar kolom sedikit */
+.row{ --bs-gutter-x: 1rem; }
+
       /* sudah ada */
   .img-bottom-fade{
     position:absolute;left:0;right:0;bottom:0;height:44px;
@@ -1645,7 +1663,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             </div>
 
-
+            </div>
         </div>
     </div>
 </div>
