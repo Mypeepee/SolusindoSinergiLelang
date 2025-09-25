@@ -433,7 +433,66 @@
                                         <i class="fa fa-share-alt"></i>
                                         </a>
                                     </div>
-                                    <!-- Menu Share (popover sederhana) -->
+
+                                    <script>
+                                        document.addEventListener('DOMContentLoaded', function () {
+                                            // Ambil data properti yang diteruskan dari backend
+                                            const property = {
+                                                id_listing: "{{ $property->id_listing }}", // Ambil id_listing dari backend
+                                                title: "{{ $property->judul }}",
+                                                description: "{{ $property->deskripsi }}",
+                                                type: "{{ $property->tipe }}".toUpperCase(),  // Property type diubah ke uppercase
+                                                city: "{{ $property->kota }}",
+                                                location: "{{ $property->lokasi }}",
+                                                certificate: "{{ $property->sertifikat }}",  // Sertifikat lengkap
+                                                area: "{{ $property->luas }}",
+                                                harga: "{{ $property->harga }}",  // Harga aslinya
+                                                property_url: "{{ url()->current() }}" // Ambil URL properti saat ini
+                                            };
+
+                                            // Ambil nama agen yang diteruskan dari backend
+                                            const agentName = "{{ $agentName }}";  // Ambil nama agen dari backend
+
+                                            // Format harga dengan pemisah ribuan
+                                            const formattedPrice = new Intl.NumberFormat('id-ID').format(property.harga);
+
+                                            // Ekstrak tipe sertifikat (SHM, SHGB, atau lainnya)
+                                            let certificateType = property.certificate.match(/(SHM|SHGB|Sertifikat\sHak\sGuna\sBangunan)/i);
+                                            certificateType = certificateType ? certificateType[0] : 'Sertifikat Lainnya';  // Default jika tidak ada yang cocok
+
+                                            // Format pesan WhatsApp
+                                            const shareText = `🔥 SEGERA LELANG, ${new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long' })} 🔥\n` +
+                                                              `🏡 ${property.type} ${certificateType} Strategis di ${property.city}\n` +
+
+                                                              `📌 Spesifikasi\n` +
+                                                              `📍 ${property.location}\n` +
+                                                              `📐 LT ${property.area} m²\n` +
+                                                              `📃 Tipe Hak: ${certificateType}\n` +
+                                                              `💰 Harga: Rp ${formattedPrice} <- MURAH SOROO!!\n` +
+                                                              `((Aset macet, cash only, no viewing dalam))\n` +
+                                                              `Kode: ${property.id_listing}\n\n` +
+
+                                                              `✨ Kenapa Beli Lelang Lebih Menarik?\n` +
+                                                              `Harga jauh di bawah pasar → lebih murah dibanding rumah primary & second.\n` +
+                                                              `Potensi capital gain tinggi → bisa dijual kembali sesuai harga pasar.\n` +
+                                                              `Legalitas aman (SHM) → balik nama resmi melalui notaris/PPAT.\n` +
+                                                              `Pilihan tepat untuk hunian luas atau investasi cerdas.\n\n` +
+
+                                                              `📞 Kontak: ${agentName}\n` +
+                                                              `🔗 Info lengkap: ${property.property_url}\n`;
+
+                                            // Encode seluruh share text untuk WhatsApp
+                                            const encodedShareText = encodeURIComponent(shareText);
+
+                                            // Fungsi untuk membuka WhatsApp dengan pesan
+                                            const shareButton = document.getElementById('shareBtn');
+                                            shareButton.addEventListener('click', function () {
+                                                window.open(`https://wa.me/?text=${encodedShareText}`, '_blank', 'noopener,noreferrer');
+                                            });
+                                        });
+                                        </script>
+
+                                    {{-- <!-- Menu Share (popover sederhana) -->
                                     <div id="shareMenu" class="share-popover" style="display:none; position:absolute; z-index:9999; background:#fff; border:1px solid #ddd; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.12); padding:8px; width:220px;">
                                         <!-- Instagram -->
                                         <button class="share-item" data-action="instagram" style="display:flex;align-items:center;width:100%;border:0;background:transparent;padding:10px;border-radius:10px;cursor:pointer;">
@@ -456,33 +515,33 @@
                                         <button class="share-item" data-action="copy" style="display:flex;align-items:center;width:100%;border:0;background:transparent;padding:10px;border-radius:10px;cursor:pointer;">
                                             <i class="fa fa-link" style="margin-right:10px;"></i> Copy link
                                         </button>
-                                    </div>
+                                    </div> --}}
                                     <!-- Share + Edit (Mobile Only) -->
-<div class="d-flex d-md-none flex-column gap-3 mt-3">
-    <!-- Share dengan teks -->
-    <a href="javascript:void(0);"
-       id="shareBtnMobile"
-       class="btn btn-outline-secondary d-flex align-items-center justify-content-center px-3 py-2"
-       style="min-width: 180px; height: 50px;"
-       title="Bagikan">
-        <i class="fa fa-share-alt me-2"></i> Bagikan
-    </a>
+                                    <div class="d-flex d-md-none flex-column gap-3 mt-3">
+                                        <!-- Share dengan teks -->
+                                        <a href="javascript:void(0);"
+                                        id="shareBtnMobile"
+                                        class="btn btn-outline-secondary d-flex align-items-center justify-content-center px-3 py-2"
+                                        style="min-width: 180px; height: 50px;"
+                                        title="Bagikan">
+                                            <i class="fa fa-share-alt me-2"></i> Bagikan
+                                        </a>
 
-    <!-- Edit (Hanya Pemilik) -->
-    @if (Session::has('id_account'))
-        @php
-            $loggedInId = Session::get('id_account');
-            $loggedInAgentId = \App\Models\Agent::where('id_account', $loggedInId)->value('id_agent');
-        @endphp
-        @if ($property->id_agent === $loggedInAgentId)
-            <a href="{{ route('editproperty', $property->id_listing) }}"
-               class="btn btn-warning text-black d-flex align-items-center justify-content-center flex-fill"
-               title="Edit Properti">
-               <i class="fa fa-edit me-2"></i>Edit
-            </a>
-        @endif
-    @endif
-</div>
+                                        <!-- Edit (Hanya Pemilik) -->
+                                        @if (Session::has('id_account'))
+                                            @php
+                                                $loggedInId = Session::get('id_account');
+                                                $loggedInAgentId = \App\Models\Agent::where('id_account', $loggedInId)->value('id_agent');
+                                            @endphp
+                                            @if ($property->id_agent === $loggedInAgentId)
+                                                <a href="{{ route('editproperty', $property->id_listing) }}"
+                                                class="btn btn-warning text-black d-flex align-items-center justify-content-center flex-fill"
+                                                title="Edit Properti">
+                                                <i class="fa fa-edit me-2"></i>Edit
+                                                </a>
+                                            @endif
+                                        @endif
+                                    </div>
 
 
                                     <!-- Edit (Desktop) -->
@@ -1072,7 +1131,7 @@
 
                 </style>
         </div>
-        <script>
+        {{-- <script>
 document.addEventListener('DOMContentLoaded', function () {
   // === konfigurasi share (boleh kamu ubah) ===
   const shareUrl  = "{{ url()->current() }}";
@@ -1217,6 +1276,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert("Gagal menyalin link. Coba lagi.");
             });
             }
-            </script>
+            </script> --}}
 
 @include('template.footer')

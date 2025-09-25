@@ -59,7 +59,7 @@ class propertydetailController extends Controller
             ->first();
 
         // Jika user adalah agent atau register, kita abaikan kode referal dan gunakan id_agent
-        if ($user && ($user->roles === 'Agent' || $user->roles === 'Register')) {
+        if ($user && ($user->roles === 'Agent' || $user->roles === 'Register' || $user->roles === 'Stoker'|| $user->roles === 'Principal')) {
             // Ambil id_agent dari tabel agent berdasarkan id_account
             $agentData = DB::table('agent')
                 ->where('id_account', session('id_account'))
@@ -298,6 +298,16 @@ class propertydetailController extends Controller
         'og_url'         => $ogUrlFinal,
     ];
 
+    // Ambil nama agen berdasarkan id_agent yang ada di URL
+    $agentName = null;
+    if ($agent) {
+        // Ambil nama agen dari tabel agent berdasarkan id_agent
+        $agentData = \App\Models\Agent::where('id_agent', $agent)->first();
+        if ($agentData) {
+            $agentName = $agentData->nama;  // Ambil nama agen dari tabel agent
+        }
+    }
+
     return view("property-detail", compact(
         'property',
         'similarProperties',
@@ -309,7 +319,8 @@ class propertydetailController extends Controller
         'medianPricePerM2',
         'selisihPersen',
         'ogTags',
-        'sharedAgent'
+        'sharedAgent',
+        'agentName'
     ));
 }
 
