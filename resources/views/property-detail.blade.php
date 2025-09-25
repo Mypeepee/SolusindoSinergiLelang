@@ -520,13 +520,69 @@
                                     <div class="d-flex d-md-none flex-column gap-3 mt-3">
                                         <!-- Share dengan teks -->
                                         <a href="javascript:void(0);"
-                                        id="shareBtnMobile"
+                                        id="shareBtnanjing"
                                         class="btn btn-outline-secondary d-flex align-items-center justify-content-center px-3 py-2"
                                         style="min-width: 180px; height: 50px;"
                                         title="Bagikan">
                                             <i class="fa fa-share-alt me-2"></i> Bagikan
                                         </a>
+                                        <script>
+                                            document.addEventListener('DOMContentLoaded', function () {
+                                                // Ambil data properti yang diteruskan dari backend
+                                                const property = {
+                                                    id_listing: "{{ $property->id_listing }}", // Ambil id_listing dari backend
+                                                    title: "{{ $property->judul }}",
+                                                    description: "{{ $property->deskripsi }}",
+                                                    type: "{{ $property->tipe }}".toUpperCase(),  // Property type diubah ke uppercase
+                                                    city: "{{ $property->kota }}",
+                                                    location: "{{ $property->lokasi }}",
+                                                    certificate: "{{ $property->sertifikat }}",  // Sertifikat lengkap
+                                                    area: "{{ $property->luas }}",
+                                                    harga: "{{ $property->harga }}",  // Harga aslinya
+                                                    property_url: "{{ url()->current() }}" // Ambil URL properti saat ini
+                                                };
 
+                                                // Ambil nama agen yang diteruskan dari backend
+                                                const agentName = "{{ $agentName }}";  // Ambil nama agen dari backend
+
+                                                // Format harga dengan pemisah ribuan
+                                                const formattedPrice = new Intl.NumberFormat('id-ID').format(property.harga);
+
+                                                // Ekstrak tipe sertifikat (SHM, SHGB, atau lainnya)
+                                                let certificateType = property.certificate.match(/(SHM|SHGB|Sertifikat\sHak\sGuna\sBangunan)/i);
+                                                certificateType = certificateType ? certificateType[0] : 'Sertifikat Lainnya';  // Default jika tidak ada yang cocok
+
+                                                // Format pesan WhatsApp
+                                                const shareText = `🔥 SEGERA LELANG, ${new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long' })} 🔥\n` +
+                                                                  `🏡 ${property.type} ${certificateType} Strategis di ${property.city}\n` +
+
+                                                                  `📌 Spesifikasi\n` +
+                                                                  `📍 ${property.location}\n` +
+                                                                  `📐 LT ${property.area} m²\n` +
+                                                                  `📃 Tipe Hak: ${certificateType}\n` +
+                                                                  `💰 Harga: Rp ${formattedPrice} <- MURAH SOROO!!\n` +
+                                                                  `((Aset macet, cash only, no viewing dalam))\n` +
+                                                                  `Kode: ${property.id_listing}\n\n` +
+
+                                                                  `✨ Kenapa Beli Lelang Lebih Menarik?\n` +
+                                                                  `Harga jauh di bawah pasar → lebih murah dibanding rumah primary & second.\n` +
+                                                                  `Potensi capital gain tinggi → bisa dijual kembali sesuai harga pasar.\n` +
+                                                                  `Legalitas aman (SHM) → balik nama resmi melalui notaris/PPAT.\n` +
+                                                                  `Pilihan tepat untuk hunian luas atau investasi cerdas.\n\n` +
+
+                                                                  `📞 Kontak: ${agentName}\n` +
+                                                                  `🔗 Info lengkap: ${property.property_url}\n`;
+
+                                                // Encode seluruh share text untuk WhatsApp
+                                                const encodedShareText = encodeURIComponent(shareText);
+
+                                                // Fungsi untuk membuka WhatsApp dengan pesan
+                                                const shareButton = document.getElementById('shareBtnanjing');
+                                                shareButton.addEventListener('click', function () {
+                                                    window.open(`https://wa.me/?text=${encodedShareText}`, '_blank', 'noopener,noreferrer');
+                                                });
+                                            });
+                                            </script>
                                         <!-- Edit (Hanya Pemilik) -->
                                         @if (Session::has('id_account'))
                                             @php
