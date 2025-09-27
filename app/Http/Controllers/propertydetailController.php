@@ -444,7 +444,6 @@ public function update(Request $request, $id_listing)
 
     // ⬇️ Tambahan: set kolom status
     $property->status = $request->status;
-    dd($cities, $property->kota);
     $property->save();
 
     // === Ambil id_agent dari session ===

@@ -487,7 +487,7 @@
                                             // Fungsi untuk membuka WhatsApp dengan pesan
                                             const shareButton = document.getElementById('shareBtn');
                                             shareButton.addEventListener('click', function () {
-                                                window.open(`https://wa.me/?text=${encodedShareText}`, '_blank', 'noopener,noreferrer');
+                                                window.open(`https://api.whatsapp.com/send?text=${encodedShareText}`, '_blank', 'noopener,noreferrer');
                                             });
                                         });
                                         </script>
@@ -516,6 +516,7 @@
                                             <i class="fa fa-link" style="margin-right:10px;"></i> Copy link
                                         </button>
                                     </div> --}}
+
                                     <!-- Share + Edit (Mobile Only) -->
                                     <div class="d-flex d-md-none flex-column gap-3 mt-3">
                                         <!-- Share dengan teks -->
@@ -579,7 +580,7 @@
                                                 // Fungsi untuk membuka WhatsApp dengan pesan
                                                 const shareButton = document.getElementById('shareBtnanjing');
                                                 shareButton.addEventListener('click', function () {
-                                                    window.open(`https://wa.me/?text=${encodedShareText}`, '_blank', 'noopener,noreferrer');
+                                                    window.open(`https://api.whatsapp.com/send?text=${encodedShareText}`, '_blank', 'noopener,noreferrer');
                                                 });
                                             });
                                             </script>
@@ -617,10 +618,6 @@
                                         @endif
                                     @endif
                                 </div>
-
-
-
-
 
                             <!-- Swiper JS -->
                             <script src="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.js"></script>
