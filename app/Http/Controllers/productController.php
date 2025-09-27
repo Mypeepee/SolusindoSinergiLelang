@@ -342,7 +342,7 @@ private function getOrCreateFolder($folderName, $parentId, $accessToken)
     $property = Property::create([
         'judul' => $request->judul,
         'tipe' => $request->tipe,
-        'vendor' => 'Balai Lelang Solusindo Surabaya',
+        'vendor' => 'Balai Lelang Solusindo - ' . $agent->nama, // ganti bagian vendor
         'deskripsi' => $request->deskripsi,
         'harga' => $request->harga,
         'lokasi' => $request->lokasi,
@@ -357,7 +357,6 @@ private function getOrCreateFolder($folderName, $parentId, $accessToken)
         'uang_jaminan' => $uangJaminan,
         'batas_akhir_jaminan' => $batasJaminan,
         'batas_akhir_penawaran' => $batasPenawaran,
-        'vendor' => 'Balai Lelang Solusindo Surabaya',
         'id_agent' => $agent->id_agent,
     ]);
     return redirect()->route('agent.properties')->with('success', 'Properti berhasil ditambahkan!');

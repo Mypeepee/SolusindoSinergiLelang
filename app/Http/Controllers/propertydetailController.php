@@ -358,7 +358,7 @@ public function update(Request $request, $id_listing)
         'lokasi' => 'required|string|max:500',
         'provinsi' => 'required|string|max:100',
         'kota' => 'required|string|max:70',
-        'kelurahan' => 'required|string|max:70',
+        'kecamatan' => 'required|string|max:70',
         'sertifikat' => 'required|string|max:100',
         'luas_tanah' => 'required|integer|min:0',
         'payment' => 'nullable|array',
@@ -437,14 +437,14 @@ public function update(Request $request, $id_listing)
     $property->lokasi = $request->lokasi;
     $property->provinsi = $request->provinsi;
     $property->kota = $request->kota;
-    $property->kecamatan = $request->kelurahan;
+    $property->kecamatan = $request->kecamatan;
     $property->sertifikat = $request->sertifikat;
     $property->luas = $request->luas_tanah; // asumsi satuan meter persegi
     $property->payment = implode(',', $request->input('payment', []));
 
     // ⬇️ Tambahan: set kolom status
     $property->status = $request->status;
-
+    dd($cities, $property->kota);
     $property->save();
 
     // === Ambil id_agent dari session ===
