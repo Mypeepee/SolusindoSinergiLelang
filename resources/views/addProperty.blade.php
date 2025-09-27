@@ -349,182 +349,161 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const alamatInput = document.getElementById('lokasi');
-    const mapFrame = document.getElementById('googleMap');
-    const provinceSelect = document.getElementById('province');
-    const citySelect = document.getElementById('city');
-    const kelurahanSelect = document.getElementById('kelurahan');
+  const alamatInput     = document.getElementById('lokasi');
+  const mapFrame        = document.getElementById('googleMap');
+  const provinceSelect  = document.getElementById('province');
+  const citySelect      = document.getElementById('city');
+  const kelurahanSelect = document.getElementById('kelurahan');
 
-    let lokasiData = [];
+  let lokasiData = [];
 
-    // Fetch indonesia.json
-    fetch('{{ asset("data/indonesia.json") }}')
-        .then(res => res.json())
-        .then(data => {
-            lokasiData = data;
+  // Helpers
+  const titleCase = (s) =>
+    s.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-            // Populate Provinsi (UPPERCASE in value, display normal)
-            const provinsiSet = new Set(data.map(item => item.province.toUpperCase().trim()));
-            provinsiSet.forEach(prov => {
-                provinceSelect.innerHTML += `<option value="${prov}">${prov}</option>`;
-            });
-        });
+  const sortAZ = (a, b) => a.localeCompare(b, 'id', {sensitivity: 'base'});
 
-    alamatInput.addEventListener('input', function () {
-        const alamat = this.value.trim();
+  const sortKotaFirst = (a, b) => {
+    const aIsKota = a.startsWith('KOTA');
+    const bIsKota = b.startsWith('KOTA');
+    if (aIsKota && !bIsKota) return -1;
+    if (!aIsKota && bIsKota) return 1;
+    return sortAZ(a, b);
+  };
 
-        if (alamat === "") {
-            // Default Surabaya jika alamat kosong
-            mapFrame.src = "https://www.google.com/maps/embed/v1/place?q=Surabaya&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8";
-            provinceSelect.value = "";
-            citySelect.innerHTML = '<option value="">Pilih Kota/Kabupaten</option>';
-            kelurahanSelect.innerHTML = '<option value="">Pilih Kelurahan</option>';
-            citySelect.disabled = true;
-            kelurahanSelect.disabled = true;
-            return;
-        }
+  const formatRegency = (name) => {
+    const n = name.trim();
+    if (n.toLowerCase().startsWith('kota'))      return `KOTA ${n.substring(5).trim().toUpperCase()}`;
+    if (n.toLowerCase().startsWith('kabupaten')) return `KAB. ${n.substring(10).trim().toUpperCase()}`;
+    return n.toUpperCase();
+  };
 
-        // Update Google Maps
-        const encodedAlamat = encodeURIComponent(alamat);
-        const apiKey = 'AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8';
-        mapFrame.src = `https://www.google.com/maps/embed/v1/place?q=${encodedAlamat}&key=${apiKey}`;
+  // Fetch indonesia.json
+  fetch('{{ asset("data/indonesia.json") }}')
+    .then(res => res.json())
+    .then(data => {
+      lokasiData = data;
 
-        // Auto-fill dropdowns
-        const found = lokasiData.find(item =>
-            alamat.toLowerCase().includes(item.district.toLowerCase().trim()) ||
-            alamat.toLowerCase().includes(item.regency.toLowerCase().trim()) ||
-            alamat.toLowerCase().includes(item.province.toLowerCase().trim())
-        );
+      // === Provinsi: unik + sort A–Z ===
+      const provinsiArr = Array.from(
+        new Set(data.map(item => item.province.trim().toUpperCase()))
+      ).sort(sortAZ);
 
-        if (found) {
-            // Set Provinsi
-            const provinsiFormatted = found.province.trim().toUpperCase();
-            provinceSelect.value = provinsiFormatted;
-
-            // Fill Kota/Kabupaten
-            citySelect.innerHTML = '<option value="">Pilih Kota/Kabupaten</option>';
-            const kotaSet = new Set(
-                lokasiData
-                    .filter(item => item.province.trim().toUpperCase() === provinsiFormatted)
-                    .map(item => {
-                        if (item.regency.toLowerCase().startsWith("kota")) {
-                            return `KOTA ${item.regency.substring(5).trim().toUpperCase()}`;
-                        } else if (item.regency.toLowerCase().startsWith("kabupaten")) {
-                            return `KAB. ${item.regency.substring(10).trim().toUpperCase()}`;
-                        } else {
-                            return item.regency.trim().toUpperCase();
-                        }
-                    })
-            );
-            kotaSet.forEach(kota => {
-                citySelect.innerHTML += `<option value="${kota}">${kota}</option>`;
-            });
-
-            // Set value Kota/Kabupaten
-            let regencyFormatted = "";
-            if (found.regency.toLowerCase().startsWith("kota")) {
-                regencyFormatted = `KOTA ${found.regency.substring(5).trim().toUpperCase()}`;
-            } else if (found.regency.toLowerCase().startsWith("kabupaten")) {
-                regencyFormatted = `KAB. ${found.regency.substring(10).trim().toUpperCase()}`;
-            } else {
-                regencyFormatted = found.regency.trim().toUpperCase();
-            }
-            citySelect.value = regencyFormatted;
-            citySelect.disabled = false;
-
-            // Fill Kelurahan
-            kelurahanSelect.innerHTML = '<option value="">Pilih Kelurahan</option>';
-            const kelurahanSet = new Set(
-                lokasiData
-                    .filter(item =>
-                        item.province.trim().toUpperCase() === provinsiFormatted &&
-                        item.regency.trim().toUpperCase() === found.regency.trim().toUpperCase()
-                    )
-                    .map(item =>
-                        item.district
-                            .toLowerCase()
-                            .split(" ")
-                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                            .join(" ")
-                    )
-            );
-            kelurahanSet.forEach(kel => {
-                kelurahanSelect.innerHTML += `<option value="${kel}">${kel}</option>`;
-            });
-
-            // Set value kelurahan
-            const kelurahanFormatted = found.district
-                .toLowerCase()
-                .split(" ")
-                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                .join(" ");
-            kelurahanSelect.value = kelurahanFormatted;
-            kelurahanSelect.disabled = false;
-        }
+      provinceSelect.innerHTML = '<option value="">Pilih Provinsi</option>';
+      provinsiArr.forEach(prov => {
+        provinceSelect.innerHTML += `<option value="${prov}">${prov}</option>`;
+      });
     });
 
-    // Manual Dropdown Chain
-    provinceSelect.addEventListener('change', function () {
-        const selectedProvinsi = this.value.trim().toUpperCase();
-        citySelect.innerHTML = '<option value="">Pilih Kota/Kabupaten</option>';
-        kelurahanSelect.innerHTML = '<option value="">Pilih Kelurahan</option>';
-        citySelect.disabled = false;
-        kelurahanSelect.disabled = true;
+  alamatInput.addEventListener('input', function () {
+    const alamat = this.value.trim();
 
-        const kotaSet = new Set(
-            lokasiData
-                .filter(item => item.province.trim().toUpperCase() === selectedProvinsi)
-                .map(item => {
-                    if (item.regency.toLowerCase().startsWith("kota")) {
-                        return `KOTA ${item.regency.substring(5).trim().toUpperCase()}`;
-                    } else if (item.regency.toLowerCase().startsWith("kabupaten")) {
-                        return `KAB. ${item.regency.substring(10).trim().toUpperCase()}`;
-                    } else {
-                        return item.regency.trim().toUpperCase();
-                    }
-                })
-        );
-        kotaSet.forEach(kota => {
-            citySelect.innerHTML += `<option value="${kota}">${kota}</option>`;
-        });
+    if (alamat === "") {
+      // Default Surabaya jika alamat kosong
+      mapFrame.src = "https://www.google.com/maps/embed/v1/place?q=Surabaya&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8";
+      provinceSelect.value = "";
+      citySelect.innerHTML = '<option value="">Pilih Kota/Kabupaten</option>';
+      kelurahanSelect.innerHTML = '<option value="">Pilih Kelurahan</option>';
+      citySelect.disabled = true;
+      kelurahanSelect.disabled = true;
+      return;
+    }
+
+    // Update Google Maps
+    const encodedAlamat = encodeURIComponent(alamat);
+    const apiKey = 'AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8';
+    mapFrame.src = `https://www.google.com/maps/embed/v1/place?q=${encodedAlamat}&key=${apiKey}`;
+
+    // Auto-fill dropdowns
+    const found = lokasiData.find(item =>
+      alamat.toLowerCase().includes(item.district.toLowerCase().trim()) ||
+      alamat.toLowerCase().includes(item.regency.toLowerCase().trim())  ||
+      alamat.toLowerCase().includes(item.province.toLowerCase().trim())
+    );
+
+    if (found) {
+      // === Set Provinsi ===
+      const provinsiFormatted = found.province.trim().toUpperCase();
+      provinceSelect.value = provinsiFormatted;
+
+      // === Kota/Kab: unik + sort (KOTA dulu) ===
+      citySelect.innerHTML = '<option value="">Pilih Kota/Kabupaten</option>';
+      const kotaArr = Array.from(new Set(
+        lokasiData
+          .filter(it => it.province.trim().toUpperCase() === provinsiFormatted)
+          .map(it => formatRegency(it.regency))
+      )).sort(sortKotaFirst);
+
+      kotaArr.forEach(k => citySelect.innerHTML += `<option value="${k}">${k}</option>`);
+
+      // Set value Kota/Kab
+      const regencyFormatted = formatRegency(found.regency);
+      citySelect.value = regencyFormatted;
+      citySelect.disabled = false;
+
+      // === Kelurahan: unik + sort A–Z ===
+      kelurahanSelect.innerHTML = '<option value="">Pilih Kelurahan</option>';
+      const kelArr = Array.from(new Set(
+        lokasiData
+          .filter(it =>
+            it.province.trim().toUpperCase() === provinsiFormatted &&
+            formatRegency(it.regency)      === regencyFormatted
+          )
+          .map(it => titleCase(it.district))
+      )).sort(sortAZ);
+
+      kelArr.forEach(kel => kelurahanSelect.innerHTML += `<option value="${kel}">${kel}</option>`);
+
+      // Set value Kelurahan
+      const kelurahanFormatted = titleCase(found.district);
+      kelurahanSelect.value = kelurahanFormatted;
+      kelurahanSelect.disabled = false;
+    }
+  });
+
+  // === Manual Dropdown Chain ===
+  provinceSelect.addEventListener('change', function () {
+    const selectedProvinsi = this.value.trim().toUpperCase();
+    citySelect.innerHTML = '<option value="">Pilih Kota/Kabupaten</option>';
+    kelurahanSelect.innerHTML = '<option value="">Pilih Kelurahan</option>';
+    citySelect.disabled = false;
+    kelurahanSelect.disabled = true;
+
+    // Kota/Kab: unik + sort KOTA dulu
+    const kotaArr = Array.from(new Set(
+      lokasiData
+        .filter(it => it.province.trim().toUpperCase() === selectedProvinsi)
+        .map(it => formatRegency(it.regency))
+    )).sort(sortKotaFirst);
+
+    kotaArr.forEach(kota => {
+      citySelect.innerHTML += `<option value="${kota}">${kota}</option>`;
     });
+  });
 
-    citySelect.addEventListener('change', function () {
-        const selectedProvinsi = provinceSelect.value.trim().toUpperCase();
-        const selectedKota = this.value.trim().toUpperCase();
-        kelurahanSelect.innerHTML = '<option value="">Pilih Kelurahan</option>';
-        kelurahanSelect.disabled = false;
+  citySelect.addEventListener('change', function () {
+    const selectedProvinsi = provinceSelect.value.trim().toUpperCase();
+    const selectedKota     = this.value.trim().toUpperCase();
+    kelurahanSelect.innerHTML = '<option value="">Pilih Kelurahan</option>';
+    kelurahanSelect.disabled  = false;
 
-        const kelurahanSet = new Set(
-            lokasiData
-                .filter(item => {
-                    let regencyFormatted = "";
-                    if (item.regency.toLowerCase().startsWith("kota")) {
-                        regencyFormatted = `KOTA ${item.regency.substring(5).trim().toUpperCase()}`;
-                    } else if (item.regency.toLowerCase().startsWith("kabupaten")) {
-                        regencyFormatted = `KAB. ${item.regency.substring(10).trim().toUpperCase()}`;
-                    } else {
-                        regencyFormatted = item.regency.trim().toUpperCase();
-                    }
-                    return (
-                        item.province.trim().toUpperCase() === selectedProvinsi &&
-                        regencyFormatted === selectedKota
-                    );
-                })
-                .map(item =>
-                    item.district
-                        .toLowerCase()
-                        .split(" ")
-                        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                        .join(" ")
-                )
-        );
-        kelurahanSet.forEach(kel => {
-            kelurahanSelect.innerHTML += `<option value="${kel}">${kel}</option>`;
-        });
+    // Kelurahan: unik + sort A–Z
+    const kelArr = Array.from(new Set(
+      lokasiData
+        .filter(it =>
+          it.province.trim().toUpperCase() === selectedProvinsi &&
+          formatRegency(it.regency)        === selectedKota
+        )
+        .map(it => titleCase(it.district))
+    )).sort(sortAZ);
+
+    kelArr.forEach(kel => {
+      kelurahanSelect.innerHTML += `<option value="${kel}">${kel}</option>`;
     });
+  });
 });
 </script>
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const inputHarga = document.getElementById('harga');

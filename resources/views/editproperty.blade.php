@@ -440,105 +440,143 @@
 </div>
 
 <script>
- document.addEventListener('DOMContentLoaded', function () {
-    const provinceSelect = document.getElementById('province');
-    const citySelect = document.getElementById('city');
-    const kecamatanSelect = document.getElementById('kecamatan');
+document.addEventListener('DOMContentLoaded', function () {
+  const provinceSelect   = document.getElementById('province');
+  const citySelect       = document.getElementById('city');
+  const kecamatanSelect  = document.getElementById('kecamatan');
 
-    let lokasiData = [];
+  let lokasiData = [];
 
-    const normalize = str => (str || '').toLowerCase().trim();
-    const oldProvince = "{{ $property->provinsi ?? '' }}";
-    const oldCity = "{{ $property->kota ?? '' }}";
-    const oldDistrict = "{{ $property->kecamatan ?? '' }}"; // pakai kecamatan
+  // --- helpers ---
+  const norm = s => (s || '').trim().toLowerCase();
+  const titleCase = s => (s || '')
+    .toLowerCase()
+    .split(' ')
+    .map(w => (w ? w[0].toUpperCase() + w.slice(1) : ''))
+    .join(' ');
+  const sortAZ = (a, b) => a.localeCompare(b, 'id', { sensitivity: 'base' });
 
-    fetch("{{ asset('data/indonesia.json') }}")
-        .then(res => res.json())
-        .then(data => {
-            lokasiData = data;
+  // "KOTA" dulu, lalu abjad; bandingkan pakai label terformat tapi tetap kembalikan nilai asli
+  const kotaSortKey = (raw) => {
+    const n = raw.trim().toLowerCase();
+    if (n.startsWith('kota'))      return '0' + raw; // prefiks '0' biar KOTA < KAB
+    if (n.startsWith('kabupaten')) return '1' + raw;
+    return '1' + raw;
+  };
+  const sortKotaFirst = (a, b) => sortAZ(kotaSortKey(a), kotaSortKey(b));
 
-            const provinsiSet = new Set(data.map(item => item.province));
-            provinceSelect.innerHTML = '<option value="">Pilih Provinsi</option>';
-            provinsiSet.forEach(prov => {
-                provinceSelect.innerHTML += `<option value="${prov}">${prov}</option>`;
-            });
+  // Ambil nilai lama (biar auto-select)
+  const oldProvince = "{{ $property->provinsi ?? '' }}";
+  const oldCity     = "{{ $property->kota ?? '' }}";
+  const oldDistrict = "{{ $property->kecamatan ?? '' }}";
 
-            // SET VALUE SECARA EXPLICIT (agar tidak stuck ke default)
-            provinceSelect.value = oldProvince;
+  // ---- fetch data ----
+  fetch("{{ asset('data/indonesia.json') }}")
+    .then(res => res.json())
+    .then(data => {
+      lokasiData = data;
 
-            if (oldProvince) {
-                populateCities(oldProvince, () => {
-                    citySelect.value = oldCity;
-                    populateKecamatan(oldProvince, oldCity, () => {
-                        kecamatanSelect.value = oldDistrict;
-                    });
-                });
-            }
+      // === PROVINSI: unik + sort A-Z ===
+      const provMap = new Map(); // key=norm, val=display asli
+      data.forEach(it => {
+        const key = norm(it.province);
+        if (!provMap.has(key)) provMap.set(key, it.province.trim());
+      });
+      const provArr = Array.from(provMap.values()).sort(sortAZ);
+
+      provinceSelect.innerHTML = '<option value="">Pilih Provinsi</option>';
+      provArr.forEach(prov => {
+        provinceSelect.innerHTML += `<option value="${prov}">${prov}</option>`;
+      });
+
+      // Set explicit value lama kalau ada
+      if (oldProvince) provinceSelect.value = oldProvince;
+
+      // Populate chaining jika ada nilai lama
+      if (oldProvince) {
+        populateCities(oldProvince, () => {
+          if (oldCity) citySelect.value = oldCity;
+          populateKecamatan(oldProvince, oldCity, () => {
+            if (oldDistrict) kecamatanSelect.value = oldDistrict;
+          });
         });
-
-    function populateCities(provinsi, callback = null) {
-        citySelect.innerHTML = '<option value="">Pilih Kota/Kabupaten</option>';
-        kecamatanSelect.innerHTML = '<option value="">Pilih Kecamatan</option>';
-        kecamatanSelect.disabled = true;
-
-        const kotaSet = new Set(
-            lokasiData
-                .filter(item => normalize(item.province) === normalize(provinsi))
-                .map(item => item.regency)
-        );
-
-        kotaSet.forEach(kota => {
-            citySelect.innerHTML += `<option value="${kota}">${kota}</option>`;
-        });
-
-        citySelect.disabled = false;
-        if (callback) callback();
-    }
-
-    function populateKecamatan(provinsi, kota, callback = null) {
-        kecamatanSelect.innerHTML = '<option value="">Pilih Kecamatan</option>';
-
-        const kecamatanSet = new Set(
-            lokasiData
-                .filter(item =>
-                    normalize(item.province) === normalize(provinsi) &&
-                    normalize(item.regency) === normalize(kota)
-                )
-                .map(item => item.district) // district = kecamatan
-        );
-
-        kecamatanSet.forEach(kec => {
-            kecamatanSelect.innerHTML += `<option value="${kec}">${kec}</option>`;
-        });
-
-        kecamatanSelect.disabled = false;
-        if (callback) callback();
-    }
-
-    provinceSelect.addEventListener('change', function () {
-        const selectedProvinsi = this.value;
-        citySelect.innerHTML = '<option value="">Pilih Kota/Kabupaten</option>';
-        kecamatanSelect.innerHTML = '<option value="">Pilih Kecamatan</option>';
-        citySelect.disabled = true;
-        kecamatanSelect.disabled = true;
-
-        if (selectedProvinsi) {
-            populateCities(selectedProvinsi);
-        }
+      }
     });
 
-    citySelect.addEventListener('change', function () {
-        const selectedProvinsi = provinceSelect.value;
-        const selectedKota = this.value;
-        kecamatanSelect.innerHTML = '<option value="">Pilih Kecamatan</option>';
-        kecamatanSelect.disabled = true;
+  // === isi kota/kab berdasarkan provinsi, urut: KOTA dulu lalu A–Z ===
+  function populateCities(provinsi, done = null) {
+    citySelect.innerHTML = '<option value="">Pilih Kota/Kabupaten</option>';
+    kecamatanSelect.innerHTML = '<option value="">Pilih Kecamatan</option>';
+    kecamatanSelect.disabled = true;
 
-        if (selectedKota) {
-            populateKecamatan(selectedProvinsi, selectedKota);
-        }
+    const kotaMap = new Map(); // unik by norm
+    lokasiData
+      .filter(it => norm(it.province) === norm(provinsi))
+      .forEach(it => {
+        const raw = it.regency.trim();
+        const key = norm(raw);
+        if (!kotaMap.has(key)) kotaMap.set(key, raw);
+      });
+
+    const kotaArr = Array.from(kotaMap.values()).sort(sortKotaFirst);
+    kotaArr.forEach(kota => {
+      // tampilkan label asli (Kota … / Kabupaten …), value juga asli
+      citySelect.innerHTML += `<option value="${kota}">${kota}</option>`;
     });
+
+    citySelect.disabled = false;
+    if (done) done();
+  }
+
+  // === isi kecamatan berdasarkan provinsi + kota, urut A–Z (title-case untuk label) ===
+  function populateKecamatan(provinsi, kota, done = null) {
+    kecamatanSelect.innerHTML = '<option value="">Pilih Kecamatan</option>';
+
+    const kecMap = new Map(); // unik by norm
+    lokasiData
+      .filter(it => norm(it.province) === norm(provinsi) && norm(it.regency) === norm(kota))
+      .forEach(it => {
+        const raw = it.district.trim();
+        const key = norm(raw);
+        if (!kecMap.has(key)) kecMap.set(key, raw);
+      });
+
+    const kecArr = Array.from(kecMap.values())
+      .map(raw => ({ value: raw, label: titleCase(raw) }))
+      .sort((a, b) => sortAZ(a.label, b.label));
+
+    kecArr.forEach(k => {
+      // value tetap asli dari file, label dititle-case biar rapi
+      kecamatanSelect.innerHTML += `<option value="${k.value}">${k.label}</option>`;
+    });
+
+    kecamatanSelect.disabled = false;
+    if (done) done();
+  }
+
+  // === events ===
+  provinceSelect.addEventListener('change', function () {
+    const prov = this.value;
+    citySelect.innerHTML = '<option value="">Pilih Kota/Kabupaten</option>';
+    kecamatanSelect.innerHTML = '<option value="">Pilih Kecamatan</option>';
+    citySelect.disabled = true;
+    kecamatanSelect.disabled = true;
+
+    if (prov) populateCities(prov);
+  });
+
+  citySelect.addEventListener('change', function () {
+    const prov = provinceSelect.value;
+    const kota = this.value;
+    kecamatanSelect.innerHTML = '<option value="">Pilih Kecamatan</option>';
+    kecamatanSelect.disabled = true;
+
+    if (kota) populateKecamatan(prov, kota);
+  });
 });
+</script>
 
+<script>
     document.querySelector('form').addEventListener('submit', function (e) {
   const previews = document.querySelectorAll('#previewContainer img');
   if (previews.length === 0) {
