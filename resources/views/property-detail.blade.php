@@ -475,7 +475,7 @@
                                                               `✨ Kenapa Beli Lelang Lebih Menarik?\n` +
                                                               `Harga jauh di bawah pasar → lebih murah dibanding rumah primary & second.\n` +
                                                               `Potensi capital gain tinggi → bisa dijual kembali sesuai harga pasar.\n` +
-                                                              `Legalitas aman (SHM) → balik nama resmi melalui notaris/PPAT.\n` +
+                                                              `Cara paling aman untuk beli property!.` +
                                                               `Pilihan tepat untuk hunian luas atau investasi cerdas.\n\n` +
 
                                                               `📞 Kontak: ${agentName}\n` +
