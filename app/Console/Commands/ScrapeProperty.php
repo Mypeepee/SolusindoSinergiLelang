@@ -323,20 +323,26 @@ try {
                     ');
                     $details = json_decode($detailsJson, true);
 
-                    // Ambil luas tanah dari judul (pakai $details['judul'])
+                    // ================== PARSE LUAS TANAH DARI JUDUL ==================
                     $luasDariJudul = null;
-                    if (!empty($details['judul']) && preg_match('/luas[^0-9]*([\d\.]+)\s*m2/i', $details['judul'], $m)) {
-                        $angka = $m[1];  // Ambil angka pertama yang ditemukan
+                    $judul = $details['judul'] ?? '';
 
-                        // Cek jika angka mengandung titik desimal
-                        if (strpos($angka, '.') !== false) {
-                            // Jika format desimal (misal 74.8 atau 74.3)
-                            $luasDariJudul = (int) ((float)$angka);  // Ambil integer tanpa pembulatan
-                        } else {
-                            // Jika tidak ada desimal, langsung ambil angka bulat
-                            $luasDariJudul = (int) $angka;
+                    if (!empty($judul)) {
+                        // Tangkap pola angka + m2 (contoh: "105 m2" atau "74.8 m2")
+                        if (preg_match('/\b(\d+(?:\.\d+)?)\s*m2\b/i', $judul, $m)) {
+                            $angka = $m[1];
+
+                            // Cek desimal → simpan sebagai integer tanpa pembulatan
+                            if (strpos($angka, '.') !== false) {
+                                $luasDariJudul = (int) floor((float)$angka);
+                            } else {
+                                $luasDariJudul = (int) $angka;
+                            }
                         }
                     }
+
+                    // Commit langsung ke details → biar property A punya luasnya sendiri
+                    $details['luas_tanah_judul'] = $luasDariJudul;
 
                     // 🆕 Convert harga & uang_jaminan ke integer
                     $hargaInt = null;
@@ -367,12 +373,18 @@ try {
                         }
 
                         // 🎯 Cari Kecamatan
-                        if (preg_match('/\bkec(?:amatan|\.)?\s*[:,]*\s*([a-zA-Z\s]+)/i', $alamat, $kecMatch)) {
+                        if (preg_match('/\bkec(?:amatan|\.|\/kab)?\s*[:,]*\s*([a-zA-Z0-9\'\-\s]+)/i', $alamat, $kecMatch)) {
                             $kecamatanRaw = trim($kecMatch[1]);
 
-                            // 🎯 Ambil hanya sampai sebelum kata kunci (Kab/Kota/Prov)
-                            $kecamatanClean = preg_replace('/\s*\b(kab(?:upaten)?|kota|prov(?:insi)?|prop(?:insi)?)\b.*$/i', '', $kecamatanRaw);
-                            $kecamatan = ucwords(strtolower(trim($kecamatanClean))); // 🔥 Capitalize
+                            if (preg_match('/^kota\s+/i', $kecamatanRaw)) {
+                                // Kasus khusus: nama kecamatan dimulai dengan "Kota ..."
+                                $kecamatanClean = preg_replace('/\s*\b(kab(?:\.|upaten)?|prov(?:\.|insi)?|prop(?:insi)?|kel(?:\.|urahan)?)\b.*$/i', '', $kecamatanRaw);
+                            } else {
+                                // Normal: stop di kota/kab/kel/prov pertama
+                                $kecamatanClean = preg_replace('/\s*\b(kota|kab(?:\.|upaten)?|prov(?:\.|insi)?|prop(?:insi)?|kel(?:\.|urahan)?)\b.*$/i', '', $kecamatanRaw);
+                            }
+
+                            $kecamatan = ucwords(strtolower(trim($kecamatanClean)));
                         }
 
                         // 🎯 Cari Kelurahan
@@ -482,7 +494,7 @@ try {
                     'tipe' => $tipeProperti,
                     'harga' => $hargaInt,
                     'lokasi' => substr($details['alamat'] ?? 'Lokasi tidak diketahui', 0, 500),
-                    'luas' => $luasDariJudul,
+                    'luas' => $details['luas_tanah_judul'], // 🔥 lebih konsisten
                     'provinsi' => $provinsi ?? null,
                     'kota' => $kabupaten ?? null,
                     'kecamatan' => $kecamatan ?? null,
