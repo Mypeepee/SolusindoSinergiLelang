@@ -34,9 +34,13 @@ class AgentController extends Controller
         return redirect()->route('dashboard')->with('error', 'Data agen tidak ditemukan.');
     }
 
-    $properties = Property::where('id_agent', $agent->id_agent)->paginate(6);
+    // Urutkan dulu berdasarkan id_listing DESC baru dipagination
+    $properties = Property::where('id_agent', $agent->id_agent)
+        ->orderBy('id_listing', 'desc')
+        ->paginate(18);
 
     return view('my-properties', compact('properties'));
 }
+
 
 }

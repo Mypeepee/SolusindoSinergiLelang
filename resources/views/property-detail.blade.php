@@ -215,7 +215,7 @@
                                     $roleRaw = $loggedIn ? \App\Models\Account::where('id_account', $userId)->value('roles') : null;
                                     $role = strtolower(trim($roleRaw ?? 'User'));
 
-                                    $privilegedRoles = ['agent', 'owner', 'register'];
+                                    $privilegedRoles = ['agent', 'owner', 'register', 'stoker', 'principal'];
                                     $showJaminan = $loggedIn && in_array($role, $privilegedRoles, true);
 
                                     $tglJaminan = $property->batas_akhir_jaminan
@@ -243,7 +243,7 @@
 
                                     <div class="col-md-6 col-lg-4 text-center border-top border-bottom py-3">
                                         @if ($showJaminan)
-                                            <span class="d-inline-block text-black mb-0 caption-text">Batas Setoran Jaminan</span>
+                                            <span class="d-inline-block text-black mb-0 caption-text">Batas Akhir Penawaran</span>
                                             <strong class="d-block">{{ $tglJaminan }}</strong>
                                         @else
                                             <span class="d-inline-block text-black mb-0 caption-text">Tipe</span>

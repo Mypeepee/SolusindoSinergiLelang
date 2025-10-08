@@ -2,6 +2,11 @@
 use Illuminate\Support\Facades\Route;
 use App\Models\Property;
 use Carbon\Carbon;
+use App\Http\Controllers\WhatsappController;
+
+
+Route::get('/whatsapp/webhook', [WhatsappController::class, 'verifyWebhook']);
+Route::post('/whatsapp/webhook', [WhatsappController::class, 'handleWebhook']);
 
 Route::get('/ping', fn() => ['ok' => true]);
 

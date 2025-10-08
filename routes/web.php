@@ -19,6 +19,7 @@ use App\Http\Controllers\propertytypeController;
 use App\Http\Controllers\propertyagentController;
 use App\Http\Controllers\propertydetailController;
 
+use App\Http\Controllers\WhatsappController;
 
 
 
@@ -273,9 +274,10 @@ Route::post('/property/{id}/terjual', [PropertyDetailController::class, 'markAsS
 
 Route::post('/property/{id}/delete', [AgentAdminController::class, 'markAsSold'])->name('listing.deletes');
 // Rute untuk menampilkan daftar properti dengan filter pencarian
-Route::get('/properties', [PropertyController::class, 'index'])->name('property.index');
+// Route::get('/properties', [PropertyController::class, 'index'])->name('property.index');
 
 Route::post('/agent/{id_agent}/status', [AgentAdminController::class, 'updateAgentStatus'])
     ->name('agent.updateStatus');
 
+// AI AGENT
 
