@@ -387,25 +387,28 @@ try {
                             $kecamatan = ucwords(strtolower(trim($kecamatanClean)));
                         }
 
-                        // 🎯 Cari Kelurahan
-                        if (preg_match('/\bkel(?:urahan|\.)?\s*([a-zA-Z\s]+)/i', $alamat, $kelMatch)) {
+                        // 🎯 Cari Kelurahan atau Desa — logika identik dengan query PostgreSQL
+                        if (preg_match('/(?:\s|^)(?:kel(?:urahan|\s*\.|\s*\/kab)?|desa)\s*[:,]*\s*([a-z0-9\'\-\s]+)/i', strtolower($alamat), $kelMatch)) {
                             $kelurahanRaw = trim($kelMatch[1]);
 
-                            // 🎯 Ambil hanya sampai sebelum kata kunci (Kec/Kab/Kota/Prov)
-                            $kelurahanClean = preg_replace('/\s*\b(kec(?:amatan)?|kab(?:upaten)?|kota|prov(?:insi)?|prop(?:insi)?)\b.*$/i', '', $kelurahanRaw);
-                            $kelurahan = ucwords(strtolower(trim($kelurahanClean))); // 🔥 Capitalize
+                            // 🔍 Jika setelah kelurahan langsung ada "kota ..." → ambil langsung, tanpa potong di "kota"
+                            if (preg_match('/^kota\s+/i', $kelurahanRaw)) {
+                                $kelurahanClean = preg_replace(
+                                    '/\s*(kec(\.|amatan)?|kab(\.|upaten)?|prov(\.|insi)?|prop(insi)?|kel(\.|urahan)?|desa|rt(\.|[0-9])?|rw(\.|[0-9])?).*$/i',
+                                    '',
+                                    $kelurahanRaw
+                                );
+                            }
+                            // 🧹 Selain itu, potong di semua kata pengganggu (kec/kota/kab/prov/kel/desa/rt/rw)
+                            else {
+                                $kelurahanClean = preg_replace(
+                                    '/\s+(kec(\.|amatan)?|kota|kab(\.|upaten)?|prov(\.|insi)?|prop(insi)?|kel(\.|urahan)?|desa|rt(\.|[0-9])?|rw(\.|[0-9])?)\s*.*$/i',
+                                    '',
+                                    $kelurahanRaw
+                                );
+                            }
 
-                            // ✅ Tambahan pembersih: jika masih ada “Kec/Kab/Kota” di Kelurahan
-                            if (stripos($kelurahan, 'Kec') !== false || stripos($kelurahan, 'Kab') !== false || stripos($kelurahan, 'Kota') !== false) {
-                                if (preg_match('/\bkel(?:urahan|\.)?\s*([a-zA-Z\s]+?)(?=\s*(kec|kab|kota|prov|prop|$))/i', $alamat, $kelFixMatch)) {
-                                    $kelurahan = ucwords(strtolower(trim($kelFixMatch[1]))); // 🎯 Ambil versi bersih
-                                }
-                            }
-                        } else {
-                            // ✅ Jika regex lama gagal, coba regex presisi
-                            if (preg_match('/\bkel(?:urahan|\.)?\s*([a-zA-Z\s]+?)(?=\s*(kec|kab|kota|prov|prop|$))/i', $alamat, $kelFixMatch)) {
-                                $kelurahan = ucwords(strtolower(trim($kelFixMatch[1])));
-                            }
+                            $kelurahan = ucwords(strtolower(trim($kelurahanClean)));
                         }
 
                         // ✅ Tambahan: Jika Kelurahan sama dengan Kecamatan, kosongkan Kelurahan

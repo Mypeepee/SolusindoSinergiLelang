@@ -115,40 +115,18 @@ class propertydetailController extends Controller
     $lowerBound = (int) floor($thisPricePerM2 * 0.75);
     $upperBound = (int) ceil($thisPricePerM2 * 1.25);
 
-    // ✅ Ambil properti serupa berdasarkan kecamatan & range harga
+    // ✅ Ambil properti serupa berdasarkan kelurahan & range harga
     $similarProperties = DB::table('property')
         ->where('id_listing', '!=', $property->id_listing)
-        ->whereRaw('LOWER(kecamatan) = ?', [strtolower($property->kecamatan)])
+        ->whereRaw('LOWER(kelurahan) = ?', [strtolower($property->kelurahan)])
         ->where('luas', '>', 0)
         ->whereBetween(DB::raw('harga / luas'), [$lowerBound, $upperBound])
         ->limit(10)
         ->get();
 
-    // ✅ Default: anggap serupa di kecamatan
-    $similarLocation = "Kecamatan " . $property->kecamatan;
+    // ✅ Label lokasi serupa
+    $similarLocation = "Kelurahan " . $property->kelurahan;
 
-    // ✅ Fallback: kalau properti serupa di kecamatan kosong ➡️ ambil di kota
-    if ($similarProperties->isEmpty()) {
-        $similarProperties = DB::table('property')
-            ->where('id_listing', '!=', $property->id_listing)
-            ->whereRaw('LOWER(kota) = ?', [strtolower($property->kota)])
-            ->where('luas', '>', 0) // ✅ cegah division by zero
-            ->whereBetween(DB::raw('harga / luas'), [$lowerBound, $upperBound])
-            ->limit(10)
-            ->get();
-
-        $similarLocation = "Kota " . $property->kota;
-
-        if ($similarProperties->isEmpty()) {
-            $similarProperties = DB::table('property')
-                ->where('id_listing', '!=', $property->id_listing)
-                ->whereRaw('LOWER(kota) = ?', [strtolower($property->kota)])
-                ->limit(10)
-                ->get();
-
-            $similarLocation = "Kota " . $property->kota;
-        }
-    }
 
     // ✅ Statistik harga
     $pricesPerM2 = $similarProperties->map(function ($p) {

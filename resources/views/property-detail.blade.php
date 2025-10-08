@@ -1030,55 +1030,64 @@
                 rel="stylesheet"
                 href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css"/>
 
-                {{-- Sliding Properti Serupa --}}
-                <h4 class="mb-3">Properti Serupa di {{ $similarLocation }}</h4>
+{{-- 🎯 Tampilkan Properti Serupa hanya jika kelurahan terdeteksi & ada hasil --}}
+@if(!empty($property->kelurahan) && isset($similarProperties) && $similarProperties->isNotEmpty())
+    <h4 class="mb-3">Properti Serupa di {{ $similarLocation }}</h4>
 
-                <div class="swiper mySwiper">
-                    <div class="swiper-wrapper">
-                        @foreach ($similarProperties as $property)
-                        <div class="swiper-slide">
-                            <div class="property-item rounded overflow-hidden shadow-sm">
-                                <div class="position-relative overflow-hidden">
-                                    <a href="{{ route('property-detail', $property->id_listing) }}">
-                                        <img class="img-fluid rounded w-100" src="{{ explode(',', $property->gambar)[0] }}" alt="Property Image" loading="lazy">
-                                    </a>
-                                    <div class="bg-primary rounded text-white position-absolute start-0 top-0 m-2 py-1 px-3">{{ $property->tipe }}</div>
-                                    <div class="bg-white rounded-top text-primary position-absolute start-0 bottom-0 mx-2 pt-1 px-3">{{ $property->tipe }}</div>
-                                </div>
-                                <div class="p-3">
-                                    <h5 class="text-primary mb-2">{{ 'Rp ' . number_format($property->harga, 0, ',', '.') }}</h5>
-                                    <a class="d-block h6 mb-2" href="{{ route('property-detail', $property->id_listing) }}">
-                                        {{ \Illuminate\Support\Str::limit($property->deskripsi, 50) }}
-                                    </a>
-                                    <p>
-                                        <i class="fa fa-map-marker-alt text-primary me-2"></i>
-                                        {{ \Illuminate\Support\Str::limit($property->lokasi, 70, '...') }}
-                                    </p>
-                                </div>
-                                <div class="d-flex border-top border-2 border-dashed border-orange">
-                                    <small class="flex-fill text-center border-end border-dashed py-2">
-                                        <i class="fa fa-vector-square text-danger me-2"></i>
-                                        <span class="text-dark">{{ $property->luas }} m²</span>
-                                    </small>
-                                    <small class="flex-fill text-center border-end border-dashed py-2">
-                                        <i class="fa fa-map-marker-alt text-danger me-2"></i>
-                                        <span class="text-dark text-uppercase">{{ $property->kota }}</span>
-                                    </small>
-                                    <small class="flex-fill text-center py-2">
-                                        <i class="fa fa-calendar-alt text-danger me-2"></i>
-                                        <span class="text-dark">
-                                            {{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->format('d M Y') }}
-                                        </span>
-                                    </small>
-                                </div>
-                            </div>
+    <div class="swiper mySwiper">
+        <div class="swiper-wrapper">
+            @foreach ($similarProperties as $property)
+            <div class="swiper-slide">
+                <div class="property-item rounded overflow-hidden shadow-sm">
+                    <div class="position-relative overflow-hidden">
+                        <a href="{{ route('property-detail', $property->id_listing) }}">
+                            <img class="img-fluid rounded w-100"
+                                 src="{{ explode(',', $property->gambar)[0] ?? asset('img/no-image.jpg') }}"
+                                 alt="Property Image" loading="lazy">
+                        </a>
+                        <div class="bg-primary rounded text-white position-absolute start-0 top-0 m-2 py-1 px-3">
+                            {{ $property->tipe }}
                         </div>
-                        @endforeach
                     </div>
-                    <!-- Tombol Navigasi -->
-                    <div class="swiper-button-next"></div>
-                    <div class="swiper-button-prev"></div>
+                    <div class="p-3">
+                        <h5 class="text-primary mb-2">
+                            {{ 'Rp ' . number_format($property->harga, 0, ',', '.') }}
+                        </h5>
+                        <a class="d-block h6 mb-2" href="{{ route('property-detail', $property->id_listing) }}">
+                            {{ \Illuminate\Support\Str::limit($property->deskripsi, 50) }}
+                        </a>
+                        <p>
+                            <i class="fa fa-map-marker-alt text-primary me-2"></i>
+                            {{ \Illuminate\Support\Str::limit($property->lokasi, 70, '...') }}
+                        </p>
+                    </div>
+                    <div class="d-flex border-top border-2 border-dashed border-orange">
+                        <small class="flex-fill text-center border-end border-dashed py-2">
+                            <i class="fa fa-vector-square text-danger me-2"></i>
+                            <span class="text-dark">{{ $property->luas }} m²</span>
+                        </small>
+                        <small class="flex-fill text-center border-end border-dashed py-2">
+                            <i class="fa fa-map-marker-alt text-danger me-2"></i>
+                            <span class="text-dark text-uppercase">{{ $property->kota }}</span>
+                        </small>
+                        <small class="flex-fill text-center py-2">
+                            <i class="fa fa-calendar-alt text-danger me-2"></i>
+                            <span class="text-dark">
+                                {{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->format('d M Y') }}
+                            </span>
+                        </small>
+                    </div>
                 </div>
+            </div>
+            @endforeach
+        </div>
+
+        {{-- Navigasi Swiper --}}
+        <div class="swiper-button-next"></div>
+        <div class="swiper-button-prev"></div>
+    </div>
+@endif
+
 
                 <script src="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.js"></script>
                 <script>
