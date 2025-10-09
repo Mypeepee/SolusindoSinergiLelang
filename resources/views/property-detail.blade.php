@@ -539,7 +539,7 @@
                                                     certificate: "{{ $property->sertifikat }}",
                                                     area: "{{ $property->luas }}",
                                                     harga: "{{ $property->harga }}",
-                                                    batas_akhir_penawaran: "{{ $property->batas_akhir_penawaran }}", // ambil mentah
+                                                    batas_akhir_penawaran: "{{ $property->batas_akhir_penawaran }}", // format YYYY-MM-DD
                                                     property_url: "{{ url()->current() }}"
                                                 };
 
@@ -549,34 +549,49 @@
                                                 let certificateType = property.certificate.match(/(SHM|SHGB|Sertifikat\sHak\sGuna\sBangunan)/i);
                                                 certificateType = certificateType ? certificateType[0] : 'Sertifikat Lainnya';
 
-                                                // ===== BAGIAN INI REVISI PALING AMAN =====
-                                                const cleanDate = property.batas_akhir_penawaran.trim(); // hapus spasi, newline, dll.
+                                                // ==================== FIX: LOGIKA TANGGAL ====================
+                                                // Pastikan string tanggal bersih
+                                                const cleanDate = property.batas_akhir_penawaran.trim();
                                                 const parts = cleanDate.split('-').map(x => parseInt(x, 10));
-                                                const tahunPenawaran = parts[0];
-                                                const bulanPenawaran = parts[1]; // langsung ambil tengah (bulan)
+
+                                                const tahunP = parts[0];
+                                                const bulanP = parts[1];
+                                                const tanggalP = parts[2];
 
                                                 const today = new Date();
-                                                const tahunSekarang = today.getFullYear();
-                                                const bulanSekarang = today.getMonth() + 1; // 1–12
+                                                const tahunSkr = today.getFullYear();
+                                                const bulanSkr = today.getMonth() + 1; // 1–12
+                                                const tanggalSkr = today.getDate();
 
-                                                console.log("Debug:", {
-                                                    raw: property.batas_akhir_penawaran,
+                                                console.log("Debug tanggal:", {
                                                     cleanDate,
-                                                    tahunPenawaran,
-                                                    bulanPenawaran,
-                                                    tahunSekarang,
-                                                    bulanSekarang
+                                                    tahunP, bulanP, tanggalP,
+                                                    tahunSkr, bulanSkr, tanggalSkr
                                                 });
 
                                                 let lelangText;
-                                                if (tahunPenawaran < tahunSekarang ||
-                                                    (tahunPenawaran === tahunSekarang && bulanPenawaran < bulanSekarang)) {
+
+                                                if (tahunP < tahunSkr) {
+                                                    // tahun sudah lewat
                                                     lelangText = "🔥 SEGERA LELANG 🔥";
+                                                } else if (tahunP === tahunSkr) {
+                                                    if (bulanP < bulanSkr) {
+                                                        // bulan sudah lewat
+                                                        lelangText = "🔥 SEGERA LELANG 🔥";
+                                                    } else if (bulanP === bulanSkr && tanggalP < tanggalSkr) {
+                                                        // masih bulan sama tapi tanggal lewat
+                                                        lelangText = "🔥 SEGERA LELANG 🔥";
+                                                    } else {
+                                                        // masih akan datang bulan ini atau bulan berikutnya
+                                                        const bulanNama = new Date(tahunP, bulanP - 1).toLocaleDateString('id-ID', { month: 'long' });
+                                                        lelangText = `🔥 SEGERA LELANG, ${bulanNama.toUpperCase()} 🔥`;
+                                                    }
                                                 } else {
-                                                    const namaBulan = new Date(0, bulanPenawaran - 1).toLocaleDateString('id-ID', { month: 'long' });
-                                                    lelangText = `🔥 SEGERA LELANG, ${namaBulan.toUpperCase()} 🔥`;
+                                                    // tahun depan
+                                                    const bulanNama = new Date(tahunP, bulanP - 1).toLocaleDateString('id-ID', { month: 'long' });
+                                                    lelangText = `🔥 SEGERA LELANG, ${bulanNama.toUpperCase()} 🔥`;
                                                 }
-                                                // ==========================================
+                                                // =============================================================
 
                                                 // Format pesan WhatsApp
                                                 const shareText = `${lelangText}\n` +
@@ -597,12 +612,13 @@
                                                                   `🔗 Info lengkap: ${property.property_url}\n`;
 
                                                 const encodedShareText = encodeURIComponent(shareText);
+
                                                 const shareButton = document.getElementById('shareBtnanjing');
                                                 shareButton.addEventListener('click', function () {
                                                     window.open(`https://api.whatsapp.com/send?text=${encodedShareText}`, '_blank', 'noopener,noreferrer');
                                                 });
                                             });
-                                            </script>
+                                        </script>
 
                                         <!-- Edit (Hanya Pemilik) -->
                                         @if (Session::has('id_account'))
