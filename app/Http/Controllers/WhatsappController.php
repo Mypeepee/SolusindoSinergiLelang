@@ -28,7 +28,6 @@ class WhatsappController extends Controller
     {
         $value = $request->input('entry.0.changes.0.value');
 
-        // Jangan Log semua karena terlalu dalam
         Log::info('Webhook diterima');
 
         // Pastikan pesan ada
@@ -56,10 +55,8 @@ class WhatsappController extends Controller
         $propertyId = $matches[1] ?? null;
 
         if ($propertyId) {
-            // update lock ke property baru
             cache()->put($propertyKey, $propertyId, now()->addHour());
         } else {
-            // kalau tidak ada id baru → pakai property lama
             $propertyId = cache()->get($propertyKey);
         }
 
@@ -105,7 +102,7 @@ class WhatsappController extends Controller
         // 🔹 Tentukan apakah ini chat pertama
         $isFirstMessage = count($history) <= 1;
 
-        // 🔹 Prompt
+        // 🔹 Prompt utama
         $prompt = "
         Kamu adalah agen properti lelang profesional, sekaligus pemilik dari Balai Lelang Solusindo bernama Jason.
         Tugasmu adalah membalas WA calon pembeli layaknya agent properti profesional.
@@ -157,63 +154,71 @@ class WhatsappController extends Controller
 
         $recommendationsText
         $searchResultsText
-        - Jika memberi rekomendasi properti lain (berdasarkan kecamatan/lokasi):
-          • Tampilkan ringkas: harga, luas, lokasi, sertifikat.
-          • Selalu sertakan link properti dalam format:
-            https://solusindolelang.com/property-detail/{id_listing}
-          • Buat agar link bisa langsung diklik user WA.
 
         Pesan terakhir dari klien: \"$message\"
         Balas seolah-olah kamu agen properti profesional membalas pesan ini secara langsung, lanjutkan percakapan, jangan reset dari awal.
         ";
 
-        try {
-            // 🔹 Panggil Gemini API pakai API Key
-            $response = Http::post(
-                'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-preview-03-25:generateContent?key=' . env('GEMINI_API_KEY'),
-                [
-                    'contents' => [
-                        [
-                            'role' => 'user',
-                            'parts' => [
-                                ['text' => $prompt]
-                            ]
-                        ]
-                    ]
-                ]
-            );
+        $response = null;
+try {
+    $response = Http::withHeaders([
+        'Authorization' => 'Bearer ' . env('HUGGINGFACE_API_KEY'),
+        'Content-Type' => 'application/json',
+    ])->timeout(60)->post('https://api-inference.huggingface.co/models/openai/gpt-3.5-turbo', [
+        'inputs' => $prompt,  // Input dari user atau prompt yang dihasilkan
+        'parameters' => [
+            'max_new_tokens' => 500,  // Batasi jumlah token yang dihasilkan
+            'temperature' => 0.7,  // Pengaturan untuk variasi jawaban
+        ]
+    ]);
 
-            $geminiData = $response->json();
-            Log::info('Gemini raw response:', $geminiData ?? []);
+    // Memastikan status HTTP adalah 200 OK
+    if ($response->successful()) {
+        // Mengambil hasil yang dihasilkan oleh model
+        $huggingData = $response->json();
+        Log::info('HuggingFace response:', ['response' => $huggingData]);
 
-            $reply = $geminiData['candidates'][0]['content']['parts'][0]['text']
-                ?? "Maaf kak, sedang ada kendala teknis.";
-
-            // simpan history
-            $history[] = ['role' => 'assistant', 'content' => $reply];
-            cache()->put($historyKey, $history, now()->addHours(2));
-
-        } catch (\Exception $e) {
-            Log::error('Gemini error: '.$e->getMessage());
-            $reply = "Maaf kak, server sedang sibuk. Coba lagi sebentar ya 🙏";
+        // Pastikan ada teks yang dihasilkan oleh model
+        if (isset($huggingData['choices'][0]['text'])) {
+            $reply = trim($huggingData['choices'][0]['text']);
+        } else {
+            // Jika tidak ada teks yang dihasilkan, kirimkan pesan default
+            $reply = "Maaf kak, sedang ada kendala teknis.";
         }
+    } else {
+        // Jika ada kesalahan dalam respons API, tampilkan error status
+        $errorMessage = $response->body();
+        Log::error('HuggingFace API error response:', ['error' => $errorMessage]);
+        $reply = "Maaf kak, server sedang sibuk. Coba lagi sebentar ya 🙏";
+    }
+} catch (\Exception $e) {
+    // Menangani exception apabila API Hugging Face gagal diakses
+    Log::error('HuggingFace error: ' . $e->getMessage());
+    $reply = "Maaf kak, server sedang sibuk. Coba lagi sebentar ya 🙏";
+}
+
+// Mengembalikan respons dari API WhatsApp
+return response()->json(['status' => 'ok', 'message' => $reply]);
+
+
 
         // 🔹 Kirim balasan ke WhatsApp
-        try {
-            $waResponse = Http::withToken(env('WHATSAPP_TOKEN'))
-                ->post("https://graph.facebook.com/v17.0/{$phoneId}/messages", [
-                    "messaging_product" => "whatsapp",
-                    "to" => $from,
-                    "type" => "text",
-                    "text" => ["body" => mb_substr((string) $reply, 0, 4000)]
-                ]);
+    // Kirim balasan ke WhatsApp
+    try {
+        $waResponse = Http::withToken(env('WHATSAPP_TOKEN'))
+            ->post("https://graph.facebook.com/v17.0/{$phoneId}/messages", [
+                "messaging_product" => "whatsapp",
+                "to" => $from,
+                "type" => "text",
+                "text" => ["body" => mb_substr((string) $reply, 0, 4000)]
+            ]);
+        Log::info('WA API response:', $waResponse->json());
 
-            Log::info('WA API response:', $waResponse->json());
-        } catch (\Exception $e) {
-            Log::error('WA API error: ' . $e->getMessage());
-        }
+    } catch (\Exception $e) {
+        Log::error('WA API error: ' . $e->getMessage());
+    }
 
-        return response()->json(['status' => 'ok']);
+    return response()->json(['status' => 'ok']);
     }
 
 

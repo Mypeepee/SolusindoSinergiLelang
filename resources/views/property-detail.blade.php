@@ -529,34 +529,58 @@
                                         </a>
                                         <script>
                                             document.addEventListener('DOMContentLoaded', function () {
-                                                // Ambil data properti yang diteruskan dari backend
                                                 const property = {
-                                                    id_listing: "{{ $property->id_listing }}", // Ambil id_listing dari backend
+                                                    id_listing: "{{ $property->id_listing }}",
                                                     title: "{{ $property->judul }}",
                                                     description: "{{ $property->deskripsi }}",
-                                                    type: "{{ $property->tipe }}".toUpperCase(),  // Property type diubah ke uppercase
+                                                    type: "{{ $property->tipe }}".toUpperCase(),
                                                     city: "{{ $property->kota }}",
                                                     location: "{{ $property->lokasi }}",
-                                                    certificate: "{{ $property->sertifikat }}",  // Sertifikat lengkap
+                                                    certificate: "{{ $property->sertifikat }}",
                                                     area: "{{ $property->luas }}",
-                                                    harga: "{{ $property->harga }}",  // Harga aslinya
-                                                    property_url: "{{ url()->current() }}" // Ambil URL properti saat ini
+                                                    harga: "{{ $property->harga }}",
+                                                    batas_akhir_penawaran: "{{ $property->batas_akhir_penawaran }}", // ambil mentah
+                                                    property_url: "{{ url()->current() }}"
                                                 };
 
-                                                // Ambil nama agen yang diteruskan dari backend
-                                                const agentName = "{{ $agentName }}";  // Ambil nama agen dari backend
-
-                                                // Format harga dengan pemisah ribuan
+                                                const agentName = "{{ $agentName }}";
                                                 const formattedPrice = new Intl.NumberFormat('id-ID').format(property.harga);
 
-                                                // Ekstrak tipe sertifikat (SHM, SHGB, atau lainnya)
                                                 let certificateType = property.certificate.match(/(SHM|SHGB|Sertifikat\sHak\sGuna\sBangunan)/i);
-                                                certificateType = certificateType ? certificateType[0] : 'Sertifikat Lainnya';  // Default jika tidak ada yang cocok
+                                                certificateType = certificateType ? certificateType[0] : 'Sertifikat Lainnya';
+
+                                                // ===== BAGIAN INI REVISI PALING AMAN =====
+                                                const cleanDate = property.batas_akhir_penawaran.trim(); // hapus spasi, newline, dll.
+                                                const parts = cleanDate.split('-').map(x => parseInt(x, 10));
+                                                const tahunPenawaran = parts[0];
+                                                const bulanPenawaran = parts[1]; // langsung ambil tengah (bulan)
+
+                                                const today = new Date();
+                                                const tahunSekarang = today.getFullYear();
+                                                const bulanSekarang = today.getMonth() + 1; // 1–12
+
+                                                console.log("Debug:", {
+                                                    raw: property.batas_akhir_penawaran,
+                                                    cleanDate,
+                                                    tahunPenawaran,
+                                                    bulanPenawaran,
+                                                    tahunSekarang,
+                                                    bulanSekarang
+                                                });
+
+                                                let lelangText;
+                                                if (tahunPenawaran < tahunSekarang ||
+                                                    (tahunPenawaran === tahunSekarang && bulanPenawaran < bulanSekarang)) {
+                                                    lelangText = "🔥 SEGERA LELANG 🔥";
+                                                } else {
+                                                    const namaBulan = new Date(0, bulanPenawaran - 1).toLocaleDateString('id-ID', { month: 'long' });
+                                                    lelangText = `🔥 SEGERA LELANG, ${namaBulan.toUpperCase()} 🔥`;
+                                                }
+                                                // ==========================================
 
                                                 // Format pesan WhatsApp
-                                                const shareText = `🔥 SEGERA LELANG, ${new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long' })} 🔥\n` +
+                                                const shareText = `${lelangText}\n` +
                                                                   `🏡 ${property.type} ${certificateType} Strategis di ${property.city}\n` +
-
                                                                   `📌 Spesifikasi\n` +
                                                                   `📍 ${property.location}\n` +
                                                                   `📐 LT ${property.area} m²\n` +
@@ -564,26 +588,22 @@
                                                                   `💰 Harga: Rp ${formattedPrice} <- MURAH SOROO!!\n` +
                                                                   `((Aset macet, cash only, no viewing dalam))\n` +
                                                                   `Kode: ${property.id_listing}\n\n` +
-
                                                                   `✨ Kenapa Beli Lelang Lebih Menarik?\n` +
                                                                   `Harga jauh di bawah pasar → lebih murah dibanding rumah primary & second.\n` +
                                                                   `Potensi capital gain tinggi → bisa dijual kembali sesuai harga pasar.\n` +
                                                                   `Legalitas aman (SHM) → balik nama resmi melalui notaris/PPAT.\n` +
                                                                   `Pilihan tepat untuk hunian luas atau investasi cerdas.\n\n` +
-
                                                                   `📞 Kontak: ${agentName}\n` +
                                                                   `🔗 Info lengkap: ${property.property_url}\n`;
 
-                                                // Encode seluruh share text untuk WhatsApp
                                                 const encodedShareText = encodeURIComponent(shareText);
-
-                                                // Fungsi untuk membuka WhatsApp dengan pesan
                                                 const shareButton = document.getElementById('shareBtnanjing');
                                                 shareButton.addEventListener('click', function () {
                                                     window.open(`https://api.whatsapp.com/send?text=${encodedShareText}`, '_blank', 'noopener,noreferrer');
                                                 });
                                             });
                                             </script>
+
                                         <!-- Edit (Hanya Pemilik) -->
                                         @if (Session::has('id_account'))
                                             @php
@@ -1030,64 +1050,63 @@
                 rel="stylesheet"
                 href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css"/>
 
-{{-- 🎯 Tampilkan Properti Serupa hanya jika kelurahan terdeteksi & ada hasil --}}
-@if(!empty($property->kelurahan) && isset($similarProperties) && $similarProperties->isNotEmpty())
-    <h4 class="mb-3">Properti Serupa di {{ $similarLocation }}</h4>
+                {{-- 🎯 Tampilkan Properti Serupa hanya jika kelurahan terdeteksi & ada hasil --}}
+                @if(!empty($property->kelurahan) && isset($similarProperties) && $similarProperties->isNotEmpty())
+                    <h4 class="mb-3">Properti Serupa di {{ $similarLocation }}</h4>
 
-    <div class="swiper mySwiper">
-        <div class="swiper-wrapper">
-            @foreach ($similarProperties as $property)
-            <div class="swiper-slide">
-                <div class="property-item rounded overflow-hidden shadow-sm">
-                    <div class="position-relative overflow-hidden">
-                        <a href="{{ route('property-detail', $property->id_listing) }}">
-                            <img class="img-fluid rounded w-100"
-                                 src="{{ explode(',', $property->gambar)[0] ?? asset('img/no-image.jpg') }}"
-                                 alt="Property Image" loading="lazy">
-                        </a>
-                        <div class="bg-primary rounded text-white position-absolute start-0 top-0 m-2 py-1 px-3">
-                            {{ $property->tipe }}
+                    <div class="swiper mySwiper">
+                        <div class="swiper-wrapper">
+                            @foreach ($similarProperties as $property)
+                            <div class="swiper-slide">
+                                <div class="property-item rounded overflow-hidden shadow-sm">
+                                    <div class="position-relative overflow-hidden">
+                                        <a href="{{ route('property-detail', $property->id_listing) }}">
+                                            <img class="img-fluid rounded w-100"
+                                                src="{{ explode(',', $property->gambar)[0] ?? asset('img/no-image.jpg') }}"
+                                                alt="Property Image" loading="lazy">
+                                        </a>
+                                        <div class="bg-primary rounded text-white position-absolute start-0 top-0 m-2 py-1 px-3">
+                                            {{ $property->tipe }}
+                                        </div>
+                                    </div>
+                                    <div class="p-3">
+                                        <h5 class="text-primary mb-2">
+                                            {{ 'Rp ' . number_format($property->harga, 0, ',', '.') }}
+                                        </h5>
+                                        <a class="d-block h6 mb-2" href="{{ route('property-detail', $property->id_listing) }}">
+                                            {{ \Illuminate\Support\Str::limit($property->deskripsi, 50) }}
+                                        </a>
+                                        <p>
+                                            <i class="fa fa-map-marker-alt text-primary me-2"></i>
+                                            {{ \Illuminate\Support\Str::limit($property->lokasi, 70, '...') }}
+                                        </p>
+                                    </div>
+                                    <div class="d-flex border-top border-2 border-dashed border-orange">
+                                        <small class="flex-fill text-center border-end border-dashed py-2">
+                                            <i class="fa fa-vector-square text-danger me-2"></i>
+                                            <span class="text-dark">{{ $property->luas }} m²</span>
+                                        </small>
+                                        <small class="flex-fill text-center border-end border-dashed py-2">
+                                            <i class="fa fa-map-marker-alt text-danger me-2"></i>
+                                            <span class="text-dark text-uppercase">{{ $property->kota }}</span>
+                                        </small>
+                                        <small class="flex-fill text-center py-2">
+                                            <i class="fa fa-calendar-alt text-danger me-2"></i>
+                                            <span class="text-dark">
+                                                {{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->format('d M Y') }}
+                                            </span>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
                         </div>
-                    </div>
-                    <div class="p-3">
-                        <h5 class="text-primary mb-2">
-                            {{ 'Rp ' . number_format($property->harga, 0, ',', '.') }}
-                        </h5>
-                        <a class="d-block h6 mb-2" href="{{ route('property-detail', $property->id_listing) }}">
-                            {{ \Illuminate\Support\Str::limit($property->deskripsi, 50) }}
-                        </a>
-                        <p>
-                            <i class="fa fa-map-marker-alt text-primary me-2"></i>
-                            {{ \Illuminate\Support\Str::limit($property->lokasi, 70, '...') }}
-                        </p>
-                    </div>
-                    <div class="d-flex border-top border-2 border-dashed border-orange">
-                        <small class="flex-fill text-center border-end border-dashed py-2">
-                            <i class="fa fa-vector-square text-danger me-2"></i>
-                            <span class="text-dark">{{ $property->luas }} m²</span>
-                        </small>
-                        <small class="flex-fill text-center border-end border-dashed py-2">
-                            <i class="fa fa-map-marker-alt text-danger me-2"></i>
-                            <span class="text-dark text-uppercase">{{ $property->kota }}</span>
-                        </small>
-                        <small class="flex-fill text-center py-2">
-                            <i class="fa fa-calendar-alt text-danger me-2"></i>
-                            <span class="text-dark">
-                                {{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->format('d M Y') }}
-                            </span>
-                        </small>
-                    </div>
-                </div>
-            </div>
-            @endforeach
-        </div>
 
-        {{-- Navigasi Swiper --}}
-        <div class="swiper-button-next"></div>
-        <div class="swiper-button-prev"></div>
-    </div>
-@endif
-
+                        {{-- Navigasi Swiper --}}
+                        <div class="swiper-button-next"></div>
+                        <div class="swiper-button-prev"></div>
+                    </div>
+                @endif
 
                 <script src="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.js"></script>
                 <script>
