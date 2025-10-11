@@ -16,6 +16,71 @@
     <meta name="twitter:image" content="{{ $ogTags['og_image'] }}">
 @endif
 
+<title>{{ $seo['title'] }}</title>
+<meta name="description" content="{{ $seo['description'] }}">
+<link rel="canonical" href="{{ $seo['canonical'] }}">
+
+{{-- OpenGraph (Facebook, WhatsApp, LinkedIn) --}}
+<meta property="og:type" content="article">
+<meta property="og:title" content="{{ $seo['title'] }}">
+<meta property="og:description" content="{{ $seo['description'] }}">
+<meta property="og:image" content="{{ $seo['image'] }}">
+<meta property="og:url" content="{{ $seo['canonical'] }}">
+<meta property="og:site_name" content="Solusindo Sinergi Lelang">
+
+{{-- Twitter Card --}}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ $seo['title'] }}">
+<meta name="twitter:description" content="{{ $seo['description'] }}">
+<meta name="twitter:image" content="{{ $seo['image'] }}">
+
+{{-- JSON-LD Structured Data --}}
+<script type="application/ld+json">
+{!! json_encode($seo['structured'], JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT) !!}
+</script>
+
+@php
+$breadcrumb = [
+  "@context" => "https://schema.org",
+  "@type" => "BreadcrumbList",
+  "itemListElement" => [
+    [
+      "@type" => "ListItem",
+      "position" => 1,
+      "name" => "Beranda",
+      "item" => url('/')
+    ],
+    [
+      "@type" => "ListItem",
+      "position" => 2,
+      "name" => "Jual {{ ucfirst($property->tipe) }}",
+      "item" => url('/jual/' . Str::slug($property->tipe))
+    ],
+    [
+      "@type" => "ListItem",
+      "position" => 3,
+      "name" => ucfirst($property->kota),
+      "item" => url('/jual/' . Str::slug($property->tipe) . '/' . Str::slug($property->kota))
+    ],
+    [
+      "@type" => "ListItem",
+      "position" => 4,
+      "name" => $property->judul,
+      "item" => url()->current()
+    ],
+  ]
+];
+@endphp
+
+<script type="application/ld+json">
+{!! json_encode($breadcrumb, JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT) !!}
+</script>
+
+<meta name="robots" content="index, follow">
+<meta property="og:locale" content="id_ID">
+<meta name="author" content="Solusindo Sinergi Lelang">
+<meta name="keywords" content="jual {{ $property->tipe }}, lelang {{ $property->tipe }}, properti {{ $property->kota }}, rumah {{ $property->kecamatan }}, solusindo sinergi lelang">
+
 
 @include('template.header')
 

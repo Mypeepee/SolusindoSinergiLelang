@@ -75,6 +75,48 @@ class propertydetailController extends Controller
     if (url()->current() !== $expectedUrl) {
         return redirect()->to($expectedUrl, 301);
     }
+    // ====================================
+// 🔍 SEO META & STRUCTURED DATA
+// ====================================
+
+$canonicalUrl = $expectedUrl; // URL versi kanonis
+
+$seo = [
+    'title' => "{$property->judul} | Jual {$property->tipe} di {$property->kota}" .
+               ($property->kecamatan ? " - {$property->kecamatan}" : ""),
+    'description' => Str::limit(strip_tags($property->deskripsi ?? ''), 160),
+    'canonical' => $canonicalUrl,
+    'image' => $property->gambar ? explode(',', $property->gambar)[0] : asset('img/og-default.jpg'),
+    'structured' => [
+        "@context" => "https://schema.org",
+        "@type" => "Product",
+        "name" => $property->judul,
+        "description" => Str::limit(strip_tags($property->deskripsi ?? ''), 250),
+        "image" => $property->gambar ? explode(',', $property->gambar)[0] : asset('img/og-default.jpg'),
+        "sku" => (string) $property->id_listing,
+        "brand" => [
+            "@type" => "Organization",
+            "name" => "Solusindo Sinergi Lelang"
+        ],
+        "offers" => [
+            "@type" => "Offer",
+            "priceCurrency" => "IDR",
+            "price" => (int) $property->harga,
+            "availability" => "https://schema.org/InStock",
+            "url" => $canonicalUrl
+        ],
+        "areaServed" => [
+            "@type" => "Place",
+            "name" => "{$property->kota}" . ($property->kecamatan ? ", {$property->kecamatan}" : "")
+        ],
+        "seller" => [
+            "@type" => "RealEstateAgent",
+            "name" => "Solusindo Sinergi Lelang",
+            "url" => "https://www.solusindolelang.com"
+        ]
+    ],
+];
+
     // ================================
     // 🔒 Tambahan: deteksi crawler
     // ================================
@@ -331,6 +373,7 @@ class propertydetailController extends Controller
         'selisihPersen',
         'ogTags',
         'sharedAgent',
+        'seo',
         'agentName'
     ));
 }
