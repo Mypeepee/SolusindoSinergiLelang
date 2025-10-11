@@ -1066,6 +1066,17 @@
                 rel="stylesheet"
                 href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css"/>
 
+                @php
+                use Illuminate\Support\Str;
+
+                $agentFromSession = session('id_agent') ?? null; // ambil id_agent dari session
+                $agentSegment = $agentFromSession ?: null;
+                $slugJudul = Str::limit(Str::slug($property->judul), 150, '');
+                $slugKota = Str::slug($property->kota);
+                $slugTipe = Str::slug($property->tipe);
+                $slugKecamatan = $property->kecamatan ? Str::slug($property->kecamatan) : null;
+                @endphp
+
                 {{-- 🎯 Tampilkan Properti Serupa hanya jika kelurahan terdeteksi & ada hasil --}}
                 @if(!empty($property->kelurahan) && isset($similarProperties) && $similarProperties->isNotEmpty())
                     <h4 class="mb-3">Properti Serupa di {{ $similarLocation }}</h4>
@@ -1076,7 +1087,23 @@
                             <div class="swiper-slide">
                                 <div class="property-item rounded overflow-hidden shadow-sm">
                                     <div class="position-relative overflow-hidden">
-                                        <a href="{{ route('property-detail', $property->id_listing) }}">
+                                        <a href="{{ $slugKecamatan
+                                            ? route('property.detail.withKecamatan', [
+                                                'tipe' => $slugTipe,
+                                                'kota' => $slugKota,
+                                                'kecamatan' => $slugKecamatan,
+                                                'judul' => $slugJudul,
+                                                'id' => $property->id_listing,
+                                                'agent' => $agentFromSession
+                                              ])
+                                            : route('property.detail.withoutKecamatan', [
+                                                'tipe' => $slugTipe,
+                                                'kota' => $slugKota,
+                                                'judul' => $slugJudul,
+                                                'id' => $property->id_listing,
+                                                'agent' => $agentFromSession
+                                              ])
+                                        }}">
                                             <img class="img-fluid rounded w-100"
                                                 src="{{ explode(',', $property->gambar)[0] ?? asset('img/no-image.jpg') }}"
                                                 alt="Property Image" loading="lazy">
@@ -1089,7 +1116,24 @@
                                         <h5 class="text-primary mb-2">
                                             {{ 'Rp ' . number_format($property->harga, 0, ',', '.') }}
                                         </h5>
-                                        <a class="d-block h6 mb-2" href="{{ route('property-detail', $property->id_listing) }}">
+                                        <a class="d-block h6 mb-2" href="{{ $slugKecamatan
+                                            ? route('property.detail.withKecamatan', [
+                                                'tipe' => $slugTipe,
+                                                'kota' => $slugKota,
+                                                'kecamatan' => $slugKecamatan,
+                                                'judul' => $slugJudul,
+                                                'id' => $property->id_listing,
+                                                'agent' => $agentFromSession
+                                              ])
+                                            : route('property.detail.withoutKecamatan', [
+                                                'tipe' => $slugTipe,
+                                                'kota' => $slugKota,
+                                                'judul' => $slugJudul,
+                                                'id' => $property->id_listing,
+                                                'agent' => $agentFromSession
+                                              ])
+                                        }}">
+
                                             {{ \Illuminate\Support\Str::limit($property->deskripsi, 50) }}
                                         </a>
                                         <p>

@@ -40,8 +40,41 @@ class propertydetailController extends Controller
     return redirect()->route('property.list')->with('status', 'Properti berhasil diubah menjadi Terjual');
 }
 
-    public function PropertyDetail(Request $request, $id, $agent = null)
+    public function PropertyDetail(Request $request, $tipe, $kota, $kecamatan = null, $judul, $id, $agent = null)
 {
+    // 🧱 Tambahkan validasi ini SEBELUM query ke DB
+    if (!is_numeric($id)) {
+        abort(404, 'Invalid property ID');
+    }
+
+    $property = Property::where('id_listing', $id)->firstOrFail();
+
+    // Slugify judul dari database
+    $expectedJudul = Str::slug(Str::limit($property->judul, 150, ''));
+
+    // Bangun URL kanonis
+    $expectedUrl = $property->kecamatan
+    ? url("/jual/" .
+        Str::slug($property->tipe) . "/" .
+        Str::slug($property->kota) . "/" .
+        Str::slug($property->kecamatan) . "/" .
+        $expectedJudul . "/" .
+        $property->id_listing .
+        ($agent ? "/$agent" : "")
+      )
+    : url("/jual/" .
+        Str::slug($property->tipe) . "/" .
+        Str::slug($property->kota) . "/" .
+        $expectedJudul . "/" .
+        $property->id_listing .
+        ($agent ? "/$agent" : "")
+      );
+
+
+    // Jika URL saat ini beda dari yang seharusnya, redirect 301
+    if (url()->current() !== $expectedUrl) {
+        return redirect()->to($expectedUrl, 301);
+    }
     // ================================
     // 🔒 Tambahan: deteksi crawler
     // ================================

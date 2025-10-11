@@ -77,13 +77,38 @@ Route::get('/property-list', [PropertyListController::class, 'showproperty'])
     ->name('property.list.query');
 
 
-    Route::get('/jual/{property_type?}/{province?}/{city?}/{district?}/{price?}', [PropertyListController::class, 'showproperty'])->name('property.list');
+Route::get('/jual/{property_type?}/{province?}/{city?}/{district?}/{price?}', [PropertyListController::class, 'showproperty'])->name('property.list');
 
 
 Route::get('/property-type', [propertytypeController::class, 'tipeproperty']);
 Route::get('/property/{id}', [propertylistController::class, 'showPropertyDetail'])->name('property-detail');
 
-Route::get('/property-detail/{id}/{agent?}', [PropertyDetailController::class, 'PropertyDetail'])->name('property-detail');
+// Route::get('/property-detail/{id}/{agent?}', [PropertyDetailController::class, 'PropertyDetail'])->name('property-detail');
+
+// --------------------------------------------------
+// DETAIL: Dengan Kecamatan
+// --------------------------------------------------
+Route::get('/jual/{tipe}/{kota}/{kecamatan}/{judul}/{id}/{agent?}',
+    [PropertyDetailController::class, 'PropertyDetail']
+)->where([
+    'id' => '[0-9]+',          // id hanya angka
+    'tipe' => '[a-zA-Z0-9\-]+',
+    'kota' => '[a-zA-Z0-9\-]+',
+    'kecamatan' => '[a-zA-Z0-9\-]+',
+])->name('property.detail.withKecamatan');
+
+// --------------------------------------------------
+// DETAIL: Tanpa Kecamatan
+// --------------------------------------------------
+Route::get('/jual/{tipe}/{kota}/{judul}/{id}/{agent?}',
+    [PropertyDetailController::class, 'PropertyDetail']
+)->where([
+    'id' => '[0-9]+',          // id hanya angka
+    'tipe' => '[a-zA-Z0-9\-]+',
+    'kota' => '[a-zA-Z0-9\-]+',
+])->name('property.detail.withoutKecamatan');
+
+
 // Route for displaying the form
 // Route to show the form
 Route::get('/addProperty', [ProductController::class, 'create'])->name('property.create');
