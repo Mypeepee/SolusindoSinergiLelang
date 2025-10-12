@@ -13,7 +13,7 @@
 <div class="col-lg-4 col-md-6 col-sm-6 d-flex align-items-stretch">
   <div class="property-item rounded overflow-hidden flex-fill d-flex flex-column">
     <div class="position-relative overflow-hidden property-image-wrapper">
-      <a href="{{ route('property-detail', $property->id_listing) }}">
+      <a href="{{ route('property.detail', $property->id_listing) }}">
         <img src="{{ explode(',', $property->gambar)[0] }}" alt="Property Image" loading="lazy" class="w-100 h-auto">
       </a>
 
@@ -63,7 +63,7 @@
 
     <div class="p-4 pb-0">
       <h5 class="text-primary mb-3">{{ 'Rp ' . number_format($property->harga, 0, ',', '.') }}</h5>
-      <a class="d-block h5 mb-2" href="{{ route('property-detail', $property->id_listing) }}">
+      <a class="d-block h5 mb-2" href="{{ route('property.detail', $property->id_listing) }}">
         {{ \Illuminate\Support\Str::limit($property->deskripsi, 50, '...') }}
       </a>
       <p>

@@ -108,6 +108,36 @@ Route::get('/jual/{tipe}/{kota}/{judul}/{id}/{agent?}',
     'kota' => '[a-zA-Z0-9\-]+',
 ])->name('property.detail.withoutKecamatan');
 
+// --------------------------------------------------
+// ALIAS: property.detail → redirect otomatis ke versi with/without kecamatan
+// --------------------------------------------------
+Route::get('/redirect/property/{id}', function ($id) {
+    $property = \App\Models\Property::findOrFail($id);
+
+    $slugJudul = \Illuminate\Support\Str::slug(\Illuminate\Support\Str::limit($property->judul, 150, ''));
+    $slugTipe = \Illuminate\Support\Str::slug($property->tipe);
+    $slugKota = \Illuminate\Support\Str::slug($property->kota);
+    $slugKecamatan = $property->kecamatan ? \Illuminate\Support\Str::slug($property->kecamatan) : null;
+
+    return redirect()->route(
+        $slugKecamatan ? 'property.detail.withKecamatan' : 'property.detail.withoutKecamatan',
+        $slugKecamatan
+            ? [
+                'tipe' => $slugTipe,
+                'kota' => $slugKota,
+                'kecamatan' => $slugKecamatan,
+                'judul' => $slugJudul,
+                'id' => $property->id_listing,
+            ]
+            : [
+                'tipe' => $slugTipe,
+                'kota' => $slugKota,
+                'judul' => $slugJudul,
+                'id' => $property->id_listing,
+            ]
+    );
+})->name('property.detail');
+
 
 // Route for displaying the form
 // Route to show the form
