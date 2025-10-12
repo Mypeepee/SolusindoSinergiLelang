@@ -378,61 +378,21 @@ $breadcrumb = [
                                         @endphp
                                         @if (!$loggedIn || $role === 'User')
                                         <!-- Untuk User: tombol WA ke Agent -->
-                                        <!-- Tombol Hubungi Agent -->
-<button id="waContactBtn"
-class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
-style="min-width: 180px;">
-<i class="fa fa-phone-alt me-2"></i>Hubungi Agent
-</button>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-const property = {
-    id_listing: "{{ $property->id_listing }}",
-    title: "{{ $property->judul }}",
-    description: "{{ $property->deskripsi }}",
-    type: "{{ strtoupper($property->tipe) }}",
-    city: "{{ $property->kota }}",
-    location: "{{ $property->lokasi }}",
-    certificate: "{{ $property->sertifikat }}",
-    area: "{{ $property->luas }}",
-    harga: "{{ $property->harga }}",
-    property_url: "{{ url()->current() }}"
-};
-
-const agentName = "{{ $agentName ?? 'Agent Solusindo' }}";
-const agentPhone = "{{ $targetAgent->nomor_telepon ?? '' }}".replace(/^0/, ''); // ganti awalan 0 jadi 62 nanti
-
-const formattedPrice = new Intl.NumberFormat('id-ID').format(property.harga);
-
-// Ekstrak tipe sertifikat
-let certificateType = property.certificate.match(/(SHM|SHGB|Sertifikat\sHak\sGuna\sBangunan)/i);
-certificateType = certificateType ? certificateType[0] : 'Sertifikat Lainnya';
-
-// Pesan WhatsApp
-const message =
-    `🏠 Halo ${agentName}!\n\n` +
-    `Saya melihat property berikut di website *Solusindo Sinergi Lelang*:\n\n` +
-    `📍 ${property.location}\n` +
-    `📐 Luas Tanah: ${property.area} m²\n` +
-    `📃 ${certificateType}\n` +
-    `💰 Harga: Rp ${formattedPrice}\n` +
-    `📍 Kota: ${property.city}\n\n` +
-    `Bisa minta info lebih lengkap tentang properti ini?\n\n` +
-    `🔗 ${property.property_url}`;
-
-const encoded = encodeURIComponent(message);
-
-const btn = document.getElementById('waContactBtn');
-btn.addEventListener('click', function () {
-    if (agentPhone) {
-        window.open(`https://wa.me/62${agentPhone}?text=${encoded}`, '_blank', 'noopener,noreferrer');
-    } else {
-        alert('Nomor WhatsApp agent tidak tersedia');
-    }
-});
-});
-</script>
+                                        <a href="{{ $targetAgent && $targetAgent->nomor_telepon
+                                            ? 'https://wa.me/62' . ltrim($targetAgent->nomor_telepon) .
+                                                '?text=' . urlencode(
+                                                    "🏠 Halo " . $targetAgent->nama . "!\n\n" .
+                                                    "Saya melihat property berikut di website *Solusindo Sinergi Lelang*:\n\n" .
+                                                    "📍 " . $property->lokasi . "\n\n" .
+                                                    "Bisa minta info lebih lengkap tentang properti ini?\n\n" .
+                                                    "🔗 Link properti: " . $propertyUrl
+                                                )
+                                            : '#' }}"
+                                            class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
+                                            style="min-width: 180px;"
+                                            {{ $targetAgent && $targetAgent->nomor_telepon ? '' : 'onclick="return false;"' }}>
+                                            <i class="fa fa-phone-alt me-2"></i>Hubungi Agent
+                                        </a>
 
                                     @else
                                         <!-- Untuk Owner dan Stoker: tombol Hapus Listing -->
