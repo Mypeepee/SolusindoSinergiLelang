@@ -98,7 +98,7 @@ Route::get('/jual/{tipe}/{kota}/{kecamatan}/{judul}/{id}/{agent?}',
 ])->name('property.detail.withKecamatan');
 
 // --------------------------------------------------
-// DETAIL: Tanpa Kecamatan
+// DETAIL: Tanpa Kecamatan (mengganti dengan 'indonesia' jika tidak ada kecamatan)
 // --------------------------------------------------
 Route::get('/jual/{tipe}/{kota}/{judul}/{id}/{agent?}',
     [PropertyDetailController::class, 'PropertyDetail']
