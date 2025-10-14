@@ -346,36 +346,6 @@ $breadcrumb = [
                                             ]);       // fallback ke 'User' kalau kosong
                                         @endphp
 
-                                        @php
-
-                                        $agentFromSession = session('id_agent') ?? null;
-
-                                        $slugTipe = Str::slug($property->tipe ?? '');
-                                        $slugKota = Str::slug($property->kota ?? '');
-                                        $slugJudul = Str::limit(Str::slug($property->judul ?? ''), 150, '');
-                                        $rawKecamatan = trim(preg_replace('/\s+/', ' ', $property->kecamatan ?? ''));
-                                        $slugKecamatan = $rawKecamatan !== '' ? Str::slug($rawKecamatan) : null;
-
-                                        $hasKecamatan = !empty($slugKecamatan);
-
-                                        // ✅ Buat URL property detail yang SEO friendly
-                                        $propertyUrl = $hasKecamatan
-                                            ? route('property.detail.withKecamatan', [
-                                                'tipe' => $slugTipe,
-                                                'kota' => $slugKota,
-                                                'kecamatan' => $slugKecamatan,
-                                                'judul' => $slugJudul,
-                                                'id' => $property->id_listing,
-                                                'agent' => $agentFromSession
-                                            ])
-                                            : route('property.detail.withoutKecamatan', [
-                                                'tipe' => $slugTipe,
-                                                'kota' => $slugKota,
-                                                'judul' => $slugJudul,
-                                                'id' => $property->id_listing,
-                                                'agent' => $agentFromSession
-                                            ]);
-                                        @endphp
                                         @if (!$loggedIn || $role === 'User')
                                         <!-- Untuk User: tombol WA ke Agent -->
                                         <a href="{{ $targetAgent && $targetAgent->nomor_telepon
@@ -1171,14 +1141,11 @@ $breadcrumb = [
                 href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css"/>
 
                 @php
-                use Illuminate\Support\Str;
 
-                $agentFromSession = session('id_agent') ?? null; // ambil id_agent dari session
-                $agentSegment = $agentFromSession ?: null;
-                $slugJudul = Str::limit(Str::slug($property->judul), 150, '');
-                $slugKota = Str::slug($property->kota);
-                $slugTipe = Str::slug($property->tipe);
-                $slugKecamatan = $property->kecamatan ? Str::slug($property->kecamatan) : null;
+                $agentFromSession = session('id_agent') ?? null;
+
+                $slugTipe = Str::slug($property->tipe ?? '');
+                $slugKota = Str::slug($property->kota ?? '');
                 @endphp
 
                 {{-- 🎯 Tampilkan Properti Serupa hanya jika kelurahan terdeteksi & ada hasil --}}
@@ -1191,23 +1158,12 @@ $breadcrumb = [
                             <div class="swiper-slide">
                                 <div class="property-item rounded overflow-hidden shadow-sm">
                                     <div class="position-relative overflow-hidden">
-                                        <a href="{{ $slugKecamatan
-                                            ? route('property.detail.withKecamatan', [
-                                                'tipe' => $slugTipe,
-                                                'kota' => $slugKota,
-                                                'kecamatan' => $slugKecamatan,
-                                                'judul' => $slugJudul,
-                                                'id' => $property->id_listing,
-                                                'agent' => $agentFromSession
-                                              ])
-                                            : route('property.detail.withoutKecamatan', [
-                                                'tipe' => $slugTipe,
-                                                'kota' => $slugKota,
-                                                'judul' => $slugJudul,
-                                                'id' => $property->id_listing,
-                                                'agent' => $agentFromSession
-                                              ])
-                                        }}">
+                                        <a href="{{ route('property.detail', [
+                                            'tipe'  => $slugTipe,
+                                            'kota'  => $slugKota,
+                                            'id'    => $property->id_listing,
+                                            'agent' => $agentFromSession
+                                        ]) }}">
                                             <img class="img-fluid rounded w-100"
                                                 src="{{ explode(',', $property->gambar)[0] ?? asset('img/no-image.jpg') }}"
                                                 alt="Property Image" loading="lazy">
@@ -1220,23 +1176,12 @@ $breadcrumb = [
                                         <h5 class="text-primary mb-2">
                                             {{ 'Rp ' . number_format($property->harga, 0, ',', '.') }}
                                         </h5>
-                                        <a class="d-block h6 mb-2" href="{{ $slugKecamatan
-                                            ? route('property.detail.withKecamatan', [
-                                                'tipe' => $slugTipe,
-                                                'kota' => $slugKota,
-                                                'kecamatan' => $slugKecamatan,
-                                                'judul' => $slugJudul,
-                                                'id' => $property->id_listing,
-                                                'agent' => $agentFromSession
-                                              ])
-                                            : route('property.detail.withoutKecamatan', [
-                                                'tipe' => $slugTipe,
-                                                'kota' => $slugKota,
-                                                'judul' => $slugJudul,
-                                                'id' => $property->id_listing,
-                                                'agent' => $agentFromSession
-                                              ])
-                                        }}">
+                                        <a class="d-block h6 mb-2" href="{{ route('property.detail', [
+                                            'tipe'  => $slugTipe,
+                                            'kota'  => $slugKota,
+                                            'id'    => $property->id_listing,
+                                            'agent' => $agentFromSession
+                                        ]) }}">
 
                                             {{ \Illuminate\Support\Str::limit($property->deskripsi, 50) }}
                                         </a>

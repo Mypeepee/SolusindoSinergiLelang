@@ -412,7 +412,7 @@
       else if (rawMax)           price = `di-bawah-${toSEO(rawMax)}`;
 
       // 6) Path cantik (tanpa encodeURIComponent untuk location)
-      const url = `/jual/${propertyType}/${location}/${price}`;
+      const url = `/lelang/${propertyType}/${location}/${price}`;
 
       // 7) === Query string tetap Dikirim supaya backend bisa filter pakai angka mentah ===
       // rebuild dari form, lalu override min/max pakai angka tanpa titik
@@ -1244,20 +1244,21 @@
     </div>
 
     @php
-    $agentFromSession = session('id_agent') ?? null; // ambil id_agent dari session
-    $agentSegment = $agentFromSession ?: null;
-    $slugJudul = Str::limit(Str::slug($property->judul), 150, '');
-    $slugKota = Str::slug($property->kota);
-    $slugTipe = Str::slug($property->tipe);
-    $slugKecamatan = $property->kecamatan ? Str::slug($property->kecamatan) : null;
+
+    $agentFromSession = session('id_agent') ?? null;
+
+    $slugTipe = Str::slug($property->tipe ?? '');
+    $slugKota = Str::slug($property->kota ?? '');
     @endphp
 
     <div class="p-4 pb-0">
       <h5 class="text-primary mb-3">{{ 'Rp ' . number_format($property->harga, 0, ',', '.') }}</h5>
-      <a class="d-block h5 mb-2" href="{{ $slugKecamatan
-        ? url("/jual/$slugTipe/$slugKota/$slugKecamatan/$slugJudul/{$property->id_listing}" . ($agentFromSession ? "/$agentFromSession" : ''))
-        : url("/jual/$slugTipe/$slugKota/$slugJudul/{$property->id_listing}" . ($agentFromSession ? "/$agentFromSession" : ''))
-        }}">
+      <a class="d-block h5 mb-2" href="{{ route('property.detail', [
+        'tipe'  => $slugTipe,
+        'kota'  => $slugKota,
+        'id'    => $property->id_listing,
+        'agent' => $agentFromSession
+    ]) }}">
         {{ \Illuminate\Support\Str::limit($property->deskripsi, 50, '...') }}
       </a>
       <p class="text-truncate-2">

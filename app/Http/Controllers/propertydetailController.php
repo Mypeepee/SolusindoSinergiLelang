@@ -40,38 +40,25 @@ class propertydetailController extends Controller
     return redirect()->route('property.list')->with('status', 'Properti berhasil diubah menjadi Terjual');
 }
 
-    public function PropertyDetail(Request $request, $tipe, $kota, $kecamatan = null, $judul, $id, $agent = null)
+    public function PropertyDetail(Request $request, $tipe, $kota, $id, $agent = null)
 {
-    // 🧱 Tambahkan validasi ini SEBELUM query ke DB
+    $start = microtime(true);
+    // Validasi ID
     if (!is_numeric($id)) {
         abort(404, 'Invalid property ID');
     }
 
+    // Ambil property dari database
     $property = Property::where('id_listing', $id)->firstOrFail();
 
-    // Slugify judul dari database
-    $expectedJudul = Str::slug(Str::limit($property->judul, 150, ''));
+    // ===========================================
+    // Bangun URL kanonis (redirect jika tidak cocok)
+    // ===========================================
+    $slugTipe = Str::slug($property->tipe);
+    $slugKota = Str::slug($property->kota);
 
-    // Bangun URL kanonis
-    $expectedUrl = $property->kecamatan
-    ? url("/jual/" .
-        Str::slug($property->tipe) . "/" .
-        Str::slug($property->kota) . "/" .
-        Str::slug($property->kecamatan) . "/" .
-        $expectedJudul . "/" .
-        $property->id_listing .
-        ($agent ? "/$agent" : "")
-      )
-    : url("/jual/" .
-        Str::slug($property->tipe) . "/" .
-        Str::slug($property->kota) . "/" .
-        $expectedJudul . "/" .
-        $property->id_listing .
-        ($agent ? "/$agent" : "")
-      );
+    $expectedUrl = url("/jual/{$slugTipe}/lelang/{$slugKota}/{$property->id_listing}" . ($agent ? "/{$agent}" : ''));
 
-
-    // Jika URL saat ini beda dari yang seharusnya, redirect 301
     if (url()->current() !== $expectedUrl) {
         return redirect()->to($expectedUrl, 301);
     }
@@ -360,6 +347,9 @@ $seo = [
             $agentName = $agentData->nama;  // Ambil nama agen dari tabel agent
         }
     }
+
+    $time = round((microtime(true) - $start) * 1000, 2);
+    \Log::info("⏱ PropertyDetail executed in {$time} ms for ID {$id}");
 
     return view("property-detail", compact(
         'property',

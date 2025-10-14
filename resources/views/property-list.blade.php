@@ -19,27 +19,6 @@
     <meta name="twitter:image" content="{{ $property->foto ?? asset('default.jpg') }}">
 @endsection
 
-
-{{-- @section('structured_data')
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "RealEstateListing",
-        "name": "{{ $property->deskripsi }}",
-        "price": "{{ number_format($property->harga, 0, ',', '.') }}",
-        "priceCurrency": "IDR",
-        "address": {
-            "@type": "PostalAddress",
-            "streetAddress": "{{ $property->lokasi }}",
-            "addressLocality": "{{ $property->kota }}",
-            "addressRegion": "{{ $property->provinsi }}"
-        },
-        "image": "{{ explode(',', $property->gambar)[0] }}",
-        "url": "{{ route('property-detail', $property->id_listing) }}"
-    }
-    </script>
-@endsection --}}
-
 <!-- Header Start -->
 <style>
     .header-banner {
@@ -445,7 +424,7 @@
       else if (rawMax)           price = `di-bawah-${toSEO(rawMax)}`;
 
       // 6) Path cantik (tanpa encodeURIComponent untuk location)
-      const url = `/jual/${propertyType}/${location}/${price}`;
+      const url = `/lelang/${propertyType}/${location}/${price}`;
 
       // 7) === Query string tetap Dikirim supaya backend bisa filter pakai angka mentah ===
       // rebuild dari form, lalu override min/max pakai angka tanpa titik
@@ -1396,22 +1375,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     border-radius: 8px;
                 }
             </style>
+
 @php
 use Illuminate\Support\Str;
 
 $agentFromSession = session('id_agent') ?? null;
 
-// Buat slug dasar
 $slugTipe = Str::slug($property->tipe ?? '');
 $slugKota = Str::slug($property->kota ?? '');
-$slugJudul = Str::limit(Str::slug($property->judul ?? ''), 150, '');
-
-// ✅ Bersihkan kecamatan sampai benar-benar kosong kalau isinya cuma spasi / null / karakter aneh
-$rawKecamatan = trim(preg_replace('/\s+/', ' ', $property->kecamatan ?? '')); // hapus spasi berlebih
-$slugKecamatan = $rawKecamatan !== '' ? Str::slug($rawKecamatan) : null;
-
-// ✅ Cek apakah kecamatan valid
-$hasKecamatan = !empty($slugKecamatan);
 @endphp
 
 <div id="property-list-section" class="py-5">
@@ -1421,23 +1392,12 @@ $hasKecamatan = !empty($slugKecamatan);
         <div class="col-lg-4 col-md-6 col-sm-6 d-flex align-items-stretch">
         <div class="property-item rounded overflow-hidden flex-fill d-flex flex-column">
             <div class="position-relative overflow-hidden property-image-wrapper">
-                <a href="{{ $hasKecamatan
-                    ? route('property.detail.withKecamatan', [
-                        'tipe' => $slugTipe,
-                        'kota' => $slugKota,
-                        'kecamatan' => $slugKecamatan,
-                        'judul' => $slugJudul,
-                        'id' => $property->id_listing,
-                        'agent' => $agentFromSession
-                      ])
-                    : route('property.detail.withoutKecamatan', [
-                        'tipe' => $slugTipe,
-                        'kota' => $slugKota,
-                        'judul' => $slugJudul,
-                        'id' => $property->id_listing,
-                        'agent' => $agentFromSession
-                      ])
-                }}">
+                <a href="{{ route('property.detail', [
+                    'tipe'  => $slugTipe,
+                    'kota'  => $slugKota,
+                    'id'    => $property->id_listing,
+                    'agent' => $agentFromSession
+                ]) }}">
                 <img src="{{ explode(',', $property->gambar)[0] }}" alt="Property Image" loading="lazy" class="w-100 h-auto">
             </a>
 
@@ -1487,23 +1447,12 @@ $hasKecamatan = !empty($slugKecamatan);
 
             <div class="p-4 pb-0">
             <h5 class="text-primary mb-3">{{ 'Rp ' . number_format($property->harga, 0, ',', '.') }}</h5>
-            <a class="d-block h5 mb-2" href="{{ $hasKecamatan
-                ? route('property.detail.withKecamatan', [
-                    'tipe' => $slugTipe,
-                    'kota' => $slugKota,
-                    'kecamatan' => $slugKecamatan,
-                    'judul' => $slugJudul,
-                    'id' => $property->id_listing,
-                    'agent' => $agentFromSession
-                  ])
-                : route('property.detail.withoutKecamatan', [
-                    'tipe' => $slugTipe,
-                    'kota' => $slugKota,
-                    'judul' => $slugJudul,
-                    'id' => $property->id_listing,
-                    'agent' => $agentFromSession
-                  ])
-            }}">
+            <a class="d-block h5 mb-2" href="{{ route('property.detail', [
+                'tipe'  => $slugTipe,
+                'kota'  => $slugKota,
+                'id'    => $property->id_listing,
+                'agent' => $agentFromSession
+            ]) }}">
                 {{ \Illuminate\Support\Str::limit($property->deskripsi, 50, '...') }}
             </a>
             <p>

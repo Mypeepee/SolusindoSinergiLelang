@@ -523,7 +523,17 @@
                             <div class="col-lg-4 col-md-6 col-sm-6 d-flex align-items-stretch">
                               <div class="property-item rounded overflow-hidden flex-fill d-flex flex-column">
                                 <div class="position-relative overflow-hidden property-image-wrapper">
-                                  <a href="{{ route('property.detail', $property->id_listing) }}">
+                                    @php
+                                    $agentId  = $property->id_agent ?? null;
+                                    $slugTipe = Str::slug($property->tipe ?? '');
+                                    $slugKota = Str::slug($property->kota ?? '');
+                                    @endphp
+                                  <a href="{{ route('property.detail', [
+                                    'tipe'  => $slugTipe,
+                                    'kota'  => $slugKota,
+                                    'id'    => $property->id_listing,
+                                    'agent' => $agentId,
+                                ]) }}">
                                     <img src="{{ explode(',', $property->gambar)[0] }}" alt="Property Image" loading="lazy" class="w-100 h-auto">
                                   </a>
 
@@ -573,31 +583,12 @@
 
                                 <div class="p-4 pb-0">
                                   <h5 class="text-primary mb-3">{{ 'Rp ' . number_format($property->harga, 0, ',', '.') }}</h5>
-                                  @php
-                                  // Buat slug dinamis
-                                  $slugTipe = Str::slug($property->tipe ?? '');
-                                  $slugKota = Str::slug($property->kota ?? '');
-                                  $slugJudul = Str::limit(Str::slug($property->judul ?? ''), 150, '');
-
-                                  // Bersihkan kecamatan agar tidak error
-                                  $rawKecamatan = trim(preg_replace('/\s+/', ' ', $property->kecamatan ?? ''));
-                                  $slugKecamatan = $rawKecamatan !== '' ? Str::slug($rawKecamatan) : null;
-
-                                  // Deteksi apakah property punya kecamatan
-                                  $hasKecamatan = !empty($slugKecamatan);
-
-                                  // Ambil id_agent dari property (bisa juga lewat relasi kalau kamu pakai Eloquent)
-                                  $propertyAgent = $property->id_agent ?? null;
-
-                                  // Fallback jika tidak ada id_agent
-                                  $agentParam = $propertyAgent ?: '';
-
-                                  // Bangun URL otomatis berdasarkan struktur slug
-                                  $propertyUrl = $hasKecamatan
-                                      ? url("/jual/{$slugTipe}/{$slugKota}/{$slugKecamatan}/{$slugJudul}/{$property->id_listing}" . ($agentParam ? "/{$agentParam}" : ''))
-                                      : url("/jual/{$slugTipe}/{$slugKota}/{$slugJudul}/{$property->id_listing}" . ($agentParam ? "/{$agentParam}" : ''));
-                              @endphp
-                                  <a class="d-block h5 mb-2" href="{{ $propertyUrl }}">
+                                  <a class="d-block h5 mb-2" href="{{ route('property.detail', [
+                                    'tipe'  => $slugTipe,
+                                    'kota'  => $slugKota,
+                                    'id'    => $property->id_listing,
+                                    'agent' => $agentId
+                                ]) }}">
                                     {{ \Illuminate\Support\Str::limit($property->deskripsi, 50, '...') }}
                                   </a>
                                   <p>

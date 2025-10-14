@@ -27,9 +27,9 @@ Route::get('/', [HomeController::class, 'Home'])->name('home');
 
 
 /*  Routing   */
-Route::get('/property-detail', function () {
-    return view('property-detail');
-});
+// Route::get('/property-detail', function () {
+//     return view('property-detail');
+// });
 
 // Route::get('/property-list', [propertylistController::class, 'PropertyList']);
 Route::get('/about', [aboutController::class, 'About']);
@@ -77,66 +77,20 @@ Route::get('/property-list', [PropertyListController::class, 'showproperty'])
     ->name('property.list.query');
 
 
-Route::get('/jual/{property_type?}/{province?}/{city?}/{district?}/{price?}', [PropertyListController::class, 'showproperty'])->name('property.list');
+Route::get('/lelang/{property_type?}/{province?}/{city?}/{district?}/{price?}', [PropertyListController::class, 'showproperty'])->name('property.list');
 
 
 Route::get('/property-type', [propertytypeController::class, 'tipeproperty']);
-Route::get('/property/{id}', [propertylistController::class, 'showPropertyDetail'])->name('property-detail');
+// Route::get('/property/{id}', [propertylistController::class, 'showPropertyDetail'])->name('property-detail');
 
-// Route::get('/property-detail/{id}/{agent?}', [PropertyDetailController::class, 'PropertyDetail'])->name('property-detail');
 
-// --------------------------------------------------
-// DETAIL: Dengan Kecamatan
-// --------------------------------------------------
-Route::get('/jual/{tipe}/{kota}/{kecamatan}/{judul}/{id}/{agent?}',
+Route::get('/jual/{tipe}/lelang/{kota}/{id}/{agent?}',
     [PropertyDetailController::class, 'PropertyDetail']
 )->where([
-    'id' => '[0-9]+',          // id hanya angka
-    'tipe' => '[a-zA-Z0-9\-]+',
-    'kota' => '[a-zA-Z0-9\-]+',
-    'kecamatan' => '[a-zA-Z0-9\-]+',
-])->name('property.detail.withKecamatan');
-
-// --------------------------------------------------
-// DETAIL: Tanpa Kecamatan (mengganti dengan 'indonesia' jika tidak ada kecamatan)
-// --------------------------------------------------
-Route::get('/jual/{tipe}/{kota}/{judul}/{id}/{agent?}',
-    [PropertyDetailController::class, 'PropertyDetail']
-)->where([
-    'id' => '[0-9]+',          // id hanya angka
-    'tipe' => '[a-zA-Z0-9\-]+',
-    'kota' => '[a-zA-Z0-9\-]+',
-])->name('property.detail.withoutKecamatan');
-
-// --------------------------------------------------
-// ALIAS: property.detail → redirect otomatis ke versi with/without kecamatan
-// --------------------------------------------------
-Route::get('/redirect/property/{id}', function ($id) {
-    $property = \App\Models\Property::findOrFail($id);
-
-    $slugJudul = \Illuminate\Support\Str::slug(\Illuminate\Support\Str::limit($property->judul, 150, ''));
-    $slugTipe = \Illuminate\Support\Str::slug($property->tipe);
-    $slugKota = \Illuminate\Support\Str::slug($property->kota);
-    $slugKecamatan = $property->kecamatan ? \Illuminate\Support\Str::slug($property->kecamatan) : null;
-
-    return redirect()->route(
-        $slugKecamatan ? 'property.detail.withKecamatan' : 'property.detail.withoutKecamatan',
-        $slugKecamatan
-            ? [
-                'tipe' => $slugTipe,
-                'kota' => $slugKota,
-                'kecamatan' => $slugKecamatan,
-                'judul' => $slugJudul,
-                'id' => $property->id_listing,
-            ]
-            : [
-                'tipe' => $slugTipe,
-                'kota' => $slugKota,
-                'judul' => $slugJudul,
-                'id' => $property->id_listing,
-            ]
-    );
-})->name('property.detail');
+    'id'     => '[0-9]+',
+    'tipe'   => '[a-zA-Z0-9\-]+',
+    'kota'   => '[a-zA-Z0-9\-]+',
+])->name('property.detail');
 
 
 // Route for displaying the form
