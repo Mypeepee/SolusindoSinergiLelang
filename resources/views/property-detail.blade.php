@@ -353,6 +353,7 @@ $breadcrumb = [
                                         data-agent-name="{{ $targetAgent->nama }}"
                                         data-agent-phone="{{ ltrim($targetAgent->nomor_telepon ?? '') }}"
                                         data-property-location="{{ $property->lokasi }}"
+                                        data-property-price="{{ number_format($property->harga ?? 0, 0, ',', '.') }}"
                                         data-property-url="{{ $propertyUrl }}"
                                         class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
                                         style="min-width: 180px;"
@@ -369,6 +370,7 @@ $breadcrumb = [
                                                     const agentName = contactBtn.dataset.agentName;
                                                     const agentPhone = contactBtn.dataset.agentPhone;
                                                     const propertyLocation = contactBtn.dataset.propertyLocation;
+                                                    const propertyPrice = contactBtn.dataset.propertyPrice;
                                                     const propertyUrl = contactBtn.dataset.propertyUrl;
 
                                                     if (!agentPhone) {
@@ -376,25 +378,23 @@ $breadcrumb = [
                                                         return;
                                                     }
 
-                                                    // 💬 Format pesan WhatsApp (emoji & line break rapi)
+                                                    // 💬 Format pesan WhatsApp profesional & rapi
                                                     const waMessage =
-                                            `🏠 Halo ${agentName}!
+                                            `🏠 *Halo ${agentName}!* 👋
 
-                                            Saya melihat properti berikut di website *Solusindo Sinergi Lelang* :
+                                            Saya tertarik dengan properti yang saya temukan di website *Solusindo Sinergi Lelang* dan ingin menanyakan lebih lanjut:\n\n` +
 
-                                            📍 ${propertyLocation}
+                                            `📍 *Lokasi :* ${propertyLocation}\n` +
+                                            `💰 *Harga  :* Rp ${propertyPrice}\n\n` +
 
-                                            Bisa minta info lebih lengkap tentang properti ini?
+                                            `Mohon infonya lebih detail ya, apakah properti ini masih tersedia?\n\n` +
 
-                                            🔗 Link properti: ${propertyUrl}`;
+                                            `───────────\n` +
+                                            `🔗 ${propertyUrl}`;
 
-                                                    // Encode agar emoji dan line break muncul sempurna
                                                     const encodedMessage = encodeURIComponent(waMessage);
-
-                                                    // URL WhatsApp API resmi
                                                     const waUrl = `https://api.whatsapp.com/send?phone=62${agentPhone}&text=${encodedMessage}`;
 
-                                                    // 🚀 Buka WhatsApp di tab baru
                                                     window.open(waUrl, '_blank', 'noopener,noreferrer');
                                                 });
                                             });
