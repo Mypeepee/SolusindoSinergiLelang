@@ -112,8 +112,6 @@ $seo = [
         'facebookexternalhit', 'whatsapp', 'telegrambot', 'twitterbot', 'linkedinbot'
     ]);
 
-    $property = Property::where('id_listing', $id)->first();
-
     // Ambil data user dari session berdasarkan id_account
     if (!$isCrawler && session()->has('id_account')) {
         $user = DB::table('account')
