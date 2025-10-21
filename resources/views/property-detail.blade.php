@@ -332,36 +332,68 @@
                                             </a> --}}
 
                                             <!-- kirim di ce shin -->
-                                            <a href="https://wa.me/6285707379606"
-                                                onclick="copyTanyakanStok('{{ $property->id_listing }}', `{{ $property->lokasi }}`, `{{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->translatedFormat('d F Y') }}`, `{{ $propertyUrl }}`)"
-                                                target="_blank"
-                                                class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
-                                                style="min-width: 180px;">
-                                                <i class="fa fa-question-circle me-2"></i>Tanyakan Stok
+                                            <!-- Tombol Tanyakan Stok (langsung kirim ke WA dengan pesan terisi) -->
+                                            <a id="tanyakanStokBtn"
+                                            href="javascript:void(0)"
+                                            data-agent-name="Ce Shintya"
+                                            data-agent-phone="85707379606"
+                                            data-property-id="{{ $property->id_listing }}"
+                                            data-property-location="{{ $property->lokasi }}"
+                                            data-property-deadline="{{ \Carbon\Carbon::parse($property->batas_akhir_penawaran)->translatedFormat('d F Y') }}"
+                                            data-property-price="{{ number_format($property->harga ?? 0, 0, ',', '.') }}"
+                                            data-property-url="{{ $propertyUrl }}"
+                                            class="btn btn-danger d-flex align-items-center justify-content-center flex-fill px-3 py-2"
+                                            style="min-width: 180px;">
+                                            <i class="fa fa-question-circle me-2"></i>Tanyakan Stok
                                             </a>
                                         @endif
 
                                         <script>
-                                            function copyTanyakanStok(id, lokasi, tanggalLelang, urlSumber) {
-                                                const lines = [
-                                                    `📍 *${id}*: ${lokasi}`,
-                                                    `📅 *Tanggal Lelang*: ${tanggalLelang}`,
-                                                    `📢 Mohon update stok please`,
-                                                    `🔗 Detail: ${urlSumber}`
-                                                ];
+                                            document.addEventListener('DOMContentLoaded', function () {
+                                              const btn = document.getElementById('tanyakanStokBtn');
+                                              if (!btn) return;
 
-                                                const teks = lines.join("\n");
+                                              btn.addEventListener('click', function () {
+                                                const agentName   = btn.dataset.agentName || 'Agent';
+                                                const agentPhone  = (btn.dataset.agentPhone || '').replace(/[^0-9]/g, '');
+                                                const idListing   = btn.dataset.propertyId || '';
+                                                const lokasi      = btn.dataset.propertyLocation || '';
+                                                const batasAkhir  = btn.dataset.propertyDeadline || '';
+                                                const harga       = btn.dataset.propertyPrice || '';
+                                                let propertyUrl   = btn.dataset.propertyUrl || '';
 
-                                                navigator.clipboard.writeText(teks)
-                                                    .then(() => {
-                                                        alert("✅ Pesan berhasil disalin. Tinggal paste di bagian Stoker kami.");
-                                                    })
-                                                    .catch(err => {
-                                                        console.error(err);
-                                                        alert("❌ Gagal menyalin pesan. Browser mungkin memblokir akses clipboard.");
-                                                    });
-                                            }
-                                        </script>
+                                                if (!agentPhone) {
+                                                  alert('Nomor WhatsApp agent tidak tersedia.');
+                                                  return;
+                                                }
+
+                                                // Bersihin URL: buang parameter tracking, ganti localhost ke domain, paksa https
+                                                propertyUrl = propertyUrl.split('?')[0];
+                                                propertyUrl = propertyUrl.replace('127.0.0.1:8000', 'solusindolelang.com');
+                                                if (propertyUrl.startsWith('http://')) propertyUrl = propertyUrl.replace('http://', 'https://');
+
+                                                // Nomor telepon: tambahkan 62 kalau belum ada
+                                                const phoneWithCC = agentPhone.startsWith('62') ? agentPhone : '62' + agentPhone;
+
+                                                // Pesan WhatsApp rapi (tanpa indentasi, supaya gak jadi %20 parade)
+                                                const waMessage =
+                                                  `🔥 Halo ${agentName}! 🔥\n` +
+                                                  `Saya ingin menanyakan stok untuk properti berikut:\n` +
+                                                  `🏡 ID      : ${idListing}\n` +
+                                                  `📍 Lokasi  : ${lokasi}\n` +
+                                                  `💰 Harga   : Rp ${harga}\n` +
+                                                  `⏰ Batas Akhir Penawaran: ${batasAkhir}\n\n` +
+                                                  `Mohon infonya apakah masih tersedia?\n\n` +
+                                                  `🔗 ${propertyUrl}`;
+
+                                                const encoded = encodeURIComponent(waMessage);
+                                                const waUrl = `https://api.whatsapp.com/send?phone=${phoneWithCC}&text=${encoded}`;
+
+                                                // Buka WA dengan pesan siap kirim
+                                                window.open(waUrl, '_blank', 'noopener,noreferrer');
+                                              });
+                                            });
+                                            </script>
                                     @endif
 
 
