@@ -43,7 +43,7 @@ class propertydetailController extends Controller
     public function PropertyDetail(Request $request, $id, $agent = null)
 {
     // ================================
-    // 🔒 Tambahan: deteksi crawler
+    // 🔒 Tambahan: deteksi crawler y
     // ================================
     $ua = \Illuminate\Support\Str::lower($request->header('User-Agent', ''));
     $isCrawler = \Illuminate\Support\Str::contains($ua, [
