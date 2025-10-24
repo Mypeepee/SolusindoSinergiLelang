@@ -90,7 +90,7 @@ SELECT setval(
 
 $baseUrl = 'https://lelang.go.id';
 $kategori = $this->argument('kategori') ?? 'Rumah';
-$page = 1;
+$page = 100;
 $allLinks = [];
 
 $this->info("📄 Mulai scrape semua halaman kategori: $kategori");

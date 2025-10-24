@@ -195,6 +195,14 @@
         🗓️ Calendar
       </button>
     </li>
+
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {{ $tab==='export' ? 'active' : '' }}" id="export-tab"
+                data-bs-toggle="tab" data-bs-target="#export" type="button" role="tab"
+                aria-controls="export" aria-selected="{{ $tab==='export' ? 'true' : 'false' }}">
+          ⬇️ Export
+        </button>
+    </li>
   </ul>
 
     <div class="tab-content mt-3" id="mainTabsContent">
@@ -1580,11 +1588,11 @@
                 <div class="mb-2"><label>Judul</label><input type="text" class="form-control" name="title" required value="${ev.title || ''}"></div>
                 <div class="mb-2"><label>Deskripsi</label><textarea class="form-control" name="description">${ev.description || ''}</textarea></div>
                 <div class="mb-2"><label>Mulai</label>
-                    <input type="datetime-local" class="form-control" name="start" id="evEditStart" required 
+                    <input type="datetime-local" class="form-control" name="start" id="evEditStart" required
                         value="${dateOnlyStart}T${formatTimeForInput(startDate)}">
                 </div>
                 <div class="mb-2"><label>Selesai</label>
-                    <input type="datetime-local" class="form-control" name="end" id="evEditEnd" required 
+                    <input type="datetime-local" class="form-control" name="end" id="evEditEnd" required
                         value="${dateOnlyEnd}T${formatTimeForInput(endDate)}">
                 </div>
                 <div class="form-check mb-2">
@@ -1765,6 +1773,466 @@
 </script>
 
         </div>
+
+        {{-- ========== Export ========== --}}
+<div class="tab-pane fade {{ $tab==='export' ? 'show active' : '' }}" id="export" role="tabpanel" aria-labelledby="export-tab">
+    <div class="row">
+      <div class="col-lg-9">
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-semibold text-primary">⬇️ Export Properti</h5>
+            <small class="text-muted" id="export-selected-counter">0 dipilih</small>
+          </div>
+
+          <div class="card-body">
+            <!-- Form Filter (kirim ke owner, tapi pertahankan tab=export) -->
+            <form method="GET" action="{{ route('dashboard.owner') }}" class="row g-2 p-3 rounded shadow-sm bg-white mb-3">
+              <input type="hidden" name="tab" value="export" />
+              {{-- ID Listing --}}
+              <div class="col-12 col-lg-3">
+                <label for="search_exp" class="form-label d-block">Cari ID Listing</label>
+                <input type="text" name="search" id="search_exp" value="{{ request('search') }}"
+                       class="form-control form-control-sm" placeholder="Cari ID Listing">
+              </div>
+
+              {{-- Tipe Property --}}
+              <div class="col-6 col-lg-2">
+                <label for="property_type_exp" class="form-label d-block">Tipe Property</label>
+                <select name="property_type" id="property_type_exp" class="form-select form-select-sm">
+                  <option value="" {{ request('property_type') ? '' : 'selected' }} disabled>Tipe Property</option>
+                  <option value="rumah" @selected(request('property_type') === 'rumah')>Rumah</option>
+                  <option value="gudang" @selected(request('property_type') === 'gudang')>Gudang</option>
+                  <option value="apartemen" @selected(request('property_type') === 'apartemen')>Apartemen</option>
+                  <option value="tanah" @selected(request('property_type') === 'tanah')>Tanah</option>
+                  <option value="pabrik" @selected(request('property_type') === 'pabrik')>Pabrik</option>
+                  <option value="hotel dan villa" @selected(request('property_type') === 'hotel dan villa')>Hotel dan Villa</option>
+                  <option value="ruko" @selected(request('property_type') === 'ruko')>Ruko</option>
+                  <option value="toko" @selected(request('property_type') === 'toko')>Toko</option>
+                  <option value="lain-lain" @selected(request('property_type') === 'lain-lain')>Lainnya</option>
+                </select>
+              </div>
+
+              {{-- Provinsi --}}
+              <div class="col-6 col-lg-2">
+                <label for="province-export" class="form-label d-block">Pilih Provinsi</label>
+                <select id="province-export" name="province" class="form-select form-select-sm">
+                  <option disabled {{ request('province') ? '' : 'selected' }}>Pilih Provinsi</option>
+                </select>
+              </div>
+
+              {{-- Kota/Kab --}}
+              <div class="col-6 col-lg-2">
+                <label for="city-export" class="form-label d-block">Pilih Kota/Kab</label>
+                <select id="city-export" name="city" class="form-select form-select-sm" {{ request('province') ? '' : 'disabled' }}>
+                  <option disabled selected>Pilih Kota/Kab</option>
+                </select>
+              </div>
+
+              {{-- Kecamatan --}}
+              <div class="col-6 col-lg-2">
+                <label for="district-export" class="form-label d-block">Pilih Kecamatan</label>
+                <select id="district-export" name="district" class="form-select form-select-sm" {{ request('city') ? '' : 'disabled' }}>
+                  <option disabled selected>Pilih Kecamatan</option>
+                </select>
+              </div>
+
+              {{-- Tombol --}}
+              <div class="col-12 col-lg-1 d-grid">
+                <button type="submit" class="btn btn-dark btn-sm">Filter</button>
+              </div>
+            </form>
+
+            {{-- Tabel + Export --}}
+            <form id="export-form" action="{{ route('dashboard.owner.export') }}" method="POST" class="d-flex flex-column gap-2">
+              @csrf
+              {{-- Hidden untuk kirim pilihan & filter saat export --}}
+              <input type="hidden" name="selected_ids" id="selected_ids_input">
+              <input type="hidden" name="search" value="{{ request('search') }}">
+              <input type="hidden" name="property_type" value="{{ request('property_type') }}">
+              <input type="hidden" name="province" value="{{ request('province') }}">
+              <input type="hidden" name="city" value="{{ request('city') }}">
+              <input type="hidden" name="district" value="{{ request('district') }}">
+
+              <div class="d-flex gap-2 flex-wrap align-items-center">
+                <button type="button" id="btn-export-csv"  class="btn btn-success btn-sm" disabled title="Pilih minimal 2 item dulu">Export CSV</button>
+                <button type="button" id="btn-export-xlsx" class="btn btn-primary btn-sm" disabled title="Pilih minimal 2 item dulu">Export XLSX</button>
+                <input type="hidden" name="format" id="export_format" value="csv">
+                <small class="text-muted">Pilih minimal 2 item untuk di export.</small>
+              </div>
+
+{{-- Script Checkbox + Persist pilihan (HARUS ditempatkan setelah tabel) --}}
+<script>
+    document.addEventListener('DOMContentLoaded', function(){
+      const KEY = 'exportSelectedIds';
+
+      // Bersihkan pilihan kalau halaman benar-benar di-refresh (F5/Cmd+R)
+      const navEntry = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+      const isReloadNewAPI = navEntry && navEntry.type === 'reload';
+      const isReloadOldAPI = performance.navigation && performance.navigation.type === 1; // deprecated fallback
+      if (isReloadNewAPI || isReloadOldAPI) {
+        localStorage.removeItem(KEY);
+      }
+
+      const selected       = new Set(JSON.parse(localStorage.getItem(KEY) || '[]'));
+      const counter        = document.getElementById('export-selected-counter');
+      const exportForm     = document.getElementById('export-form');
+      const selectedInput  = document.getElementById('selected_ids_input');
+      const formatInput    = document.getElementById('export_format');
+      const btnCSV         = document.getElementById('btn-export-csv');
+      const btnXLSX        = document.getElementById('btn-export-xlsx');
+      const checkAll       = document.getElementById('check_all_export');
+      const tableChecks    = Array.from(document.querySelectorAll('#export .row-check'));
+
+      // Sinkron dari localStorage ke checkbox
+      tableChecks.forEach(cb => { if (selected.has(cb.value)) cb.checked = true; });
+
+      // Seed dari DOM yang sudah checked (kalau ada)
+      tableChecks.forEach(cb => { if (cb.checked) selected.add(cb.value); });
+      localStorage.setItem(KEY, JSON.stringify(Array.from(selected)));
+
+      function updateCounter(){ counter.textContent = selected.size + ' dipilih'; }
+      function updateButtons(){
+        const enough = selected.size >= 2;
+        [btnCSV, btnXLSX].forEach(btn => {
+          if (!btn) return;
+          btn.disabled = !enough;
+          btn.title    = enough ? '' : 'Pilih minimal 2 item dulu';
+        });
+      }
+
+      // Klik CSV/XLSX: set format lalu submit form (ini yang memastikan CSV ya CSV, XLSX ya XLSX)
+      btnCSV.addEventListener('click', function(){
+        if (btnCSV.disabled) return;
+        formatInput.value = 'csv';
+        exportForm.requestSubmit();
+      });
+      btnXLSX.addEventListener('click', function(){
+        if (btnXLSX.disabled) return;
+        formatInput.value = 'xlsx';
+        exportForm.requestSubmit();
+      });
+
+      // Render awal
+      updateCounter();
+      updateButtons();
+
+      // Listener per baris
+      tableChecks.forEach(cb => {
+        cb.addEventListener('change', function(){
+          if (this.checked) selected.add(this.value);
+          else selected.delete(this.value);
+
+          localStorage.setItem(KEY, JSON.stringify(Array.from(selected)));
+          updateCounter();
+          updateButtons();
+
+          if (checkAll) {
+            checkAll.checked = tableChecks.length > 0 && tableChecks.every(x => x.checked);
+            checkAll.indeterminate = !checkAll.checked && tableChecks.some(x => x.checked);
+          }
+        });
+      });
+
+      // Master check
+      if (checkAll) {
+        checkAll.addEventListener('change', function(){
+          tableChecks.forEach(cb => {
+            cb.checked = checkAll.checked;
+            if (cb.checked) selected.add(cb.value);
+            else selected.delete(cb.value);
+          });
+          localStorage.setItem(KEY, JSON.stringify(Array.from(selected)));
+          updateCounter();
+          updateButtons();
+          checkAll.indeterminate = false;
+        });
+
+        // Reset state master saat load
+        checkAll.checked = tableChecks.length > 0 && tableChecks.every(x => x.checked);
+        checkAll.indeterminate = !checkAll.checked && tableChecks.some(x => x.checked);
+      }
+
+      // Submit guard + kirim daftar terpilih
+      exportForm.addEventListener('submit', function(e){
+        if (selected.size < 2) {
+          e.preventDefault();
+          alert('Pilih minimal 2 listing sebelum export.');
+          return false;
+        }
+        selectedInput.value = Array.from(selected).join(',');
+      });
+    });
+  </script>
+
+              <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle text-center">
+                    <thead class="table-light">
+                        <tr>
+                          <th style="width:36px;">
+                            <input type="checkbox" id="check_all_export">
+                          </th>
+                          <th>ID</th>
+                          <th>Gambar</th>
+                          <th>Lokasi</th>
+                          <th>Tipe</th>
+                          <th>Luas (m²)</th>
+                          <th>Harga</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                      @forelse($exportProperties as $property)
+                        <tr>
+                          <td>
+                            <input type="checkbox" class="row-check" value="{{ $property->id_listing }}">
+                          </td>
+                          <td class="fw-semibold">{{ $property->id_listing }}</td>
+                          <td>
+                            @php
+                              // Ambil foto pertama dari kolom "gambar" (CSV)
+                              $fotoList   = array_values(array_filter(array_map('trim', explode(',', (string)$property->gambar))));
+                              $fotoUtama  = $fotoList[0] ?? '';
+                              // Cek absolute URL (http/https atau //)
+                              $isAbsolute = $fotoUtama && preg_match('~^(https?:)?//~', $fotoUtama);
+                              // Bangun URL final
+                              if ($isAbsolute) {
+                                  $src = $fotoUtama;
+                              } else {
+                                  // path relatif → bungkus asset(). Hilangkan leading slash biar ga double-slash
+                                  $src = $fotoUtama ? asset(ltrim($fotoUtama, '/')) : '';
+                              }
+                            @endphp
+
+                            <img
+                              src="{{ $src ?: asset('img/placeholder.jpg') }}"
+                              alt="thumb {{ $property->id_listing }}"
+                              class="img-thumbnail"
+                              style="width:72px;height:72px;object-fit:cover"
+                              loading="lazy">
+                          </td>
+                          <td class="text-start" style="max-width:420px">{{ $property->lokasi }}</td>
+                          <td>{{ ucfirst($property->tipe) }}</td>
+                          <td>{{ $property->luas ?? '-' }}</td>
+                          <td>Rp {{ number_format($property->harga, 0, ',', '.') }}</td>
+                        </tr>
+                      @empty
+                        <tr>
+                          <td colspan="8" class="text-center">Tidak ada data.</td>
+                        </tr>
+                      @endforelse
+                      </tbody>
+                </table>
+              </div>
+
+              {{-- Pagination --}}
+              <div class="col-12">
+                <div class="pagination d-flex justify-content-center mt-2 gap-1 overflow-auto">
+                  @php
+                    $currentPage = $exportProperties->currentPage();
+                    $lastPage = $exportProperties->lastPage();
+                    $start = max($currentPage - 2, 1);
+                    $end = min($currentPage + 2, $lastPage);
+                  @endphp
+
+                  {{-- Prev --}}
+                  @if ($exportProperties->onFirstPage())
+                    <a class="btn btn-sm btn-light rounded disabled">&laquo;</a>
+                  @else
+                    <a href="{{ $exportProperties->appends(request()->query())->url($currentPage-1) }}"
+                       class="btn btn-sm btn-light rounded">&laquo;</a>
+                  @endif
+
+                  {{-- Pages --}}
+                  @if ($start > 1)
+                    <a href="{{ $exportProperties->appends(request()->query())->url(1) }}" class="btn btn-sm btn-light rounded">1</a>
+                    @if ($start > 2)
+                      <span class="btn btn-sm btn-light rounded disabled">...</span>
+                    @endif
+                  @endif
+
+                  @for ($i = $start; $i <= $end; $i++)
+                    <a href="{{ $exportProperties->appends(request()->query())->url($i) }}"
+                       class="btn btn-sm rounded {{ $i === $currentPage ? 'btn-primary text-white' : 'btn-light' }}">{{ $i }}</a>
+                  @endfor
+
+                  @if ($end < $lastPage)
+                    @if ($end < $lastPage - 1)
+                      <span class="btn btn-sm btn-light rounded disabled">...</span>
+                    @endif
+                    <a href="{{ $exportProperties->appends(request()->query())->url($lastPage) }}" class="btn btn-sm btn-light rounded">{{ $lastPage }}</a>
+                  @endif
+
+                  {{-- Next --}}
+                  @if ($exportProperties->hasMorePages())
+                    <a href="{{ $exportProperties->appends(request()->query())->url($currentPage+1) }}"
+                       class="btn btn-sm btn-light rounded">&raquo;</a>
+                  @else
+                    <a class="btn btn-sm btn-light rounded disabled">&raquo;</a>
+                  @endif
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-3">
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-header bg-white py-3">
+            <h5 class="mb-0 fw-semibold text-primary">ℹ️ Tips</h5>
+          </div>
+          <div class="card-body small text-muted">
+            Centang item di halaman mana pun. Pilihan kamu disimpan sementara di browser sampai kamu klik Export.
+            Kalau kamu refresh pakai mode incognito, ya jangan nangis kalau pilihan hilang.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {{-- Script Lokasi: bisa reuse file indonesia.json yang sama --}}
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const province = document.getElementById('province-export');
+        const city     = document.getElementById('city-export');
+        const district = document.getElementById('district-export');
+
+        const provinceMap = new Map(); // Provinsi => Set Kota
+        const locationMap = new Map(); // Provinsi => (Kota => Set Kecamatan)
+
+        fetch("{{ asset('data/indonesia.json') }}", { cache: 'no-store' })
+          .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+          .then(data => {
+            data.forEach(item => {
+              const prov = (item.province || '').trim();
+              const reg  = (item.regency  || '').trim();
+              const dist = (item.district || '').trim();
+              if (!prov || !reg || !dist) return;
+
+              if (!provinceMap.has(prov)) provinceMap.set(prov, new Set());
+              provinceMap.get(prov).add(reg);
+
+              if (!locationMap.has(prov)) locationMap.set(prov, new Map());
+              if (!locationMap.get(prov).has(reg)) locationMap.get(prov).set(reg, new Set());
+              locationMap.get(prov).get(reg).add(dist);
+            });
+
+            for (const prov of provinceMap.keys()) {
+              province.insertAdjacentHTML('beforeend', `<option value="${prov}">${prov}</option>`);
+            }
+
+            const params = new URLSearchParams(location.search);
+            const savedProv = params.get('province');
+            const savedCity = params.get('city');
+            const savedDist = params.get('district');
+
+            if (savedProv && provinceMap.has(savedProv)) {
+              province.value = savedProv;
+              updateCity(savedProv);
+              if (savedCity && provinceMap.get(savedProv).has(savedCity)) {
+                city.value = savedCity; city.disabled = false;
+                updateDistrict(savedProv, savedCity);
+                if (savedDist) { district.value = savedDist; district.disabled = false; }
+              }
+            }
+          })
+          .catch(err => console.error('Gagal load indonesia.json:', err));
+
+        province.addEventListener('change', function () {
+          updateCity(this.value);
+        });
+
+        city.addEventListener('change', function () {
+          updateDistrict(province.value, this.value);
+        });
+
+        function updateCity(prov) {
+          const set = provinceMap.get(prov) || new Set();
+          city.disabled = false;
+          city.innerHTML = '<option value="" selected>Pilih Kota/Kab</option>';
+          for (const c of set) city.insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`);
+          district.disabled = true;
+          district.innerHTML = '<option value="" selected>Pilih Kecamatan</option>';
+        }
+
+        function updateDistrict(prov, cty) {
+          const set = (locationMap.get(prov) && locationMap.get(prov).get(cty)) || new Set();
+          district.disabled = false;
+          district.innerHTML = '<option value="" selected>Pilih Kecamatan</option>';
+          for (const d of set) district.insertAdjacentHTML('beforeend', `<option value="${d}">${d}</option>`);
+        }
+      });
+    </script>
+
+    {{-- Script Checkbox + Persist pilihan --}}
+    <script>
+      (function(){
+        const KEY = 'exportSelectedIds';
+        const selected = new Set(JSON.parse(localStorage.getItem(KEY) || '[]'));
+
+        const counter = document.getElementById('export-selected-counter');
+        const tableChecks = document.querySelectorAll('#export .row-check');
+        const checkAll = document.getElementById('check_all_export');
+        const selectedInput = document.getElementById('selected_ids_input');
+        const exportForm = document.getElementById('export-form');
+        const formatInput = document.getElementById('export_format');
+
+        // Inisialisasi state checkbox sesuai storage
+        tableChecks.forEach(cb => {
+          if (selected.has(cb.value)) cb.checked = true;
+        });
+
+        // Update counter
+        function updateCounter(){
+          counter.textContent = selected.size + ' dipilih';
+        }
+        updateCounter();
+
+        // Row change
+        tableChecks.forEach(cb => {
+          cb.addEventListener('change', function(){
+            if (this.checked) selected.add(this.value);
+            else selected.delete(this.value);
+            localStorage.setItem(KEY, JSON.stringify(Array.from(selected)));
+            updateCounter();
+            // Update check all status
+            const allOnPage = Array.from(tableChecks);
+            checkAll.checked = allOnPage.length > 0 && allOnPage.every(x => x.checked);
+            checkAll.indeterminate = !checkAll.checked && allOnPage.some(x => x.checked);
+          });
+        });
+
+        // Master check
+        if (checkAll) {
+          checkAll.addEventListener('change', function(){
+            tableChecks.forEach(cb => {
+              cb.checked = checkAll.checked;
+              if (cb.checked) selected.add(cb.value);
+              else selected.delete(cb.value);
+            });
+            localStorage.setItem(KEY, JSON.stringify(Array.from(selected)));
+            updateCounter();
+            checkAll.indeterminate = false;
+          });
+          // Sync initial master status
+          const allOnPage = Array.from(tableChecks);
+          checkAll.checked = allOnPage.length > 0 && allOnPage.every(x => x.checked);
+          checkAll.indeterminate = !checkAll.checked && allOnPage.some(x => x.checked);
+        }
+
+        // Saat submit export: kirim semua pilihan
+        exportForm.addEventListener('submit', function(){
+          selectedInput.value = Array.from(selected).join(',');
+          // Jangan bersihin pilihan di sini. Biar user bisa export lagi tanpa ulang centang.
+        });
+
+        // Setter format
+        window.setExportFormat = function(fmt){
+          formatInput.value = fmt;
+        }
+      })();
+    </script>
+  </div>
+
+
         </div>
     </div>
 </div>

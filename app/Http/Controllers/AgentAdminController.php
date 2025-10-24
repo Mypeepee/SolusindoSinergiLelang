@@ -269,7 +269,7 @@ class AgentAdminController extends Controller
                 'location' => $event->location,
                 'access'   => $event->akses,
                 'created_by'  => $event->creator_name,
-                'created_by_id' => $event->created_by, 
+                'created_by_id' => $event->created_by,
                 'duration' => $event->durasi,
             ];
         });
@@ -688,6 +688,7 @@ $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar'
 
     public function owner()
     {
+        $tab = request('tab', 'stoker');
         //property types
         // Semua tipe properti yang mau ditampilkan
         $propertyTypes = ['Rumah', 'Gudang', 'Apartemen', 'Tanah', 'Pabrik', 'Hotel dan Villa', 'Ruko', 'Toko'];
@@ -910,6 +911,47 @@ $performanceAgents = DB::table('agent')
     ->get();
 
 
+// ---------- BLOK EXPORT (bersih, tanpa join tabel fiktif) ----------
+$exportQuery = \App\Models\Property::from('property as p')
+    ->select([
+        // Kolom untuk TAMPIL di tabel halaman Export
+        'p.id_listing',          // ditampilkan sebagai ID
+        'p.lokasi',
+        'p.tipe',
+        'p.luas',
+        'p.harga',
+        'p.gambar',              // dipakai Blade: explode(',', $property->gambar)
+
+        // Kolom tambahan untuk EXPORT file
+        'p.sertifikat',
+        'p.id_agent',
+        'p.link',
+
+        // Link Solusindo (PostgreSQL concatenation pakai ||)
+        DB::raw("('https://solusindolelang.com/property-detail/' || p.id_listing || '/' || COALESCE(p.id_agent, '')) as link_solusindo")
+    ])
+
+    // Filter (opsional: aktifkan jika mau hanya status 'Tersedia')
+    // ->whereRaw('LOWER(p.status) = ?', ['tersedia'])
+
+    ->when(request('search'), function ($query, $search) {
+        return is_numeric($search)
+            ? $query->where('p.id_listing', (int)$search)
+            : $query->whereRaw('1=0'); // cuma izinkan numerik untuk ID
+    })
+    ->when(request('property_type'), fn($q,$v) => $q->whereRaw('LOWER(p.tipe)=?', [strtolower($v)]))
+    ->when(request('province'),      fn($q,$v) => $q->where('p.provinsi', $v))
+    ->when(request('city'),          fn($q,$v) => $q->where('p.kota', $v))
+    ->when(request('district'),      fn($q,$v) => $q->where('p.kecamatan', $v));
+
+$exportProperties = $exportQuery
+    ->orderBy('p.id_listing', 'asc')
+    ->paginate(15)
+    ->appends(array_merge(
+        request()->only(['search','property_type','province','city','district']),
+        ['tab'=>'export']
+    ));
+
 
         $labels = $monthlyData->map(fn($d) => \Carbon\Carbon::parse($d->bulan)->isoFormat('MMM YYYY'));
         $revenue = $monthlyData->pluck('total_pendapatan');
@@ -981,6 +1023,8 @@ $performanceAgents = DB::table('agent')
                                             'statusCounts' => $statusCounts,
                                             'stokerProperties'    => $stokerProperties,
                                             'soldProperties'      => $soldProperties,
+                                            'tab'                 => $tab,
+                                            'exportProperties'    => $exportProperties,
                                             'events' => $eventsFormatted ]);
     }
 
@@ -1127,7 +1171,7 @@ $performanceAgents = DB::table('agent')
         $event->location = $validated['location'] ?? null;
         $event->akses = $validated['access'];
         $event->durasi = $validated['duration'] ?? null;
-        $event->tanggal_diupdate = now(); 
+        $event->tanggal_diupdate = now();
 
         $event->save();
 

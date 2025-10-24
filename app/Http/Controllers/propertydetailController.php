@@ -40,266 +40,284 @@ class propertydetailController extends Controller
     return redirect()->route('property.list')->with('status', 'Properti berhasil diubah menjadi Terjual');
 }
 
-    public function PropertyDetail(Request $request, $id, $agent = null)
+public function PropertyDetail(Request $request, $id, $agent = null)
 {
-    // ================================
-    // 🔒 Tambahan: deteksi crawler y
-    // ================================
-    $ua = \Illuminate\Support\Str::lower($request->header('User-Agent', ''));
-    $isCrawler = \Illuminate\Support\Str::contains($ua, [
-        'facebookexternalhit', 'whatsapp', 'telegrambot', 'twitterbot', 'linkedinbot'
-    ]);
+    $__t0 = microtime(true);
+    $__status = 'ok';
+    $__idForLog = $id;
 
-    $property = Property::where('id_listing', $id)->first();
+    try {
+        // ================================
+        // 🔒 Tambahan: deteksi crawler y
+        // ================================
+        $ua = \Illuminate\Support\Str::lower($request->header('User-Agent', ''));
+        $isCrawler = \Illuminate\Support\Str::contains($ua, [
+            'facebookexternalhit', 'whatsapp', 'telegrambot', 'twitterbot', 'linkedinbot'
+        ]);
 
-    // Ambil data user dari session berdasarkan id_account
-    if (!$isCrawler && session()->has('id_account')) {
-        $user = DB::table('account')
-            ->where('id_account', session('id_account'))
-            ->first();
+        $property = \App\Models\Property::where('id_listing', $id)->first();
+        if ($property) {
+            $__idForLog = $property->id_listing;
+        }
 
-        // Jika user adalah agent atau register, kita abaikan kode referal dan gunakan id_agent
-        if ($user && ($user->roles === 'Agent' || $user->roles === 'Register' || $user->roles === 'Stoker'|| $user->roles === 'Principal')) {
-            // Ambil id_agent dari tabel agent berdasarkan id_account
-            $agentData = DB::table('agent')
+        // Ambil data user dari session berdasarkan id_account
+        if (!$isCrawler && session()->has('id_account')) {
+            $user = DB::table('account')
                 ->where('id_account', session('id_account'))
                 ->first();
 
-            // Jika agent ditemukan, arahkan URL ke id_agent
-            if ($agentData) {
-                // Redirect URL dengan id_agent
-                if ($agent !== $agentData->id_agent) {
-                    return redirect()->to(url("/property-detail/{$id}/" . $agentData->id_agent));
-                }
-            }
-        } else {
-            // Kalau user adalah User, gunakan kode referal dari tabel account
-            $userReferral = DB::table('account')
-                ->where('id_account', session('id_account'))
-                ->value('kode_referal');
+            // Jika user adalah agent atau register, kita abaikan kode referal dan gunakan id_agent
+            if ($user && ($user->roles === 'Agent' || $user->roles === 'Register' || $user->roles === 'Stoker'|| $user->roles === 'Principal')) {
+                // Ambil id_agent dari tabel agent berdasarkan id_account
+                $agentData = DB::table('agent')
+                    ->where('id_account', session('id_account'))
+                    ->first();
 
-            // Kalau URL belum pakai kode referal user → redirect pakai kode itu
-            if ($userReferral && $agent !== $userReferral) {
-                return redirect()->to(url("/property-detail/{$id}/" . $userReferral));
-            }
-        }
-    }
-
-    // Kalau belum ada agent di URL, tapi ada di session → redirect
-    if (!$isCrawler && !$agent && session()->has('id_agent')) {
-        return redirect()->to(url("/property-detail/{$id}/" . session('id_agent')));
-    }
-
-    // Kalau ada agent di URL → cari datanya
-    $sharedAgent = null;
-    if ($agent) {
-        $sharedAgent = \App\Models\Agent::where('id_agent', $agent)->first();
-
-        // Kalau agent valid → catat klik ke referral_clicks
-        if (!$isCrawler && $sharedAgent && $property) {
-            \DB::table('referral_clicks')->insert([
-                'id_agent'   => $sharedAgent->id_agent,
-                'id_listing' => $property->id_listing,
-                'ip'         => $request->ip(),
-                'user_agent' => $request->header('User-Agent'),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-    }
-
-    // ✅ Hitung harga per m² properti ini
-    $thisPricePerM2 = ($property->luas > 0) ? $property->harga / $property->luas : 0;
-
-    // ✅ Hitung range harga per m² ±25%
-    $lowerBound = (int) floor($thisPricePerM2 * 0.75);
-    $upperBound = (int) ceil($thisPricePerM2 * 1.25);
-
-    // ✅ Ambil properti serupa berdasarkan kelurahan & range harga
-    $similarProperties = DB::table('property')
-        ->where('id_listing', '!=', $property->id_listing)
-        ->whereRaw('LOWER(kelurahan) = ?', [strtolower($property->kelurahan)])
-        ->where('luas', '>', 0)
-        ->whereBetween(DB::raw('harga / luas'), [$lowerBound, $upperBound])
-        ->limit(10)
-        ->get();
-
-    // ✅ Label lokasi serupa
-    $similarLocation = "Kelurahan " . $property->kelurahan;
-
-
-    // ✅ Statistik harga
-    $pricesPerM2 = $similarProperties->map(function ($p) {
-        return ($p->luas > 0) ? $p->harga / $p->luas : null;
-    })->filter();
-
-    $avgPricePerM2 = $pricesPerM2->avg();
-    $minPricePerM2 = $pricesPerM2->min();
-    $maxPricePerM2 = $pricesPerM2->max();
-
-    // ✅ Median harga per m²
-    $sortedPrices = $pricesPerM2->sort()->values();
-    $count = $sortedPrices->count();
-    $medianPricePerM2 = null;
-    if ($count > 0) {
-        $medianPricePerM2 = ($count % 2 == 0)
-            ? ($sortedPrices[$count / 2 - 1] + $sortedPrices[$count / 2]) / 2
-            : $sortedPrices[floor($count / 2)];
-    }
-
-    // ✅ Selisih harga properti ini
-    if ($avgPricePerM2 && $thisPricePerM2) {
-        $selisihPersen = round((($avgPricePerM2 - $thisPricePerM2) / $avgPricePerM2) * 100, 2);
-    } else {
-        $selisihPersen = "Tidak ada data pembanding di kecamatan/kota ini.";
-    }
-
-    // =======================
-    // 🔧 OG Image (kode asli kamu) + FAILSAFE
-    // =======================
-    $imgRaw = $property->gambar ?? null;
-
-    // Jika berformat JSON / CSV → ambil gambar pertama
-    if (is_string($imgRaw) && \Illuminate\Support\Str::startsWith(trim($imgRaw), ['[','{'])) {
-        $decoded = json_decode($imgRaw, true);
-        if (is_array($decoded)) {
-            $imgRaw = $decoded[0]['url'] ?? $decoded[0] ?? $imgRaw;
-        }
-    } elseif (is_string($imgRaw) && \Illuminate\Support\Str::contains($imgRaw, ',')) {
-        $imgRaw = trim(explode(',', $imgRaw)[0]);
-    }
-
-    // Buat URL absolut (bisa HTTP/HTTPS sesuai server)
-    $ogImage = null;
-    if ($imgRaw) {
-        if (\Illuminate\Support\Str::startsWith($imgRaw, ['http://', 'https://'])) {
-            $ogImage = $imgRaw;
-        } elseif (\Illuminate\Support\Str::startsWith($imgRaw, ['storage/', '/storage/'])) {
-            $ogImage = url(\Illuminate\Support\Str::start($imgRaw, '/'));
-        } elseif (\Illuminate\Support\Str::startsWith($imgRaw, ['public/', '/public/'])) {
-            $path = ltrim(preg_replace('#^/?public/#', '', $imgRaw), '/');
-            $ogImage = url('/storage/'.$path);
-        } else {
-            $ogImage = url('/'.ltrim($imgRaw, '/'));
-        }
-    }
-    if (!$ogImage) {
-        $ogImage = asset('img/og-default.jpg');
-    }
-
-    // Tambahkan cache-buster (versi asli kamu)
-    $ogImageWithQS = $ogImage . ((str_contains($ogImage, '?') ? '&' : '?')
-                    . 'v=' . ($property->updated_at?->timestamp ?? time()));
-
-    // =====================================================
-    // 🧯 FAILSAFE: Generate derivative 1200x630 + verifikasi
-    // =====================================================
-    $derivativeRel      = "og/property_{$property->id_listing}.jpg";
-    $derivativeDiskPath = storage_path('app/public/'.$derivativeRel);
-    $derivativePublic   = '/storage/'.$derivativeRel;
-
-    // Cek apakah storage symlink sudah ada
-    $storageLinked = is_link(public_path('storage')) || file_exists(public_path('storage/.'));
-
-    // Bangun derivative jika mungkin
-    if (!file_exists($derivativeDiskPath)) {
-        try {
-            if ($storageLinked && !is_dir(dirname($derivativeDiskPath))) {
-                @mkdir(dirname($derivativeDiskPath), 0775, true);
-            }
-
-            if (class_exists(\Intervention\Image\ImageManagerStatic::class)) {
-                // Sumber gambar: prioritas URL eksternal; jika tidak, cari di public/
-                if ($imgRaw && \Illuminate\Support\Str::startsWith($imgRaw, ['http://','https://'])) {
-                    $binary = @file_get_contents($imgRaw);
-                    if ($binary === false) throw new \RuntimeException('Gagal unduh gambar eksternal');
-                    $img = \Intervention\Image\ImageManagerStatic::make($binary);
-                } else {
-                    $local = public_path('/'.ltrim($imgRaw ?: 'img/og-default.jpg', '/'));
-                    if (!file_exists($local)) $local = public_path('img/og-default.jpg');
-                    $img = \Intervention\Image\ImageManagerStatic::make($local);
-                }
-                $img->fit(1200, 630, function($c){ $c->upsize(); })
-                    ->encode('jpg', 85);
-
-                if ($storageLinked) {
-                    $img->save($derivativeDiskPath);
+                // Jika agent ditemukan, arahkan URL ke id_agent
+                if ($agentData) {
+                    // Redirect URL dengan id_agent
+                    if ($agent !== $agentData->id_agent) {
+                        return redirect()->to(url("/property-detail/{$id}/" . $agentData->id_agent));
+                    }
                 }
             } else {
-                // Tanpa Intervention: copy apa adanya (kalau symlink ada)
-                if ($storageLinked) {
-                    $local = public_path('/'.ltrim($imgRaw ?: 'img/og-default.jpg', '/'));
-                    if (!file_exists($local)) $local = public_path('img/og-default.jpg');
-                    @copy($local, $derivativeDiskPath);
+                // Kalau user adalah User, gunakan kode referal dari tabel account
+                $userReferral = DB::table('account')
+                    ->where('id_account', session('id_account'))
+                    ->value('kode_referal');
+
+                // Kalau URL belum pakai kode referal user → redirect pakai kode itu
+                if ($userReferral && $agent !== $userReferral) {
+                    return redirect()->to(url("/property-detail/{$id}/" . $userReferral));
                 }
             }
-        } catch (\Throwable $e) {
-            // diamkan: akan fallback ke ogImage original kalau gagal
         }
-    }
 
-    // Tentukan OG final yang DIPAKAI:
-    // 1) Kalau derivative ada & bisa dibaca wajar, pakai derivative.
-    // 2) Kalau derivative tidak ada / gagal / symlink ga ada → pakai ogImageWithQS (asli kamu).
-    $useDerivative = false;
-    if ($storageLinked && file_exists($derivativeDiskPath)) {
-        $size = @filesize($derivativeDiskPath);
-        if ($size !== false && $size > 10 * 1024) { // >10KB biar ga empty file
-            $useDerivative = true;
+        // Kalau belum ada agent di URL, tapi ada di session → redirect
+        if (!$isCrawler && !$agent && session()->has('id_agent')) {
+            return redirect()->to(url("/property-detail/{$id}/" . session('id_agent')));
         }
-    }
 
-    if ($useDerivative) {
-        // Pakai HTTPS kalau bisa
-        $base = rtrim(env('APP_URL', ''), '/');
-        $derivativeUrl = $base ? $base.$derivativePublic : url($derivativePublic);
-        if (\Illuminate\Support\Str::startsWith($derivativeUrl, 'http://')) {
-            $derivativeUrl = preg_replace('#^http://#', 'https://', $derivativeUrl);
+        // Kalau ada agent di URL → cari datanya
+        $sharedAgent = null;
+        if ($agent) {
+            $sharedAgent = \App\Models\Agent::where('id_agent', $agent)->first();
+
+            // Kalau agent valid → catat klik ke referral_clicks
+            if (!$isCrawler && $sharedAgent && $property) {
+                \DB::table('referral_clicks')->insert([
+                    'id_agent'   => $sharedAgent->id_agent,
+                    'id_listing' => $property->id_listing,
+                    'ip'         => $request->ip(),
+                    'user_agent' => $request->header('User-Agent'),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
-        $cacheV = filemtime($derivativeDiskPath) ?: time();
-        $ogImageFinal = $derivativeUrl . '?v=' . $cacheV;
-    } else {
-        // Fallback ke ogImage original (versi kamu)
-        $ogImageFinal = $ogImageWithQS;
-    }
 
-    // Pastikan og:url juga HTTPS & lengkap
-    $ogUrlFinal = $request->fullUrl();
-    if (\Illuminate\Support\Str::startsWith($ogUrlFinal, 'http://')) {
-        $ogUrlFinal = preg_replace('#^http://#', 'https://', $ogUrlFinal);
-    }
+        // ✅ Hitung harga per m² properti ini
+        $thisPricePerM2 = ($property && $property->luas > 0) ? $property->harga / $property->luas : 0;
 
-    $ogTags = [
-        'og_title'       => $property->judul,
-        'og_description' => \Illuminate\Support\Str::limit(($property->lokasi ?? '') . ' - ' . strip_tags($property->deskripsi ?? ''), 150),
-        'og_image'       => $ogImageFinal,
-        'og_url'         => $ogUrlFinal,
-    ];
+        // ✅ Hitung range harga per m² ±25%
+        $lowerBound = (int) floor($thisPricePerM2 * 0.75);
+        $upperBound = (int) ceil($thisPricePerM2 * 1.25);
 
-    // Ambil nama agen berdasarkan id_agent yang ada di URL
-    $agentName = null;
-    if ($agent) {
-        // Ambil nama agen dari tabel agent berdasarkan id_agent
-        $agentData = \App\Models\Agent::where('id_agent', $agent)->first();
-        if ($agentData) {
-            $agentName = $agentData->nama;  // Ambil nama agen dari tabel agent
+        // ✅ Ambil properti serupa berdasarkan kelurahan & range harga
+        $similarProperties = DB::table('property')
+            ->when($property, function ($q) use ($property) {
+                $q->where('id_listing', '!=', $property->id_listing)
+                  ->whereRaw('LOWER(kelurahan) = ?', [strtolower($property->kelurahan)]);
+            })
+            ->where('luas', '>', 0)
+            ->when($thisPricePerM2 > 0, function ($q) use ($lowerBound, $upperBound) {
+                $q->whereBetween(DB::raw('harga / luas'), [$lowerBound, $upperBound]);
+            }, function ($q) {
+                $q->whereRaw('1=0'); // tidak ada pembanding kalau luas/harga kosong
+            })
+            ->limit(10)
+            ->get();
+
+        // ✅ Label lokasi serupa
+        $similarLocation = $property ? ("Kelurahan " . $property->kelurahan) : null;
+
+        // ✅ Statistik harga
+        $pricesPerM2 = $similarProperties->map(function ($p) {
+            return ($p->luas > 0) ? $p->harga / $p->luas : null;
+        })->filter();
+
+        $avgPricePerM2 = $pricesPerM2->avg();
+        $minPricePerM2 = $pricesPerM2->min();
+        $maxPricePerM2 = $pricesPerM2->max();
+
+        // ✅ Median harga per m²
+        $sortedPrices = $pricesPerM2->sort()->values();
+        $count = $sortedPrices->count();
+        $medianPricePerM2 = null;
+        if ($count > 0) {
+            $medianPricePerM2 = ($count % 2 == 0)
+                ? ($sortedPrices[$count / 2 - 1] + $sortedPrices[$count / 2]) / 2
+                : $sortedPrices[floor($count / 2)];
         }
-    }
 
-    return view("property-detail", compact(
-        'property',
-        'similarProperties',
-        'similarLocation',
-        'thisPricePerM2',
-        'avgPricePerM2',
-        'minPricePerM2',
-        'maxPricePerM2',
-        'medianPricePerM2',
-        'selisihPersen',
-        'ogTags',
-        'sharedAgent',
-        'agentName'
-    ));
+        // ✅ Selisih harga properti ini
+        if ($avgPricePerM2 && $thisPricePerM2) {
+            $selisihPersen = round((($avgPricePerM2 - $thisPricePerM2) / $avgPricePerM2) * 100, 2);
+        } else {
+            $selisihPersen = "Tidak ada data pembanding di kecamatan/kota ini.";
+        }
+
+        // =======================
+        // 🔧 OG Image + FAILSAFE
+        // =======================
+        $imgRaw = $property->gambar ?? null;
+
+        // Jika berformat JSON / CSV → ambil gambar pertama
+        if (is_string($imgRaw) && \Illuminate\Support\Str::startsWith(trim($imgRaw), ['[','{'])) {
+            $decoded = json_decode($imgRaw, true);
+            if (is_array($decoded)) {
+                $imgRaw = $decoded[0]['url'] ?? $decoded[0] ?? $imgRaw;
+            }
+        } elseif (is_string($imgRaw) && \Illuminate\Support\Str::contains($imgRaw, ',')) {
+            $imgRaw = trim(explode(',', $imgRaw)[0]);
+        }
+
+        // Buat URL absolut (bisa HTTP/HTTPS sesuai server)
+        $ogImage = null;
+        if ($imgRaw) {
+            if (\Illuminate\Support\Str::startsWith($imgRaw, ['http://', 'https://'])) {
+                $ogImage = $imgRaw;
+            } elseif (\Illuminate\Support\Str::startsWith($imgRaw, ['storage/', '/storage/'])) {
+                $ogImage = url(\Illuminate\Support\Str::start($imgRaw, '/'));
+            } elseif (\Illuminate\Support\Str::startsWith($imgRaw, ['public/', '/public/'])) {
+                $path = ltrim(preg_replace('#^/?public/#', '', $imgRaw), '/');
+                $ogImage = url('/storage/'.$path);
+            } else {
+                $ogImage = url('/'.ltrim($imgRaw, '/'));
+            }
+        }
+        if (!$ogImage) {
+            $ogImage = asset('img/og-default.jpg');
+        }
+
+        // Tambahkan cache-buster
+        $ogImageWithQS = $ogImage . ((str_contains($ogImage, '?') ? '&' : '?')
+                        . 'v=' . ($property->updated_at?->timestamp ?? time()));
+
+        // 🧯 FAILSAFE: Generate derivative 1200x630 + verifikasi
+        $derivativeRel      = $property ? "og/property_{$property->id_listing}.jpg" : "og/property_unknown.jpg";
+        $derivativeDiskPath = storage_path('app/public/'.$derivativeRel);
+        $derivativePublic   = '/storage/'.$derivativeRel;
+
+        // Cek apakah storage symlink sudah ada
+        $storageLinked = is_link(public_path('storage')) || file_exists(public_path('storage/.'));
+
+        // Bangun derivative jika mungkin
+        if (!file_exists($derivativeDiskPath)) {
+            try {
+                if ($storageLinked && !is_dir(dirname($derivativeDiskPath))) {
+                    @mkdir(dirname($derivativeDiskPath), 0775, true);
+                }
+
+                if (class_exists(\Intervention\Image\ImageManagerStatic::class)) {
+                    // Sumber gambar: prioritas URL eksternal; jika tidak, cari di public/
+                    if ($imgRaw && \Illuminate\Support\Str::startsWith($imgRaw, ['http://','https://'])) {
+                        $binary = @file_get_contents($imgRaw);
+                        if ($binary === false) throw new \RuntimeException('Gagal unduh gambar eksternal');
+                        $img = \Intervention\Image\ImageManagerStatic::make($binary);
+                    } else {
+                        $local = public_path('/'.ltrim($imgRaw ?: 'img/og-default.jpg', '/'));
+                        if (!file_exists($local)) $local = public_path('img/og-default.jpg');
+                        $img = \Intervention\Image\ImageManagerStatic::make($local);
+                    }
+                    $img->fit(1200, 630, function($c){ $c->upsize(); })
+                        ->encode('jpg', 85);
+
+                    if ($storageLinked) {
+                        $img->save($derivativeDiskPath);
+                    }
+                } else {
+                    // Tanpa Intervention: copy apa adanya (kalau symlink ada)
+                    if ($storageLinked) {
+                        $local = public_path('/'.ltrim($imgRaw ?: 'img/og-default.jpg', '/'));
+                        if (!file_exists($local)) $local = public_path('img/og-default.jpg');
+                        @copy($local, $derivativeDiskPath);
+                    }
+                }
+            } catch (\Throwable $e) {
+                // diamkan: akan fallback ke ogImage original kalau gagal
+            }
+        }
+
+        // Tentukan OG final yang DIPAKAI
+        $useDerivative = false;
+        if ($storageLinked && file_exists($derivativeDiskPath)) {
+            $size = @filesize($derivativeDiskPath);
+            if ($size !== false && $size > 10 * 1024) { // >10KB biar ga empty file
+                $useDerivative = true;
+            }
+        }
+
+        if ($useDerivative) {
+            // Pakai HTTPS kalau bisa
+            $base = rtrim(env('APP_URL', ''), '/');
+            $derivativeUrl = $base ? $base.$derivativePublic : url($derivativePublic);
+            if (\Illuminate\Support\Str::startsWith($derivativeUrl, 'http://')) {
+                $derivativeUrl = preg_replace('#^http://#', 'https://', $derivativeUrl);
+            }
+            $cacheV = filemtime($derivativeDiskPath) ?: time();
+            $ogImageFinal = $derivativeUrl . '?v=' . $cacheV;
+        } else {
+            // Fallback ke ogImage original
+            $ogImageFinal = $ogImageWithQS;
+        }
+
+        // Pastikan og:url juga HTTPS & lengkap
+        $ogUrlFinal = $request->fullUrl();
+        if (\Illuminate\Support\Str::startsWith($ogUrlFinal, 'http://')) {
+            $ogUrlFinal = preg_replace('#^http://#', 'https://', $ogUrlFinal);
+        }
+
+        $ogTags = [
+            'og_title'       => $property->judul ?? 'Properti',
+            'og_description' => \Illuminate\Support\Str::limit(($property->lokasi ?? '') . ' - ' . strip_tags($property->deskripsi ?? ''), 150),
+            'og_image'       => $ogImageFinal,
+            'og_url'         => $ogUrlFinal,
+        ];
+
+        // Ambil nama agen berdasarkan id_agent yang ada di URL
+        $agentName = null;
+        if ($agent) {
+            // Ambil nama agen dari tabel agent berdasarkan id_agent
+            $agentData = \App\Models\Agent::where('id_agent', $agent)->first();
+            if ($agentData) {
+                $agentName = $agentData->nama;  // Ambil nama agen dari tabel agent
+            }
+        }
+
+        return view("property-detail", compact(
+            'property',
+            'similarProperties',
+            'similarLocation',
+            'thisPricePerM2',
+            'avgPricePerM2',
+            'minPricePerM2',
+            'maxPricePerM2',
+            'medianPricePerM2',
+            'selisihPersen',
+            'ogTags',
+            'sharedAgent',
+            'agentName'
+        ));
+    } catch (\Throwable $e) {
+        $__status = 'error';
+        throw $e;
+    } finally {
+        $__ms = (microtime(true) - $__t0) * 1000;
+        \Log::info('⏱ PropertyDetail executed in ' . number_format($__ms, 2, '.', '') . ' ms for ID ' . $__idForLog);
+        // Kalau kamu kepo, boleh tambahin detail: status/agent/crawler
+        // \Log::debug('PropertyDetail meta', ['status' => $__status, 'agent' => $agent, 'crawler' => $isCrawler ?? null]);
+    }
 }
 
 private function getOrCreateFolder($name, $parentId, $token)

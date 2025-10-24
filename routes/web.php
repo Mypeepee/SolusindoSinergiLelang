@@ -18,7 +18,7 @@ use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\propertytypeController;
 use App\Http\Controllers\propertyagentController;
 use App\Http\Controllers\propertydetailController;
-
+use App\Http\Controllers\ExportController;
 use App\Http\Controllers\WhatsappController;
 
 
@@ -279,5 +279,7 @@ Route::post('/property/{id}/delete', [AgentAdminController::class, 'markAsSold']
 Route::post('/agent/{id_agent}/status', [AgentAdminController::class, 'updateAgentStatus'])
     ->name('agent.updateStatus');
 
-// AI AGENT
+// EXPORT
+Route::post('/dashboard/owner/export', [ExportController::class, 'properties'])
+    ->name('dashboard.owner.export');
 
