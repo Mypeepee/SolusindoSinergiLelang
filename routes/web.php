@@ -283,3 +283,9 @@ Route::post('/agent/{id_agent}/status', [AgentAdminController::class, 'updateAge
 Route::post('/dashboard/owner/export', [ExportController::class, 'properties'])
     ->name('dashboard.owner.export');
 
+// routes/web.php
+Route::post('/owner/export-docx', [ExportController::class, 'letters'])
+    ->name('dashboard.owner.export.docx');
+
+Route::get('/dashboard/owner/export-list', [AgentAdminController::class, 'exportList'])
+    ->name('dashboard.owner.export.list');

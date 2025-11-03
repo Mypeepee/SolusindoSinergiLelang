@@ -1017,6 +1017,7 @@ $exportProperties = $exportQuery
                                             'performanceAgents' => $performanceAgents,
                                             'performanceClients' => $performanceClients,
                                             'properties' => $properties,
+                                            'properties' => $properties,
                                             'labels' => $labels,
                                             'revenue' => $revenue,
                                             'transactions' => $transactions,
@@ -1992,5 +1993,91 @@ public function exportByType($tipe)
     return response()->stream($callback, 200, $headers);
 }
 
+
+public function exportList(Request $request)
+{
+    $driver = DB::getDriverName();              // 'pgsql', 'mysql', 'sqlite', ...
+    $cast   = $driver === 'pgsql' ? 'TEXT' : 'CHAR';
+
+    // Kumpulkan debug
+    $dbg = [
+        'driver'        => $driver,
+        'cast'          => $cast,
+        'search_raw'    => $request->get('search'),
+        'property_type' => $request->get('property_type'),
+        'province'      => $request->get('province'),
+        'city'          => $request->get('city'),
+        'district'      => $request->get('district'),
+        'page'          => (int)($request->get('page') ?? 1),
+    ];
+
+    $q = Property::from('property as p')
+        ->select([
+            'p.id_listing','p.lokasi','p.tipe','p.luas','p.harga','p.gambar',
+            'p.sertifikat','p.id_agent','p.link',
+            DB::raw("('https://solusindolelang.com/property-detail/' || p.id_listing || '/' || COALESCE(p.id_agent, '')) as link_solusindo"),
+        ]);
+
+    // FILTER SEARCH: exact match numerik
+    $search = trim((string) $request->get('search', ''));
+    $dbg['search_trimmed'] = $search;
+
+    if ($search !== '') {
+        if (preg_match('/^\d+$/', $search)) {
+            // Exact, tanpa LIKE, tanpa OR
+            $q->where('p.id_listing', (int)$search);
+            $dbg['search_mode']    = 'exact_numeric';
+            $dbg['search_binding'] = (int)$search;
+        } else {
+            $q->whereRaw('1=0');
+            $dbg['search_mode'] = 'blocked_non_numeric';
+        }
+    } else {
+        $dbg['search_mode'] = 'empty';
+    }
+
+    // FILTER LAIN: Cek dan skip filter jika memilih "Pilih" values
+    if ($request->filled('property_type')) {
+        $q->whereRaw('LOWER(p.tipe)=?', [strtolower($request->get('property_type'))]);
+    }
+
+    // Skip the filters with "Pilih" values
+    if ($request->filled('province') && $request->get('province') !== 'Pilih Provinsi') {
+        $q->where('p.provinsi', $request->get('province'));
+    }
+
+    if ($request->filled('city') && $request->get('city') !== 'Pilih Kota/Kab') {
+        $q->where('p.kota', $request->get('city'));
+    }
+
+    if ($request->filled('district') && $request->get('district') !== 'Pilih Kecamatan') {
+        $q->where('p.kecamatan', $request->get('district'));
+    }
+
+    // Snapshot SQL + bindings
+    $dbg['sql']      = $q->toSql();
+    $dbg['bindings'] = $q->getBindings();
+
+    // Count sebelum paginate
+    $dbg['count_total'] = (clone $q)->count();
+
+    // Paginate
+    $page = max(1, (int) ($request->get('page') ?? 1));
+    $exportProperties = $q->orderBy('p.id_listing', 'asc')
+        ->paginate(15, ['*'], 'page', $page)
+        ->appends(array_merge(
+            $request->only(['search','property_type','province','city','district']),
+            ['tab'=>'export']
+        ));
+    $dbg['count_page']   = $exportProperties->count();
+    $dbg['current_page'] = $exportProperties->currentPage();
+    $dbg['last_page']    = $exportProperties->lastPage();
+
+    // SELALU balas partial untuk endpoint fragment ini
+    return view('partial.export_list', [
+        'exportProperties' => $exportProperties,
+        '___dbg'           => $dbg,
+    ]);
+}
 
 }
