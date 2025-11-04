@@ -652,39 +652,50 @@
                                             });
                                         </script>
 
-                                        <!-- Edit (Hanya Pemilik) -->
+                                        <!-- Edit (Pemilik listing ATAU Owner) -->
                                         @if (Session::has('id_account'))
                                             @php
-                                                $loggedInId = Session::get('id_account');
+                                                $loggedInId      = Session::get('id_account');
+                                                $loggedInRole    = Session::get('role'); // <-- ambil role dari session
                                                 $loggedInAgentId = \App\Models\Agent::where('id_account', $loggedInId)->value('id_agent');
+
+                                                // Boleh edit kalau Owner, atau kalau agent yang punya listing ini
+                                                $canEdit = ($loggedInRole === 'Owner') || ($property->id_agent == $loggedInAgentId);
                                             @endphp
-                                            @if ($property->id_agent === $loggedInAgentId)
+
+                                            @if ($canEdit)
                                                 <a href="{{ route('editproperty', $property->id_listing) }}"
                                                 class="btn btn-warning text-black d-flex align-items-center justify-content-center flex-fill"
                                                 title="Edit Properti">
-                                                <i class="fa fa-edit me-2"></i>Edit
+                                                    <i class="fa fa-edit me-2"></i>Edit
                                                 </a>
                                             @endif
                                         @endif
+
                                     </div>
 
 
-                                    <!-- Edit (Desktop) -->
+                                    <!-- Edit (Desktop) - Pemilik listing ATAU Owner -->
                                     @if (Session::has('id_account'))
                                         @php
-                                            $loggedInId = Session::get('id_account');
+                                            $loggedInId      = Session::get('id_account');
+                                            $loggedInRole    = Session::get('role'); // tarik role-nya
                                             $loggedInAgentId = \App\Models\Agent::where('id_account', $loggedInId)->value('id_agent');
+
+                                            $canEdit = ($loggedInRole === 'Owner') || ($property->id_agent == $loggedInAgentId);
                                         @endphp
-                                        @if ($property->id_agent === $loggedInAgentId)
+
+                                        @if ($canEdit)
                                             <div class="mt-3 d-none d-md-block">
                                                 <a href="{{ route('editproperty', $property->id_listing) }}"
-                                                   class="btn btn-warning text-black d-flex align-items-center justify-content-center px-3 py-2 w-100 w-md-auto"
-                                                   style="min-width: 180px;">
-                                                   <i class="fa fa-edit me-2"></i>Edit Properti
+                                                class="btn btn-warning text-black d-flex align-items-center justify-content-center px-3 py-2 w-100 w-md-auto"
+                                                style="min-width: 180px;">
+                                                <i class="fa fa-edit me-2"></i>Edit Properti
                                                 </a>
                                             </div>
                                         @endif
                                     @endif
+
                                 </div>
 
                             <!-- Swiper JS -->

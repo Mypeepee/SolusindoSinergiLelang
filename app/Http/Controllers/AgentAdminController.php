@@ -172,27 +172,24 @@ class AgentAdminController extends Controller
 
         // **Penambahan untuk Stoker**
         if ($role === 'Stoker') {
-            $properties = Property::select('id_listing','lokasi','luas','harga','gambar','status')
-                ->where('status', 'Tersedia')
-                ->when(request()->get('search'), function ($query, $search) {
-                    return $query->where('id_listing', (int) $search);
+            $stokerProperties = Property::select(
+                    'id_listing','lokasi','luas','harga','gambar','status',
+                    'tipe','provinsi','kota','kecamatan'
+                )
+                ->whereRaw('LOWER(status) = ?', ['tersedia'])
+                ->when(request('search'), function ($q, $search) {
+                    return is_numeric($search)
+                        ? $q->where('id_listing', (int) $search)
+                        : $q->whereRaw('1=0');
                 })
-                ->when(request()->get('property_type'), function ($query, $propertyType) {
-                    return $query->whereRaw('LOWER(tipe) = ?', [strtolower($propertyType)]);
-                })
-                ->when(request()->get('province'), fn($q,$v) => $q->where('provinsi', $v))
-                ->when(request()->get('city'), fn($q,$v) => $q->where('kota', $v))
-                ->when(request()->get('district'), fn($q,$v) => $q->where('kecamatan', $v))
-                ->paginate(15)
+                ->when(request('property_type'), fn($q,$v) => $q->whereRaw('LOWER(tipe)=?', [strtolower($v)]))
+                ->when(request('province'), fn($q,$v) => $q->where('provinsi', $v))
+                ->when(request('city'), fn($q,$v) => $q->where('kota', $v))
+                ->when(request('district'), fn($q,$v) => $q->where('kecamatan', $v))
+                ->orderByDesc('id_listing')
+                ->paginate(10)
                 ->appends(request()->only(['search','property_type','province','city','district']));
         }
-
-    // Fetch sold properties with update history
-    $soldProperties = DB::table('property')
-    ->where('status', 'Terjual') // Only fetch sold properties
-    ->orderBy('tanggal_diupdate', 'desc') // Order by update date
-    ->select('id_listing', 'lokasi', 'tanggal_diupdate') // Select only the needed fields
-    ->paginate(15); // Paginate with 15 properties per page
 
         $salesData = $salesData ?? [];
         $transactions = $transactions ?? [];
@@ -289,6 +286,8 @@ class AgentAdminController extends Controller
             'jumlahListing' => $jumlahListing,
             'jumlahClients' => $jumlahClients,
             'clients' => $clients,
+            'stokerProperties' => $stokerProperties ?? null,
+            'soldProperties'   => $soldProperties,
             'clientsClosing' => $clientsClosing,
             'clientsPengosongan' => $clientsPengosongan,
             'properties' => $properties ?? null,
@@ -819,13 +818,12 @@ $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar'
         ->paginate(10)
         ->appends(array_merge(request()->only(['search','property_type','province','city','district']), ['tab'=>'stoker']));
 
-
-$soldProperties = DB::table('property')
-    ->where('status', 'Terjual')
-    ->orderBy('tanggal_diupdate', 'desc')
-    ->select('id_listing', 'lokasi', 'tanggal_diupdate')
-    ->limit(15)
-    ->get();
+    $soldProperties = DB::table('property')
+        ->where('status', 'Terjual')
+        ->orderBy('tanggal_diupdate', 'desc')
+        ->select('id_listing', 'lokasi', 'tanggal_diupdate')
+        ->limit(15)
+        ->get();
 
         // Aggregate: jumlah "Hadir" per account
 // 1) Ikut Pemilu: jumlah "Hadir" per account
@@ -2139,7 +2137,6 @@ public function stokerBulkSold(Request $request)
         return back()->with('error', 'Tidak ada listing yang dipilih.');
     }
 
-    // Update status jadi Terjual
     \DB::table('property')
         ->whereIn('id_listing', $ids)
         ->update([
@@ -2147,8 +2144,8 @@ public function stokerBulkSold(Request $request)
             'tanggal_diupdate' => now(),
         ]);
 
-    // Bersihkan pilihan di browser via flash hint (opsional, biar JS bisa clear localStorage)
-    return redirect()->route('dashboard.owner', ['tab' => 'stoker'])
+    $route = session('role') === 'Owner' ? 'dashboard.owner' : 'dashboard.agent'; // <<— ini disesuaikan
+    return redirect()->route($route, ['tab' => 'stoker'])
         ->with('stoker_clear_selection', true)
         ->with('success', 'Berhasil menandai '.count($ids).' listing sebagai Terjual.');
 }

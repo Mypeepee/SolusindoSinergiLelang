@@ -819,7 +819,7 @@
           <div class="card-body">
             <!-- Bar filter (GET) + tombol bulk (POST) -->
             {{-- =================== FILTER BAR (STOKER) =================== --}}
-<div class="row g-3 p-3 rounded shadow-sm bg-white mb-3 align-items-end stoker-filter-grid">
+            <div class="row g-3 p-3 rounded shadow-sm bg-white mb-3 align-items-end stoker-filter-grid">
 
     {{-- Form FILTER (GET) tembus ke grid --}}
     <form id="stoker-filter-form"
@@ -2369,135 +2369,139 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 
-{{-- Manager seleksi global: event delegation + panel kanan --}}
+{{-- Manager seleksi khusus TAB EXPORT (di-scope ke #export-list-inner) --}}
 <script>
-(function(){
-  const KEY = 'exportSelectedIds';
+    (function(){
+      const KEY = 'exportSelectedIds';
 
-  const getSelected = () => new Set(JSON.parse(localStorage.getItem(KEY) || '[]'));
-  const saveSelected = (set) => localStorage.setItem(KEY, JSON.stringify(Array.from(set)));
+      const container = document.getElementById('export-list-inner'); // <<< scope
+      if (!container) return;
 
-  // Elemen UI
-  const headerCounter = document.querySelectorAll('#export-selected-counter');
-  const previewEl = document.getElementById('selected-preview');
-  const exportForm = document.getElementById('export-form');
-  const selectedInput = document.getElementById('selected_ids_input');
-  const btnCSV  = document.getElementById('btn-export-csv');
-  const btnXLSX = document.getElementById('btn-export-xlsx');
-  const btnDOCX = document.getElementById('btn-export-docx');
-  const formatInput = document.getElementById('export_format');
-  const defaultAction = exportForm?.getAttribute('action');
-  const docxAction    = "{{ route('dashboard.owner.export.docx') }}";
+      const getSelected = () => new Set(JSON.parse(localStorage.getItem(KEY) || '[]'));
+      const saveSelected = (set) => localStorage.setItem(KEY, JSON.stringify(Array.from(set)));
 
-  function updateCounters(){
-    const size = getSelected().size;
-    headerCounter.forEach(el => el.textContent = `${size} dipilih`);
-  }
+      // Elemen UI panel kanan
+      const headerCounter = document.querySelectorAll('#export-selected-counter');
+      const previewEl = document.getElementById('selected-preview');
+      const exportForm = document.getElementById('export-form');
+      const selectedInput = document.getElementById('selected_ids_input');
+      const btnCSV  = document.getElementById('btn-export-csv');
+      const btnXLSX = document.getElementById('btn-export-xlsx');
+      const btnDOCX = document.getElementById('btn-export-docx');
+      const formatInput = document.getElementById('export_format');
+      const defaultAction = exportForm?.getAttribute('action');
+      const docxAction    = "{{ route('dashboard.owner.export.docx') }}";
 
-  function renderPreview(){
-    const sel = getSelected();
-    if (!previewEl) return;
-    if (sel.size === 0) {
-      previewEl.innerHTML = '<span class="text-muted">Belum ada yang dipilih.</span>';
-      return;
-    }
-    previewEl.innerHTML = '';
-    sel.forEach(id => {
-      const pill = document.createElement('button');
-      pill.type = 'button';
-      pill.className = 'btn btn-sm btn-outline-primary';
-      pill.textContent = '#'+id;
-      pill.title = 'Klik untuk hapus';
-      pill.addEventListener('click', () => {
-        const s = getSelected(); s.delete(id); saveSelected(s);
-        document.querySelectorAll('.row-check[value="'+id+'"]').forEach(cb => cb.checked = false);
+      // Helper yang SELALU di-scope ke kontainer Export
+      const qRows   = () => Array.from(container.querySelectorAll('.row-check'));
+      const qById   = (id) => container.querySelector(`#${id}`);
+      const qValue  = (val) => Array.from(container.querySelectorAll(`.row-check[value="${val}"]`));
+
+      function updateCounters(){
+        const size = getSelected().size;
+        headerCounter.forEach(el => el.textContent = `${size} dipilih`);
+      }
+
+      function renderPreview(){
+        const sel = getSelected();
+        if (!previewEl) return;
+        if (sel.size === 0) {
+          previewEl.innerHTML = '<span class="text-muted">Belum ada yang dipilih.</span>';
+          return;
+        }
+        previewEl.innerHTML = '';
+        sel.forEach(id => {
+          const pill = document.createElement('button');
+          pill.type = 'button';
+          pill.className = 'btn btn-sm btn-outline-primary';
+          pill.textContent = '#'+id;
+          pill.title = 'Klik untuk hapus';
+          pill.addEventListener('click', () => {
+            const s = getSelected(); s.delete(id); saveSelected(s);
+            // uncheck baris di TAB EXPORT saja
+            qValue(id).forEach(cb => cb.checked = false);
+            syncMaster();
+            updateButtons();
+            updateCounters();
+            renderPreview();
+          });
+          previewEl.appendChild(pill);
+        });
+      }
+
+      function updateButtons(){
+        const enough = getSelected().size >= 2;
+        [btnCSV, btnXLSX, btnDOCX].forEach(b => { if (b) { b.disabled = !enough; b.title = enough ? '' : 'Pilih minimal 2 item dulu'; }});
+      }
+
+      function syncMaster(){
+        const master = qById('check_all_export');
+        if (!master) return;
+        const rows = qRows();
+        master.checked = rows.length > 0 && rows.every(x => x.checked);
+        master.indeterminate = !master.checked && rows.some(x => x.checked);
+      }
+
+      function hydratePage(){
+        const sel = getSelected();
+        qRows().forEach(cb => cb.checked = sel.has(cb.value));
+        syncMaster();
+      }
+
+      // Delegasi: toggle tiap baris (HANYA di kontainer export)
+      container.addEventListener('change', function(e){
+        if (!e.target.matches('.row-check')) return;
+        const sel = getSelected();
+        if (e.target.checked) sel.add(e.target.value); else sel.delete(e.target.value);
+        saveSelected(sel);
         syncMaster();
         updateButtons();
         updateCounters();
         renderPreview();
       });
-      previewEl.appendChild(pill);
-    });
-  }
 
-  function updateButtons(){
-    const enough = getSelected().size >= 2;
-    [btnCSV, btnXLSX, btnDOCX].forEach(b => { if (b) { b.disabled = !enough; b.title = enough ? '' : 'Pilih minimal 2 item dulu'; }});
-  }
+      // Delegasi: master checkbox (HANYA di kontainer export)
+      container.addEventListener('change', function(e){
+        if (!e.target.matches('#check_all_export')) return;
+        const rows = qRows();
+        const sel = getSelected();
+        rows.forEach(cb => {
+          cb.checked = e.target.checked;
+          if (cb.checked) sel.add(cb.value); else sel.delete(cb.value);
+        });
+        saveSelected(sel);
+        syncMaster();
+        updateButtons();
+        updateCounters();
+        renderPreview();
+      });
 
-  function syncMaster(){
-    const master = document.getElementById('check_all_export');
-    if (!master) return;
-    const rows = Array.from(document.querySelectorAll('.row-check'));
-    master.checked = rows.length > 0 && rows.every(x => x.checked);
-    master.indeterminate = !master.checked && rows.some(x => x.checked);
-  }
+      // Submit: kirim semua ID
+      if (exportForm) {
+        exportForm.addEventListener('submit', function(){
+          if (selectedInput) selectedInput.value = Array.from(getSelected()).join(',');
+        });
 
-  function hydratePage(){
-    const sel = getSelected();
-    document.querySelectorAll('.row-check').forEach(cb => cb.checked = sel.has(cb.value));
-    syncMaster();
-  }
+        if (btnCSV)  btnCSV.addEventListener('click',  () => { if (btnCSV.disabled) return;  exportForm.setAttribute('action', defaultAction); formatInput.value='csv';  exportForm.requestSubmit(); });
+        if (btnXLSX) btnXLSX.addEventListener('click', () => { if (btnXLSX.disabled) return; exportForm.setAttribute('action', defaultAction); formatInput.value='xlsx'; exportForm.requestSubmit(); });
+        if (btnDOCX) btnDOCX.addEventListener('click', () => { if (btnDOCX.disabled) return; exportForm.setAttribute('action', docxAction); exportForm.requestSubmit(); setTimeout(()=>exportForm.setAttribute('action', defaultAction),0); });
+      }
 
-  // Delegasi: toggle tiap baris
-  document.addEventListener('change', function(e){
-    if (!e.target.matches('.row-check')) return;
-    const sel = getSelected();
-    if (e.target.checked) sel.add(e.target.value); else sel.delete(e.target.value);
-    saveSelected(sel);
-    syncMaster();
-    updateButtons();
-    updateCounters();
-    renderPreview();
-  });
+      // Dipanggil setelah fragment export diganti via AJAX
+      window.afterExportListReplaced = function(){
+        hydratePage();
+        updateButtons();
+        updateCounters();
+        renderPreview();
+      };
 
-  // Delegasi: master checkbox
-  document.addEventListener('change', function(e){
-    if (!e.target.matches('#check_all_export')) return;
-    const rows = document.querySelectorAll('.row-check');
-    const sel = getSelected();
-    rows.forEach(cb => {
-      cb.checked = e.target.checked;
-      if (cb.checked) sel.add(cb.value); else sel.delete(cb.value);
-    });
-    saveSelected(sel);
-    syncMaster();
-    updateButtons();
-    updateCounters();
-    renderPreview();
-  });
-
-  // Submit: kirim semua ID
-  if (exportForm) {
-    exportForm.addEventListener('submit', function(){
-      if (selectedInput) selectedInput.value = Array.from(getSelected()).join(',');
-    });
-
-    if (btnCSV)  btnCSV.addEventListener('click',  () => { if (btnCSV.disabled) return;  exportForm.setAttribute('action', defaultAction); formatInput.value='csv';  exportForm.requestSubmit(); });
-    if (btnXLSX) btnXLSX.addEventListener('click', () => { if (btnXLSX.disabled) return; exportForm.setAttribute('action', defaultAction); formatInput.value='xlsx'; exportForm.requestSubmit(); });
-    if (btnDOCX) btnDOCX.addEventListener('click', () => { if (btnDOCX.disabled) return; exportForm.setAttribute('action', docxAction); exportForm.requestSubmit(); setTimeout(()=>exportForm.setAttribute('action', defaultAction),0); });
-  }
-
-  // Hook jika perlu dipanggil manual setelah replace
-  window.afterExportListReplaced = function(){
-    hydratePage();
-    updateButtons();
-    updateCounters();
-    renderPreview();
-  };
-
-  // Init awal
-  hydratePage();
-  updateButtons();
-  updateCounters();
-  renderPreview();
-})();
-</script>
-
-
-
-
-
+      // Init awal
+      hydratePage();
+      updateButtons();
+      updateCounters();
+      renderPreview();
+    })();
+    </script>
 
 
         </div>

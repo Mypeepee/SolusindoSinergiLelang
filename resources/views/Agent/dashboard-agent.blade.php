@@ -212,282 +212,533 @@
 
                             <!-- Stoker -->
 @if (session('role') === 'Stoker')
-<div class="row">
-    <!-- 3/4 Bagian Kiri: Tabel Properti -->
-    <div class="col-lg-9">
+{{-- ========== Stoker ========== --}}
+    <div class="row">
+      <!-- 3/4 kiri -->
+      <div class="col-lg-9">
         <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 fw-semibold text-primary">📋 Daftar Properti</h5>
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-semibold text-primary">📋 Daftar Properti</h5>
+          </div>
+
+          <div class="card-body">
+            <!-- Bar filter (GET) + tombol bulk (POST) -->
+            {{-- =================== FILTER BAR (STOKER) =================== --}}
+            <div class="row g-3 p-3 rounded shadow-sm bg-white mb-3 align-items-end stoker-filter-grid">
+
+    {{-- Form FILTER (GET) tembus ke grid --}}
+    <form id="stoker-filter-form"
+          method="GET"
+          action="{{ route('dashboard.owner') }}"
+          class="d-contents">
+      <input type="hidden" name="tab" value="stoker" />
+
+      {{-- 3-2-2-2-2 = 11 kolom; 1 kolom untuk Reset --}}
+      <div class="col-12 col-lg-3 pe-lg-2">
+        <label for="stoker_search" class="form-label mb-1">Cari ID Listing</label>
+        <input type="text" name="search" id="stoker_search" value="{{ request('search') }}"
+               class="form-control form-control-sm" placeholder="Cari ID Listing"
+               inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+      </div>
+
+      <div class="col-6 col-lg-2 pe-lg-2">
+        <label for="stoker_property_type" class="form-label mb-1">Tipe Property</label>
+        <select name="property_type" id="stoker_property_type" class="form-select form-select-sm">
+          <option value="" {{ request('property_type') ? '' : 'selected' }} disabled>Tipe Property</option>
+          <option value="rumah" @selected(request('property_type')==='rumah')>Rumah</option>
+          <option value="gudang" @selected(request('property_type')==='gudang')>Gudang</option>
+          <option value="apartemen" @selected(request('property_type')==='apartemen')>Apartemen</option>
+          <option value="tanah" @selected(request('property_type')==='tanah')>Tanah</option>
+          <option value="pabrik" @selected(request('property_type')==='pabrik')>Pabrik</option>
+          <option value="hotel dan villa" @selected(request('property_type')==='hotel dan villa')>Hotel dan Villa</option>
+          <option value="ruko" @selected(request('property_type')==='ruko')>Ruko</option>
+          <option value="toko" @selected(request('property_type')==='toko')>Toko</option>
+          <option value="lain-lain" @selected(request('property_type')==='lain-lain')>Lainnya</option>
+        </select>
+      </div>
+
+      <div class="col-6 col-lg-2 pe-lg-2">
+        <label for="stoker_province" class="form-label mb-1">Pilih Provinsi</label>
+        <select id="stoker_province" name="province" class="form-select form-select-sm">
+          <option disabled {{ request('province') ? '' : 'selected' }}>Pilih Provinsi</option>
+        </select>
+      </div>
+
+      <div class="col-6 col-lg-2 pe-lg-2">
+        <label for="stoker_city" class="form-label mb-1">Pilih Kota/Kab</label>
+        <select id="stoker_city" name="city" class="form-select form-select-sm" {{ request('province') ? '' : 'disabled' }}>
+          <option disabled selected>Pilih Kota/Kab</option>
+        </select>
+      </div>
+
+      <div class="col-6 col-lg-2 pe-lg-2">
+        <label for="stoker_district" class="form-label mb-1">Pilih Kecamatan</label>
+        <select id="stoker_district" name="district" class="form-select form-select-sm" {{ request('city') ? '' : 'disabled' }}>
+          <option disabled selected>Pilih Kecamatan</option>
+        </select>
+      </div>
+    </form>
+
+    {{-- Kolom kecil untuk tombol Reset biar sejajar dan simetris --}}
+    <div class="col-6 col-lg-1">
+      <label class="form-label d-block invisible">Reset</label>
+      <button type="button" id="btn-stoker-clear" class="btn reset-chip w-100">
+        <span class="me-1">↺</span>Reset
+      </button>
+    </div>
+  </div>
+
+  {{-- ==== STYLE KHUSUS STOKER FILTER ==== --}}
+  <style>
+    /* Bikin jarak antarkolom terasa di desktop */
+    .stoker-filter-grid > [class*="col-lg-"] { min-width: 0; }
+
+    /* Label & input feel yang sama dengan tab Export */
+    .stoker-filter-grid .form-label{ font-weight:600; color:#6b7280; }
+    .stoker-filter-grid .form-control,
+    .stoker-filter-grid .form-select{
+      border-radius:.625rem;
+    }
+
+    /* Chip reset kecil, simetris, tidak kotak panjang norak */
+    .reset-chip{
+      --chip-border:#ffb98c;
+      --chip-text:#ff7a00;
+      display:inline-flex; align-items:center; justify-content:center;
+      gap:.35rem; padding:.4rem .7rem;
+      font-size:.875rem; line-height:1; font-weight:700;
+      border-radius:.75rem; background:#fff; border:1px solid var(--chip-border);
+      color:var(--chip-text);
+      box-shadow:0 1px 0 rgba(0,0,0,.03);
+      transition:filter .15s ease, transform .06s ease, background .15s ease;
+    }
+    .reset-chip:hover{ background:#fff8f3; filter:brightness(1.02); }
+    .reset-chip:active{ transform:translateY(.5px); }
+  </style>
+
+
+            {{-- HOST STABIL untuk partial + spinner --}}
+            <div id="stoker-list-wrap">
+              <div id="stoker-loading" class="export-loading d-none">
+                <div class="spinner-border" role="status" aria-label="Loading"></div>
+              </div>
+              <div id="stoker-fragment-host">@include('partial.stoker_list')</div>
             </div>
-            <div class="card-body table-responsive">
-                <!-- Tabel Pencarian Properti -->
-                <form method="GET" action="{{ route('dashboard.agent') }}" class="row g-2 p-3 rounded shadow-sm bg-white">
-    {{-- ID Listing --}}
-    <div class="col-12 col-lg-3">
-        <label for="search" class="form-label d-block">Cari ID Listing</label>
-        <input type="text" name="search" id="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Cari ID Listing">
-    </div>
 
-    {{-- Tipe Property --}}
-    <div class="col-6 col-lg-2">
-        <label for="property_type" class="form-label d-block">Tipe Property</label>
-        <select name="property_type" id="property_type" class="form-select form-select-sm">
-            <option value="" {{ request('property_type') ? '' : 'selected' }} disabled>Tipe Property</option>
-            <option value="rumah" @selected(request('property_type') === 'rumah')>Rumah</option>
-            <option value="gudang" @selected(request('property_type') === 'gudang')>Gudang</option>
-            <option value="apartemen" @selected(request('property_type') === 'apartemen')>Apartemen</option>
-            <option value="tanah" @selected(request('property_type') === 'tanah')>Tanah</option>
-            <option value="pabrik" @selected(request('property_type') === 'pabrik')>Pabrik</option>
-            <option value="hotel dan villa" @selected(request('property_type') === 'hotel dan villa')>Hotel dan Villa</option>
-            <option value="ruko" @selected(request('property_type') === 'ruko')>Ruko</option>
-            <option value="toko" @selected(request('property_type') === 'toko')>Toko</option>
-            <option value="lain-lain" @selected(request('property_type') === 'lain-lain')>Lain-lain</option>
-        </select>
+        </div>
     </div>
+</div>
 
-    {{-- Provinsi --}}
-    <div class="col-6 col-lg-2">
-        <label for="province-desktop" class="form-label d-block">Pilih Provinsi</label>
-        <select id="province-desktop" name="province" class="form-select form-select-sm">
-            <option disabled {{ request('province') ? '' : 'selected' }}>Pilih Provinsi</option>
-        </select>
-    </div>
+      <!-- 1/4 kanan: panel pilihan + riwayat -->
+      <div class="col-lg-3">
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-header bg-white py-3 d-flex justify-content-end">
+            <form id="stoker-bulk-form" action="{{ route('stoker.bulkSold') }}" method="POST" class="m-0">
+              @csrf
+              <input type="hidden" name="selected_ids" id="stoker_selected_ids_input">
+              <button type="submit" id="btn-stoker-bulk-sold" class="btn-bulk" disabled title="Centang minimal 1 listing">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"></path>
+                </svg>
+                <span>Tandai Terjual</span>
+                <span class="badge bg-dark text-white badge-count ms-1" id="stoker-selected-counter">0</span>
+              </button>
+            </form>
 
-    {{-- Kota/Kabupaten --}}
-    <div class="col-6 col-lg-2">
-        <label for="city-desktop" class="form-label d-block">Pilih Kota/Kabupaten</label>
-        <select id="city-desktop" name="city" class="form-select form-select-sm" {{ request('province') ? '' : 'disabled' }}>
-            <option disabled selected>Pilih Kota/Kabupaten</option>
-        </select>
-    </div>
+            <style>
+                .btn-reset-filter{
+                  display:inline-flex; align-items:center; gap:.35rem;
+                  padding:.35rem .6rem; font-size:.875rem; line-height:1; font-weight:600;
+                  border-radius:.5rem; color:#ff6a00; background:#fff; border:1px solid #ffb98c;
+                  box-shadow:0 1px 0 rgba(0,0,0,.03); transition:.15s ease-in-out;
+                }
+                .btn-reset-filter:hover{ background:#fff7f2; border-color:#ff9d66; color:#e85a00; }
+                @media (max-width: 991.98px){ .w-lg-auto{ width:100%!important; } }
+                #stoker-filter-form .form-label{ font-weight:600; color:#6b7280; }
+                #stoker-filter-form .form-control, #stoker-filter-form .form-select{ border-radius:.625rem; }
 
-    {{-- Kecamatan --}}
-    <div class="col-6 col-lg-2">
-        <label for="district-desktop" class="form-label d-block">Pilih Kecamatan</label>
-        <select id="district-desktop" name="district" class="form-select form-select-sm" {{ request('city') ? '' : 'disabled' }}>
-            <option disabled selected>Pilih Kecamatan</option>
-        </select>
-    </div>
+                /* >>>>> Ini kunci: overlay hanya menutup wadah tabel Stoker */
+                #stoker-list-wrap{ position:relative; min-height:120px; }
+                #stoker-list-wrap .export-loading{
+                  position:absolute; inset:0;
+                  display:flex; align-items:center; justify-content:center;
+                  background: rgba(255,255,255,.6);
+                  backdrop-filter: saturate(120%) blur(1px);
+                  z-index:3;
+                }
+                .export-loading.d-none{ display:none; }
+                .reset-chip:disabled{
+    opacity:.55; cursor:not-allowed; filter:grayscale(1);
+  }
+              </style>
 
-    {{-- Tombol --}}
-    <div class="col-12 col-lg-1 d-grid">
-        <button type="submit" class="btn btn-dark btn-sm">Search</button>
-    </div>
-</form>
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      const provinceDesktop = document.getElementById('province-desktop');
-      const cityDesktop     = document.getElementById('city-desktop');
-      const districtDesktop = document.getElementById('district-desktop');
+    (function(){
+      const selProv = document.getElementById('stoker_province');
+      const selCity = document.getElementById('stoker_city');
+      const selDist = document.getElementById('stoker_district');
+      const btnClear = document.getElementById('btn-stoker-clear');
+      const searchEl = document.getElementById('stoker_search');
+      const selType  = document.getElementById('stoker_property_type');
 
-      const provinceMap = new Map(); // Provinsi => Set Kota
-      const locationMap = new Map(); // Provinsi => (Kota => Set Kecamatan)
+      if (!selProv || !selCity || !selDist) return;
 
-      // Load data lokasi (file harus ada di public/data/indonesia.json)
-      fetch("{{ asset('data/indonesia.json') }}", { cache: 'no-store' })
-        .then(res => {
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          return res.json();
-        })
-        .then(data => {
-          // Susun struktur data
-          data.forEach(item => {
-            const prov = (item.province || '').trim();
-            const reg  = (item.regency  || '').trim();
-            const dist = (item.district || '').trim();
-            if (!prov || !reg || !dist) return;
+      const DATA_URL = "{{ asset('data/indonesia.json') }}";
+      const provinceMap = new Map();
+      const locationMap = new Map();
 
-            if (!provinceMap.has(prov)) provinceMap.set(prov, new Set());
-            provinceMap.get(prov).add(reg);
+      const sortCity = (a,b) => {
+        const A = a.toUpperCase().startsWith('KOTA');
+        const B = b.toUpperCase().startsWith('KOTA');
+        if (A && !B) return -1;
+        if (!A && B) return 1;
+        return a.localeCompare(b);
+      };
 
-            if (!locationMap.has(prov)) locationMap.set(prov, new Map());
-            if (!locationMap.get(prov).has(reg)) locationMap.get(prov).set(reg, new Set());
-            locationMap.get(prov).get(reg).add(dist);
-          });
+      function resetSelect(el, ph){ el.innerHTML = `<option disabled selected>${ph}</option>`; }
 
-          // Isi pilihan provinsi
-          for (const prov of provinceMap.keys()) {
-            provinceDesktop.insertAdjacentHTML('beforeend', `<option value="${prov}">${prov}</option>`);
-          }
+      function fillProvinces(){
+        resetSelect(selProv, 'Pilih Provinsi');
+        Array.from(provinceMap.keys()).sort()
+          .forEach(p => selProv.insertAdjacentHTML('beforeend', `<option value="${p}">${p}</option>`));
+      }
+      function fillCities(prov){
+        resetSelect(selCity, 'Pilih Kota/Kab'); resetSelect(selDist, 'Pilih Kecamatan'); selDist.disabled = true;
+        if (!prov || !provinceMap.has(prov)) { selCity.disabled = true; return; }
+        Array.from(provinceMap.get(prov)).sort(sortCity)
+          .forEach(c => selCity.insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`));
+        selCity.disabled = false;
+      }
+      function fillDistricts(prov, city){
+        resetSelect(selDist, 'Pilih Kecamatan');
+        if (!prov || !city || !locationMap.has(prov) || !locationMap.get(prov).has(city)){ selDist.disabled = true; return; }
+        Array.from(locationMap.get(prov).get(city)).sort()
+          .forEach(d => selDist.insertAdjacentHTML('beforeend', `<option value="${d}">${d}</option>`));
+        selDist.disabled = false;
+      }
 
-          // Restore dari query string (opsional)
-          const params = new URLSearchParams(location.search);
-          const savedProv = params.get('province');
-          const savedCity = params.get('city');
-          const savedDist = params.get('district');
+      // ====== NEW: cek apakah ada filter aktif ======
+      function hasActiveFilters(){
+        const s = (searchEl?.value || '').trim();
+        const t = selType?.value || '';
+        const p = selProv?.value || '';
+        const c = selCity?.value || '';
+        const d = selDist?.value || '';
+        return Boolean(s || t || p || c || d);
+      }
+      function setResetState(){
+        if (btnClear) btnClear.disabled = !hasActiveFilters();
+      }
 
-          if (savedProv && provinceMap.has(savedProv)) {
-            provinceDesktop.value = savedProv;
-            updateCityDropdown(savedProv, cityDesktop);
-            if (savedCity && provinceMap.get(savedProv).has(savedCity)) {
-              cityDesktop.value = savedCity;
-              cityDesktop.disabled = false;
-              updateDistrictDropdown(savedProv, savedCity);
-              if (savedDist) {
-                districtDesktop.value = savedDist;
-                districtDesktop.disabled = false;
-              }
-            }
-          }
-        })
-        .catch(err => {
-          console.error('Gagal load indonesia.json:', err);
+      // Load data lokasi
+      fetch(DATA_URL).then(r=>r.json()).then(rows=>{
+        rows.forEach(x=>{
+          const prov=(x.province||'').trim(), city=(x.regency||'').trim(), dist=(x.district||'').trim();
+          if(!prov||!city||!dist) return;
+          if(!provinceMap.has(prov)) provinceMap.set(prov,new Set());
+          provinceMap.get(prov).add(city);
+          if(!locationMap.has(prov)) locationMap.set(prov,new Map());
+          if(!locationMap.get(prov).has(city)) locationMap.get(prov).set(city,new Set());
+          locationMap.get(prov).get(city).add(dist);
         });
+        fillProvinces();
 
-      // Events
-      provinceDesktop.addEventListener('change', function () {
-        updateCityDropdown(this.value, cityDesktop);
-      });
-
-      cityDesktop.addEventListener('change', function () {
-        updateDistrictDropdown(provinceDesktop.value, this.value);
-      });
-
-      // Helpers
-      function updateCityDropdown(prov, targetCityDropdown) {
-        const citySet = provinceMap.get(prov) || new Set();
-        targetCityDropdown.disabled = false;
-        targetCityDropdown.innerHTML = '<option value="" selected>Pilih Kota/Kabupaten</option>';
-        for (const c of citySet) {
-          targetCityDropdown.insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`);
+        const rqProv = @json(request('province'));
+        const rqCity = @json(request('city'));
+        const rqDist = @json(request('district'));
+        if (rqProv && provinceMap.has(rqProv)) {
+          selProv.value = rqProv; fillCities(rqProv);
+          if (rqCity && provinceMap.get(rqProv).has(rqCity)) {
+            selCity.value = rqCity; fillDistricts(rqProv, rqCity);
+            if (rqDist) selDist.value = rqDist;
+          }
+        } else {
+          selCity.disabled = true; selDist.disabled = true;
+          resetSelect(selCity, 'Pilih Kota/Kab'); resetSelect(selDist, 'Pilih Kecamatan');
         }
-        // Reset kecamatan
-        districtDesktop.disabled = true;
-        districtDesktop.innerHTML = '<option value="" selected>Pilih Kecamatan</option>';
-      }
 
-      function updateDistrictDropdown(prov, selectedCity) {
-        const districtSet = (locationMap.get(prov) && locationMap.get(prov).get(selectedCity)) || new Set();
-        districtDesktop.disabled = false;
-        districtDesktop.innerHTML = '<option value="" selected>Pilih Kecamatan</option>';
-        for (const d of districtSet) {
-          districtDesktop.insertAdjacentHTML('beforeend', `<option value="${d}">${d}</option>`);
+        setResetState(); // after hydrate
+      }).catch(e=>console.error('Gagal load indonesia.json:', e));
+
+      // Trigger AJAX tiap perubahan + update state tombol reset
+      const kick = () => { if (typeof debounced === 'function') debounced(); setResetState(); };
+
+      selProv.addEventListener('change', ()=>{ fillCities(selProv.value); kick(); });
+      selCity.addEventListener('change', ()=>{ fillDistricts(selProv.value, selCity.value); kick(); });
+      selDist.addEventListener('change', kick);
+      searchEl?.addEventListener('input', kick);
+      selType?.addEventListener('change', kick);
+
+      // ====== NEW: Reset ber-otak ======
+      btnClear?.addEventListener('click', ()=>{
+        // kalau tidak ada filter aktif, ya jangan reload apapun
+        if (!hasActiveFilters()) return;
+
+        if (searchEl) searchEl.value = '';
+        if (selType)  selType.selectedIndex = 0;
+        // reset hierarki lokasi
+        selProv.selectedIndex = 0;
+        fillCities(null); // auto-disable city & district
+
+        // muat ulang tabel ke kondisi default (tanpa filter)
+        if (typeof window.__loadStokerList === 'function') {
+          window.__loadStokerList({ search:'', property_type:'', province:'', city:'', district:'', page:1 });
         }
-      }
-    }); // <-- ini yang hilang tadi
+
+        setResetState();
+      });
+    })();
     </script>
 
-                <!-- Tabel Properti -->
-                <div class="table-responsive">
-                    <table class="table table-bordered table-hover align-middle text-center">
-                        <thead class="table-light">
-                            <tr>
-                                <th>ID</th>
-                                <th>Lokasi</th>
-                                <th>Luas (m²)</th>
-                                <th>Harga</th>
-                                <th>Gambar</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($properties as $property)
-                                <tr>
-                                    <td>{{ $property->id_listing }}</td>
-                                    <td>{{ $property->lokasi }}</td>
-                                    <td>{{ $property->luas ?? '-' }}</td>
-                                    <td>Rp {{ number_format($property->harga, 0, ',', '.') }}</td>
-                                    <td>
-                                        @php
-                                            $fotoArray = explode(',', $property->gambar);
-                                            $fotoUtama = $fotoArray[0] ?? 'default.jpg';
-                                        @endphp
-                                        <img src="{{ $fotoUtama }}"
-                                             alt="Foto Properti"
-                                             class="img-thumbnail" style="max-width: 80px; max-height: 80px;">
-                                    </td>
-                                    <td>
-                                        <form action="{{ route('listing.deletes', $property->id_listing) }}" method="POST" onsubmit="return confirm('Tandai listing ini sebagai Terjual?');">
-                                            @csrf
-                                            <input type="hidden" name="redirect" value="{{ url()->full() }}">
-                                            <button type="submit" class="btn btn-warning btn-sm">Tandai Terjual</button>
-                                          </form>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="6" class="text-center">Tidak ada data ditemukan.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-                <!-- Pagination -->
-                <div class="col-12">
-                    <div class="pagination d-flex justify-content-center mt-4 gap-1 overflow-auto">
-                        {{-- Previous --}}
-                        @if ($properties->onFirstPage())
-                            <a class="btn btn-sm btn-light rounded disabled">&laquo;</a>
-                        @else
-                            <a href="{{ $properties->appends(request()->query())->previousPageUrl() }}" class="btn btn-sm btn-light rounded">&laquo;</a>
-                        @endif
+          </div>
 
-                        {{-- Pages --}}
-                        @php
-                            $currentPage = $properties->currentPage();
-                            $lastPage = $properties->lastPage();
-                            $start = max($currentPage - 2, 1);
-                            $end = min($currentPage + 2, $lastPage);
-                        @endphp
-
-                        @if ($start > 1)
-                            <a href="{{ $properties->appends(request()->query())->url(1) }}" class="btn btn-sm btn-light rounded">1</a>
-                            @if ($start > 2)
-                                <span class="btn btn-sm btn-light rounded disabled">...</span>
-                            @endif
-                        @endif
-
-                        @for ($i = $start; $i <= $end; $i++)
-                            <a href="{{ $properties->appends(request()->query())->url($i) }}" class="btn btn-sm rounded {{ $i === $currentPage ? 'btn-primary text-white' : 'btn-light' }}">
-                                {{ $i }}
-                            </a>
-                        @endfor
-
-                        @if ($end < $lastPage)
-                            @if ($end < $lastPage - 1)
-                                <span class="btn btn-sm btn-light rounded disabled">...</span>
-                            @endif
-                            <a href="{{ $properties->appends(request()->query())->url($lastPage) }}" class="btn btn-sm btn-light rounded">{{ $lastPage }}</a>
-                        @endif
-
-                        {{-- Next --}}
-                        @if ($properties->hasMorePages())
-                            <a href="{{ $properties->appends(request()->query())->nextPageUrl() }}" class="btn btn-sm btn-light rounded">&raquo;</a>
-                        @else
-                            <a class="btn btn-sm btn-light rounded disabled">&raquo;</a>
-                        @endif
-                    </div>
-                </div>
+          <div class="card-body">
+            <div id="stoker-selected-preview" class="d-flex flex-wrap gap-2 small"></div>
+            <hr class="my-3">
+            <div class="text-muted small">
+              Centang item di halaman mana pun. Pilihan disimpan sementara di browser sampai kamu klik <strong>Tandai Terjual</strong>.
             </div>
+          </div>
         </div>
-    </div>
+        <style>
+          /* Biar anak-anak di dalam form ikut grid parent row */
+          .d-contents { display: contents !important; }
 
-    <div class="col-lg-3">
-        <!-- Riwayat properti, untuk dikembangkan lebih lanjut -->
+          /* Tombol bulk yang manusiawi (punyamu tadi) */
+          .btn-bulk {
+            display: inline-flex; align-items: center; gap: .5rem;
+            padding: .55rem .9rem;
+            border-radius: .75rem;
+            font-weight: 600;
+            background: #f7c74a;
+            border: 1px solid #f1b933;
+            box-shadow: 0 1px 0 rgba(0,0,0,.04), inset 0 -2px 0 rgba(0,0,0,.05);
+            transition: transform .06s ease, box-shadow .15s ease, filter .15s ease;
+            color: #5b3d00;
+          }
+          .btn-bulk:hover { filter: brightness(1.03); transform: translateY(-1px); }
+          .btn-bulk:active { transform: translateY(0); box-shadow: inset 0 2px 0 rgba(0,0,0,.08); }
+          .btn-bulk:disabled { background:#f0e6c8; border-color:#e2d7b6; color:#9c8c66; box-shadow:none; cursor:not-allowed; }
+          .badge-count { font-weight:700; letter-spacing:.2px; }
+        </style>
+
         <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 fw-semibold text-primary">📝 Riwayat Properti</h5>
-            </div>
-            <div class="card-body">
-                @if($soldProperties->isEmpty())
-                    <p class="text-center text-muted">Belum ada riwayat yang ditampilkan.</p>
-                @else
-                <ul class="list-group list-group-flush small" style="max-height: 360px; overflow:auto;">
-                    @foreach($soldProperties as $property)
-                        <li class="list-group-item">
-                            <strong>{{ \Carbon\Carbon::parse($property->tanggal_diupdate)->format('d M Y') }}</strong>
-                            ({{ $property->id_listing }}) terjual
-                        </li>
-                    @endforeach
-                </ul>
-
-                @endif
-            </div>
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-semibold text-primary">📝 Riwayat Properti</h5>
+          </div>
+          <div class="card-body">
+            @if($soldProperties->isEmpty())
+              <p class="text-center text-muted">Belum ada riwayat yang ditampilkan.</p>
+            @else
+              <ul class="list-group list-group-flush small" style="max-height: 360px; overflow:auto;">
+                @foreach($soldProperties as $property)
+                  <li class="list-group-item">
+                    <strong>{{ \Carbon\Carbon::parse($property->tanggal_diupdate)->format('d M Y') }}</strong>
+                    ({{ $property->id_listing }}) terjual
+                  </li>
+                @endforeach
+              </ul>
+            @endif
+          </div>
         </div>
+      </div>
     </div>
 
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // ==== Filter refs ====
+    const input   = document.getElementById('stoker_search');
+    const selType = document.getElementById('stoker_property_type');
+    const selProv = document.getElementById('stoker_province');
+    const selCity = document.getElementById('stoker_city');
+    const selDist = document.getElementById('stoker_district');
 
-</div>
+    // ==== Host partial (stabil) ====
+    const host = document.getElementById('stoker-fragment-host');
+
+    // ==== Route fragment ====
+    const fragmentRoute = "{{ route('dashboard.owner.stoker.list') }}";
+
+    // ==== Overlay (hanya pada tabel) ====
+    function getOverlay(){ return document.getElementById('stoker-loading'); }
+    function showLoading(on){ const el = getOverlay(); el && el.classList.toggle('d-none', !on); }
+
+    // ==== Param builder ====
+    let t, lastReqId = 0;
+    function paramsObj(merge = {}) {
+      return {
+        tab: 'stoker',
+        search:        input?.value || '',
+        property_type: selType?.value || '',
+        province:      selProv?.value || '',
+        city:          selCity?.value || '',
+        district:      selDist?.value || '',
+        page: 1,
+        ...merge
+      };
+    }
+    const qs = (o) => new URLSearchParams(o).toString();
+
+    // ==== AJAX loader (replace partial tabel + pagination saja) ====
+    async function loadList(extra = {}) {
+      const myId = ++lastReqId;
+      showLoading(true);
+      try {
+        const url = fragmentRoute + '?' + qs(paramsObj(extra));
+        const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
+        const html = await res.text();
+        if (myId !== lastReqId) return;
+        host.innerHTML = html;                          // replace tabel + pagination
+        if (window.afterStokerListReplaced) window.afterStokerListReplaced(); // re-hydrate centangan
+      } catch (e) {
+        if (e?.name !== 'AbortError') console.error('stoker load error:', e);
+      } finally {
+        if (myId === lastReqId) showLoading(false);
+      }
+    }
+    window.__loadStokerList = loadList;
+
+    const debounced = () => { clearTimeout(t); t = setTimeout(() => loadList(), 220); };
+
+    // ==== Filter events ====
+    input?.addEventListener('input', function(){
+      const cleaned = this.value.replace(/[^\d]/g, '');
+      if (this.value !== cleaned) this.value = cleaned;
+      debounced();
+    });
+    [selType, selProv, selCity, selDist].forEach(el => el && el.addEventListener('change', debounced));
+
+    // Intercept submit (biar gak full reload)
+    document.getElementById('stoker-filter-form')
+      ?.addEventListener('submit', function(e){ e.preventDefault(); loadList(); });
+
+    // Delegasi pagination
+    host?.addEventListener('click', function(e){
+      const a = e.target.closest('a.js-stoker-page');
+      if (!a) return;
+      e.preventDefault();
+      const page = a.dataset.page || '1';
+      loadList({ page });
+    });
+
+    // =========================
+    //   MANAGER SELEKSI STOKER
+    // =========================
+    (function(){
+      const KEY = 'stokerSelectedIds';
+      const getSel  = () => new Set(JSON.parse(localStorage.getItem(KEY) || '[]'));
+      const saveSel = (set) => localStorage.setItem(KEY, JSON.stringify(Array.from(set)));
+
+      const counters   = () => document.querySelectorAll('#stoker-selected-counter');
+      const previewEl  = () => document.getElementById('stoker-selected-preview');
+      const hiddenEl   = () => document.getElementById('stoker_selected_ids_input');
+      const bulkBtn    = () => document.getElementById('btn-stoker-bulk-sold');
+
+      function updateCounterAndHidden(){
+        const size = getSel().size;
+        counters().forEach(el => el.textContent = String(size));
+        const hid = hiddenEl(); if (hid) hid.value = Array.from(getSel()).join(',');
+        const btn = bulkBtn(); if (btn) { btn.disabled = size < 1; btn.title = size < 1 ? 'Centang minimal 1 listing' : ''; }
+      }
+
+      function renderPreview(){
+        const el = previewEl(); if (!el) return;
+        const sel = getSel();
+        el.innerHTML = sel.size ? '' : '<span class="text-muted">Belum ada yang dipilih.</span>';
+        sel.forEach(id => {
+          const pill = document.createElement('button');
+          pill.type = 'button';
+          pill.className = 'btn btn-sm btn-outline-primary';
+          pill.textContent = '#'+id;
+          pill.title = 'Klik untuk hapus';
+          pill.addEventListener('click', () => {
+            const s = getSel(); s.delete(String(id)); saveSel(s);
+            document.querySelectorAll('#stoker-list-inner .row-check[value="'+id+'"]').forEach(cb => cb.checked = false);
+            syncMaster();
+            updateCounterAndHidden();
+            renderPreview();
+          });
+          el.appendChild(pill);
+        });
+      }
+
+      function syncMaster(){
+        const rows = Array.from(document.querySelectorAll('#stoker-list-inner .row-check'));
+        const master = document.getElementById('check_all_stoker');
+        if (!master) return;
+        master.checked = rows.length > 0 && rows.every(x => x.checked);
+        master.indeterminate = rows.some(x => x.checked) && !master.checked;
+      }
+
+      // Dipanggil SETIAP partial stoker_list selesai diganti
+      window.afterStokerListReplaced = function(){
+        const sel = getSel();
+
+        // Pre-check baris
+        document.querySelectorAll('#stoker-list-inner .row-check').forEach(cb => {
+          cb.checked = sel.has(String(cb.value));
+        });
+
+        // Master checkbox
+        const master = document.getElementById('check_all_stoker');
+        if (master) {
+          const rows = Array.from(document.querySelectorAll('#stoker-list-inner .row-check'));
+          master.checked = rows.length > 0 && rows.every(cb => cb.checked);
+          master.indeterminate = rows.some(cb => cb.checked) && !master.checked;
+
+          master.onchange = function(){
+            const now = this.checked;
+            const s = getSel();
+            rows.forEach(cb => {
+              cb.checked = now;
+              const val = String(cb.value);
+              if (now) s.add(val); else s.delete(val);
+            });
+            saveSel(s);
+            updateCounterAndHidden();
+            renderPreview();
+            syncMaster();
+          };
+        }
+
+        // Row listeners
+        document.querySelectorAll('#stoker-list-inner .row-check').forEach(cb => {
+          cb.addEventListener('change', function(){
+            const s = getSel();
+            const val = String(this.value);
+            if (this.checked) s.add(val); else s.delete(val);
+            saveSel(s);
+            updateCounterAndHidden();
+            renderPreview();
+            syncMaster();
+          });
+        });
+
+        updateCounterAndHidden();
+        renderPreview();
+        syncMaster();
+      };
+
+      // Init pertama
+      if (window.afterStokerListReplaced) window.afterStokerListReplaced();
+
+      // Submit bulk: kirim semua ID
+      document.getElementById('stoker-bulk-form')?.addEventListener('submit', function(e){
+        const sel = Array.from(getSel());
+        const hid = hiddenEl(); if (hid) hid.value = sel.join(',');
+        if (sel.length < 1) e.preventDefault();
+      });
+
+      // Optional: clear selection via session flash
+      @if (session('stoker_clear_selection'))
+        localStorage.removeItem(KEY);
+        if (window.afterStokerListReplaced) window.afterStokerListReplaced();
+      @endif
+    })();
+  });
+  </script>
+
+        {{-- ========== Stoker ========== --}}
 @endif
 
 
@@ -1161,11 +1412,11 @@
                             <div class="mb-2"><label>Judul</label><input type="text" class="form-control" name="title" required value="${ev.title || ''}"></div>
                             <div class="mb-2"><label>Deskripsi</label><textarea class="form-control" name="description">${ev.description || ''}</textarea></div>
                             <div class="mb-2"><label>Mulai</label>
-                                <input type="datetime-local" class="form-control" name="start" id="evEditStart" required 
+                                <input type="datetime-local" class="form-control" name="start" id="evEditStart" required
                                     value="${dateOnlyStart}T${formatTimeForInput(startDate)}">
                             </div>
                             <div class="mb-2"><label>Selesai</label>
-                                <input type="datetime-local" class="form-control" name="end" id="evEditEnd" required 
+                                <input type="datetime-local" class="form-control" name="end" id="evEditEnd" required
                                     value="${dateOnlyEnd}T${formatTimeForInput(endDate)}">
                             </div>
                             <div class="form-check mb-2">
