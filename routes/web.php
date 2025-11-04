@@ -289,3 +289,11 @@ Route::post('/owner/export-docx', [ExportController::class, 'letters'])
 
 Route::get('/dashboard/owner/export-list', [AgentAdminController::class, 'exportList'])
     ->name('dashboard.owner.export.list');
+
+Route::get('/dashboard/owner/stoker-list', [AgentAdminController::class,'stokerList'])
+    ->name('dashboard.owner.stoker.list');
+
+Route::post('/dashboard/stoker/bulk-sold', [AgentAdminController::class, 'stokerBulkSold'])
+    ->name('stoker.bulkSold');
+
+
