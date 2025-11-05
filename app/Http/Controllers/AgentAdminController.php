@@ -173,31 +173,26 @@ class AgentAdminController extends Controller
         // **Penambahan untuk Stoker**
 if ($role === 'Stoker') {
     $stokerProperties = Property::select(
-            'id_listing',
-            'lokasi',
-            'luas',
-            'harga',
-            'gambar',
-            'status',
-            'tipe',
-            'provinsi',
-            'kota',
-            'kecamatan',
-            'vendor' // <= WAJIB: kamu pakai di partial
-        )
-        ->whereRaw('LOWER(status) = ?', ['tersedia'])
-        ->when(request('search'), function ($q, $search) {
-            return is_numeric($search)
-                ? $q->where('id_listing', (int) $search)
-                : $q->whereRaw('1=0');
-        })
-        ->when(request('property_type'), fn($q,$v) => $q->whereRaw('LOWER(tipe)=?', [strtolower($v)]))
-        ->when(request('province'), fn($q,$v) => $q->where('provinsi', $v))
-        ->when(request('city'), fn($q,$v) => $q->where('kota', $v))
-        ->when(request('district'), fn($q,$v) => $q->where('kecamatan', $v))
-        ->orderByDesc('id_listing')
-        ->paginate(10)
-        ->appends(request()->only(['search','property_type','province','city','district']));
+        'id_listing','lokasi','luas','harga','gambar','status',
+        'tipe','provinsi','kota','kecamatan','vendor' // << tambahkan vendor
+    )
+    ->whereRaw('LOWER(status) = ?', ['tersedia'])
+    ->when(request('search'), function ($q, $search) {
+        return is_numeric($search)
+            ? $q->where('id_listing', (int)$search)
+            : $q->whereRaw('1=0');
+    })
+    ->when(request('vendor'), function ($q, $v) {
+        $v = mb_strtolower(trim($v), 'UTF-8');
+        return $q->whereRaw('LOWER(vendor) LIKE ?', ['%'.$v.'%']);
+    })
+    ->when(request('property_type'), fn($q,$v) => $q->whereRaw('LOWER(tipe)=?', [strtolower($v)]))
+    ->when(request('province'), fn($q,$v) => $q->where('provinsi', $v))
+    ->when(request('city'), fn($q,$v) => $q->where('kota', $v))
+    ->when(request('district'), fn($q,$v) => $q->where('kecamatan', $v))
+    ->orderByDesc('id_listing')
+    ->paginate(10)
+    ->appends(request()->only(['search','vendor','property_type','province','city','district']));
 }
 
 
@@ -2098,8 +2093,9 @@ public function exportList(Request $request)
 
 public function stokerList(Request $request)
 {
-    // Sanitasi input (karena manusia… ya gitu)
+    // Sanitasi input
     $search   = trim((string) $request->get('search', ''));
+    $vendor   = trim((string) $request->get('vendor', ''));   // input vendor (free text)
     $ptype    = $request->get('property_type');
     $province = $request->get('province');
     $city     = $request->get('city');
@@ -2120,15 +2116,48 @@ public function stokerList(Request $request)
             'p.provinsi',
             'p.kota',
             'p.kecamatan',
-            'p.vendor' // <<< WAJIB. Tanpa ini, page 2 dkk bakal “-”
+            'p.vendor'
         )
-        ->whereRaw('LOWER(p.status) = ?', ['tersedia'])
+        // status dibikin tahan banting: lower+trim
+        ->whereRaw('LOWER(TRIM(p.status)) = ?', ['tersedia'])
 
-        // SEARCH: hanya angka, selain itu matiin hasil
+        // SEARCH ID LISTING: hanya angka; selain itu abaikan (jangan bunuh hasil)
         ->when($search !== '', function ($query) use ($search) {
-            return ctype_digit($search)
-                ? $query->where('p.id_listing', (int) $search)
-                : $query->whereRaw('1=0');
+            if (ctype_digit($search)) {
+                return $query->where('p.id_listing', (int) $search);
+            }
+            // kalau bukan angka, jangan kasih 1=0; cukup diabaikan
+            return $query;
+        })
+
+        // FILTER VENDOR: multi-keyword, order-agnostic, case-insensitive + alias akronim
+        ->when($vendor !== '', function ($q) use ($vendor) {
+            $tokens = array_filter(preg_split('/\s+/', strtolower($vendor)));
+
+            // peta alias akronim -> nama panjang yang sering dipakai
+            $alias = [
+                'bri'      => 'bank rakyat indonesia',
+                'bni'      => 'bank negara indonesia',
+                'btn'      => 'bank tabungan negara',
+                'mandiri'  => 'bank mandiri',
+                'bca'      => 'bank central asia',
+                'mega'     => 'bank mega',
+                'bsi'      => 'bank syariah indonesia',
+            ];
+
+            $q->where(function($qq) use ($tokens, $alias) {
+                foreach ($tokens as $t) {
+                    $qq->where(function($w) use ($t, $alias) {
+                        // match langsung kata kunci
+                        $w->whereRaw('LOWER(TRIM(p.vendor)) LIKE ?', ['%'.$t.'%']);
+
+                        // kalau ada aliasnya, OR-kan dengan nama panjang
+                        if (isset($alias[$t])) {
+                            $w->orWhereRaw('LOWER(TRIM(p.vendor)) LIKE ?', ['%'.$alias[$t].'%']);
+                        }
+                    });
+                }
+            });
         })
 
         // FILTER tipe
@@ -2141,16 +2170,19 @@ public function stokerList(Request $request)
 
         ->orderByDesc('p.id_listing');
 
+    // Pagination
     $page = max(1, (int) ($request->get('page') ?? 1));
     $stokerProperties = $q->paginate(10, ['*'], 'page', $page)
         ->appends(array_merge(
-            $request->only(['search','property_type','province','city','district']),
+            $request->only(['search','vendor','property_type','province','city','district']),
             ['tab' => 'stoker']
         ));
 
     // Balikin partial (AJAX fragment)
     return view('partial.stoker_list', compact('stokerProperties'));
 }
+
+
 
 
 public function stokerBulkSold(Request $request)
