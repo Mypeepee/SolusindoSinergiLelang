@@ -171,25 +171,35 @@ class AgentAdminController extends Controller
         }
 
         // **Penambahan untuk Stoker**
-        if ($role === 'Stoker') {
-            $stokerProperties = Property::select(
-                    'id_listing','lokasi','luas','harga','gambar','status',
-                    'tipe','provinsi','kota','kecamatan'
-                )
-                ->whereRaw('LOWER(status) = ?', ['tersedia'])
-                ->when(request('search'), function ($q, $search) {
-                    return is_numeric($search)
-                        ? $q->where('id_listing', (int) $search)
-                        : $q->whereRaw('1=0');
-                })
-                ->when(request('property_type'), fn($q,$v) => $q->whereRaw('LOWER(tipe)=?', [strtolower($v)]))
-                ->when(request('province'), fn($q,$v) => $q->where('provinsi', $v))
-                ->when(request('city'), fn($q,$v) => $q->where('kota', $v))
-                ->when(request('district'), fn($q,$v) => $q->where('kecamatan', $v))
-                ->orderByDesc('id_listing')
-                ->paginate(10)
-                ->appends(request()->only(['search','property_type','province','city','district']));
-        }
+if ($role === 'Stoker') {
+    $stokerProperties = Property::select(
+            'id_listing',
+            'lokasi',
+            'luas',
+            'harga',
+            'gambar',
+            'status',
+            'tipe',
+            'provinsi',
+            'kota',
+            'kecamatan',
+            'vendor' // <= WAJIB: kamu pakai di partial
+        )
+        ->whereRaw('LOWER(status) = ?', ['tersedia'])
+        ->when(request('search'), function ($q, $search) {
+            return is_numeric($search)
+                ? $q->where('id_listing', (int) $search)
+                : $q->whereRaw('1=0');
+        })
+        ->when(request('property_type'), fn($q,$v) => $q->whereRaw('LOWER(tipe)=?', [strtolower($v)]))
+        ->when(request('province'), fn($q,$v) => $q->where('provinsi', $v))
+        ->when(request('city'), fn($q,$v) => $q->where('kota', $v))
+        ->when(request('district'), fn($q,$v) => $q->where('kecamatan', $v))
+        ->orderByDesc('id_listing')
+        ->paginate(10)
+        ->appends(request()->only(['search','property_type','province','city','district']));
+}
+
 
         $salesData = $salesData ?? [];
         $transactions = $transactions ?? [];
@@ -803,20 +813,28 @@ $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar'
         ->get();
 
         // ---------- BLOK STOKER (SELALU DISIAPKAN, TIDAK TERGANTUNG ROLE) ----------
-        $stokerProperties = Property::select('id_listing','lokasi','luas','harga','gambar','status','tipe','provinsi','kota','kecamatan')
-        ->whereRaw('LOWER(status) = ?', ['tersedia'])
-        ->when(request('search'), function ($query, $search) {
-            return is_numeric($search)
-                ? $query->where('id_listing', (int)$search)
-                : $query->whereRaw('1=0');
-        })
-        ->when(request('property_type'), fn($q,$v) => $q->whereRaw('LOWER(tipe)=?', [strtolower($v)]))
-        ->when(request('province'), fn($q,$v) => $q->where('provinsi', $v))
-        ->when(request('city'), fn($q,$v) => $q->where('kota', $v))
-        ->when(request('district'), fn($q,$v) => $q->where('kecamatan', $v))
-        ->orderByDesc('id_listing')
-        ->paginate(10)
-        ->appends(array_merge(request()->only(['search','property_type','province','city','district']), ['tab'=>'stoker']));
+$stokerProperties = Property::select(
+    'id_listing','lokasi','luas','harga','gambar','status',
+    'tipe','provinsi','kota','kecamatan',
+    'vendor' // <- WAJIB, dipakai di partial
+)
+->whereRaw('LOWER(status) = ?', ['tersedia'])
+->when(request('search'), function ($query, $search) {
+    return is_numeric($search)
+        ? $query->where('id_listing', (int)$search)
+        : $query->whereRaw('1=0');
+})
+->when(request('property_type'), fn($q,$v) => $q->whereRaw('LOWER(tipe)=?', [strtolower($v)]))
+->when(request('province'), fn($q,$v) => $q->where('provinsi', $v))
+->when(request('city'), fn($q,$v) => $q->where('kota', $v))
+->when(request('district'), fn($q,$v) => $q->where('kecamatan', $v))
+->orderByDesc('id_listing')
+->paginate(10)
+->appends(array_merge(
+    request()->only(['search','property_type','province','city','district']),
+    ['tab'=>'stoker']
+));
+
 
     $soldProperties = DB::table('property')
         ->where('status', 'Terjual')
@@ -2080,21 +2098,33 @@ public function exportList(Request $request)
 
 public function stokerList(Request $request)
 {
-    // Sanitasi input ringan, karena manusia suka ngetik sembarang
+    // Sanitasi input (karena manusia… ya gitu)
     $search   = trim((string) $request->get('search', ''));
     $ptype    = $request->get('property_type');
     $province = $request->get('province');
     $city     = $request->get('city');
     $district = $request->get('district');
 
-    // Placeholder yang harus di-skip biar query nggak keisi "Pilih ..."
+    // Placeholder yang kudu di-skip
     $skipValues = ['Pilih Provinsi', 'Pilih Kota/Kab', 'Pilih Kota/Kabupaten', 'Pilih Kecamatan', ''];
 
-    $q = Property::from('property as p')
-        ->select('p.id_listing','p.lokasi','p.luas','p.harga','p.gambar','p.status','p.tipe','p.provinsi','p.kota','p.kecamatan')
+    $q = \App\Models\Property::from('property as p')
+        ->select(
+            'p.id_listing',
+            'p.lokasi',
+            'p.luas',
+            'p.harga',
+            'p.gambar',
+            'p.status',
+            'p.tipe',
+            'p.provinsi',
+            'p.kota',
+            'p.kecamatan',
+            'p.vendor' // <<< WAJIB. Tanpa ini, page 2 dkk bakal “-”
+        )
         ->whereRaw('LOWER(p.status) = ?', ['tersedia'])
 
-        // SEARCH: hanya izinkan angka, selain itu matiin hasil (biar konsisten sama export)
+        // SEARCH: hanya angka, selain itu matiin hasil
         ->when($search !== '', function ($query) use ($search) {
             return ctype_digit($search)
                 ? $query->where('p.id_listing', (int) $search)
@@ -2104,14 +2134,13 @@ public function stokerList(Request $request)
         // FILTER tipe
         ->when($ptype, fn($q,$v) => $q->whereRaw('LOWER(p.tipe)=?', [strtolower($v)]))
 
-        // FILTER lokasi: skip jika placeholder
-        ->when(!in_array((string)$province, $skipValues, true), fn($q) => $q->where('p.provinsi', request('province')))
-        ->when(!in_array((string)$city,     $skipValues, true), fn($q) => $q->where('p.kota',     request('city')))
-        ->when(!in_array((string)$district, $skipValues, true), fn($q) => $q->where('p.kecamatan',request('district')))
+        // FILTER lokasi: pakai variabel yang sudah disanitasi
+        ->when(!in_array((string)$province, $skipValues, true), fn($q)       => $q->where('p.provinsi',  $province))
+        ->when(!in_array((string)$city,     $skipValues, true), fn($q)       => $q->where('p.kota',      $city))
+        ->when(!in_array((string)$district, $skipValues, true), fn($q)       => $q->where('p.kecamatan', $district))
 
         ->orderByDesc('p.id_listing');
 
-    // Paginate manual untuk konsistensi
     $page = max(1, (int) ($request->get('page') ?? 1));
     $stokerProperties = $q->paginate(10, ['*'], 'page', $page)
         ->appends(array_merge(
@@ -2119,11 +2148,10 @@ public function stokerList(Request $request)
             ['tab' => 'stoker']
         ));
 
-    // Selalu balikin PARTIAL (AJAX fragment)
-    return view('partial.stoker_list', [
-        'stokerProperties' => $stokerProperties,
-    ]);
+    // Balikin partial (AJAX fragment)
+    return view('partial.stoker_list', compact('stokerProperties'));
 }
+
 
 public function stokerBulkSold(Request $request)
 {

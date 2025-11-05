@@ -13,6 +13,7 @@
             <th>Gambar</th>
             <th>Lokasi</th>
             <th>Tipe</th>
+            <th>Vendor</th>
             <th>Luas (m²)</th>
             <th>Harga</th>
           </tr>
@@ -46,6 +47,9 @@
             {{-- kolom Tipe --}}
             <td>{{ ucfirst($property->tipe) }}</td>
 
+            {{-- kolom Vendor --}}
+            <td>{{ $property->vendor ?? '-' }}</td>
+
             {{-- kolom Luas --}}
             <td>{{ $property->luas ?? '-' }}</td>
 
@@ -54,7 +58,7 @@
           </tr>
         @empty
           <tr>
-            <td colspan="7" class="text-center">Tidak ada data ditemukan.</td>
+            <td colspan="8" class="text-center">Tidak ada data ditemukan.</td>
           </tr>
         @endforelse
         </tbody>
