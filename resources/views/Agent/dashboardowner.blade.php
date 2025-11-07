@@ -2044,7 +2044,7 @@
       <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
           <h5 class="mb-0 fw-semibold text-primary">⬇️ Export Properti</h5>
-          <small class="text-muted" id="export-selected-counter">0 dipilih</small>
+          {{-- <small class="text-muted" id="export-selected-counter">0 dipilih</small> --}}
         </div>
 
         <div class="card-body">
@@ -2434,6 +2434,11 @@ document.addEventListener('DOMContentLoaded', function () {
       const defaultAction = exportForm?.getAttribute('action');
       const docxAction    = "{{ route('dashboard.owner.export.docx') }}";
 
+      // ====== Tambahan: endpoint untuk menandai exported ======
+      // Buat route ini di Laravel: route('dashboard.owner.export.mark')
+      // yang menerima POST: selected_ids[]=... dan set exported=true
+      const MARK_URL = "{{ route('dashboard.owner.export.mark') }}";
+
       // Helper yang SELALU di-scope ke kontainer Export
       const qRows   = () => Array.from(container.querySelectorAll('.row-check'));
       const qById   = (id) => container.querySelector(`#${id}`);
@@ -2490,6 +2495,62 @@ document.addEventListener('DOMContentLoaded', function () {
         syncMaster();
       }
 
+      // ============== NEW: tandai exported di DB, lalu submit export ==============
+      async function markExportedThenSubmit(targetAction, formatValue){
+        const sel = Array.from(getSelected());
+        if (sel.length < 2) return; // tombol sudah disabled sih, ini safety net
+
+        // CSRF token laravel
+        const token =
+          document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+          document.querySelector('input[name="_token"]')?.value || '';
+
+        // 1) Panggil endpoint untuk set exported = true
+        try {
+          const res = await fetch(MARK_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRF-TOKEN': token
+            },
+            body: JSON.stringify({ selected_ids: sel })
+          });
+          if (!res.ok) throw new Error('Mark exported failed: ' + res.status);
+
+          // 2) Highlight baris di UI biar manusia senang
+          sel.forEach(id => {
+            const tr = container.querySelector(`.row-check[value="${id}"]`)?.closest('tr');
+            if (tr) tr.classList.add('table-warning');
+          });
+
+          // 3) Submit export seperti biasa
+          if (exportForm) {
+            if (selectedInput) selectedInput.value = sel.join(',');
+            if (formatInput && typeof formatValue === 'string') formatInput.value = formatValue;
+            exportForm.setAttribute('action', targetAction);
+            exportForm.requestSubmit();
+            // kembalikan action default setelah submit (khusus DOCX)
+            if (targetAction !== defaultAction) {
+              setTimeout(() => exportForm.setAttribute('action', defaultAction), 0);
+            }
+          }
+        } catch (err) {
+          console.error(err);
+          // fallback: tetap submit supaya kerjaan jalan, walau flag gagal
+          if (exportForm) {
+            if (selectedInput) selectedInput.value = sel.join(',');
+            if (formatInput && typeof formatValue === 'string') formatInput.value = formatValue;
+            exportForm.setAttribute('action', targetAction);
+            exportForm.requestSubmit();
+            if (targetAction !== defaultAction) {
+              setTimeout(() => exportForm.setAttribute('action', defaultAction), 0);
+            }
+          }
+        }
+      }
+      // ===========================================================================
+
       // Delegasi: toggle tiap baris (HANYA di kontainer export)
       container.addEventListener('change', function(e){
         if (!e.target.matches('.row-check')) return;
@@ -2518,15 +2579,27 @@ document.addEventListener('DOMContentLoaded', function () {
         renderPreview();
       });
 
-      // Submit: kirim semua ID
+      // Submit: kirim semua ID (keeper lama)
       if (exportForm) {
         exportForm.addEventListener('submit', function(){
           if (selectedInput) selectedInput.value = Array.from(getSelected()).join(',');
         });
 
-        if (btnCSV)  btnCSV.addEventListener('click',  () => { if (btnCSV.disabled) return;  exportForm.setAttribute('action', defaultAction); formatInput.value='csv';  exportForm.requestSubmit(); });
-        if (btnXLSX) btnXLSX.addEventListener('click', () => { if (btnXLSX.disabled) return; exportForm.setAttribute('action', defaultAction); formatInput.value='xlsx'; exportForm.requestSubmit(); });
-        if (btnDOCX) btnDOCX.addEventListener('click', () => { if (btnDOCX.disabled) return; exportForm.setAttribute('action', docxAction); exportForm.requestSubmit(); setTimeout(()=>exportForm.setAttribute('action', defaultAction),0); });
+        // Override klik tombol: tandai exported -> submit
+        if (btnCSV)  btnCSV.addEventListener('click',  () => {
+          if (btnCSV.disabled) return;
+          markExportedThenSubmit(defaultAction, 'csv');
+        });
+
+        if (btnXLSX) btnXLSX.addEventListener('click', () => {
+          if (btnXLSX.disabled) return;
+          markExportedThenSubmit(defaultAction, 'xlsx');
+        });
+
+        if (btnDOCX) btnDOCX.addEventListener('click', () => {
+          if (btnDOCX.disabled) return;
+          markExportedThenSubmit("{{ route('dashboard.owner.export.docx') }}", 'docx');
+        });
       }
 
       // Dipanggil setelah fragment export diganti via AJAX
@@ -2544,6 +2617,7 @@ document.addEventListener('DOMContentLoaded', function () {
       renderPreview();
     })();
     </script>
+
 
 
         </div>

@@ -296,4 +296,19 @@ Route::get('/dashboard/owner/stoker-list', [AgentAdminController::class,'stokerL
 Route::post('/dashboard/stoker/bulk-sold', [AgentAdminController::class, 'stokerBulkSold'])
     ->name('stoker.bulkSold');
 
+// routes/web.php
+Route::post('/dashboard/owner/export/mark', function (\Illuminate\Http\Request $r) {
+    $ids = collect($r->input('selected_ids', []))
+        ->filter(fn($v) => ctype_digit((string)$v))
+        ->map('intval')
+        ->unique()
+        ->values();
 
+    if ($ids->isEmpty()) {
+        return response()->json(['ok' => false, 'msg' => 'No IDs'], 400);
+    }
+
+    \App\Models\Property::whereIn('id_listing', $ids)->update(['exported' => true]);
+
+    return response()->json(['ok' => true]);
+})->name('dashboard.owner.export.mark');

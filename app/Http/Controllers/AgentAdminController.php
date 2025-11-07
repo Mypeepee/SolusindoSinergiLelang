@@ -2010,7 +2010,6 @@ public function exportList(Request $request)
     $driver = DB::getDriverName();              // 'pgsql', 'mysql', 'sqlite', ...
     $cast   = $driver === 'pgsql' ? 'TEXT' : 'CHAR';
 
-    // Kumpulkan debug
     $dbg = [
         'driver'        => $driver,
         'cast'          => $cast,
@@ -2026,16 +2025,16 @@ public function exportList(Request $request)
         ->select([
             'p.id_listing','p.lokasi','p.tipe','p.luas','p.harga','p.gambar',
             'p.sertifikat','p.id_agent','p.link',
+            'p.exported', // <<< WAJIB: untuk highlight di tabel
             DB::raw("('https://solusindolelang.com/property-detail/' || p.id_listing || '/' || COALESCE(p.id_agent, '')) as link_solusindo"),
         ]);
 
-    // FILTER SEARCH: exact match numerik
+    // FILTER SEARCH numerik
     $search = trim((string) $request->get('search', ''));
     $dbg['search_trimmed'] = $search;
 
     if ($search !== '') {
         if (preg_match('/^\d+$/', $search)) {
-            // Exact, tanpa LIKE, tanpa OR
             $q->where('p.id_listing', (int)$search);
             $dbg['search_mode']    = 'exact_numeric';
             $dbg['search_binding'] = (int)$search;
@@ -2047,32 +2046,29 @@ public function exportList(Request $request)
         $dbg['search_mode'] = 'empty';
     }
 
-    // FILTER LAIN: Cek dan skip filter jika memilih "Pilih" values
+    // FILTER lain
     if ($request->filled('property_type')) {
         $q->whereRaw('LOWER(p.tipe)=?', [strtolower($request->get('property_type'))]);
     }
-
-    // Skip the filters with "Pilih" values
     if ($request->filled('province') && $request->get('province') !== 'Pilih Provinsi') {
         $q->where('p.provinsi', $request->get('province'));
     }
-
     if ($request->filled('city') && $request->get('city') !== 'Pilih Kota/Kab') {
         $q->where('p.kota', $request->get('city'));
     }
-
     if ($request->filled('district') && $request->get('district') !== 'Pilih Kecamatan') {
         $q->where('p.kecamatan', $request->get('district'));
     }
 
-    // Snapshot SQL + bindings
+    // Optional: kalau mau yang sudah diexport tetap ikut, tapi diurutkan belakangan/di depan
+    // Contoh: yang belum diexport dulu baru yang sudah diexport
+    // $q->orderBy('p.exported', 'asc')->orderBy('p.id_listing', 'asc');
+
     $dbg['sql']      = $q->toSql();
     $dbg['bindings'] = $q->getBindings();
 
-    // Count sebelum paginate
     $dbg['count_total'] = (clone $q)->count();
 
-    // Paginate
     $page = max(1, (int) ($request->get('page') ?? 1));
     $exportProperties = $q->orderBy('p.id_listing', 'asc')
         ->paginate(15, ['*'], 'page', $page)
@@ -2080,16 +2076,17 @@ public function exportList(Request $request)
             $request->only(['search','property_type','province','city','district']),
             ['tab'=>'export']
         ));
+
     $dbg['count_page']   = $exportProperties->count();
     $dbg['current_page'] = $exportProperties->currentPage();
     $dbg['last_page']    = $exportProperties->lastPage();
 
-    // SELALU balas partial untuk endpoint fragment ini
     return view('partial.export_list', [
         'exportProperties' => $exportProperties,
         '___dbg'           => $dbg,
     ]);
 }
+
 
 public function stokerList(Request $request)
 {

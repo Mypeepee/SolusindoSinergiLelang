@@ -36,30 +36,39 @@
           </tr>
         </thead>
         <tbody>
-          @forelse($exportProperties as $property)
-            <tr>
-              <td><input type="checkbox" class="row-check" value="{{ $property->id_listing }}"></td>
-              <td class="fw-semibold">{{ $property->id_listing }}</td>
-              <td>
-                @php
-                  $fotoList   = array_values(array_filter(array_map('trim', explode(',', (string)$property->gambar))));
-                  $fotoUtama  = $fotoList[0] ?? '';
-                  $isAbsolute = $fotoUtama && preg_match('~^(https?:)?//~', $fotoUtama);
-                  $src        = $isAbsolute ? $fotoUtama : ($fotoUtama ? asset(ltrim($fotoUtama, '/')) : '');
-                @endphp
-                <img src="{{ $src ?: asset('img/placeholder.jpg') }}" alt="thumb {{ $property->id_listing }}" class="img-thumbnail" style="width:72px;height:72px;object-fit:cover" loading="lazy">
-              </td>
-              <td class="text-start" style="max-width:420px">{{ $property->lokasi }}</td>
-              <td>{{ ucfirst($property->tipe) }}</td>
-              <td>{{ $property->luas ?? '-' }}</td>
-              <td>Rp {{ number_format($property->harga, 0, ',', '.') }}</td>
-            </tr>
-          @empty
-            <tr>
-              <td colspan="8" class="text-center">Tidak ada data.</td>
-            </tr>
-          @endforelse
-        </tbody>
+            @forelse($exportProperties as $property)
+              <tr class="{{ !empty($property->exported) && $property->exported ? 'table-warning row-exported' : '' }}"
+                  data-exported="{{ !empty($property->exported) && $property->exported ? 1 : 0 }}">
+                <td>
+                  <input type="checkbox" class="row-check" value="{{ $property->id_listing }}">
+                </td>
+                <td class="fw-semibold">
+                  {{ $property->id_listing }}
+                  @if(!empty($property->exported) && $property->exported)
+                    <span class="badge bg-warning text-dark ms-1">Exported</span>
+                  @endif
+                </td>
+                <td>
+                  @php
+                    $fotoList   = array_values(array_filter(array_map('trim', explode(',', (string)$property->gambar))));
+                    $fotoUtama  = $fotoList[0] ?? '';
+                    $isAbsolute = $fotoUtama && preg_match('~^(https?:)?//~', $fotoUtama);
+                    $src        = $isAbsolute ? $fotoUtama : ($fotoUtama ? asset(ltrim($fotoUtama, '/')) : '');
+                  @endphp
+                  <img src="{{ $src ?: asset('img/placeholder.jpg') }}" alt="thumb {{ $property->id_listing }}"
+                       class="img-thumbnail" style="width:72px;height:72px;object-fit:cover" loading="lazy">
+                </td>
+                <td class="text-start" style="max-width:420px">{{ $property->lokasi }}</td>
+                <td>{{ ucfirst($property->tipe) }}</td>
+                <td>{{ $property->luas ?? '-' }}</td>
+                <td>Rp {{ number_format($property->harga, 0, ',', '.') }}</td>
+              </tr>
+            @empty
+              <tr>
+                <td colspan="8" class="text-center">Tidak ada data.</td>
+              </tr>
+            @endforelse
+          </tbody>
       </table>
     </div>
 
@@ -243,3 +252,12 @@
   });
 })();
 </script>
+
+<style>
+    /* Sedikit halusin warna kuningnya */
+    tr.row-exported.table-warning {
+      --bs-table-bg: #fff7d6;          /* lebih soft dari default */
+      --bs-table-striped-bg: #fff3c2;
+      --bs-table-hover-bg: #ffefad;
+    }
+    </style>
