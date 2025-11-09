@@ -118,7 +118,7 @@
   </div>
 </div>
 
-<script>
+{{-- <script>
 /**
  * ==== Persist & Sync Selection di Partial ====
  * - localStorage key: 'export_selected_ids'
@@ -251,7 +251,7 @@
     });
   });
 })();
-</script>
+</script> --}}
 
 <style>
     /* Sedikit halusin warna kuningnya */

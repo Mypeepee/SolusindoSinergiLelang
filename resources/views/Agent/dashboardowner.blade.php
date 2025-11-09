@@ -2293,8 +2293,18 @@
     <div class="col-lg-3">
       <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white py-3 d-flex align-items-center gap-2">
-          <h5 class="mb-0 fw-semibold text-primary">✅ Dipilih (<span id="export-selected-counter">0</span>)</h5>
-        </div>
+            <h5 class="mb-0 fw-semibold text-primary">
+              ✅ Dipilih (<span id="export-selected-counter">0</span>)
+            </h5>
+            <button type="button" id="export-clear-all" class="btn btn-link btn-sm text-danger px-0">
+              Hapus semua
+            </button>
+          </div>
+          <style>
+            #export-clear-all { text-decoration: none; }
+            #export-clear-all:hover { text-decoration: underline; }
+          </style>
+
         <div class="card-body">
           <div id="selected-preview" class="d-flex flex-wrap gap-2 small"></div>
           <hr class="my-3">
@@ -2435,8 +2445,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const docxAction    = "{{ route('dashboard.owner.export.docx') }}";
 
       // ====== Tambahan: endpoint untuk menandai exported ======
-      // Buat route ini di Laravel: route('dashboard.owner.export.mark')
-      // yang menerima POST: selected_ids[]=... dan set exported=true
+      // Buat route ini di Laravel: route('dashboard.owner.export.mark') (POST)
       const MARK_URL = "{{ route('dashboard.owner.export.mark') }}";
 
       // Helper yang SELALU di-scope ke kontainer Export
@@ -2498,15 +2507,15 @@ document.addEventListener('DOMContentLoaded', function () {
       // ============== NEW: tandai exported di DB, lalu submit export ==============
       async function markExportedThenSubmit(targetAction, formatValue){
         const sel = Array.from(getSelected());
-        if (sel.length < 2) return; // tombol sudah disabled sih, ini safety net
+        if (sel.length < 2) return; // safety net
 
         // CSRF token laravel
         const token =
           document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
           document.querySelector('input[name="_token"]')?.value || '';
 
-        // 1) Panggil endpoint untuk set exported = true
         try {
+          // 1) Set exported = true di server
           const res = await fetch(MARK_URL, {
             method: 'POST',
             headers: {
@@ -2518,7 +2527,7 @@ document.addEventListener('DOMContentLoaded', function () {
           });
           if (!res.ok) throw new Error('Mark exported failed: ' + res.status);
 
-          // 2) Highlight baris di UI biar manusia senang
+          // 2) Highlight baris yang ditandai
           sel.forEach(id => {
             const tr = container.querySelector(`.row-check[value="${id}"]`)?.closest('tr');
             if (tr) tr.classList.add('table-warning');
@@ -2530,14 +2539,13 @@ document.addEventListener('DOMContentLoaded', function () {
             if (formatInput && typeof formatValue === 'string') formatInput.value = formatValue;
             exportForm.setAttribute('action', targetAction);
             exportForm.requestSubmit();
-            // kembalikan action default setelah submit (khusus DOCX)
             if (targetAction !== defaultAction) {
               setTimeout(() => exportForm.setAttribute('action', defaultAction), 0);
             }
           }
         } catch (err) {
           console.error(err);
-          // fallback: tetap submit supaya kerjaan jalan, walau flag gagal
+          // fallback: tetap submit
           if (exportForm) {
             if (selectedInput) selectedInput.value = sel.join(',');
             if (formatInput && typeof formatValue === 'string') formatInput.value = formatValue;
@@ -2550,6 +2558,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       }
       // ===========================================================================
+
+      // ====== NEW: tombol "Hapus semua" di header kanan ======
+      const clearAllBtn = document.getElementById('export-clear-all');
+      function clearAll(){
+        // kosongkan storage
+        saveSelected(new Set());
+        // uncheck semua checkbox di halaman aktif
+        qRows().forEach(cb => cb.checked = false);
+        // reset master
+        const master = qById('check_all_export');
+        if (master){ master.checked = false; master.indeterminate = false; }
+        // refresh UI
+        updateButtons();
+        updateCounters();
+        renderPreview();
+      }
+      clearAllBtn?.addEventListener('click', clearAll);
+      // =======================================================
 
       // Delegasi: toggle tiap baris (HANYA di kontainer export)
       container.addEventListener('change', function(e){
@@ -2616,7 +2642,8 @@ document.addEventListener('DOMContentLoaded', function () {
       updateCounters();
       renderPreview();
     })();
-    </script>
+</script>
+
 
 
 
