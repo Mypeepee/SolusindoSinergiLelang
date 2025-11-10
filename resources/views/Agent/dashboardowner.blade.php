@@ -2310,11 +2310,12 @@
             <input type="hidden" name="province" value="{{ request('province') }}">
             <input type="hidden" name="city" value="{{ request('city') }}">
             <input type="hidden" name="district" value="{{ request('district') }}">
+            <!-- Template Google Docs untuk letters() -->
+            <input type="hidden" name="template_url" id="template_url_input" value="https://docs.google.com/document/d/1SB9EqTBU3DlhKwKTMtV6QpBS18ycZoLZ/edit?usp=sharing">
 
             <div class="d-flex gap-2 flex-wrap align-items-center">
-              <button type="button" id="btn-export-csv"  class="btn btn-success btn-sm" disabled title="Pilih minimal 2 item dulu">Export CSV</button>
-              <button type="button" id="btn-export-xlsx" class="btn btn-primary btn-sm" disabled title="Pilih minimal 2 item dulu">Export XLSX</button>
-              <button type="button" id="btn-export-docx" class="btn btn-secondary btn-sm" disabled title="Pilih minimal 2 item dulu">Export DOCX (Template)</button>
+              <button type="button" id="btn-export-csv" class="btn btn-success btn-sm" disabled title="Pilih minimal 2 item dulu">Export CSV</button>
+              <button type="button" id="btn-export-letters" class="btn btn-dark btn-sm" disabled title="Pilih minimal 1 listing">Export LBH Jaksa</button>
               <input type="hidden" name="format" id="export_format" value="csv">
               <small class="text-muted">Pilih minimal 2 item untuk di export.</small>
             </div>
@@ -2360,138 +2361,126 @@
   </div>
 </div>
 
+<style>
+    /* Spinner overlay minimalis (sudah ada) */
+    .btn.btn-loading { pointer-events: none; opacity: .9; }
+    .btn.btn-loading .spinner-border { margin-right: .4rem; }
+</style>
+
+
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  const form    = document.getElementById('export-filter-form');
-  const input   = document.getElementById('search_exp');
-  const selType = document.getElementById('property_type_exp');
-  const selProv = document.getElementById('province-export');
-  const selCity = document.getElementById('city-export');
-  const selDist = document.getElementById('district-export');
-  const btnClear = document.getElementById('btn-export-clear'); // <= tombol reset
+    document.addEventListener('DOMContentLoaded', function () {
+      const form    = document.getElementById('export-filter-form');
+      const input   = document.getElementById('search_exp');
+      const selType = document.getElementById('property_type_exp');
+      const selProv = document.getElementById('province-export');
+      const selCity = document.getElementById('city-export');
+      const selDist = document.getElementById('district-export');
+      const btnClear = document.getElementById('btn-export-clear');
 
-  // HOST STABIL yang tidak pernah diganti
-  const listWrap = document.getElementById('export-list-inner');
-  const fragmentRoute = "{{ route('dashboard.owner.export.list') }}";
+      const listWrap = document.getElementById('export-list-inner');
+      const fragmentRoute = "{{ route('dashboard.owner.export.list') }}";
 
-  function getOverlay(){ return document.getElementById('export-loading'); }
-  function showLoading(on){ const el = getOverlay(); if (el) el.classList.toggle('d-none', !on); }
+      function getOverlay(){ return document.getElementById('export-loading'); }
+      function showLoading(on){ const el = getOverlay(); if (el) el.classList.toggle('d-none', !on); }
 
-  let t, lastReqId = 0;
+      let t, lastReqId = 0;
 
-  function paramsObj(merge = {}) {
-    return {
-      tab: 'export',
-      search: input?.value || '',
-      property_type: selType?.value || '',
-      province: selProv?.value || '',
-      city: selCity?.value || '',
-      district: selDist?.value || '',
-      page: 1,
-      ...merge
-    };
-  }
-  function qs(obj){ return new URLSearchParams(obj).toString(); }
+      function paramsObj(merge = {}) {
+        return {
+          tab: 'export',
+          search: input?.value || '',
+          property_type: selType?.value || '',
+          province: selProv?.value || '',
+          city: selCity?.value || '',
+          district: selDist?.value || '',
+          page: 1,
+          ...merge
+        };
+      }
+      function qs(obj){ return new URLSearchParams(obj).toString(); }
 
-  async function loadList(extra = {}) {
-    const myId = ++lastReqId;
-    showLoading(true);
-    try {
-      const url = fragmentRoute + '?' + qs(paramsObj(extra));
-      const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-      const html = await res.text();
-      if (myId !== lastReqId) return;
-      listWrap.innerHTML = html;
-      if (window.initExportSelection) window.initExportSelection();
-    } catch (e) {
-      if (e && e.name !== 'AbortError') console.error('loadList error:', e);
-    } finally {
-      if (myId === lastReqId) showLoading(false);
-    }
-  }
-  window.__loadExportList = loadList;
+      async function loadList(extra = {}) {
+        const myId = ++lastReqId;
+        showLoading(true);
+        try {
+          const url = fragmentRoute + '?' + qs(paramsObj(extra));
+          const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+          const html = await res.text();
+          if (myId !== lastReqId) return;
+          listWrap.innerHTML = html;
+          if (window.initExportSelection) window.initExportSelection();
+        } catch (e) {
+          if (e && e.name !== 'AbortError') console.error('loadList error:', e);
+        } finally {
+          if (myId === lastReqId) showLoading(false);
+        }
+      }
+      window.__loadExportList = loadList;
 
-  function debounced(){ clearTimeout(t); t = setTimeout(() => loadList(), 220); }
+      function debounced(){ clearTimeout(t); t = setTimeout(() => loadList(), 220); }
 
-  // Filter -> AJAX dengan sanitasi numeric
-  input?.addEventListener('input', function(){
-    const cleaned = this.value.replace(/[^\d]/g, '');
-    if (this.value !== cleaned) this.value = cleaned;
-    debounced();
-  });
-  [selType, selProv, selCity, selDist].forEach(el => el && el.addEventListener('change', debounced));
-  form?.addEventListener('submit', function(e){ e.preventDefault(); loadList(); });
+      // Filter -> AJAX dengan sanitasi numeric
+      input?.addEventListener('input', function(){
+        const cleaned = this.value.replace(/[^\d]/g, '');
+        if (this.value !== cleaned) this.value = cleaned;
+        debounced();
+      });
+      [selType, selProv, selCity, selDist].forEach(el => el && el.addEventListener('change', debounced));
+      form?.addEventListener('submit', function(e){ e.preventDefault(); loadList(); });
 
-  // Pagination: delegation ke HOST STABIL
-  listWrap?.addEventListener('click', function(e){
-    const a = e.target.closest('a.js-export-page');
-    if (!a) return;
-    e.preventDefault();
-    const page = a.dataset.page || '1';
-    loadList({ page });
-  });
+      // Pagination
+      listWrap?.addEventListener('click', function(e){
+        const a = e.target.closest('a.js-export-page');
+        if (!a) return;
+        e.preventDefault();
+        const page = a.dataset.page || '1';
+        loadList({ page });
+      });
 
-  // ========== RESET / CLEAR FILTER ==========
-  btnClear?.addEventListener('click', function () {
-    // kosongkan semua nilai
-    if (input)   input.value = '';
-    if (selType) selType.value = '';
-    if (selProv) selProv.value = '';
-
-    // reset & disable dropdown turunan
-    if (selCity) {
-      selCity.innerHTML = '<option disabled selected>Pilih Kota/Kab</option>';
-      selCity.value = '';
-      selCity.setAttribute('disabled','disabled');
-    }
-    if (selDist) {
-      selDist.innerHTML = '<option disabled selected>Pilih Kecamatan</option>';
-      selDist.value = '';
-      selDist.setAttribute('disabled','disabled');
-    }
-
-    // reload list dengan parameter kosong
-    loadList({
-      search: '',
-      property_type: '',
-      province: '',
-      city: '',
-      district: '',
-      page: 1
+      // Reset filter
+      btnClear?.addEventListener('click', function () {
+        if (input)   input.value = '';
+        if (selType) selType.value = '';
+        if (selProv) selProv.value = '';
+        if (selCity) {
+          selCity.innerHTML = '<option disabled selected>Pilih Kota/Kab</option>';
+          selCity.value = '';
+          selCity.setAttribute('disabled','disabled');
+        }
+        if (selDist) {
+          selDist.innerHTML = '<option disabled selected>Pilih Kecamatan</option>';
+          selDist.value = '';
+          selDist.setAttribute('disabled','disabled');
+        }
+        loadList({ search: '', property_type: '', province: '', city: '', district: '', page: 1 });
+      });
     });
-  });
-});
-</script>
+    </script>
 
-
-{{-- Manager seleksi khusus TAB EXPORT (di-scope ke #export-list-inner) --}}
-<script>
+    <script>
     (function(){
       const KEY = 'exportSelectedIds';
 
-      const container = document.getElementById('export-list-inner'); // <<< scope
+      const container = document.getElementById('export-list-inner');
       if (!container) return;
 
       const getSelected = () => new Set(JSON.parse(localStorage.getItem(KEY) || '[]'));
       const saveSelected = (set) => localStorage.setItem(KEY, JSON.stringify(Array.from(set)));
 
-      // Elemen UI panel kanan
       const headerCounter = document.querySelectorAll('#export-selected-counter');
       const previewEl = document.getElementById('selected-preview');
       const exportForm = document.getElementById('export-form');
       const selectedInput = document.getElementById('selected_ids_input');
-      const btnCSV  = document.getElementById('btn-export-csv');
-      const btnXLSX = document.getElementById('btn-export-xlsx');
-      const btnDOCX = document.getElementById('btn-export-docx');
-      const formatInput = document.getElementById('export_format');
-      const defaultAction = exportForm?.getAttribute('action');
-      const docxAction    = "{{ route('dashboard.owner.export.docx') }}";
 
-      // ====== Tambahan: endpoint untuk menandai exported ======
-      // Buat route ini di Laravel: route('dashboard.owner.export.mark') (POST)
+      const btnCSV  = document.getElementById('btn-export-csv');
+      const btnLET  = document.getElementById('btn-export-letters');
+      const formatInput = document.getElementById('export_format');
+      const lettersAction = "{{ route('dashboard.owner.export.docx') }}";
+      const templateUrlInput = document.getElementById('template_url_input');
+
       const MARK_URL = "{{ route('dashboard.owner.export.mark') }}";
 
-      // Helper yang SELALU di-scope ke kontainer Export
       const qRows   = () => Array.from(container.querySelectorAll('.row-check'));
       const qById   = (id) => container.querySelector(`#${id}`);
       const qValue  = (val) => Array.from(container.querySelectorAll(`.row-check[value="${val}"]`));
@@ -2517,7 +2506,6 @@ document.addEventListener('DOMContentLoaded', function () {
           pill.title = 'Klik untuk hapus';
           pill.addEventListener('click', () => {
             const s = getSelected(); s.delete(id); saveSelected(s);
-            // uncheck baris di TAB EXPORT saja
             qValue(id).forEach(cb => cb.checked = false);
             syncMaster();
             updateButtons();
@@ -2529,8 +2517,11 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       function updateButtons(){
-        const enough = getSelected().size >= 2;
-        [btnCSV, btnXLSX, btnDOCX].forEach(b => { if (b) { b.disabled = !enough; b.title = enough ? '' : 'Pilih minimal 2 item dulu'; }});
+        const size = getSelected().size;
+        const enough2 = size >= 2;
+        const enough1 = size >= 1;
+        if (btnCSV) { btnCSV.disabled = !enough2; btnCSV.title = enough2 ? '' : 'Pilih minimal 2 item dulu'; }
+        if (btnLET) { btnLET.disabled = !enough1; btnLET.title = enough1 ? '' : 'Pilih minimal 1 listing'; }
       }
 
       function syncMaster(){
@@ -2547,19 +2538,33 @@ document.addEventListener('DOMContentLoaded', function () {
         syncMaster();
       }
 
-      // ============== NEW: tandai exported di DB, lalu submit export ==============
-      async function markExportedThenSubmit(targetAction, formatValue){
-        const sel = Array.from(getSelected());
-        if (sel.length < 2) return; // safety net
+      // Util spinner tombol
+      function setLoading(btn, text){
+        if (!btn) return;
+        if (!btn.dataset.orig) btn.dataset.orig = btn.innerHTML;
+        btn.classList.add('btn-loading');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>' + ' ' + (text || 'Memproses…');
+      }
+      function clearLoading(btn){
+        if (!btn) return;
+        btn.classList.remove('btn-loading');
+        btn.disabled = false;
+        if (btn.dataset.orig) btn.innerHTML = btn.dataset.orig;
+      }
 
-        // CSRF token laravel
+      async function markExportedThenSubmit(targetAction, formatValue, { openInNewTab = false, loadingBtn = null, autoResetMs = 0 } = {}){
+        const sel = Array.from(getSelected());
+        if (!exportForm) return;
+
+        // CSRF token
         const token =
           document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
           document.querySelector('input[name="_token"]')?.value || '';
 
+        // Mark exported (non-blocking)
         try {
-          // 1) Set exported = true di server
-          const res = await fetch(MARK_URL, {
+          await fetch(MARK_URL, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -2568,59 +2573,48 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             body: JSON.stringify({ selected_ids: sel })
           });
-          if (!res.ok) throw new Error('Mark exported failed: ' + res.status);
-
-          // 2) Highlight baris yang ditandai
-          sel.forEach(id => {
-            const tr = container.querySelector(`.row-check[value="${id}"]`)?.closest('tr');
-            if (tr) tr.classList.add('table-warning');
-          });
-
-          // 3) Submit export seperti biasa
-          if (exportForm) {
-            if (selectedInput) selectedInput.value = sel.join(',');
-            if (formatInput && typeof formatValue === 'string') formatInput.value = formatValue;
-            exportForm.setAttribute('action', targetAction);
-            exportForm.requestSubmit();
-            if (targetAction !== defaultAction) {
-              setTimeout(() => exportForm.setAttribute('action', defaultAction), 0);
-            }
-          }
         } catch (err) {
-          console.error(err);
-          // fallback: tetap submit
-          if (exportForm) {
-            if (selectedInput) selectedInput.value = sel.join(',');
-            if (formatInput && typeof formatValue === 'string') formatInput.value = formatValue;
-            exportForm.setAttribute('action', targetAction);
-            exportForm.requestSubmit();
-            if (targetAction !== defaultAction) {
-              setTimeout(() => exportForm.setAttribute('action', defaultAction), 0);
-            }
-          }
+          console.warn('mark exported failed (ignored):', err);
         }
-      }
-      // ===========================================================================
 
-      // ====== NEW: tombol "Hapus semua" di header kanan ======
+        if (selectedInput) selectedInput.value = sel.join(',');
+        if (formatInput && typeof formatValue === 'string') formatInput.value = formatValue;
+
+        const prevAction = exportForm.getAttribute('action');
+        const prevTarget = exportForm.getAttribute('target');
+
+        exportForm.setAttribute('action', targetAction);
+        if (openInNewTab) exportForm.setAttribute('target', '_blank');
+
+        exportForm.requestSubmit();
+
+        // Auto reset spinner setelah jeda (UI feedback)
+        if (loadingBtn && autoResetMs > 0) {
+          setTimeout(() => clearLoading(loadingBtn), autoResetMs);
+        }
+
+        setTimeout(() => {
+          exportForm.setAttribute('action', prevAction || "{{ route('dashboard.owner.export') }}");
+          if (openInNewTab) {
+            if (prevTarget) exportForm.setAttribute('target', prevTarget);
+            else exportForm.removeAttribute('target');
+          }
+        }, 0);
+      }
+
       const clearAllBtn = document.getElementById('export-clear-all');
       function clearAll(){
-        // kosongkan storage
         saveSelected(new Set());
-        // uncheck semua checkbox di halaman aktif
         qRows().forEach(cb => cb.checked = false);
-        // reset master
         const master = qById('check_all_export');
         if (master){ master.checked = false; master.indeterminate = false; }
-        // refresh UI
         updateButtons();
         updateCounters();
         renderPreview();
       }
       clearAllBtn?.addEventListener('click', clearAll);
-      // =======================================================
 
-      // Delegasi: toggle tiap baris (HANYA di kontainer export)
+      // Delegasi checkbox baris
       container.addEventListener('change', function(e){
         if (!e.target.matches('.row-check')) return;
         const sel = getSelected();
@@ -2632,7 +2626,7 @@ document.addEventListener('DOMContentLoaded', function () {
         renderPreview();
       });
 
-      // Delegasi: master checkbox (HANYA di kontainer export)
+      // Master checkbox
       container.addEventListener('change', function(e){
         if (!e.target.matches('#check_all_export')) return;
         const rows = qRows();
@@ -2648,30 +2642,31 @@ document.addEventListener('DOMContentLoaded', function () {
         renderPreview();
       });
 
-      // Submit: kirim semua ID (keeper lama)
+      // Submit guard
       if (exportForm) {
         exportForm.addEventListener('submit', function(){
           if (selectedInput) selectedInput.value = Array.from(getSelected()).join(',');
         });
 
-        // Override klik tombol: tandai exported -> submit
+        // Export CSV (download di tab yang sama) → spinner 5 detik
         if (btnCSV)  btnCSV.addEventListener('click',  () => {
           if (btnCSV.disabled) return;
-          markExportedThenSubmit(defaultAction, 'csv');
+          setLoading(btnCSV, 'Memproses…');
+          markExportedThenSubmit("{{ route('dashboard.owner.export') }}", 'csv', { loadingBtn: btnCSV, autoResetMs: 5000 });
         });
 
-        if (btnXLSX) btnXLSX.addEventListener('click', () => {
-          if (btnXLSX.disabled) return;
-          markExportedThenSubmit(defaultAction, 'xlsx');
-        });
-
-        if (btnDOCX) btnDOCX.addEventListener('click', () => {
-          if (btnDOCX.disabled) return;
-          markExportedThenSubmit("{{ route('dashboard.owner.export.docx') }}", 'docx');
+        // Export LBH Jaksa (tab baru) → spinner 1.5 detik
+        if (btnLET) btnLET.addEventListener('click', () => {
+          if (btnLET.disabled) return;
+          if (!templateUrlInput || !templateUrlInput.value) {
+            alert('Template URL belum diisi.');
+            return;
+          }
+          setLoading(btnLET, 'Menyiapkan…');
+          markExportedThenSubmit(lettersAction, undefined, { openInNewTab: true, loadingBtn: btnLET, autoResetMs: 1500 });
         });
       }
 
-      // Dipanggil setelah fragment export diganti via AJAX
       window.afterExportListReplaced = function(){
         hydratePage();
         updateButtons();
@@ -2679,13 +2674,12 @@ document.addEventListener('DOMContentLoaded', function () {
         renderPreview();
       };
 
-      // Init awal
       hydratePage();
       updateButtons();
       updateCounters();
       renderPreview();
     })();
-</script>
+    </script>
 
 
 

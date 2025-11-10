@@ -53,54 +53,53 @@ class ExportController extends Controller
             return back()->with('error','Data tidak ditemukan.');
         }
 
-        // ================
-        // AMBIL DARI URL
-        // ================
-        // Normalisasi Google Docs -> export?format=docx
-        $inputUrl = trim($request->get('template_url'));
+        // ===== Normalisasi Google Docs / Drive link -> file DOCX
+        $inputUrl  = trim($request->get('template_url'));
         $remoteUrl = $inputUrl;
 
-        // Contoh: https://docs.google.com/document/d/{ID}/edit?usp=...
+        // docs.google.com/document/d/{ID}/...
         if (preg_match('~^https?://docs\.google\.com/document/d/([a-zA-Z0-9_-]+)~', $inputUrl, $m)) {
             $docId    = $m[1];
             $remoteUrl = "https://docs.google.com/document/d/{$docId}/export?format=docx";
         }
-        // (Opsional) Drive file viewer -> direct download
-        // Contoh: https://drive.google.com/file/d/{ID}/view?usp=...
+        // drive.google.com/file/d/{ID}/...
         elseif (preg_match('~^https?://drive\.google\.com/file/d/([a-zA-Z0-9_-]+)~', $inputUrl, $m)) {
             $fileId   = $m[1];
             $remoteUrl = "https://drive.google.com/uc?export=download&id={$fileId}";
         }
 
-        // Download ke file sementara
+        // ===== Siapkan folder kerja
         $tmpDir = storage_path('app/tmp_letters');
-        @mkdir($tmpDir, 0775, true);
-        $tempTemplate = $tmpDir . '/_tpl_' . uniqid() . '.docx';
+        if (!is_dir($tmpDir)) @mkdir($tmpDir, 0755, true); // 0755 aman di shared hosting
+        if (!is_dir($tmpDir) || !is_writable($tmpDir)) {
+            return back()->with('error', 'Folder kerja tidak bisa dibuat/ditulis: '.$tmpDir);
+        }
 
+        // ===== Unduh template ke file sementara
+        $tempTemplate = $tmpDir . '/_tpl_' . uniqid() . '.docx';
         try {
             if (class_exists(\GuzzleHttp\Client::class)) {
                 $client = new \GuzzleHttp\Client(['timeout' => 30, 'verify' => false]);
-                $client->request('GET', $remoteUrl, ['sink' => $tempTemplate, 'headers' => [
-                    // beberapa host perlu UA agar tidak balas HTML ringan
-                    'User-Agent' => 'Mozilla/5.0 (compatible; PHP TemplateFetcher)',
-                ]]);
+                $res = $client->request('GET', $remoteUrl, [
+                    'sink'    => $tempTemplate,
+                    'headers' => ['User-Agent' => 'Mozilla/5.0 (compatible; PHP TemplateFetcher)'],
+                ]);
+                // Pastikan bukan HTML redirect
+                if ($res->hasHeader('Content-Type') && stripos($res->getHeaderLine('Content-Type'), 'text/html') !== false) {
+                    throw new \RuntimeException('Google mengembalikan HTML (kemungkinan belum public atau butuh login).');
+                }
             } else {
                 $ctx = stream_context_create([
-                    'http' => [
-                        'timeout' => 30,
-                        'header'  => "User-Agent: Mozilla/5.0\r\n",
-                    ],
+                    'http' => ['timeout' => 30, 'header' => "User-Agent: Mozilla/5.0\r\n"],
                     'ssl'  => ['verify_peer' => false, 'verify_peer_name' => false],
                 ]);
                 $data = @file_get_contents($remoteUrl, false, $ctx);
                 if ($data === false) throw new \RuntimeException('Gagal mengunduh template_url.');
                 file_put_contents($tempTemplate, $data);
             }
-
-            // Validasi hasil unduhan (tidak boleh HTML kecil)
             if (!is_file($tempTemplate) || filesize($tempTemplate) < 100) {
                 @unlink($tempTemplate);
-                return back()->with('error', 'Template tidak valid atau tidak bisa diunduh. Pastikan link Google Docs dibuka untuk "Anyone with the link" dan gunakan dokumen bertipe Google Docs.');
+                return back()->with('error', 'Template tidak valid / kosong. Pastikan Google Docs diset "Anyone with the link".');
             }
         } catch (\Throwable $e) {
             return back()->with('error', 'Gagal mengunduh template: '.$e->getMessage());
@@ -110,29 +109,44 @@ class ExportController extends Controller
 
         $today      = now()->translatedFormat('d F Y');
         $generated  = [];
+        $errors     = []; // kumpulkan error per-baris agar tidak silent fail
 
         foreach ($rows as $r) {
-            $tp = new \PhpOffice\PhpWord\TemplateProcessor($templatePath);
+            try {
+                $tp = new \PhpOffice\PhpWord\TemplateProcessor($templatePath);
 
-            // Hitung harga asli (sebelum markup 28.9%)
-            // Harga_saat_ini = harga_asli * 1.289  =>  harga_asli = harga_saat_ini / 1.289
-            $hargaSaatIni = (int) ($r->harga ?? 0);
-            $hargaAsli    = (int) round($hargaSaatIni / 1.289);
+                // Hitung harga asli (sebelum markup 28.9%)
+                $hargaSaatIni = (int) ($r->harga ?? 0);
+                $hargaAsli    = (int) round($hargaSaatIni / 1.289);
 
-            // Isi nilai teks sesuai placeholder template
-            $tp->setValue('lokasi',      (string)($r->lokasi ?? ''));
-            $tp->setValue('luas',        (string)($r->luas ?? ''));
-            $tp->setValue('vendor',      (string)($r->vendor ?? ''));
-            $tp->setValue('kota',        (string)($r->kota ?? ''));
-            $tp->setValue('sertifikat',  (string)($r->sertifikat ?? ''));
-            $tp->setValue('harga_asli',  'Rp '.number_format($hargaAsli, 0, ',', '.'));
-            $tp->setValue('tanggal',     $today);
-            $tp->setValue('link',        (string)($r->link ?? ''));
+                // Isi placeholder (pastikan di template pakai ${lokasi}, ${luas}, dst)
+                $tp->setValue('lokasi',      (string)($r->lokasi ?? ''));
+                $tp->setValue('luas',        (string)($r->luas ?? ''));
+                $tp->setValue('vendor',      (string)($r->vendor ?? ''));
+                $tp->setValue('kota',        (string)($r->kota ?? ''));
+                $tp->setValue('sertifikat',  (string)($r->sertifikat ?? ''));
+                $tp->setValue('harga_asli',  'Rp '.number_format($hargaAsli, 0, ',', '.'));
+                $tp->setValue('tanggal',     $today);
+                $tp->setValue('link',        (string)($r->link ?? ''));
 
-            $outName = 'Surat_'.preg_replace('/\s+/', '_', substr($r->kota ?? 'Dokumen', 0, 40)).'_'.uniqid().'.docx';
-            $outPath = $tmpDir.'/'.$outName;
-            $tp->saveAs($outPath);
-            $generated[] = $outPath;
+                $safeKota = preg_replace('/\s+/', '_', trim((string)($r->kota ?? 'Dokumen')));
+                $safeKota = substr($safeKota, 0, 40);
+                $outName  = 'Surat_'.$safeKota.'_'.uniqid().'.docx';
+                $outPath  = $tmpDir . '/' . $outName;
+
+                $tp->saveAs($outPath);
+
+                // verifikasi file beneran terbuat
+                if (!is_file($outPath) || filesize($outPath) < 100) {
+                    throw new \RuntimeException('Gagal menyimpan file surat: '.$outName);
+                }
+
+                $generated[] = $outPath;
+            } catch (\Throwable $e) {
+                // kumpulkan error tapi lanjut baris lain
+                $errors[] = 'ID? '.($r->id_listing ?? '-') . ' → ' . $e->getMessage();
+                continue;
+            }
         }
 
         // Bersihkan template sementara
@@ -140,23 +154,47 @@ class ExportController extends Controller
             @unlink($tempTemplate);
         }
 
-        // 1 file → kirim langsung
+        // Jika tidak ada yang berhasil dibuat, laporkan penyebabnya
+        if (count($generated) === 0) {
+            $debug = [
+                'rows'        => $rows->count(),
+                'tmp_dir'     => $tmpDir,
+                'dir_writable'=> is_writable($tmpDir),
+                'tpl_exists'  => is_file($templatePath),
+                'tpl_size'    => @filesize($templatePath),
+                'errors'      => $errors,
+            ];
+            return back()->with('error', 'Tidak ada file yang berhasil dibuat. Debug: '.json_encode($debug));
+        }
+
+        // Satu file → kirim langsung
         if (count($generated) === 1) {
-            return response()->download($generated[0])->deleteFileAfterSend(true);
+            $file = $generated[0];
+            // pastikan tidak ada output buffering mengganggu
+            if (function_exists('ob_get_level')) {
+                while (ob_get_level() > 0) { @ob_end_clean(); }
+            }
+            return response()->download($file, basename($file))->deleteFileAfterSend(true);
         }
 
         // Banyak file → zip
         $zipName = 'Surat_'.now()->format('Ymd_His').'.zip';
         $zipPath = $tmpDir.'/'.$zipName;
         $zip = new \ZipArchive();
-        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
-            foreach ($generated as $path) {
-                $zip->addFile($path, basename($path));
-            }
-            $zip->close();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            return back()->with('error', 'Gagal membuka ZipArchive. Aktifkan ekstensi zip di server.');
         }
-        return response()->download($zipPath)->deleteFileAfterSend(true);
+        foreach ($generated as $path) {
+            $zip->addFile($path, basename($path));
+        }
+        $zip->close();
+
+        if (function_exists('ob_get_level')) {
+            while (ob_get_level() > 0) { @ob_end_clean(); }
+        }
+        return response()->download($zipPath, basename($zipPath))->deleteFileAfterSend(true);
     }
+
 
 
 
