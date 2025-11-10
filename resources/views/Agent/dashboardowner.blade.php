@@ -1080,28 +1080,52 @@
       <!-- 1/4 kanan: panel pilihan + riwayat -->
       <div class="col-lg-3">
         <div class="card shadow-sm border-0 mb-4">
-          <div class="card-header bg-white py-3 d-flex justify-content-end">
-            <form id="stoker-bulk-form" action="{{ route('stoker.bulkSold') }}" method="POST" class="m-0">
-              @csrf
-              <input type="hidden" name="selected_ids" id="stoker_selected_ids_input">
-              <button type="submit" id="btn-stoker-bulk-sold" class="btn-bulk" disabled title="Centang minimal 1 listing">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"></path>
-                </svg>
-                <span>Tandai Terjual</span>
-                <span class="badge bg-dark text-white badge-count ms-1" id="stoker-selected-counter">0</span>
-              </button>
-            </form>
-          </div>
+            <!-- ====== HEADER (ASLI, TANPA PERUBAHAN SATU HURUF PUN) ====== -->
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+              <div class="d-flex align-items-center gap-2">
+                <form id="stoker-bulk-form" action="{{ route('stoker.bulkSold') }}" method="POST" class="m-0">
+                  @csrf
+                  <input type="hidden" name="selected_ids" id="stoker_selected_ids_input">
+                  <button type="submit" id="btn-stoker-bulk-sold" class="btn-bulk" disabled title="Centang minimal 1 listing">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"></path>
+                    </svg>
+                    <span>Tandai Terjual</span>
+                    <span class="badge bg-dark text-white badge-count ms-1" id="stoker-selected-counter">0</span>
+                  </button>
+                </form>
 
-          <div class="card-body">
-            <div id="stoker-selected-preview" class="d-flex flex-wrap gap-2 small"></div>
-            <hr class="my-3">
-            <div class="text-muted small">
-              Centang item di halaman mana pun. Pilihan disimpan sementara di browser sampai kamu klik <strong>Tandai Terjual</strong>.
+                <!-- Tombol Clear All -->
+                <button type="button" id="stoker-clear-all" class="btn btn-link btn-sm text-danger px-0 ms-2">
+                  Hapus semua
+                </button>
+              </div>
             </div>
+
+            <style>
+              #stoker-clear-all { text-decoration: none; }
+              #stoker-clear-all:hover { text-decoration: underline; }
+            </style>
+
+            <!-- ====== BODY (TAMBAHAN: area tag ID terpilih) ====== -->
+            <div class="card-body">
+              <div id="stoker-selected-preview" class="d-flex flex-wrap gap-2 small"></div>
+              <hr class="my-3">
+              <div class="text-muted small">
+                Centang item di halaman mana pun. Pilihan disimpan sementara di browser sampai kamu klik <strong>Tandai Terjual</strong>.
+              </div>
+            </div>
+
+            <style>
+              /* Styling pill/ tag ID */
+              #stoker-selected-preview .btn {
+                padding: .25rem .5rem;
+                border-radius: .5rem;
+                font-weight: 600;
+                line-height: 1.1;
+              }
+            </style>
           </div>
-        </div>
         <style>
           /* Biar anak-anak di dalam form ikut grid parent row */
           .d-contents { display: contents !important; }
@@ -1341,9 +1365,28 @@
           localStorage.removeItem(KEY);
           if (window.afterStokerListReplaced) window.afterStokerListReplaced();
         @endif
+
+        // =========================
+        //   CLEAR ALL (TAMBAHAN)
+        // =========================
+        (function(){
+          const clearBtn = document.getElementById('stoker-clear-all');
+          function stokerClearAll(){
+            try { localStorage.setItem(KEY, '[]'); } catch(e){ localStorage.removeItem(KEY); }
+            document.querySelectorAll('#stoker-list-inner .row-check').forEach(cb => cb.checked = false);
+            const master = document.getElementById('check_all_stoker');
+            if (master){ master.checked = false; master.indeterminate = false; }
+            updateCounterAndHidden();
+            renderPreview();
+            syncMaster();
+          }
+          window.stokerClearAll = stokerClearAll;
+          clearBtn?.addEventListener('click', stokerClearAll);
+        })();
       })();
     });
     </script>
+
         {{-- ========== Stoker ========== --}}
 
         <!-- Calendar -->

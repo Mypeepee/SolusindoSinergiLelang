@@ -108,135 +108,151 @@ class ExportController extends Controller
 
 
 
-    public function properties(Request $request)
-    {
-        // Validasi input
-        $validated = $request->validate([
-            'format'         => 'required|in:csv,xlsx',
-            'selected_ids'   => 'nullable|string', // CSV of IDs
-            'search'         => 'nullable|string',
-            'property_type'  => 'nullable|string',
-            'province'       => 'nullable|string',
-            'city'           => 'nullable|string',
-            'district'       => 'nullable|string',
-        ]);
+public function properties(Request $request)
+{
+    // Validasi input
+    $validated = $request->validate([
+        'format'         => 'required|in:csv,xlsx',
+        'selected_ids'   => 'nullable|string', // CSV of IDs
+        'search'         => 'nullable|string',
+        'property_type'  => 'nullable|string',
+        'province'       => 'nullable|string',
+        'city'           => 'nullable|string',
+        'district'       => 'nullable|string',
+        'vendor'         => 'nullable|string',
+    ]);
 
-        // Build query dasar + filter
-        $q = Property::query();
+    // Build query dasar + filter
+    $q = Property::query();
 
-        if ($request->filled('search')) {
-            $search = trim($request->get('search'));
-            $q->where(function ($w) use ($search) {
-                $w->where('id_listing', 'LIKE', "%{$search}%")
-                  ->orWhere('lokasi', 'LIKE', "%{$search}%");
-            });
-        }
-        if ($request->filled('property_type')) $q->where('tipe', $request->get('property_type'));
-        if ($request->filled('province'))      $q->where('provinsi', $request->get('province'));
-        if ($request->filled('city'))          $q->where('kota', $request->get('city'));
-        if ($request->filled('district'))      $q->where('kecamatan', $request->get('district'));
-
-        // Jika user pilih ID tertentu, utamakan itu
-        $selectedIds = collect([]);
-        if ($request->filled('selected_ids')) {
-            $selectedIds = collect(array_filter(array_map('trim', explode(',', $request->get('selected_ids')))));
-            if ($selectedIds->isNotEmpty()) {
-                $q->whereIn('id_listing', $selectedIds->all());
-            }
-        }
-
-        // Ambil data untuk export (alias-kan kolom link agar tidak bentrok)
-        $rows = $q->orderBy('id_listing', 'asc')->get([
-            'id_listing',
-            'lokasi',
-            'tipe',
-            'luas',
-            'harga',
-            'sertifikat',
-            'gambar',
-            'link as property_link',  // <— PENTING: pakai alias
-            'id_agent',
-        ]);
-
-        // Header kolom export
-        $headers = [
-            'ID',
-            'Lokasi',
-            'Tipe',
-            'Luas',
-            'Harga',
-            'Sertifikat',
-            'Gambar',
-            'Link',
-            'Link Solusindo',
-        ];
-
-        $solusindoLinkBase = 'https://solusindolelang.com/property-detail';
-
-        // Transform rows sesuai header (pakai alias property_link)
-        $exportArray = $rows->map(function ($r) use ($solusindoLinkBase) {
-            $id  = $r->id_listing;
-            $aid = $r->id_agent;
-            $linkSolusindo = "{$solusindoLinkBase}/{$id}/{$aid}";
-
-            // Pakai getOriginal sebagai jaring pengaman kalau ada accessor aneh
-            $propertyLink = $r->getOriginal('property_link') ?? $r->property_link ?? '';
-
-            return [
-                (string)$id,                 // ID
-                (string)($r->lokasi ?? ''),  // Lokasi
-                (string)($r->tipe ?? ''),    // Tipe
-                $r->luas,                    // Luas
-                $r->harga,                   // Harga
-                (string)($r->sertifikat ?? ''), // Sertifikat
-                (string)($r->gambar ?? ''),     // Gambar (CSV URL atau path)
-                trim((string)$propertyLink),    // Link dari kolom property.link
-                $linkSolusindo,                 // Link Solusindo
-            ];
-        })->toArray();
-
-        $filenameBase = 'export_properti_' . now()->format('Ymd_His');
-
-        // ===== Keputusan format =====
-        $wantXlsx       = ($validated['format'] === 'xlsx');
-        $excelAvailable = class_exists(\Maatwebsite\Excel\Facades\Excel::class)
-                          && interface_exists(\Maatwebsite\Excel\Concerns\FromArray::class);
-        $zipAvailable   = class_exists('ZipArchive');
-
-        if ($wantXlsx && $excelAvailable && $zipAvailable) {
-            $export = new class($headers, $exportArray) implements \Maatwebsite\Excel\Concerns\FromArray, \Maatwebsite\Excel\Concerns\WithHeadings {
-                private $headers; private $data;
-                public function __construct($headers, $data) { $this->headers = $headers; $this->data = $data; }
-                public function headings(): array { return $this->headers; }
-                public function array(): array { return $this->data; }
-            };
-
-            $response = \Maatwebsite\Excel\Facades\Excel::download($export, $filenameBase . '.xlsx');
-            // Debug header (opsional)
-            $filledLinkCount = collect($exportArray)->where(fn($r) => !empty($r[7]))->count(); // kolom ke-8 = Link
-            $response->headers->set('X-Export-Debug', 'wantXlsx=1; excelAvailable=1; zipAvailable=1');
-            $response->headers->set('X-Export-Link-Filled', (string)$filledLinkCount);
-            return $response;
-        }
-
-        // ===== Fallback CSV =====
-        $response = new \Symfony\Component\HttpFoundation\StreamedResponse(function () use ($headers, $exportArray) {
-            $handle = fopen('php://output', 'w');
-            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF)); // BOM
-            fputcsv($handle, $headers);
-            foreach ($exportArray as $row) {
-                fputcsv($handle, $row);
-            }
-            fclose($handle);
+    if ($request->filled('search')) {
+        $search = trim($request->get('search'));
+        $q->where(function ($w) use ($search) {
+            $w->where('id_listing', 'LIKE', "%{$search}%")
+              ->orWhere('lokasi', 'LIKE', "%{$search}%");
         });
+    }
+    if ($request->filled('property_type')) $q->where('tipe', $request->get('property_type'));
+    if ($request->filled('province'))      $q->where('provinsi', $request->get('province'));
+    if ($request->filled('city'))          $q->where('kota', $request->get('city'));
+    if ($request->filled('district'))      $q->where('kecamatan', $request->get('district'));
+    if ($request->filled('vendor'))        $q->where('vendor', $request->get('vendor'));
 
-        $filledLinkCount = collect($exportArray)->where(fn($r) => !empty($r[7]))->count();
-        $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
-        $response->headers->set('Content-Disposition', 'attachment; filename="'.$filenameBase.'.csv"');
-        $response->headers->set('X-Export-Debug', 'wantXlsx=' . ($wantXlsx?1:0) . '; excelAvailable=' . ($excelAvailable?1:0) . '; zipAvailable=' . ($zipAvailable?1:0));
-        $response->headers->set('X-Export-Link-Filled', (string)$filledLinkCount);
+    // Jika user pilih ID tertentu, utamakan itu
+    $selectedIds = collect([]);
+    if ($request->filled('selected_ids')) {
+        $selectedIds = collect(array_filter(array_map('trim', explode(',', $request->get('selected_ids')))));
+        if ($selectedIds->isNotEmpty()) {
+            $q->whereIn('id_listing', $selectedIds->all());
+        }
+    }
 
+    // Ambil data minimal untuk export
+    $rows = $q->orderBy('id_listing', 'asc')->get([
+        'id_listing',
+        'vendor',
+        'id_agent',
+        'kota',
+        'lokasi',
+        'sertifikat',
+        'tipe',
+        'luas',
+        'harga',
+        // ===== TAMBAHAN UNTUK 3 KOLOM TERAKHIR =====
+        'kelurahan',
+        'kecamatan',
+        'provinsi',
+    ]);
+
+    // Map id_agent -> nama agent
+    $agentIds   = $rows->pluck('id_agent')->filter()->unique()->values();
+    $agentNames = \App\Models\Agent::whereIn('id_agent', $agentIds)->pluck('nama', 'id_agent'); // ubah 'nama' jika field-mu 'name'
+
+    // Header kolom export
+    $headers = [
+        'Bank',
+        'No',
+        'PELISTING',
+        'Kota',
+        'Alamat',
+        'Bukti Kepemilikan',
+        'TYPE',
+        'LT',
+        'Jenis Transaksi',
+        'Harga Jual',
+        // ===== HEADER TAMBAHAN DI PALING AKHIR =====
+        'KELURAHAN',
+        'KECAMATAN',
+        'PROPINSI',
+    ];
+
+    // Transform rows
+    $exportArray = $rows->map(function ($r) use ($agentNames) {
+        $idListing = (int) $r->id_listing;
+        $noRaw     = (string) (2000000 + $idListing); // <-- TANPA TITIK PEMISAH
+
+        $pelisting = (string) ($agentNames[$r->id_agent] ?? $r->id_agent);
+
+        return [
+            (string)($r->vendor ?? ''),        // Bank
+            $noRaw,                            // No (2jt + id_listing) tanpa pemisah
+            $pelisting,                        // PELISTING (nama agent)
+            (string)($r->kota ?? ''),          // Kota
+            (string)($r->lokasi ?? ''),        // Alamat
+            (string)($r->sertifikat ?? ''),    // Bukti Kepemilikan
+            (string)($r->tipe ?? ''),          // TYPE
+            $r->luas,                          // LT
+            'LELANG',                          // Jenis Transaksi
+            $r->harga,                         // Harga Jual
+            // ===== NILAI TAMBAHAN DI PALING AKHIR =====
+            (string)($r->kelurahan ?? ''),     // KELURAHAN
+            (string)($r->kecamatan ?? ''),     // KECAMATAN
+            (string)($r->provinsi ?? ''),      // PROPINSI
+        ];
+    })->toArray();
+
+    $filenameBase = 'export_properti_' . now()->format('Ymd_His');
+
+    // ===== Keputusan format =====
+    $wantXlsx       = ($validated['format'] === 'xlsx');
+    $excelAvailable = class_exists(\Maatwebsite\Excel\Facades\Excel::class)
+                      && interface_exists(\Maatwebsite\Excel\Concerns\FromArray::class);
+    $zipAvailable   = class_exists('ZipArchive');
+
+    if ($wantXlsx && $excelAvailable && $zipAvailable) {
+        $export = new class($headers, $exportArray) implements \Maatwebsite\Excel\Concerns\FromArray, \Maatwebsite\Excel\Concerns\WithHeadings {
+            private $headers; private $data;
+            public function __construct($headers, $data) { $this->headers = $headers; $this->data = $data; }
+            public function headings(): array { return $this->headers; }
+            public function array(): array { return $this->data; }
+        };
+
+        $response = \Maatwebsite\Excel\Facades\Excel::download($export, $filenameBase . '.xlsx');
+        $response->headers->set('X-Export-Debug', 'wantXlsx=1; excelAvailable=1; zipAvailable=1');
+        $response->headers->set('X-Export-Count', (string)count($exportArray));
         return $response;
     }
+
+    // ===== Fallback CSV =====
+    $response = new \Symfony\Component\HttpFoundation\StreamedResponse(function () use ($headers, $exportArray) {
+        $handle = fopen('php://output', 'w');
+        fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF)); // BOM
+        fputcsv($handle, $headers);
+        foreach ($exportArray as $row) {
+            fputcsv($handle, $row);
+        }
+        fclose($handle);
+    });
+
+    $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
+    $response->headers->set('Content-Disposition', 'attachment; filename="'.$filenameBase.'.csv"');
+    $response->headers->set('X-Export-Debug', 'wantXlsx=' . ($wantXlsx?1:0) . '; excelAvailable=' . ($excelAvailable?1:0) . '; zipAvailable=' . ($zipAvailable?1:0));
+    $response->headers->set('X-Export-Count', (string)count($exportArray));
+
+    return $response;
+}
+
+
+
 
 }
