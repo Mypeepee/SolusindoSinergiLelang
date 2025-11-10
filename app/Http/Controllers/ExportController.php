@@ -21,6 +21,7 @@ class ExportController extends Controller
             'province'      => 'nullable|string',
             'city'          => 'nullable|string',
             'district'      => 'nullable|string',
+            'template_url'  => 'required|url',      // <-- WAJIB: pakai URL, tidak pakai local
         ]);
 
         $ids = collect(array_filter(array_map('trim', explode(',', $request->selected_ids))));
@@ -52,51 +53,62 @@ class ExportController extends Controller
             return back()->with('error','Data tidak ditemukan.');
         }
 
-        // Pakai file yang bener: storage/app/templates/LBH Jaksa.docx
-        // >>> REVISI: gunakan disk 'local' agar path konsisten di Windows/Herd/WSL <<<
-        $disk     = \Illuminate\Support\Facades\Storage::disk('local');   // storage/app
-        $relative = 'templates/LBH Jaksa.docx';
+        // ================
+        // AMBIL DARI URL
+        // ================
+        // Normalisasi Google Docs -> export?format=docx
+        $inputUrl = trim($request->get('template_url'));
+        $remoteUrl = $inputUrl;
 
-        if ($disk->exists($relative)) {
-            $templatePath = $disk->path($relative);   // path absolut fisik untuk TemplateProcessor
-        } else {
-            // fallback ke cara lama untuk debug lingkungan yang berbeda
-            $fallbackPath = storage_path('app/templates/LBH Jaksa.docx');
-            if (is_file($fallbackPath)) {
-                $templatePath = $fallbackPath;
-            } else {
-                // ======== Fallback tambahan: resources/, public/, base/ ========
-                $tryPaths = [
-                    resource_path('templates/LBH Jaksa.docx'),
-                    public_path('templates/LBH Jaksa.docx'),
-                    base_path('templates/LBH Jaksa.docx'),
-                ];
-                $found = null;
-                foreach ($tryPaths as $p) {
-                    if (is_file($p)) { $found = $p; break; }
-                }
-                if ($found) {
-                    $templatePath = $found;
-                } else {
-                    $debug = [
-                        'expected_relative' => $relative,
-                        'disk_path'         => method_exists($disk, 'path') ? $disk->path($relative) : null,
-                        'storage_path_app'  => storage_path('app'),
-                        'resources_try'     => $tryPaths[0],
-                        'public_try'        => $tryPaths[1],
-                        'base_try'          => $tryPaths[2],
-                        'cwd'               => getcwd(),
-                        'php_uname'         => php_uname(),
-                    ];
-                    return back()->with('error','Template tidak ditemukan di storage/app/templates/LBH Jaksa.docx | Debug: '.json_encode($debug));
-                }
-            }
+        // Contoh: https://docs.google.com/document/d/{ID}/edit?usp=...
+        if (preg_match('~^https?://docs\.google\.com/document/d/([a-zA-Z0-9_-]+)~', $inputUrl, $m)) {
+            $docId    = $m[1];
+            $remoteUrl = "https://docs.google.com/document/d/{$docId}/export?format=docx";
+        }
+        // (Opsional) Drive file viewer -> direct download
+        // Contoh: https://drive.google.com/file/d/{ID}/view?usp=...
+        elseif (preg_match('~^https?://drive\.google\.com/file/d/([a-zA-Z0-9_-]+)~', $inputUrl, $m)) {
+            $fileId   = $m[1];
+            $remoteUrl = "https://drive.google.com/uc?export=download&id={$fileId}";
         }
 
-        $today      = now()->translatedFormat('d F Y');
-        $tmpDir     = storage_path('app/tmp_letters');
+        // Download ke file sementara
+        $tmpDir = storage_path('app/tmp_letters');
         @mkdir($tmpDir, 0775, true);
+        $tempTemplate = $tmpDir . '/_tpl_' . uniqid() . '.docx';
 
+        try {
+            if (class_exists(\GuzzleHttp\Client::class)) {
+                $client = new \GuzzleHttp\Client(['timeout' => 30, 'verify' => false]);
+                $client->request('GET', $remoteUrl, ['sink' => $tempTemplate, 'headers' => [
+                    // beberapa host perlu UA agar tidak balas HTML ringan
+                    'User-Agent' => 'Mozilla/5.0 (compatible; PHP TemplateFetcher)',
+                ]]);
+            } else {
+                $ctx = stream_context_create([
+                    'http' => [
+                        'timeout' => 30,
+                        'header'  => "User-Agent: Mozilla/5.0\r\n",
+                    ],
+                    'ssl'  => ['verify_peer' => false, 'verify_peer_name' => false],
+                ]);
+                $data = @file_get_contents($remoteUrl, false, $ctx);
+                if ($data === false) throw new \RuntimeException('Gagal mengunduh template_url.');
+                file_put_contents($tempTemplate, $data);
+            }
+
+            // Validasi hasil unduhan (tidak boleh HTML kecil)
+            if (!is_file($tempTemplate) || filesize($tempTemplate) < 100) {
+                @unlink($tempTemplate);
+                return back()->with('error', 'Template tidak valid atau tidak bisa diunduh. Pastikan link Google Docs dibuka untuk "Anyone with the link" dan gunakan dokumen bertipe Google Docs.');
+            }
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Gagal mengunduh template: '.$e->getMessage());
+        }
+
+        $templatePath = $tempTemplate;
+
+        $today      = now()->translatedFormat('d F Y');
         $generated  = [];
 
         foreach ($rows as $r) {
@@ -123,6 +135,11 @@ class ExportController extends Controller
             $generated[] = $outPath;
         }
 
+        // Bersihkan template sementara
+        if (!empty($tempTemplate) && is_file($tempTemplate)) {
+            @unlink($tempTemplate);
+        }
+
         // 1 file → kirim langsung
         if (count($generated) === 1) {
             return response()->download($generated[0])->deleteFileAfterSend(true);
@@ -140,6 +157,7 @@ class ExportController extends Controller
         }
         return response()->download($zipPath)->deleteFileAfterSend(true);
     }
+
 
 
 
