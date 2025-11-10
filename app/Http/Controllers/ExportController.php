@@ -12,116 +12,135 @@ use ZipArchive;
 class ExportController extends Controller
 {
     public function letters(Request $request)
-{
-    // Validasi minimal secukupnya
-    $request->validate([
-        'selected_ids'  => 'required|string',   // CSV id_listing
-        'search'        => 'nullable|string',
-        'property_type' => 'nullable|string',
-        'province'      => 'nullable|string',
-        'city'          => 'nullable|string',
-        'district'      => 'nullable|string',
-    ]);
+    {
+        // Validasi minimal secukupnya
+        $request->validate([
+            'selected_ids'  => 'required|string',   // CSV id_listing
+            'search'        => 'nullable|string',
+            'property_type' => 'nullable|string',
+            'province'      => 'nullable|string',
+            'city'          => 'nullable|string',
+            'district'      => 'nullable|string',
+        ]);
 
-    $ids = collect(array_filter(array_map('trim', explode(',', $request->selected_ids))));
-    if ($ids->count() < 1) {
-        return back()->with('error','Pilih minimal 1 listing.');
-    }
-
-    // Query data (hanya kolom yang dipakai di template)
-    $q = \App\Models\Property::query()->whereIn('id_listing', $ids->all());
-
-    // Optional: hormati filter yang aktif
-    if ($request->filled('search')) {
-        $search = trim($request->get('search'));
-        $q->where(function ($w) use ($search) {
-            $w->where('id_listing', 'LIKE', "%{$search}%")
-              ->orWhere('lokasi', 'LIKE', "%{$search}%");
-        });
-    }
-    if ($request->filled('property_type')) $q->where('tipe', $request->property_type);
-    if ($request->filled('province'))      $q->where('provinsi', $request->province);
-    if ($request->filled('city'))          $q->where('kota', $request->city);
-    if ($request->filled('district'))      $q->where('kecamatan', $request->district);
-
-    $rows = $q->orderBy('id_listing')->get([
-        'lokasi','luas','vendor','kota','sertifikat','harga','link'
-    ]);
-
-    if ($rows->isEmpty()) {
-        return back()->with('error','Data tidak ditemukan.');
-    }
-
-    // Pakai file yang bener: storage/app/templates/LBH Jaksa.docx
-    // >>> REVISI: gunakan disk 'local' agar path konsisten di Windows/Herd/WSL <<<
-    $disk     = \Illuminate\Support\Facades\Storage::disk('local');   // storage/app
-    $relative = 'templates/LBH Jaksa.docx';
-
-    if ($disk->exists($relative)) {
-        $templatePath = $disk->path($relative);   // path absolut fisik untuk TemplateProcessor
-    } else {
-        // fallback ke cara lama untuk debug lingkungan yang berbeda
-        $fallbackPath = storage_path('app/templates/LBH Jaksa.docx');
-        if (!is_file($fallbackPath)) {
-            $debug = [
-                'expected_relative' => $relative,
-                'disk_path'         => method_exists($disk, 'path') ? $disk->path($relative) : null,
-                'storage_path_app'  => storage_path('app'),
-                'cwd'               => getcwd(),
-                'php_uname'         => php_uname(),
-            ];
-            return back()->with('error','Template tidak ditemukan di storage/app/templates/LBH Jaksa.docx | Debug: '.json_encode($debug));
+        $ids = collect(array_filter(array_map('trim', explode(',', $request->selected_ids))));
+        if ($ids->count() < 1) {
+            return back()->with('error','Pilih minimal 1 listing.');
         }
-        $templatePath = $fallbackPath;
-    }
 
-    $today      = now()->translatedFormat('d F Y');
-    $tmpDir     = storage_path('app/tmp_letters');
-    @mkdir($tmpDir, 0775, true);
+        // Query data (hanya kolom yang dipakai di template)
+        $q = \App\Models\Property::query()->whereIn('id_listing', $ids->all());
 
-    $generated  = [];
-
-    foreach ($rows as $r) {
-        $tp = new \PhpOffice\PhpWord\TemplateProcessor($templatePath);
-
-        // Hitung harga asli (sebelum markup 28.9%)
-        // Harga_saat_ini = harga_asli * 1.289  =>  harga_asli = harga_saat_ini / 1.289
-        $hargaSaatIni = (int) ($r->harga ?? 0);
-        $hargaAsli    = (int) round($hargaSaatIni / 1.289);
-
-        // Isi nilai teks sesuai placeholder template
-        $tp->setValue('lokasi',      (string)($r->lokasi ?? ''));
-        $tp->setValue('luas',        (string)($r->luas ?? ''));
-        $tp->setValue('vendor',      (string)($r->vendor ?? ''));
-        $tp->setValue('kota',        (string)($r->kota ?? ''));
-        $tp->setValue('sertifikat',  (string)($r->sertifikat ?? ''));
-        $tp->setValue('harga_asli',  'Rp '.number_format($hargaAsli, 0, ',', '.'));
-        $tp->setValue('tanggal',     $today);
-        $tp->setValue('link',        (string)($r->link ?? ''));
-
-        $outName = 'Surat_'.preg_replace('/\s+/', '_', substr($r->kota ?? 'Dokumen', 0, 40)).'_'.uniqid().'.docx';
-        $outPath = $tmpDir.'/'.$outName;
-        $tp->saveAs($outPath);
-        $generated[] = $outPath;
-    }
-
-    // 1 file → kirim langsung
-    if (count($generated) === 1) {
-        return response()->download($generated[0])->deleteFileAfterSend(true);
-    }
-
-    // Banyak file → zip
-    $zipName = 'Surat_'.now()->format('Ymd_His').'.zip';
-    $zipPath = $tmpDir.'/'.$zipName;
-    $zip = new \ZipArchive();
-    if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
-        foreach ($generated as $path) {
-            $zip->addFile($path, basename($path));
+        // Optional: hormati filter yang aktif
+        if ($request->filled('search')) {
+            $search = trim($request->get('search'));
+            $q->where(function ($w) use ($search) {
+                $w->where('id_listing', 'LIKE', "%{$search}%")
+                  ->orWhere('lokasi', 'LIKE', "%{$search}%");
+            });
         }
-        $zip->close();
+        if ($request->filled('property_type')) $q->where('tipe', $request->property_type);
+        if ($request->filled('province'))      $q->where('provinsi', $request->province);
+        if ($request->filled('city'))          $q->where('kota', $request->city);
+        if ($request->filled('district'))      $q->where('kecamatan', $request->district);
+
+        $rows = $q->orderBy('id_listing')->get([
+            'lokasi','luas','vendor','kota','sertifikat','harga','link'
+        ]);
+
+        if ($rows->isEmpty()) {
+            return back()->with('error','Data tidak ditemukan.');
+        }
+
+        // Pakai file yang bener: storage/app/templates/LBH Jaksa.docx
+        // >>> REVISI: gunakan disk 'local' agar path konsisten di Windows/Herd/WSL <<<
+        $disk     = \Illuminate\Support\Facades\Storage::disk('local');   // storage/app
+        $relative = 'templates/LBH Jaksa.docx';
+
+        if ($disk->exists($relative)) {
+            $templatePath = $disk->path($relative);   // path absolut fisik untuk TemplateProcessor
+        } else {
+            // fallback ke cara lama untuk debug lingkungan yang berbeda
+            $fallbackPath = storage_path('app/templates/LBH Jaksa.docx');
+            if (is_file($fallbackPath)) {
+                $templatePath = $fallbackPath;
+            } else {
+                // ======== Fallback tambahan: resources/, public/, base/ ========
+                $tryPaths = [
+                    resource_path('templates/LBH Jaksa.docx'),
+                    public_path('templates/LBH Jaksa.docx'),
+                    base_path('templates/LBH Jaksa.docx'),
+                ];
+                $found = null;
+                foreach ($tryPaths as $p) {
+                    if (is_file($p)) { $found = $p; break; }
+                }
+                if ($found) {
+                    $templatePath = $found;
+                } else {
+                    $debug = [
+                        'expected_relative' => $relative,
+                        'disk_path'         => method_exists($disk, 'path') ? $disk->path($relative) : null,
+                        'storage_path_app'  => storage_path('app'),
+                        'resources_try'     => $tryPaths[0],
+                        'public_try'        => $tryPaths[1],
+                        'base_try'          => $tryPaths[2],
+                        'cwd'               => getcwd(),
+                        'php_uname'         => php_uname(),
+                    ];
+                    return back()->with('error','Template tidak ditemukan di storage/app/templates/LBH Jaksa.docx | Debug: '.json_encode($debug));
+                }
+            }
+        }
+
+        $today      = now()->translatedFormat('d F Y');
+        $tmpDir     = storage_path('app/tmp_letters');
+        @mkdir($tmpDir, 0775, true);
+
+        $generated  = [];
+
+        foreach ($rows as $r) {
+            $tp = new \PhpOffice\PhpWord\TemplateProcessor($templatePath);
+
+            // Hitung harga asli (sebelum markup 28.9%)
+            // Harga_saat_ini = harga_asli * 1.289  =>  harga_asli = harga_saat_ini / 1.289
+            $hargaSaatIni = (int) ($r->harga ?? 0);
+            $hargaAsli    = (int) round($hargaSaatIni / 1.289);
+
+            // Isi nilai teks sesuai placeholder template
+            $tp->setValue('lokasi',      (string)($r->lokasi ?? ''));
+            $tp->setValue('luas',        (string)($r->luas ?? ''));
+            $tp->setValue('vendor',      (string)($r->vendor ?? ''));
+            $tp->setValue('kota',        (string)($r->kota ?? ''));
+            $tp->setValue('sertifikat',  (string)($r->sertifikat ?? ''));
+            $tp->setValue('harga_asli',  'Rp '.number_format($hargaAsli, 0, ',', '.'));
+            $tp->setValue('tanggal',     $today);
+            $tp->setValue('link',        (string)($r->link ?? ''));
+
+            $outName = 'Surat_'.preg_replace('/\s+/', '_', substr($r->kota ?? 'Dokumen', 0, 40)).'_'.uniqid().'.docx';
+            $outPath = $tmpDir.'/'.$outName;
+            $tp->saveAs($outPath);
+            $generated[] = $outPath;
+        }
+
+        // 1 file → kirim langsung
+        if (count($generated) === 1) {
+            return response()->download($generated[0])->deleteFileAfterSend(true);
+        }
+
+        // Banyak file → zip
+        $zipName = 'Surat_'.now()->format('Ymd_His').'.zip';
+        $zipPath = $tmpDir.'/'.$zipName;
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            foreach ($generated as $path) {
+                $zip->addFile($path, basename($path));
+            }
+            $zip->close();
+        }
+        return response()->download($zipPath)->deleteFileAfterSend(true);
     }
-    return response()->download($zipPath)->deleteFileAfterSend(true);
-}
+
 
 
 
