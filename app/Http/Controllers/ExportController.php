@@ -53,9 +53,26 @@ class ExportController extends Controller
     }
 
     // Pakai file yang bener: storage/app/templates/LBH Jaksa.docx
-    $templatePath = storage_path('app/templates/LBH Jaksa.docx');
-    if (!is_file($templatePath)) {
-        return back()->with('error','Template tidak ditemukan di storage/app/templates/LBH Jaksa.docx');
+    // >>> REVISI: gunakan disk 'local' agar path konsisten di Windows/Herd/WSL <<<
+    $disk     = \Illuminate\Support\Facades\Storage::disk('local');   // storage/app
+    $relative = 'templates/LBH Jaksa.docx';
+
+    if ($disk->exists($relative)) {
+        $templatePath = $disk->path($relative);   // path absolut fisik untuk TemplateProcessor
+    } else {
+        // fallback ke cara lama untuk debug lingkungan yang berbeda
+        $fallbackPath = storage_path('app/templates/LBH Jaksa.docx');
+        if (!is_file($fallbackPath)) {
+            $debug = [
+                'expected_relative' => $relative,
+                'disk_path'         => method_exists($disk, 'path') ? $disk->path($relative) : null,
+                'storage_path_app'  => storage_path('app'),
+                'cwd'               => getcwd(),
+                'php_uname'         => php_uname(),
+            ];
+            return back()->with('error','Template tidak ditemukan di storage/app/templates/LBH Jaksa.docx | Debug: '.json_encode($debug));
+        }
+        $templatePath = $fallbackPath;
     }
 
     $today      = now()->translatedFormat('d F Y');
@@ -105,6 +122,7 @@ class ExportController extends Controller
     }
     return response()->download($zipPath)->deleteFileAfterSend(true);
 }
+
 
 
 
