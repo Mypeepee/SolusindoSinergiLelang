@@ -854,6 +854,7 @@
                     <option value="hotel dan villa" @selected(request('property_type')==='hotel dan villa')>Hotel dan Villa</option>
                     <option value="ruko" @selected(request('property_type')==='ruko')>Ruko</option>
                     <option value="toko" @selected(request('property_type')==='toko')>Toko</option>
+                    <option value="inventaris" @selected(request('property_type')==='inventaris')>Inventaris</option>
                     <option value="lain-lain" @selected(request('property_type')==='lain-lain')>Lainnya</option>
                     </select>
                 </div>
