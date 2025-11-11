@@ -201,149 +201,253 @@ class ExportController extends Controller
 
 
 
-public function properties(Request $request)
-{
-    // Validasi input
-    $validated = $request->validate([
-        'format'         => 'required|in:csv,xlsx',
-        'selected_ids'   => 'nullable|string', // CSV of IDs
-        'search'         => 'nullable|string',
-        'property_type'  => 'nullable|string',
-        'province'       => 'nullable|string',
-        'city'           => 'nullable|string',
-        'district'       => 'nullable|string',
-        'vendor'         => 'nullable|string',
-    ]);
+    public function properties(Request $request)
+    {
+        // Validasi input
+        $validated = $request->validate([
+            'format'         => 'required|in:csv,xlsx',
+            'selected_ids'   => 'nullable|string', // CSV of IDs
+            'search'         => 'nullable|string',
+            'property_type'  => 'nullable|string',
+            'province'       => 'nullable|string',
+            'city'           => 'nullable|string',
+            'district'       => 'nullable|string',
+            'vendor'         => 'nullable|string',
+        ]);
 
-    // Build query dasar + filter
-    $q = Property::query();
+        // Build query dasar + filter
+        $q = Property::query();
 
-    if ($request->filled('search')) {
-        $search = trim($request->get('search'));
-        $q->where(function ($w) use ($search) {
-            $w->where('id_listing', 'LIKE', "%{$search}%")
-              ->orWhere('lokasi', 'LIKE', "%{$search}%");
-        });
-    }
-    if ($request->filled('property_type')) $q->where('tipe', $request->get('property_type'));
-    if ($request->filled('province'))      $q->where('provinsi', $request->get('province'));
-    if ($request->filled('city'))          $q->where('kota', $request->get('city'));
-    if ($request->filled('district'))      $q->where('kecamatan', $request->get('district'));
-    if ($request->filled('vendor'))        $q->where('vendor', $request->get('vendor'));
-
-    // Jika user pilih ID tertentu, utamakan itu
-    $selectedIds = collect([]);
-    if ($request->filled('selected_ids')) {
-        $selectedIds = collect(array_filter(array_map('trim', explode(',', $request->get('selected_ids')))));
-        if ($selectedIds->isNotEmpty()) {
-            $q->whereIn('id_listing', $selectedIds->all());
+        if ($request->filled('search')) {
+            $search = trim($request->get('search'));
+            $q->where(function ($w) use ($search) {
+                $w->where('id_listing', 'LIKE', "%{$search}%")
+                  ->orWhere('lokasi', 'LIKE', "%{$search}%");
+            });
         }
-    }
+        if ($request->filled('property_type')) $q->where('tipe', $request->get('property_type'));
+        if ($request->filled('province'))      $q->where('provinsi', $request->get('province'));
+        if ($request->filled('city'))          $q->where('kota', $request->get('city'));
+        if ($request->filled('district'))      $q->where('kecamatan', $request->get('district'));
+        if ($request->filled('vendor'))        $q->where('vendor', $request->get('vendor'));
 
-    // Ambil data minimal untuk export
-    $rows = $q->orderBy('id_listing', 'asc')->get([
-        'id_listing',
-        'vendor',
-        'id_agent',
-        'kota',
-        'lokasi',
-        'sertifikat',
-        'tipe',
-        'luas',
-        'harga',
-        // ===== TAMBAHAN UNTUK 3 KOLOM TERAKHIR =====
-        'kelurahan',
-        'kecamatan',
-        'provinsi',
-    ]);
+        // Jika user pilih ID tertentu, utamakan itu
+        if ($request->filled('selected_ids')) {
+            $selectedIds = collect(array_filter(array_map('trim', explode(',', $request->get('selected_ids')))));
+            if ($selectedIds->isNotEmpty()) {
+                $q->whereIn('id_listing', $selectedIds->all());
+            }
+        }
 
-    // Map id_agent -> nama agent
-    $agentIds   = $rows->pluck('id_agent')->filter()->unique()->values();
-    $agentNames = \App\Models\Agent::whereIn('id_agent', $agentIds)->pluck('nama', 'id_agent'); // ubah 'nama' jika field-mu 'name'
+        // Ambil data minimal untuk export
+        $rows = $q->orderBy('id_listing', 'asc')->get([
+            'id_listing',
+            'vendor',
+            'id_agent',
+            'kota',
+            'lokasi',
+            'sertifikat',
+            'tipe',
+            'luas',
+            'harga',
+            'kelurahan',
+            'kecamatan',
+            'provinsi',
+        ]);
 
-    // Header kolom export
-    $headers = [
-        'Bank',
-        'No',
-        'PELISTING',
-        'Kota',
-        'Alamat',
-        'Bukti Kepemilikan',
-        'TYPE',
-        'LT',
-        'Jenis Transaksi',
-        'Harga Jual',
-        // ===== HEADER TAMBAHAN DI PALING AKHIR =====
-        'KELURAHAN',
-        'KECAMATAN',
-        'PROPINSI',
-    ];
+        // Map id_agent -> nama agent
+        $agentIds   = $rows->pluck('id_agent')->filter()->unique()->values();
+        $agentNames = \App\Models\Agent::whereIn('id_agent', $agentIds)->pluck('nama', 'id_agent');
 
-    // Transform rows
-    $exportArray = $rows->map(function ($r) use ($agentNames) {
-        $idListing = (int) $r->id_listing;
-        $noRaw     = (string) (2000000 + $idListing); // <-- TANPA TITIK PEMISAH
-
-        $pelisting = (string) ($agentNames[$r->id_agent] ?? $r->id_agent);
-
-        return [
-            (string)($r->vendor ?? ''),        // Bank
-            $noRaw,                            // No (2jt + id_listing) tanpa pemisah
-            $pelisting,                        // PELISTING (nama agent)
-            (string)($r->kota ?? ''),          // Kota
-            (string)($r->lokasi ?? ''),        // Alamat
-            (string)($r->sertifikat ?? ''),    // Bukti Kepemilikan
-            (string)($r->tipe ?? ''),          // TYPE
-            $r->luas,                          // LT
-            'LELANG',                          // Jenis Transaksi
-            $r->harga,                         // Harga Jual
-            // ===== NILAI TAMBAHAN DI PALING AKHIR =====
-            (string)($r->kelurahan ?? ''),     // KELURAHAN
-            (string)($r->kecamatan ?? ''),     // KECAMATAN
-            (string)($r->provinsi ?? ''),      // PROPINSI
+        // =======================
+        // Header sesuai permintaan
+        // =======================
+        $headers = [
+            'Bank',
+            'Nama',
+            'No. Telp',
+            'No',
+            'PELISTING',
+            'Agency',
+            'Co PIC',
+            'SOLE AGENT',
+            'Kota',
+            'Alamat',
+            'Bukti Kepemilikan',
+            'TYPE',
+            'LT',
+            'LB',
+            'KT',
+            'KM',
+            'Jenis Transaksi',
+            'Kondisi',
+            'Take Home Commision',
+            'Harga Jual',
+            'Harga Limit',
+            'Upping',
+            'Spare Bidding',
+            'Contigency',
+            'Min',
+            'Max',
+            'Down Payment',
+            'Fee Lead',
+            'Fee JPRO',
+            'Reimburse Biaya Lelang',
+            'Gentlement Aggrement',
+            'PIC Bank',
+            'PL',
+            'JPRO',
+            'PIC',
+            'Dana Operational',
+            'Saving & Development',
+            'Gentlement Aggrement',
+            'Komisi',
+            'Take Home Commision',
+            'UTM',
+            'Down Payment',
+            'Setoran Jaminan',
+            'Pelunasan',
+            'Perkiraan Biaya',
+            'Last Monitor',
+            'Fee PIC Aset',
+            'Fee Co PIC Aset',
+            'Team Group Reward',
+            'Fee Pelisting',
+            'OR lv 1',
+            'OR lv 2',
+            'OR lv 3',
+            'Administrasi',
+            'PROFIT',
+            'KELURAHAN',
+            'KECAMATAN',
+            'PROPINSI',
         ];
-    })->toArray();
 
-    $filenameBase = 'export_properti_' . now()->format('Ymd_His');
+        // ==========================
+        // Data per baris sesuai header
+        // ==========================
+        $exportArray = $rows->map(function ($r) use ($agentNames) {
 
-    // ===== Keputusan format =====
-    $wantXlsx       = ($validated['format'] === 'xlsx');
-    $excelAvailable = class_exists(\Maatwebsite\Excel\Facades\Excel::class)
-                      && interface_exists(\Maatwebsite\Excel\Concerns\FromArray::class);
-    $zipAvailable   = class_exists('ZipArchive');
+            // Isi yang kita TAHU:
+            $bank            = (string)($r->vendor ?? '');
+            $no              = (string)$r->id_listing;            // No = id_listing
+            $pelistingFixed  = 'Jason Christopher';               // fixed
+            $coPic           = (string)($agentNames[$r->id_agent] ?? $r->id_agent ?? '');
+            $kota            = (string)($r->kota ?? '');
+            $alamat          = (string)($r->lokasi ?? '');
+            $bukti           = (string)($r->sertifikat ?? '');
+            $type            = (string)($r->tipe ?? '');
+            $lt              = $r->luas;
+            $jenisTransaksi  = 'LELANG';                          // fixed
+            $hargaJual       = $r->harga;
+            $kelurahan       = (string)($r->kelurahan ?? '');
+            $kecamatan       = (string)($r->kecamatan ?? '');
+            $provinsi        = (string)($r->provinsi ?? '');
 
-    if ($wantXlsx && $excelAvailable && $zipAvailable) {
-        $export = new class($headers, $exportArray) implements \Maatwebsite\Excel\Concerns\FromArray, \Maatwebsite\Excel\Concerns\WithHeadings {
-            private $headers; private $data;
-            public function __construct($headers, $data) { $this->headers = $headers; $this->data = $data; }
-            public function headings(): array { return $this->headers; }
-            public function array(): array { return $this->data; }
-        };
+            // Sisanya kosongin rapih
+            $blank = '';
 
-        $response = \Maatwebsite\Excel\Facades\Excel::download($export, $filenameBase . '.xlsx');
-        $response->headers->set('X-Export-Debug', 'wantXlsx=1; excelAvailable=1; zipAvailable=1');
+            return [
+                /* Bank */                   $bank,
+                /* Nama */                   $blank,
+                /* No. Telp */               $blank,
+                /* No */                     $no,
+                /* PELISTING */              $pelistingFixed,
+                /* Agency */                 $blank,
+                /* Co PIC */                 $coPic,
+                /* SOLE AGENT */             $blank,
+                /* Kota */                   $kota,
+                /* Alamat */                 $alamat,
+                /* Bukti Kepemilikan */      $bukti,
+                /* TYPE */                   $type,
+                /* LT */                     $lt,
+                /* LB */                     $blank,
+                /* KT */                     $blank,
+                /* KM */                     $blank,
+                /* Jenis Transaksi */        $jenisTransaksi,
+                /* Kondisi */                $blank,
+                /* Take Home Commision */    $blank,
+                /* Harga Jual */             $hargaJual,
+                /* Harga Limit */            $blank,
+                /* Upping */                 $blank,
+                /* Spare Bidding */          $blank,
+                /* Contigency */             $blank,
+                /* Min */                    $blank,
+                /* Max */                    $blank,
+                /* Down Payment */           $blank,
+                /* Fee Lead */               $blank,
+                /* Fee JPRO */               $blank,
+                /* Reimburse Biaya Lelang */ $blank,
+                /* Gentlement Aggrement */   $blank,
+                /* PIC Bank */               $blank,
+                /* PL */                     $blank,
+                /* JPRO */                   $blank,
+                /* PIC */                    $blank,
+                /* Dana Operational */       $blank,
+                /* Saving & Development */   $blank,
+                /* Gentlement Aggrement */   $blank, // kedua
+                /* Komisi */                 $blank,
+                /* Take Home Commision */    $blank, // kedua
+                /* UTM */                    $blank,
+                /* Down Payment */           $blank, // kedua
+                /* Setoran Jaminan */        $blank,
+                /* Pelunasan */              $blank,
+                /* Perkiraan Biaya */        $blank,
+                /* Last Monitor */           $blank,
+                /* Fee PIC Aset */           $blank,
+                /* Fee Co PIC Aset */        $blank,
+                /* Team Group Reward */      $blank,
+                /* Fee Pelisting */          $blank,
+                /* OR lv 1 */                $blank,
+                /* OR lv 2 */                $blank,
+                /* OR lv 3 */                $blank,
+                /* Administrasi */           $blank,
+                /* PROFIT */                 $blank,
+                /* KELURAHAN */              $kelurahan,
+                /* KECAMATAN */              $kecamatan,
+                /* PROPINSI */               $provinsi,
+            ];
+        })->toArray();
+
+        $filenameBase = 'export_properti_' . now()->format('Ymd_His');
+
+        // Keputusan format
+        $wantXlsx       = ($validated['format'] === 'xlsx');
+        $excelAvailable = class_exists(\Maatwebsite\Excel\Facades\Excel::class)
+                          && interface_exists(\Maatwebsite\Excel\Concerns\FromArray::class);
+        $zipAvailable   = class_exists('ZipArchive');
+
+        if ($wantXlsx && $excelAvailable && $zipAvailable) {
+            $export = new class($headers, $exportArray) implements \Maatwebsite\Excel\Concerns\FromArray, \Maatwebsite\Excel\Concerns\WithHeadings {
+                private $headers; private $data;
+                public function __construct($headers, $data) { $this->headers = $headers; $this->data = $data; }
+                public function headings(): array { return $this->headers; }
+                public function array(): array { return $this->data; }
+            };
+
+            $response = \Maatwebsite\Excel\Facades\Excel::download($export, $filenameBase . '.xlsx');
+            $response->headers->set('X-Export-Count', (string)count($exportArray));
+            return $response;
+        }
+
+        // Fallback CSV
+        $response = new \Symfony\Component\HttpFoundation\StreamedResponse(function () use ($headers, $exportArray) {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF)); // BOM
+            fputcsv($handle, $headers);
+            foreach ($exportArray as $row) {
+                fputcsv($handle, $row);
+            }
+            fclose($handle);
+        });
+
+        $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
+        $response->headers->set('Content-Disposition', 'attachment; filename="'.$filenameBase.'.csv"');
         $response->headers->set('X-Export-Count', (string)count($exportArray));
+
         return $response;
     }
 
-    // ===== Fallback CSV =====
-    $response = new \Symfony\Component\HttpFoundation\StreamedResponse(function () use ($headers, $exportArray) {
-        $handle = fopen('php://output', 'w');
-        fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF)); // BOM
-        fputcsv($handle, $headers);
-        foreach ($exportArray as $row) {
-            fputcsv($handle, $row);
-        }
-        fclose($handle);
-    });
-
-    $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
-    $response->headers->set('Content-Disposition', 'attachment; filename="'.$filenameBase.'.csv"');
-    $response->headers->set('X-Export-Debug', 'wantXlsx=' . ($wantXlsx?1:0) . '; excelAvailable=' . ($excelAvailable?1:0) . '; zipAvailable=' . ($zipAvailable?1:0));
-    $response->headers->set('X-Export-Count', (string)count($exportArray));
-
-    return $response;
-}
 
 
 
