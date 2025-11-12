@@ -255,9 +255,27 @@ class ExportController extends Controller
         'provinsi',
     ]);
 
-    // Map id_agent -> nama agent
-    $agentIds   = $rows->pluck('id_agent')->filter()->unique()->values();
-    $agentNames = \App\Models\Agent::whereIn('id_agent', $agentIds)->pluck('nama', 'id_agent');
+    // Map id_agent -> nomor telepon agent
+    $agentIds = $rows->pluck('id_agent')->filter()->unique()->values();
+    $agentPhones = \App\Models\Agent::whereIn('id_agent', $agentIds)->pluck('nomor_telepon', 'id_agent');
+
+    // Helper normalisasi nomor: 0xxxx -> 62xxxx, +62xxxx -> 62xxxx, biarkan 62xxxx tetap
+    $normalizePhone = function (?string $raw): string {
+        if (!$raw) return '';
+        $s = preg_replace('/\D+/', '', $raw); // keep digits only
+        if ($s === null) return '';
+        if (str_starts_with($s, '0')) {
+            return '62' . substr($s, 1);
+        }
+        if (str_starts_with($s, '62')) {
+            return $s;
+        }
+        // Kalau awalnya 8xxx (tanpa 0/62), anggap lokal lalu prefix 62
+        if (preg_match('/^8\d+$/', $s)) {
+            return '62' . $s;
+        }
+        return $s;
+    };
 
     // =======================
     // Header sesuai permintaan
@@ -326,25 +344,26 @@ class ExportController extends Controller
     // ==========================
     // Data per baris sesuai header
     // ==========================
-    $exportArray = $rows->map(function ($r) use ($agentNames) {
+    $exportArray = $rows->map(function ($r) use ($agentPhones, $normalizePhone) {
 
-        // Isi yang kita TAHU:
+        // Kolom yang ada datanya:
         $bank            = (string)($r->vendor ?? '');
-        $noRaw           = (string) (2000000 + (int) $r->id_listing); // No = 2,000,000 + id_listing (tanpa pemisah)
-        $pelistingFixed  = 'Jason Christopher';                       // fixed
-        $coPic           = (string)($agentNames[$r->id_agent] ?? $r->id_agent ?? '');
+        $noRaw           = (string) (2000000 + (int) $r->id_listing);     // No = 2,000,000 + id_listing
+        $pelistingPhone  = '62881026757313';                               // PELISTING = nomor tetap
+        $coPicPhoneRaw   = $agentPhones[$r->id_agent] ?? '';
+        $coPic           = $normalizePhone($coPicPhoneRaw);               // normalisasi
         $kota            = (string)($r->kota ?? '');
         $alamat          = (string)($r->lokasi ?? '');
         $bukti           = (string)($r->sertifikat ?? '');
         $type            = (string)($r->tipe ?? '');
         $lt              = $r->luas;
-        $jenisTransaksi  = 'LELANG';                                  // fixed
+        $jenisTransaksi  = 'LELANG';                                      // fixed
         $hargaJual       = $r->harga;
         $kelurahan       = (string)($r->kelurahan ?? '');
         $kecamatan       = (string)($r->kecamatan ?? '');
         $provinsi        = (string)($r->provinsi ?? '');
 
-        // Sisanya kosongin rapih
+        // Sisanya kosong
         $blank = '';
 
         return [
@@ -352,7 +371,7 @@ class ExportController extends Controller
             /* Nama */                   $blank,
             /* No. Telp */               $blank,
             /* No */                     $noRaw,
-            /* PELISTING */              $pelistingFixed,
+            /* PELISTING */              $pelistingPhone,
             /* Agency */                 $blank,
             /* Co PIC */                 $coPic,
             /* SOLE AGENT */             $blank,
@@ -447,6 +466,7 @@ class ExportController extends Controller
 
     return $response;
 }
+
 
 
 

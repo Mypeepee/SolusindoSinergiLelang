@@ -488,6 +488,7 @@
                                         <form id="stoker-bulk-form" action="{{ route('stoker.bulkSold') }}" method="POST" class="m-0">
                                         @csrf
                                         <input type="hidden" name="selected_ids" id="stoker_selected_ids_input">
+                                        <input type="hidden" name="return_tab" value="stoker">
                                         <button type="submit" id="btn-stoker-bulk-sold" class="btn-bulk" disabled title="Centang minimal 1 listing">
                                             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                             <path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"></path>

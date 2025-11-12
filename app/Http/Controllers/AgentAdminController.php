@@ -2197,15 +2197,24 @@ public function stokerBulkSold(Request $request)
     \DB::table('property')
         ->whereIn('id_listing', $ids)
         ->update([
-            'status' => 'Terjual',
-            'tanggal_diupdate' => now(),
+            'status'            => 'Terjual',
+            'tanggal_diupdate'  => now(),
         ]);
 
-    $route = session('role') === 'Owner' ? 'dashboard.owner' : 'dashboard.agent'; // <<— ini disesuaikan
-    return redirect()->route($route, ['tab' => 'stoker'])
+    // Ambil tab yang diminta, default 'stoker'
+    $tab = $request->input('return_tab', 'stoker');
+
+    // Tentukan route berdasarkan role
+    $route = session('role') === 'Owner' ? 'dashboard.owner' : 'dashboard.agent';
+
+    // Redirect dengan query ?tab=stoker + fragment #stoker
+    return redirect()
+        ->route($route, ['tab' => $tab])
+        ->withFragment($tab)
         ->with('stoker_clear_selection', true)
         ->with('success', 'Berhasil menandai '.count($ids).' listing sebagai Terjual.');
 }
+
 
 
 }
