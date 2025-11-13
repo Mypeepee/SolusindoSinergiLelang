@@ -29,51 +29,112 @@ class ScrapeProperty extends Command
     /**
      * Execute the console command.
      */
-    private function parseTanggalIndonesia($tanggalString)
+    private function parseTanggalIndonesia($tanggalString): Carbon
 {
-    if (empty($tanggalString)) {
-        return null; // 🛡️ Jika kosong, kembalikan null
+    if (!is_string($tanggalString) || trim($tanggalString) === '') {
+        throw new \RuntimeException('Tanggal kosong/tidak valid.');
     }
 
+    $orig = $tanggalString;
+
+    // Bersihkan label & spasi ganda
+    $s = trim($tanggalString);
+    $s = preg_replace('/\s+/', ' ', $s);
+    $s = preg_replace('/^(batas .*?:)\s*/iu', '', $s);     // buang "Batas ...:"
+    $s = preg_replace('/\b(pukul|jam)\b\.?:?/iu', '', $s); // buang "pukul"/"jam"
+    $s = str_replace(',', ' ', $s);
+    $s = trim($s);
+
+    // Zona waktu: default WIB (Asia/Jakarta)
+    $tz = 'Asia/Jakarta';
+    if (preg_match('/\b(wib|wita|wit|utc[+\-]?\d{1,2})\b/i', $s, $m)) {
+        $label = strtolower($m[1]);
+        if ($label === 'wita') $tz = 'Asia/Makassar';
+        elseif ($label === 'wit') $tz = 'Asia/Jayapura';
+        elseif (str_starts_with($label, 'utc')) {
+            // heuristik offset → map ke zona Indonesia jika cocok
+            $off = (int) filter_var($label, FILTER_SANITIZE_NUMBER_INT);
+            if ($off === 7) $tz = 'Asia/Jakarta';
+            if ($off === 8) $tz = 'Asia/Makassar';
+            if ($off === 9) $tz = 'Asia/Jayapura';
+        }
+        $s = trim(str_ireplace($m[0], '', $s));
+    }
+
+    // Hapus nama hari (Senin..Minggu), tetap jaga konten lain
+    $hari = 'senin|selasa|rabu|kamis|jumat|jum\'at|jum’at|sabtu|minggu';
+    $s = preg_replace('/\b(?:'.$hari.')\b/iu', ' ', $s);
+    $s = preg_replace('/\s+/', ' ', $s);
+
+    // Ambil waktu jika ada, default 23:59
+    $hour = 23; $min = 59; $sec = 0;
+    if (preg_match('/\b(\d{1,2})[:.](\d{2})\b/u', $s, $tm)) {
+        $hour = max(0, min(23, (int)$tm[1]));
+        $min  = max(0, min(59, (int)$tm[2]));
+        $s    = trim(str_replace($tm[0], '', $s));
+    }
+
+    // Peta bulan Indonesia
     $bulanMap = [
-        'Januari' => '01',
-        'Februari' => '02',
-        'Maret' => '03',
-        'April' => '04',
-        'Mei' => '05',
-        'Juni' => '06',
-        'Juli' => '07',
-        'Agustus' => '08',
-        'September' => '09',
-        'Oktober' => '10',
-        'November' => '11',
-        'Desember' => '12',
+        'januari'=>1,'februari'=>2,'pebruari'=>2,'maret'=>3,'april'=>4,'mei'=>5,'juni'=>6,'juli'=>7,
+        'agustus'=>8,'september'=>9,'oktober'=>10,'nopember'=>11,'november'=>11,'desember'=>12,
+        'jan'=>1,'feb'=>2,'mar'=>3,'apr'=>4,'jun'=>6,'jul'=>7,'agu'=>8,'ags'=>8,'sep'=>9,'okt'=>10,'nov'=>11,'des'=>12,
     ];
 
-    // 🔥 Bersihkan WIB/WITA/WIT
-    $tanggalString = preg_replace('/\s*(WIB|WITA|WIT)\s*/i', '', $tanggalString);
-
-    // 🔥 Ganti bulan Indonesia ke angka
-    foreach ($bulanMap as $indo => $num) {
-        if (stripos($tanggalString, $indo) !== false) {
-            $tanggalString = str_ireplace($indo, $num, $tanggalString);
-            break;
+    // Strategi 1: dd MMMM yyyy (dengan panjang/singkatan)
+    if (preg_match('/\b(\d{1,2})\s+([A-Za-z\.]+)\s+(\d{4})\b/u', $s, $m)) {
+        $d = (int)$m[1];
+        $b = strtolower(rtrim($m[2], '.'));
+        $y = (int)$m[3];
+        if (isset($bulanMap[$b])) {
+            $M = (int)$bulanMap[$b];
+            return Carbon::create($y, $M, $d, $hour, $min, $sec, $tz);
         }
     }
 
-    // 🛡️ Cek apakah string punya jam
-    $hasTime = preg_match('/\d{1,2}:\d{2}/', $tanggalString);
+    // Strategi 2: dd/mm/yyyy atau dd-mm-yyyy atau dd.mm.yyyy
+    if (preg_match('/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})\b/u', $s, $m)) {
+        $d = (int)$m[1]; $M = (int)$m[2]; $y = (int)$m[3];
+        return Carbon::create($y, $M, $d, $hour, $min, $sec, $tz);
+    }
+
+    // Strategi 3: dd MMMM (tanpa tahun) → asumsi tahun berjalan, geser ke tahun depan bila jauh ke belakang
+    if (preg_match('/\b(\d{1,2})\s+([A-Za-z\.]+)\b/u', $s, $m)) {
+        $d = (int)$m[1];
+        $b = strtolower(rtrim($m[2], '.'));
+        if (isset($bulanMap[$b])) {
+            $M = (int)$bulanMap[$b];
+            $now = Carbon::now($tz);
+            $y   = (int)$now->year;
+            $candidate = Carbon::create($y, $M, $d, $hour, $min, $sec, $tz);
+            if ($candidate->lt($now->copy()->subMonthsNoOverflow(9))) {
+                $candidate->addYear();
+            }
+            return $candidate;
+        }
+    }
+
+    // Strategi 4: fallback — translate bulan ID → EN lalu Carbon::parse
+    $id2en = [
+        'januari'=>'January','februari'=>'February','pebruari'=>'February','maret'=>'March','april'=>'April',
+        'mei'=>'May','juni'=>'June','juli'=>'July','agustus'=>'August','september'=>'September',
+        'oktober'=>'October','nopember'=>'November','november'=>'November','desember'=>'December',
+        'jan'=>'Jan','feb'=>'Feb','mar'=>'Mar','apr'=>'Apr','mei'=>'May','jun'=>'Jun','jul'=>'Jul','agu'=>'Aug','ags'=>'Aug','sep'=>'Sep','okt'=>'Oct','nov'=>'Nov','des'=>'Dec',
+    ];
+    $fallback = mb_strtolower($s, 'UTF-8');
+    foreach ($id2en as $id=>$en) {
+        $fallback = preg_replace('/\b'.$id.'\b/u', $en, $fallback);
+    }
 
     try {
-        if ($hasTime) {
-            return \Carbon\Carbon::createFromFormat('d m Y H:i', trim($tanggalString));
-        } else {
-            return \Carbon\Carbon::createFromFormat('d m Y', trim($tanggalString));
+        $dt = Carbon::parse($fallback, $tz)->setTimezone($tz);
+        // jika waktu tidak disebut, isi default 23:59
+        if (!preg_match('/\d{1,2}[:.]\d{2}/', $orig)) {
+            $dt->setTime($hour, $min, $sec);
         }
-    } catch (\Exception $e) {
-        // 🛡️ Fallback: log error dan kembalikan null
-        \Log::warning("Gagal parse tanggal: '{$tanggalString}' - {$e->getMessage()}");
-        return null;
+        return $dt;
+    } catch (\Throwable $e) {
+        throw new \RuntimeException("Gagal parse tanggal: '{$orig}'");
     }
 }
 
@@ -90,7 +151,7 @@ SELECT setval(
 
 $baseUrl = 'https://lelang.go.id';
 $kategori = $this->argument('kategori') ?? 'Rumah';
-$page = 1;
+$page = 48;
 $allLinks = [];
 
 $this->info("📄 Mulai scrape semua halaman kategori: $kategori");
@@ -100,6 +161,15 @@ $tipeProperti = strtolower($kategori);
 // Ambil semua link existing sekali di awal
 $existingLinks = DB::table('property')->pluck('link')->toArray();
 $existingLinks = array_map('trim', $existingLinks);
+
+// Tambahan: lookup untuk status cepat (SUDAH ADA / BARU)
+static $existingLookup = null;
+if ($existingLookup === null) {
+    $existingLookup = [];
+    foreach ($existingLinks as $lnk) {
+        $existingLookup[$lnk] = true;
+    }
+}
 
 while (true) {
 $listUrl = "$baseUrl/lot-lelang/katalog-lot-lelang?kategori=" . urlencode($kategori) . "&page=$page";
@@ -142,6 +212,17 @@ $pageLinks = $crawler->filter('a')->each(function ($linkNode) use ($baseUrl, $ti
 
 $pageLinks = array_unique(array_filter($pageLinks));
 
+// 💬 LOG RINCI: tampilkan semua link di halaman ini + statusnya
+$this->info("📄 Rekap link halaman $page: total ditemukan = " . count($pageLinks));
+if (!empty($pageLinks)) {
+    $i = 1;
+    foreach ($pageLinks as $u) {
+        $status = isset($existingLookup[$u]) ? '(SUDAH ADA)' : '(BARU)';
+        $this->line(sprintf("   [%03d] %s %s", $i, $u, $status));
+        $i++;
+    }
+}
+
 if (empty($pageLinks)) {
     $this->warn("❌ Tidak ada link detail property di halaman ke-$page.");
     break;
@@ -149,6 +230,25 @@ if (empty($pageLinks)) {
 
 // Hanya ambil link yang belum ada di DB
 $pageLinks = array_diff($pageLinks, $existingLinks);
+
+// 🔧 Tambahan: normalisasi ringan + diff presisi (tanpa menghapus baris aslimu di atas)
+// Tujuan: kalau ada perbedaan trailing slash / spasi / case host, tetap terbaca sama.
+$__normalize = function (string $url): string {
+    $url = html_entity_decode(trim($url));
+    $parts = parse_url($url);
+    $scheme = 'https';
+    $host   = isset($parts['host']) ? strtolower($parts['host']) : 'lelang.go.id';
+    $path   = isset($parts['path']) ? rtrim($parts['path'], '/') : '';
+    if ($path !== '' && $path[0] !== '/') $path = '/'.$path;
+    return "{$scheme}://{$host}{$path}";
+};
+$existingSetNorm = [];
+foreach ($existingLinks as $lnk) {
+    $existingSetNorm[$__normalize($lnk)] = true;
+}
+$pageLinks = array_values(array_filter($pageLinks, function ($u) use ($__normalize, $existingSetNorm) {
+    return empty($existingSetNorm[$__normalize($u)]);
+}));
 
 if (empty($pageLinks)) {
     $this->info("⏭️ Semua link di halaman $page sudah ada di database. Skip.");
@@ -161,7 +261,6 @@ foreach ($pageLinks as $detailUrl) {
     if (!in_array($detailUrl, $allLinks)) {
         $allLinks[] = $detailUrl;
         $this->info("➡️ $detailUrl");
-
 
 // 🔥 MASUK KE DETAIL & SCRAPE GAMBAR
 try {

@@ -859,7 +859,7 @@ $referralStats = DB::table('referral_clicks')
 
 // 3) Query utama: hanya agent Aktif
 $performanceAgents = DB::table('agent')
-    ->where('agent.status', 'Aktif')
+->whereIn('agent.status', ['Aktif', 'Diterminasi'])
     ->leftJoin('property', 'agent.id_agent', '=', 'property.id_agent')
     ->leftJoin('transaction', 'agent.id_agent', '=', 'transaction.id_agent')
 
@@ -874,6 +874,7 @@ $performanceAgents = DB::table('agent')
     })
 
     ->select(
+        'agent.id_account',
         'agent.id_agent',
         'agent.nama',
         'agent.status',
@@ -1040,58 +1041,30 @@ $exportProperties = $exportQuery
                                             'events' => $eventsFormatted ]);
     }
 
-    public function updateAgentStatus(Request $request, $id_agent)
+
+    public function updateStatusAgent(Request $request, string $idAccount)
     {
-        $request->validate([
-            'status'   => 'required|in:Aktif,Diterminasi',
-            'redirect' => 'nullable|string',
+        $validated = $request->validate([
+            'status' => 'required|in:Aktif,Diterminasi',
         ]);
 
-        $agent = DB::table('agent')->where('id_agent', $id_agent)->first();
-        if (!$agent) {
-            return back()->with('error', 'Agent tidak ditemukan');
+        $newStatus = $validated['status'];
+        $newRole   = $newStatus === 'Aktif' ? 'Agent' : 'User';
+
+        // Pastikan id_account ada di kedua tabel
+        $exists = DB::table('agent')->where('id_account', $idAccount)->exists()
+               && DB::table('account')->where('id_account', $idAccount)->exists();
+
+        if (!$exists) {
+            return response()->json(['ok' => false, 'message' => 'Agent/account tidak ditemukan'], 404);
         }
 
-        // opsional: jadikan 'AG001' konstanta / config kalau mau
-        $defaultAgentId = 'AG001';
-
-        $movedCount = 0;
-
-        DB::transaction(function () use ($request, $agent, $id_agent, $defaultAgentId, &$movedCount) {
-            // Update status agent
-            DB::table('agent')->where('id_agent', $id_agent)->update([
-                'status'            => $request->status,
-                'tanggal_diupdate'  => now(), // opsional kalau kolom ada
-            ]);
-
-            if ($request->status === 'Diterminasi') {
-                // Demote role account → User
-                DB::table('account')->where('id_account', $agent->id_account)->update([
-                    'roles' => 'User', // ganti ke nama kolommu jika berbeda
-                ]);
-
-                // Re-assign semua property milik agent ini ke AG001
-                if ($id_agent !== $defaultAgentId) {
-                    $movedCount = DB::table('property')
-                        ->where('id_agent', $id_agent)
-                        ->update(['id_agent' => $defaultAgentId, 'tanggal_diupdate' => now()]); // set kolom waktu jika ada
-                }
-            } else { // Aktif
-                // (opsional) Promote role account → Agent
-                DB::table('account')->where('id_account', $agent->id_account)->update([
-                    'roles' => 'Agent',
-                ]);
-                // Catatan: kita TIDAK mengembalikan property ke agent ini
-            }
+        DB::transaction(function () use ($idAccount, $newStatus, $newRole) {
+            DB::table('agent')->where('id_account', $idAccount)->update(['status' => $newStatus]);
+            DB::table('account')->where('id_account', $idAccount)->update(['roles'  => $newRole]);
         });
 
-        $msg = 'Status agent berhasil diperbarui.';
-        if ($request->status === 'Diterminasi') {
-            $msg .= " $movedCount properti dipindahkan ke {$defaultAgentId}.";
-        }
-
-        $to = $request->input('redirect') ?: route('dashboard.owner', ['tab' => 'performance']);
-        return redirect()->to($to)->with('status', $msg);
+        return response()->json(['ok' => true, 'status' => $newStatus, 'role' => $newRole]);
     }
 
 

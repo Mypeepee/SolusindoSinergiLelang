@@ -682,7 +682,7 @@
                 <select id="filterStatus" class="form-select">
                   <option value="">Semua Status</option>
                   <option value="Aktif">Aktif</option>
-                  <option value="Nonaktif">Nonaktif</option>
+                  <option value="Ditolak">Nonaktif</option>
                   <option value="Pending">Pending</option>
                 </select>
               </div>
@@ -727,12 +727,114 @@
                       <td class="agent-id">{{ $agent->id_agent }}</td>
                       <td class="agent-nama">{{ $agent->nama }}</td>
                       <td class="agent-status">
-                        @if ($agent->status === 'Aktif')
-                          <span class="badge bg-success">Aktif</span>
-                        @else
-                          <span class="badge bg-secondary">{{ $agent->status }}</span>
-                        @endif
+                        <div class="dropdown d-inline-block position-relative" data-id-account="{{ $agent->id_account }}">
+                          <button
+                            class="btn btn-sm rounded-pill fw-semibold status-btn dropdown-toggle
+                                   {{ $agent->status === 'Aktif' ? 'btn-active' : 'btn-terminated' }}"
+                            type="button"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false">
+                            {{ $agent->status }}
+                          </button>
+
+                          <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                            <li>
+                              <button class="dropdown-item js-choose-status" data-status="Aktif">
+                                Aktif
+                              </button>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                              <button class="dropdown-item text-danger js-choose-status" data-status="Diterminasi">
+                                Diterminasi
+                              </button>
+                            </li>
+                          </ul>
+
+                          <div class="spinner-border spinner-border-sm text-muted d-none js-spin"
+                               style="position:absolute; right:-8px; top:-8px;" role="status"></div>
+                        </div>
                       </td>
+                      <style>
+                        .btn-active {
+                          background:#ff5a1f; /* oranye brand-like */
+                          color:#fff;
+                          border-color:#ff5a1f;
+                        }
+                        .btn-active:hover { filter:brightness(0.95); }
+
+                        .btn-terminated {
+                          background:#6c757d; /* abu */
+                          color:#fff;
+                          border-color:#6c757d;
+                        }
+                        .btn-terminated:hover { filter:brightness(0.95); }
+
+                        .status-btn { padding:.25rem .75rem; }
+                      </style>
+<script>
+    (() => {
+      const CSRF = '{{ csrf_token() }}';
+      const routeTpl = `{{ route('agents.update-status-agent', ':id') }}`; // ⬅️ update
+
+      function setUI(drop, status) {
+        const btn = drop.querySelector('.status-btn');
+        btn.textContent = status;
+        btn.classList.remove('btn-active','btn-terminated');
+        btn.classList.add(status === 'Aktif' ? 'btn-active' : 'btn-terminated');
+      }
+      function setLoading(drop, on) {
+        const spin = drop.querySelector('.js-spin');
+        drop.querySelector('.status-btn').disabled = on;
+        if (spin) spin.classList.toggle('d-none', !on);
+      }
+
+      document.querySelectorAll('.agent-status .dropdown').forEach(drop => {
+        drop.addEventListener('click', async (e) => {
+          const item = e.target.closest('.js-choose-status');
+          if (!item) return;
+
+          const newStatus = item.dataset.status;
+          const btn  = drop.querySelector('.status-btn');
+          const prev = btn.textContent.trim();
+          if (newStatus === prev) return;
+
+          const idAccount = drop.dataset.idAccount;
+          if (!idAccount) { alert('ID Account tidak ditemukan'); return; }
+
+          if (newStatus === 'Diterminasi' &&
+              !confirm('Yakin ubah ke "Diterminasi"? Role agent akan menjadi "User".')) {
+            return;
+          }
+
+          setLoading(drop, true);
+          setUI(drop, newStatus);
+
+          try {
+            const url = routeTpl.replace(':id', idAccount);
+            const res = await fetch(url, {
+              method: 'PATCH',
+              headers: {
+                'X-CSRF-TOKEN': CSRF,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ status: newStatus })
+            });
+            if (!res.ok) throw new Error('save-failed');
+          } catch (err) {
+            setUI(drop, prev);
+            alert('Gagal memperbarui status. Coba lagi.');
+          } finally {
+            setLoading(drop, false);
+          }
+        });
+      });
+    })();
+    </script>
+
+
+
                       <td class="agent-ikut-pemilu">
                         <span class="badge bg-primary">{{ (int) ($agent->ikut_pemilu ?? 0) }}</span>
                       </td>

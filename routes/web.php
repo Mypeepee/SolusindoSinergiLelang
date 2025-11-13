@@ -312,3 +312,10 @@ Route::post('/dashboard/owner/export/mark', function (\Illuminate\Http\Request $
 
     return response()->json(['ok' => true]);
 })->name('dashboard.owner.export.mark');
+
+use App\Http\Controllers\AdminAgentController;
+
+Route::patch(
+    '/dashboard/agents/{idAccount}/status',
+    [AgentAdminController::class, 'updateStatusAgent'] // ⬅️ ganti method
+)->name('agents.update-status-agent');

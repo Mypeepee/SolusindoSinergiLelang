@@ -407,13 +407,16 @@
                                                 </a>
                                             @else
                                         <!-- Tombol untuk mendownload gambar -->
-                                            @if ($property->gambar)
-                                                <a href="javascript:void(0)" onclick="downloadImages('{{ $property->gambar }}')"
-                                                class="btn btn-dark-blue d-flex align-items-center justify-content-center flex-fill px-3 py-2"
-                                                style="min-width: 180px;">
-                                                <i class="fa fa-download me-2"></i>Download Gambar
-                                                </a>
-                                            @endif
+                                        @if ($property->gambar)
+                                        <a href="javascript:void(0)"
+                                           onclick="downloadImages(this, '{{ $property->gambar }}')"
+                                           class="btn btn-dark-blue d-flex align-items-center justify-content-center flex-fill px-3 py-2"
+                                           style="min-width: 180px;">
+                                           <i class="fa fa-download me-2"></i>
+                                           <span class="btn-text">Download Gambar</span>
+                                        </a>
+                                        @endif
+
 
                                         @endif
                                         @else
@@ -425,36 +428,116 @@
                                         @endif
 
                                         <script>
-                                            function downloadImages(gambarUrls) {
-                                            // Pisahkan URL gambar yang dipisahkan oleh koma
-                                            const urls = gambarUrls.split(',');
+                                            function normalizeDriveUrl(url) {
+                                              try {
+                                                const u = new URL(url);
+                                                if (!u.hostname.includes('drive.google.com')) return url;
 
-                                            // Unduh setiap gambar menggunakan fetch secara paralel
-                                            const fetchPromises = urls.map(url => {
-                                                return fetch(url.trim())
-                                                    .then(response => response.blob()) // Mengambil gambar sebagai blob
-                                                    .then(blob => {
-                                                        // Menyimpan gambar sebagai file di sistem pengguna
-                                                        const a = document.createElement('a');
-                                                        a.href = URL.createObjectURL(blob); // Menggunakan URL.createObjectURL untuk menyimpan gambar
-                                                        a.download = ''; // Menandakan bahwa ini adalah file yang dapat diunduh
-                                                        document.body.appendChild(a);
-                                                        a.click(); // Memulai pengunduhan
-                                                        document.body.removeChild(a);
-                                                    });
-                                            });
+                                                // Ambil ID dari ?id=..., atau dari /file/d/{id}/...
+                                                let id = u.searchParams.get('id');
+                                                if (!id) {
+                                                  const m = u.pathname.match(/\/file\/d\/([^/]+)/);
+                                                  if (m) id = m[1];
+                                                }
 
-                                            // Tunggu sampai semua gambar diunduh
-                                            Promise.all(fetchPromises)
-                                                .then(() => {
-                                                    console.log("Semua gambar telah diunduh.");
-                                                })
-                                                .catch(err => {
-                                                    console.error("Error saat mendownload gambar:", err);
-                                                });
-                                        }
+                                                // Validasi simple: id minimal beberapa karakter
+                                                if (id && id.length >= 10) {
+                                                  return `https://drive.google.com/uc?export=download&id=${id}`;
+                                                }
+                                              } catch (e) {}
+                                              return url;
+                                            }
 
-                                        </script>
+                                            function setLoading(btn, loading) {
+                                              const icon = btn.querySelector('i');
+                                              const textSpan = btn.querySelector('.btn-text');
+                                              if (loading) {
+                                                btn.dataset.originalHtml = btn.innerHTML;
+                                                btn.classList.add('disabled');
+                                                btn.setAttribute('aria-disabled', 'true');
+                                                btn.innerHTML = `
+                                                  <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                  <span>Mengunduh...</span>
+                                                `;
+                                              } else {
+                                                if (btn.dataset.originalHtml) {
+                                                  btn.innerHTML = btn.dataset.originalHtml;
+                                                  delete btn.dataset.originalHtml;
+                                                }
+                                                btn.classList.remove('disabled');
+                                                btn.removeAttribute('aria-disabled');
+                                              }
+                                            }
+
+                                            async function downloadOne(url) {
+                                              // Normalkan Google Drive → direct download
+                                              let finalUrl = url.trim();
+                                              if (!finalUrl) return;
+
+                                              if (finalUrl.includes('drive.google.com')) {
+                                                finalUrl = normalizeDriveUrl(finalUrl);
+                                              }
+
+                                              // Coba fetch sebagai blob (lebih andal untuk simpan nama file)
+                                              try {
+                                                const res = await fetch(finalUrl, { mode: 'cors' });
+                                                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                                                const blob = await res.blob();
+
+                                                // Tentukan nama file sederhana
+                                                const urlPart = (new URL(finalUrl, window.location.href)).pathname.split('/').pop() || 'image';
+                                                const fname = (urlPart.split('?')[0] || 'image').replace(/[^\w.\-]+/g, '_');
+
+                                                const a = document.createElement('a');
+                                                const objectUrl = URL.createObjectURL(blob);
+                                                a.href = objectUrl;
+                                                a.download = fname || 'download';
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                a.remove();
+                                                setTimeout(() => URL.revokeObjectURL(objectUrl), 5000);
+                                              } catch (err) {
+                                                // Fallback: buka di tab baru (berguna untuk Google Drive/CORS ketat)
+                                                const a = document.createElement('a');
+                                                a.href = finalUrl;
+                                                a.target = '_blank';
+                                                a.rel = 'noopener';
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                a.remove();
+                                              }
+                                            }
+
+                                            async function downloadImages(btnEl, gambarUrls) {
+                                              const urls = (gambarUrls || '')
+                                                .split(',')
+                                                .map(s => s.trim())
+                                                .filter(s => s.length > 0);
+
+                                              if (!urls.length) return;
+
+                                              setLoading(btnEl, true);
+                                              try {
+                                                // Hilangkan duplikat
+                                                const unique = [...new Set(urls)];
+
+                                                // Jalankan paralel tapi batasi agar tidak terlalu agresif (mis. 3 sekaligus)
+                                                const concurrency = 3;
+                                                let i = 0;
+                                                while (i < unique.length) {
+                                                  const batch = unique.slice(i, i + concurrency);
+                                                  await Promise.all(batch.map(u => downloadOne(u)));
+                                                  i += concurrency;
+                                                }
+                                                console.log('Semua gambar telah diproses.');
+                                              } catch (e) {
+                                                console.error('Error saat mendownload gambar:', e);
+                                              } finally {
+                                                setLoading(btnEl, false);
+                                              }
+                                            }
+                                            </script>
+
 
                                         <!-- Tombol Share / Copy Link (Desktop) -->
                                         <a href="javascript:void(0);"
