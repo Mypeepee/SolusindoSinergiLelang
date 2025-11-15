@@ -2751,16 +2751,30 @@
       }
 
       const clearAllBtn = document.getElementById('export-clear-all');
-      function clearAll(){
-        saveSelected(new Set());
-        qRows().forEach(cb => cb.checked = false);
-        const master = qById('check_all_export');
-        if (master){ master.checked = false; master.indeterminate = false; }
-        updateButtons();
-        updateCounters();
-        renderPreview();
-      }
-      clearAllBtn?.addEventListener('click', clearAll);
+function clearAll(){
+  // 1) kosongkan pilihan per-ID
+  saveSelected(new Set());
+  qRows().forEach(cb => cb.checked = false);
+
+  // 2) matikan master checkbox halaman ini
+  const master = qById('check_all_export');
+  if (master){ master.checked = false; master.indeterminate = false; }
+
+  // 3) ⬅️ NEW: matikan toggle "Pilih semua (semua halaman)"
+  const SELECT_ALL_KEY = 'exportSelectAllAcross';
+  localStorage.setItem(SELECT_ALL_KEY, '0');                                    // matikan flag global
+  const toggleAcross = document.querySelector('#export-list-inner #select-all-across');
+  if (toggleAcross) toggleAcross.checked = false;                               // sinkron UI toggle
+  const selectAllInput = document.getElementById('select_all_input');
+  if (selectAllInput) selectAllInput.value = '0';                               // sinkron hidden input (aman)
+
+  // 4) refresh UI tombol & counter
+  updateButtons();
+  updateCounters();
+  renderPreview();
+}
+clearAllBtn?.addEventListener('click', clearAll);
+
 
       // Delegasi checkbox baris
       container.addEventListener('change', function(e){
