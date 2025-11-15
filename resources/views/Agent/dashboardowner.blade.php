@@ -2514,6 +2514,35 @@
           if (myId !== lastReqId) return;
           listWrap.innerHTML = html;
           if (window.initExportSelection) window.initExportSelection();
+
+          // === SCROLL KE ATAS TABEL ===
+          // anchor scroll: wrapper host yang stabil
+          const wrap = document.getElementById('export-list-wrap');
+          if (wrap) {
+            const headerHeight =
+              (document.querySelector('.navbar.fixed-top')?.offsetHeight) ||
+              (document.querySelector('.sticky-top')?.offsetHeight) || 0;
+            const top = wrap.getBoundingClientRect().top + window.pageYOffset - headerHeight - 8;
+            window.scrollTo({ top, behavior: 'smooth' });
+
+            // aksesibilitas (opsional, aman)
+            wrap.setAttribute('tabindex','-1');
+            wrap.focus({ preventScroll: true });
+          }
+
+          // opsional: sinkronkan ?page di URL (aman)
+          try {
+            const u = new URL(window.location.href);
+            if (extra.page) u.searchParams.set('page', String(extra.page)); else u.searchParams.delete('page');
+            history.replaceState(null, '', u.toString());
+          } catch(_) {}
+
+          // panggil rehydration kalau tersedia (selain initExportSelection)
+          if (typeof window.afterExportListReplaced === 'function') {
+            window.afterExportListReplaced();
+          }
+          // === END SCROLL ===
+
         } catch (e) {
           if (e && e.name !== 'AbortError') console.error('loadList error:', e);
         } finally {
@@ -2562,7 +2591,7 @@
     });
     </script>
 
-    <script>
+<script>
     (function(){
       const KEY = 'exportSelectedIds';
 
@@ -2641,6 +2670,21 @@
         qRows().forEach(cb => cb.checked = sel.has(cb.value));
         syncMaster();
       }
+
+      // ==== TAMBAHAN: helper untuk auto-scroll ke tombol Export ====
+      function scrollToExportAnchor(extraPadding = 12){
+        const anchor = document.getElementById('export-form') || document.getElementById('export-list-wrap');
+        if (!anchor) return;
+        const headerHeight =
+          (document.querySelector('.navbar.fixed-top')?.offsetHeight) ||
+          (document.querySelector('.sticky-top')?.offsetHeight) || 0;
+        const top = anchor.getBoundingClientRect().top + window.pageYOffset - headerHeight - extraPadding;
+        window.scrollTo({ top, behavior: 'smooth' });
+        // aksesibilitas kecil agar fokus ke area form
+        anchor.setAttribute('tabindex','-1');
+        anchor.focus({ preventScroll: true });
+      }
+      // ==== END TAMBAHAN ====
 
       // Util spinner tombol
       function setLoading(btn, text){
@@ -2776,6 +2820,8 @@
         updateButtons();
         updateCounters();
         renderPreview();
+        // ==== AUTO-SCROLL dengan padding lebih besar ====
+        scrollToExportAnchor(96); // naikkan ke 128 kalau perlu
       };
 
       hydratePage();
@@ -2784,9 +2830,6 @@
       renderPreview();
     })();
     </script>
-
-
-
 
         </div>
     </div>
