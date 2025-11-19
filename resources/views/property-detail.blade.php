@@ -188,25 +188,61 @@
                             </div>
 
                             <div class="col-lg-6 wow fadeIn" data-wow-delay="0.5s">
-                                <div class="mb-4">
-                                    <h1 class="mb-3 fs-3 fs-md-2 lh-base">{{ $property->judul }}</h1>
 
-                                    <!-- Harga & Jaminan -->
-                                    <div class="row text-center mb-4 d-flex flex-column flex-sm-row justify-content-between align-items-center">
-                                        <div class="col-12 col-sm-6 mb-2 mb-sm-0">
-                                            <div class="text-muted mb-1">Harga</div>
-                                            <div class="fw-bold fs-5 text-secondary text-break">
-                                                Rp.{{ number_format($property->harga, 0, ',', '.') }}
+                            @php
+                                $userId   = Session::get('id_account') ?? Cookie::get('id_account');
+                                $loggedIn = !empty($userId);
+
+                                $roleRaw = $loggedIn ? \App\Models\Account::where('id_account', $userId)->value('roles') : null;
+                                $role    = strtolower(trim($roleRaw ?? 'user'));
+
+                                $privilegedRoles = ['agent', 'owner', 'register', 'stoker', 'principal'];
+                                $isPrivileged    = $loggedIn && in_array($role, $privilegedRoles, true);
+
+                                // kalau belum ada kolom harga_limit, hitung dari harga yang sudah +28,9%
+                                $hargaLimit = $property->harga ? $property->harga / 1.278 : 0;
+
+                                // layout kolom
+                                $colPublic  = $isPrivileged ? 'col-12 col-sm-4' : 'col-12 col-sm-6'; // Harga & Jaminan
+                                $colLimit   = 'col-12 col-sm-4'; // hanya dipakai saat privileged
+                            @endphp
+
+
+                            <div class="mb-4">
+                                <h1 class="mb-3 fs-3 fs-md-2 lh-base">{{ $property->judul }}</h1>
+
+                                <!-- Harga & Jaminan -->
+                                <div class="row text-center mb-4 d-flex flex-column flex-sm-row justify-content-between align-items-center">
+
+                                    {{-- HARGA (selalu tampil, ini yang sudah di-markup) --}}
+                                    <div class="{{ $colPublic }} mb-2 mb-sm-0">
+                                        <div class="text-muted mb-1">Harga</div>
+                                        <div class="fw-bold fs-5 text-secondary text-break">
+                                            Rp.{{ number_format($property->harga, 0, ',', '.') }}
+                                        </div>
+                                    </div>
+
+                                    {{-- HARGA LIMIT - hanya untuk role privileged --}}
+                                    @if($isPrivileged)
+                                        <div class="{{ $colLimit }} mb-2 mb-sm-0">
+                                            <div class="text-muted mb-1">Harga Limit</div>
+                                            <div class="fw-bold fs-5 text-break" style="color:#ff4b00;">
+
+                                                Rp.{{ number_format($hargaLimit, 0, ',', '.') }}
                                             </div>
                                         </div>
-                                        <div class="col-12 col-sm-6">
-                                            <div class="text-muted mb-1">Uang Jaminan</div>
-                                            <div class="fw-bold fs-5 text-secondary text-break">
-                                                Rp.{{ number_format($property->uang_jaminan, 0, ',', '.') }}
-                                            </div>
+                                    @endif
+
+                                    {{-- UANG JAMINAN (selalu tampil) --}}
+                                    <div class="{{ $colPublic }}">
+                                        <div class="text-muted mb-1">Uang Jaminan</div>
+                                        <div class="fw-bold fs-5 text-secondary text-break">
+                                            Rp.{{ number_format($property->uang_jaminan, 0, ',', '.') }}
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+
 
                                 @php
                                     $userId = Session::get('id_account') ?? Cookie::get('id_account');

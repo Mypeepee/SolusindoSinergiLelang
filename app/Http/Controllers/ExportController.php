@@ -46,7 +46,7 @@ class ExportController extends Controller
         if ($request->filled('district'))      $q->where('kecamatan', $request->district);
 
         $rows = $q->orderBy('id_listing')->get([
-            'lokasi','luas','vendor','kota','sertifikat','harga','link'
+            'id_listing','lokasi','luas','vendor','kota','sertifikat','harga','link'
         ]);
 
         if ($rows->isEmpty()) {
@@ -108,6 +108,24 @@ class ExportController extends Controller
         $templatePath = $tempTemplate;
 
         $today      = now()->translatedFormat('d F Y');
+        $now        = now();
+        $bulan      = (int) $now->month;
+        $tahun      = (int) $now->year;
+        $romanMonths = [
+            1 => 'I',
+            2 => 'II',
+            3 => 'III',
+            4 => 'IV',
+            5 => 'V',
+            6 => 'VI',
+            7 => 'VII',
+            8 => 'VIII',
+            9 => 'IX',
+            10 => 'X',
+            11 => 'XI',
+            12 => 'XII',
+        ];
+        $bulanRomawi = $romanMonths[$bulan] ?? '';
         $generated  = [];
         $errors     = []; // kumpulkan error per-baris agar tidak silent fail
 
@@ -119,7 +137,14 @@ class ExportController extends Controller
                 $hargaSaatIni = (int) ($r->harga ?? 0);
                 $hargaAsli    = (int) round($hargaSaatIni / 1.289);
 
+                $nomorSurat = (string)($r->id_listing ?? '');
+                if (!empty($bulanRomawi) && !empty($tahun)) {
+                    $nomorSurat .= '/'.$bulanRomawi.'/'.$tahun.'/PPH';
+                }
+
                 // Isi placeholder (pastikan di template pakai ${lokasi}, ${luas}, dst)
+                $tp->setValue('no_surat',   $nomorSurat);
+                $tp->setValue('id_listing',  (string)($r->id_listing ?? ''));
                 $tp->setValue('lokasi',      (string)($r->lokasi ?? ''));
                 $tp->setValue('luas',        (string)($r->luas ?? ''));
                 $tp->setValue('vendor',      (string)($r->vendor ?? ''));
@@ -194,6 +219,7 @@ class ExportController extends Controller
         }
         return response()->download($zipPath, basename($zipPath))->deleteFileAfterSend(true);
     }
+
 
 
 

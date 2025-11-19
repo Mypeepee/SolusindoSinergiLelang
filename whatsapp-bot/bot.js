@@ -6,7 +6,24 @@ const axios = require('axios');
 
 const API_BASE = 'http://127.0.0.1:8000'; // sesuaikan jika perlu
 
-create().then(start).catch(console.error);
+// create().then(start).catch(console.error);
+create({
+  sessionId: 'solusindo-bot',
+  headless: true,        // tetap nggak buka jendela Chrome
+  useChrome: true,       // pakai Chrome lokal (bukan Chromium bawaan puppeteer)
+  multiDevice: true,
+  authTimeout: 0,        // jangan auto-mati auth
+  qrTimeout: 0,          // QR nggak bikin proses mati
+  disableSpins: true,
+  logConsole: true,
+  browserArgs: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-extensions',
+    '--disable-gpu'
+  ],
+}).then(start).catch(console.error);
 
 function start(client) {
   client.onMessage(async (message) => {

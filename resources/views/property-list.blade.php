@@ -1396,7 +1396,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     border-radius: 8px;
                 }
             </style>
-            
+
 <div id="property-list-section" class="py-5">
   <div class="container">
     <div class="row g-4 justify-content-center">
@@ -1418,37 +1418,51 @@ document.addEventListener('DOMContentLoaded', function () {
       {{-- Fade putih tipis di bawah gambar biar nyatu ke area konten --}}
       <div class="img-bottom-fade"></div>
 
+      @php
+      $userId   = Session::get('id_account') ?? Cookie::get('id_account');
+      $loggedIn = !empty($userId);
+
+      $roleRaw = $loggedIn ? \App\Models\Account::where('id_account', $userId)->value('roles') : null;
+      $role    = strtolower(trim($roleRaw ?? 'user'));
+
+      $privilegedRoles = ['agent', 'owner', 'register', 'stoker', 'principal'];
+      $isPrivileged    = $loggedIn && in_array($role, $privilegedRoles, true);
+  @endphp
 
       {{-- CHIP AGENT: kanan-bawah, ukuran terkunci 26×26 --}}
-{{-- @if(!empty($property->agent_nama) || !empty($property->agent_picture))
-@php
-  $fileId   = $property->agent_picture;
-  $agentImg = $fileId
-    ? 'https://drive.google.com/thumbnail?id='.$fileId.'&sz=w64'   // endpoint yang kamu pakai di halaman agent
-    : asset('images/default-profile.png');
-  $agentAlt = $fileId
-    ? 'https://drive.google.com/uc?export=view&id='.$fileId        // fallback kedua
-    : asset('images/default-profile.png');
-@endphp
+      @if(
+        $isPrivileged &&
+        (!empty($property->agent_nama) || !empty($property->agent_picture))
+    )
+        @php
+            $fileId   = $property->agent_picture;
+            $agentImg = $fileId
+                ? 'https://drive.google.com/thumbnail?id='.$fileId.'&sz=w64'
+                : asset('images/default-profile.png');
+            $agentAlt = $fileId
+                ? 'https://drive.google.com/uc?export=view&id='.$fileId
+                : asset('images/default-profile.png');
+        @endphp
 
-<div class="position-absolute end-0 bottom-0 m-2 agent-chip-wrap">
-  <div class="d-flex align-items-center shadow-sm rounded-pill px-2 py-1 agent-chip">
-    <div class="agent-avatar rounded-circle overflow-hidden me-2">
-      <img
-        src="{{ $agentImg }}"
-        alt="{{ $property->agent_nama ?? 'Agent' }}"
-        class="w-100 h-100"
-        style="object-fit:cover;"
-        referrerpolicy="no-referrer"
-        onerror="if(this.dataset.step!=='1'){this.dataset.step='1';this.src='{{ $agentAlt }}';}else{this.onerror=null;this.src='{{ asset('images/default-profile.png') }}';}"
-      >
-    </div>
-    <span class="small fw-semibold text-dark agent-chip-name">
-      {{ \Illuminate\Support\Str::limit($property->agent_nama ?? '—', 18) }}
-    </span>
-  </div>
-</div>
-@endif --}}
+        <div class="position-absolute end-0 bottom-0 m-2 agent-chip-wrap">
+            <div class="d-flex align-items-center shadow-sm rounded-pill px-2 py-1 agent-chip">
+                <div class="agent-avatar rounded-circle overflow-hidden me-2">
+                    <img
+                        src="{{ $agentImg }}"
+                        alt="{{ $property->agent_nama ?? 'Agent' }}"
+                        class="w-100 h-100"
+                        style="object-fit:cover;"
+                        referrerpolicy="no-referrer"
+                        onerror="if(this.dataset.step!=='1'){this.dataset.step='1';this.src='{{ $agentAlt }}';}else{this.onerror=null;this.src='{{ asset('images/default-profile.png') }}';}"
+                    >
+                </div>
+                <span class="small fw-semibold text-dark agent-chip-name">
+                    {{ \Illuminate\Support\Str::limit($property->agent_nama ?? '—', 18) }}
+                </span>
+            </div>
+        </div>
+    @endif
+
 
     </div>
 
