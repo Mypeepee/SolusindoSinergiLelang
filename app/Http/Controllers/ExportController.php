@@ -129,6 +129,27 @@ class ExportController extends Controller
         $generated  = [];
         $errors     = []; // kumpulkan error per-baris agar tidak silent fail
 
+        // === Helper: bersihin karakter ilegal & escape ke XML aman ===
+        $clean = function ($value) {
+            if ($value === null) return '';
+            $v = (string) $value;
+
+            // Normalisasi newline
+            $v = str_replace(["\r\n", "\r"], "\n", $v);
+
+            // Buang karakter kontrol yang tidak valid untuk XML 1.0
+            $v = preg_replace(
+                '/[^\x09\x0A\x0D\x20-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]/u',
+                '',
+                $v
+            );
+
+            // Escape karakter khusus XML: & < > " '
+            $v = htmlspecialchars($v, ENT_QUOTES | ENT_XML1, 'UTF-8');
+
+            return $v;
+        };
+
         foreach ($rows as $r) {
             try {
                 $tp = new \PhpOffice\PhpWord\TemplateProcessor($templatePath);
@@ -143,20 +164,21 @@ class ExportController extends Controller
                 }
 
                 // Isi placeholder (pastikan di template pakai ${lokasi}, ${luas}, dst)
-                $tp->setValue('no_surat',   $nomorSurat);
-                $tp->setValue('id_listing',  (string)($r->id_listing ?? ''));
-                $tp->setValue('lokasi',      (string)($r->lokasi ?? ''));
-                $tp->setValue('luas',        (string)($r->luas ?? ''));
-                $tp->setValue('vendor',      (string)($r->vendor ?? ''));
-                $tp->setValue('kota',        (string)($r->kota ?? ''));
-                $tp->setValue('sertifikat',  (string)($r->sertifikat ?? ''));
-                $tp->setValue('harga_asli',  'Rp '.number_format($hargaAsli, 0, ',', '.'));
-                $tp->setValue('tanggal',     $today);
-                $tp->setValue('link',        (string)($r->link ?? ''));
+                $tp->setValue('no_surat',   $clean($nomorSurat));
+                $tp->setValue('id_listing',  $clean((string)($r->id_listing ?? '')));
+                $tp->setValue('lokasi',      $clean((string)($r->lokasi ?? '')));
+                $tp->setValue('luas',        $clean((string)($r->luas ?? '')));
+                $tp->setValue('vendor',      $clean((string)($r->vendor ?? '')));
+                $tp->setValue('kota',        $clean((string)($r->kota ?? '')));
+                $tp->setValue('sertifikat',  $clean((string)($r->sertifikat ?? '')));
+                $tp->setValue('harga_asli',  $clean('Rp '.number_format($hargaAsli, 0, ',', '.')));
+                $tp->setValue('tanggal',     $clean($today));
+                $tp->setValue('link',        $clean((string)($r->link ?? '')));
 
                 $safeKota = preg_replace('/\s+/', '_', trim((string)($r->kota ?? 'Dokumen')));
                 $safeKota = substr($safeKota, 0, 40);
-                $outName  = 'Surat_'.$safeKota.'_'.uniqid().'.docx';
+                // --- DI SINI DIUBAH: nama file LBHJaksa_{kota}_{id_listing}.docx ---
+                $outName  = 'LBHJaksa_'.$safeKota.'_'.(string)($r->id_listing ?? '').'.docx';
                 $outPath  = $tmpDir . '/' . $outName;
 
                 $tp->saveAs($outPath);
@@ -219,6 +241,8 @@ class ExportController extends Controller
         }
         return response()->download($zipPath, basename($zipPath))->deleteFileAfterSend(true);
     }
+
+
 
 
 
