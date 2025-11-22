@@ -107,6 +107,51 @@ class ExportController extends Controller
 
         $templatePath = $tempTemplate;
 
+        // ====== Tambahan: template amplop dari Google Docs (link yang kamu kasih)
+        $ampInputUrl  = 'https://docs.google.com/document/d/13Ay06aOOCmxzeSJeKzHslx5BeGHgRi89/edit?usp=sharing&ouid=112195130842334448793&rtpof=true&sd=true';
+        $ampRemoteUrl = $ampInputUrl;
+
+        if (preg_match('~^https?://docs\.google\.com/document/d/([a-zA-Z0-9_-]+)~', $ampInputUrl, $mAmp)) {
+            $ampDocId    = $mAmp[1];
+            $ampRemoteUrl = "https://docs.google.com/document/d/{$ampDocId}/export?format=docx";
+        }
+        elseif (preg_match('~^https?://drive\.google\.com/file/d/([a-zA-Z0-9_-]+)~', $ampInputUrl, $mAmp)) {
+            $ampFileId   = $mAmp[1];
+            $ampRemoteUrl = "https://drive.google.com/uc?export=download&id={$ampFileId}";
+        }
+
+        $tempTemplateAmplop = $tmpDir . '/_tpl_amp_' . uniqid() . '.docx';
+        $templateAmplopPath = null;
+        try {
+            if (class_exists(\GuzzleHttp\Client::class)) {
+                $clientAmp = new \GuzzleHttp\Client(['timeout' => 30, 'verify' => false]);
+                $resAmp = $clientAmp->request('GET', $ampRemoteUrl, [
+                    'sink'    => $tempTemplateAmplop,
+                    'headers' => ['User-Agent' => 'Mozilla/5.0 (compatible; PHP TemplateFetcher)'],
+                ]);
+                if ($resAmp->hasHeader('Content-Type') && stripos($resAmp->getHeaderLine('Content-Type'), 'text/html') !== false) {
+                    throw new \RuntimeException('Google mengembalikan HTML untuk template amplop (kemungkinan belum public atau butuh login).');
+                }
+            } else {
+                $ctxAmp = stream_context_create([
+                    'http' => ['timeout' => 30, 'header' => "User-Agent: Mozilla/5.0\r\n"],
+                    'ssl'  => ['verify_peer' => false, 'verify_peer_name' => false],
+                ]);
+                $dataAmp = @file_get_contents($ampRemoteUrl, false, $ctxAmp);
+                if ($dataAmp === false) throw new \RuntimeException('Gagal mengunduh template amplop.');
+                file_put_contents($tempTemplateAmplop, $dataAmp);
+            }
+            if (is_file($tempTemplateAmplop) && filesize($tempTemplateAmplop) >= 100) {
+                $templateAmplopPath = $tempTemplateAmplop;
+            } else {
+                @unlink($tempTemplateAmplop);
+                $templateAmplopPath = null;
+            }
+        } catch (\Throwable $eAmp) {
+            // Kalau gagal, surat tetap jalan, amplop saja yang tidak dibuat
+            $templateAmplopPath = null;
+        }
+
         $today      = now()->translatedFormat('d F Y');
         $now        = now();
         $bulan      = (int) $now->month;
@@ -177,7 +222,7 @@ class ExportController extends Controller
 
                 $safeKota = preg_replace('/\s+/', '_', trim((string)($r->kota ?? 'Dokumen')));
                 $safeKota = substr($safeKota, 0, 40);
-                // --- DI SINI DIUBAH: nama file LBHJaksa_{kota}_{id_listing}.docx ---
+                // --- nama file surat LBHJaksa_{kota}_{id_listing}.docx ---
                 $outName  = 'LBHJaksa_'.$safeKota.'_'.(string)($r->id_listing ?? '').'.docx';
                 $outPath  = $tmpDir . '/' . $outName;
 
@@ -189,6 +234,39 @@ class ExportController extends Controller
                 }
 
                 $generated[] = $outPath;
+
+                // ====== Tambahan: generate AM PLOP kalau template amplop tersedia
+                if (!empty($templateAmplopPath) && is_file($templateAmplopPath)) {
+                    try {
+                        $tpAmp = new \PhpOffice\PhpWord\TemplateProcessor($templateAmplopPath);
+
+                        // isi placeholder amplop (pakai field yang sama, aman kalau di template tidak dipakai)
+                        $tpAmp->setValue('no_surat',   $clean($nomorSurat));
+                        $tpAmp->setValue('id_listing',  $clean((string)($r->id_listing ?? '')));
+                        $tpAmp->setValue('lokasi',      $clean((string)($r->lokasi ?? '')));
+                        $tpAmp->setValue('luas',        $clean((string)($r->luas ?? '')));
+                        $tpAmp->setValue('vendor',      $clean((string)($r->vendor ?? '')));
+                        $tpAmp->setValue('kota',        $clean((string)($r->kota ?? '')));
+                        $tpAmp->setValue('sertifikat',  $clean((string)($r->sertifikat ?? '')));
+                        $tpAmp->setValue('harga_asli',  $clean('Rp '.number_format($hargaAsli, 0, ',', '.')));
+                        $tpAmp->setValue('tanggal',     $clean($today));
+                        $tpAmp->setValue('link',        $clean((string)($r->link ?? '')));
+
+                        $ampName = 'LBHJaksa_Amplop_'.(string)($r->id_listing ?? '').'.docx';
+                        $ampPath = $tmpDir . '/' . $ampName;
+
+                        $tpAmp->saveAs($ampPath);
+
+                        if (is_file($ampPath) && filesize($ampPath) >= 100) {
+                            $generated[] = $ampPath;
+                        } else {
+                            @unlink($ampPath);
+                            $errors[] = 'AMPL0P ID? '.($r->id_listing ?? '-') . ' → gagal menyimpan file amplop.';
+                        }
+                    } catch (\Throwable $eAmpRow) {
+                        $errors[] = 'AMPL0P ID? '.($r->id_listing ?? '-') . ' → ' . $eAmpRow->getMessage();
+                    }
+                }
             } catch (\Throwable $e) {
                 // kumpulkan error tapi lanjut baris lain
                 $errors[] = 'ID? '.($r->id_listing ?? '-') . ' → ' . $e->getMessage();
@@ -199,6 +277,9 @@ class ExportController extends Controller
         // Bersihkan template sementara
         if (!empty($tempTemplate) && is_file($tempTemplate)) {
             @unlink($tempTemplate);
+        }
+        if (!empty($tempTemplateAmplop) && is_file($tempTemplateAmplop)) {
+            @unlink($tempTemplateAmplop);
         }
 
         // Jika tidak ada yang berhasil dibuat, laporkan penyebabnya
@@ -241,14 +322,6 @@ class ExportController extends Controller
         }
         return response()->download($zipPath, basename($zipPath))->deleteFileAfterSend(true);
     }
-
-
-
-
-
-
-
-
 
 
     public function properties(Request $request)
