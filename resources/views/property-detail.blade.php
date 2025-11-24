@@ -47,7 +47,7 @@
                                     <div class="swiper mySwiperMain rounded overflow-hidden">
                                         <div class="swiper-wrapper">
                                             @foreach(explode(',', $property->gambar) as $index => $image)
-                                                <div class="swiper-slide position-relative">
+                                                <div class="swiper-slide position-relative" data-index="{{ $index }}">
                                                     <div class="img-wrapper">
                                                         <img src="{{ $image }}" alt="Property Image" class="w-100">
                                                     </div>
@@ -59,9 +59,8 @@
                                             @endforeach
                                         </div>
 
-                                        <!-- Custom Buttons -->
-                                        <!-- Arrow Left -->
-                                        <button id="prevBtn" class="carousel-control-prev custom-btn" type="button">
+                                        <!-- Custom Buttons main -->
+                                        <button id="prevBtnMain" class="carousel-control-prev custom-btn" type="button">
                                             <span class="custom-btn-icon">
                                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="2" width="24" height="24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
@@ -69,8 +68,7 @@
                                             </span>
                                         </button>
 
-                                        <!-- Arrow Right -->
-                                        <button id="nextBtn" class="carousel-control-next custom-btn" type="button">
+                                        <button id="nextBtnMain" class="carousel-control-next custom-btn" type="button">
                                             <span class="custom-btn-icon">
                                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="2" width="24" height="24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
@@ -79,8 +77,48 @@
                                         </button>
                                     </div>
 
+                                    {{-- FULLSCREEN MODAL GALLERY --}}
+                                    <div id="imageModal" class="image-modal">
+                                        <div class="image-modal-inner">
+                                            <!-- Close Button -->
+                                            <button id="closeModal" class="image-modal-close" aria-label="Close gallery">
+                                                &times;
+                                            </button>
+
+                                            <!-- Swiper fullscreen -->
+                                            <div class="swiper mySwiperZoom">
+                                                <div class="swiper-wrapper">
+                                                    @foreach(explode(',', $property->gambar) as $index => $image)
+                                                        <div class="swiper-slide">
+                                                            <div class="img-wrapper-full">
+                                                                <img src="{{ $image }}" alt="Property Image Large">
+                                                            </div>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+
+                                                <!-- Nav fullscreen -->
+                                                <button id="prevBtnZoom" class="carousel-control-prev custom-btn custom-btn-modal" type="button">
+                                                    <span class="custom-btn-icon">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="2" width="24" height="24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                                                        </svg>
+                                                    </span>
+                                                </button>
+
+                                                <button id="nextBtnZoom" class="carousel-control-next custom-btn custom-btn-modal" type="button">
+                                                    <span class="custom-btn-icon">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="2" width="24" height="24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                                                        </svg>
+                                                    </span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <style>
-                                    /* Wrapper to maintain ratio */
+                                    /* Wrapper to maintain ratio (main) */
                                     .img-wrapper {
                                         width: 100%;
                                         aspect-ratio: 16 / 9;
@@ -101,7 +139,7 @@
                                         transform: translateY(-50%);
                                         width: 48px;
                                         height: 48px;
-                                        background: rgba(0, 0, 0, 0.6); /* lebih gelap */
+                                        background: rgba(0, 0, 0, 0.6);
                                         border-radius: 50%;
                                         display: flex;
                                         justify-content: center;
@@ -110,7 +148,7 @@
                                         cursor: pointer;
                                         z-index: 10;
                                         transition: background 0.3s, transform 0.2s;
-                                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); /* bayangan */
+                                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
                                     }
 
                                     .custom-btn:hover {
@@ -126,17 +164,118 @@
                                         justify-content: center;
                                     }
 
-                                    #prevBtn { left: 16px; }
-                                    #nextBtn { right: 16px; }
+                                    #prevBtnMain { left: 16px; }
+                                    #nextBtnMain { right: 16px; }
 
+                                    /* FULLSCREEN MODAL */
+                                    .image-modal {
+                                        position: fixed;
+                                        inset: 0;
+                                        background: rgba(0,0,0,0.9);
+                                        display: none;                /* hidden by default */
+                                        align-items: center;
+                                        justify-content: center;
+                                        z-index: 2000;
+                                    }
+
+                                    .image-modal.open {
+                                        display: flex;
+                                    }
+
+                                    .image-modal-inner {
+                                        position: relative;
+                                        width: 100%;
+                                        max-width: 1200px;
+                                        padding-inline: 16px;
+                                    }
+
+                                    .image-modal-close {
+                                        position: absolute;
+                                        top: 16px;
+                                        right: 24px;
+                                        font-size: 34px;
+                                        line-height: 1;
+                                        background: transparent;
+                                        color: #fff;
+                                        border: none;
+                                        cursor: pointer;
+                                        z-index: 2100;
+
+                                        /* ===== Tambahan: styling tombol X ala website kelas dunia ===== */
+                                        width: 44px;
+                                        height: 44px;
+                                        border-radius: 999px;
+                                        background: rgba(10, 10, 10, 0.75);
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+                                        border: 1px solid rgba(255,255,255,0.25);
+                                        backdrop-filter: blur(6px);
+                                        transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+                                    }
+
+                                    .image-modal-close:hover {
+                                        background: rgba(0,0,0,0.9);
+                                        transform: scale(1.05);
+                                        box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+                                    }
+                                    /* ===== Akhir tambahan tombol X ===== */
+
+                                    .img-wrapper-full {
+                                        width: 100%;
+                                        max-height: 90vh;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                    }
+
+                                    .img-wrapper-full img {
+                                        max-width: 100%;
+                                        max-height: 90vh;
+                                        object-fit: contain;
+                                        border-radius: 12px;
+                                        box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+                                    }
+
+                                    /* nav di fullscreen */
+                                    .custom-btn-modal {
+                                        top: 50%;
+                                    }
+
+                                    #prevBtnZoom { left: 12px; }
+                                    #nextBtnZoom { right: 12px; }
+
+                                    /* body no scroll saat modal */
+                                    body.no-scroll {
+                                        overflow: hidden;
+                                    }
+
+                                    /* Responsive */
                                     @media (max-width: 768px) {
                                         .img-wrapper {
                                             aspect-ratio: 4 / 4;
                                         }
+
+                                        .image-modal-inner {
+                                            padding-inline: 8px;
+                                            /* ===== Tambahan: center juga untuk smaller screen ===== */
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            /* ===== Akhir tambahan ===== */
+                                        }
+
+                                        .image-modal-close {
+                                            top: 10px;
+                                            right: 16px;
+                                            font-size: 30px;
+                                        }
                                     }
 
+                                    /* Tombol aksen lain yg sudah ada di halamanmu */
                                     .btn-dark-blue {
-                                        background-color: #0d3b66; /* contoh biru donker */
+                                        background-color: #0d3b66;
                                         color: #fff;
                                         border: none;
                                     }
@@ -146,7 +285,7 @@
                                         color: #fff;
                                     }
 
-                                    /* Biar tombol sticky di bawah layar di mobile */
+                                    /* Sticky button di mobile (bagianmu yang lama tetap dipakai) */
                                     @media (max-width: 768px) {
                                         .position-relative.mt-4 {
                                             position: fixed;
@@ -164,25 +303,108 @@
                                         }
                                     }
 
+                                    /* ===== Tambahan: hide header saat gallery fullscreen ===== */
+                                    #mainNavbar {
+                                        transition: transform 0.25s ease, opacity 0.25s ease;
+                                    }
+
+                                    body.gallery-open {
+                                        padding-top: 0 !important;
+                                    }
+
+                                    body.gallery-open #mainNavbar {
+                                        transform: translateY(-100%);
+                                        opacity: 0;
+                                        pointer-events: none;
+                                    }
+                                    /* ===== Akhir tambahan ===== */
+
+                                    /* ===== Tambahan 2: center gambar di layar besar ===== */
+                                    @media (min-width: 768px) {
+                                        .image-modal-inner {
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                        }
+                                    }
+                                    /* ===== Akhir tambahan 2 ===== */
                                     </style>
 
                                     <script src="https://cdn.jsdelivr.net/npm/swiper/swiper-bundle.min.js"></script>
                                     <script>
-                                        const swiper = new Swiper(".mySwiperMain", {
+                                        // MAIN SWIPER
+                                        const swiperMain = new Swiper(".mySwiperMain", {
                                             loop: true,
                                             spaceBetween: 10,
                                         });
 
-                                        document.getElementById('prevBtn').addEventListener('click', (e) => {
+                                        document.getElementById('prevBtnMain').addEventListener('click', (e) => {
                                             e.preventDefault();
-                                            swiper.slidePrev();
+                                            swiperMain.slidePrev();
                                         });
 
-                                        document.getElementById('nextBtn').addEventListener('click', (e) => {
+                                        document.getElementById('nextBtnMain').addEventListener('click', (e) => {
                                             e.preventDefault();
-                                            swiper.slideNext();
+                                            swiperMain.slideNext();
+                                        });
+
+                                        // FULLSCREEN SWIPER
+                                        const swiperZoom = new Swiper(".mySwiperZoom", {
+                                            loop: true,
+                                            spaceBetween: 10,
+                                            // nav pakai tombol di modal
+                                            navigation: {
+                                                nextEl: '#nextBtnZoom',
+                                                prevEl: '#prevBtnZoom',
+                                            },
+                                        });
+
+                                        const modal      = document.getElementById('imageModal');
+                                        const closeModal = document.getElementById('closeModal');
+
+                                        function openGallery(startIndex) {
+                                            modal.classList.add('open');
+                                            document.body.classList.add('no-scroll');
+                                            document.body.classList.add('gallery-open'); // <-- tambahan
+                                            // arahkan ke slide yg sama (pakai index dari foreach)
+                                            swiperZoom.slideToLoop(startIndex, 0, false);
+                                        }
+
+                                        function hideGallery() {
+                                            modal.classList.remove('open');
+                                            document.body.classList.remove('no-scroll');
+                                            document.body.classList.remove('gallery-open'); // <-- tambahan
+                                        }
+
+                                        // Klik gambar di main swiper → buka fullscreen
+                                        document.querySelectorAll('.mySwiperMain .swiper-slide').forEach(slide => {
+                                            slide.addEventListener('click', (e) => {
+                                                // kalau nanti di dalam slide ada elemen lain (badge, dsb), tetap jalan
+                                                const index = parseInt(slide.dataset.index ?? 0, 10);
+                                                openGallery(index);
+                                            });
+                                        });
+
+                                        // Close button
+                                        closeModal.addEventListener('click', hideGallery);
+
+                                        // Klik area gelap di luar gambar juga close
+                                        modal.addEventListener('click', (e) => {
+                                            if (e.target === modal) {
+                                                hideGallery();
+                                            }
+                                        });
+
+                                        // ESC untuk close
+                                        document.addEventListener('keydown', (e) => {
+                                            if (e.key === 'Escape' && modal.classList.contains('open')) {
+                                                hideGallery();
+                                            }
                                         });
                                     </script>
+
+
+
 
                                 </div>
                             </div>

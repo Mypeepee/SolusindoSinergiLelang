@@ -459,9 +459,9 @@ class ExportController extends Controller
         'OR lv 3',
         'Administrasi',
         'PROFIT',
-        'KELURAHAN',
-        'KECAMATAN',
         'PROPINSI',
+        'KECAMATAN',
+        'KELURAHAN',
     ];
 
     // ==========================
@@ -482,9 +482,9 @@ class ExportController extends Controller
         $lt              = $r->luas;
         $jenisTransaksi  = 'LELANG';                                      // fixed
         $hargaJual       = $r->harga;
-        $kelurahan       = (string)($r->kelurahan ?? '');
-        $kecamatan       = (string)($r->kecamatan ?? '');
         $provinsi        = (string)($r->provinsi ?? '');
+        $kecamatan       = (string)($r->kecamatan ?? '');
+        $kelurahan       = (string)($r->kelurahan ?? '');
 
         // Sisanya kosong
         $blank = '';
@@ -545,9 +545,9 @@ class ExportController extends Controller
             /* OR lv 3 */                $blank,
             /* Administrasi */           $blank,
             /* PROFIT */                 $blank,
-            /* KELURAHAN */              $kelurahan,
+                                         $provinsi,
             /* KECAMATAN */              $kecamatan,
-            /* PROPINSI */               $provinsi,
+            /* PROPINSI */               $kelurahan,
         ];
     })->toArray();
 
