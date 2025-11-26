@@ -296,6 +296,8 @@ Route::get('/dashboard/owner/stoker-list', [AgentAdminController::class,'stokerL
 Route::post('/dashboard/stoker/bulk-sold', [AgentAdminController::class, 'stokerBulkSold'])
     ->name('stoker.bulkSold');
 
+    Route::get('/dashboard/owner/transaksi/list', [AgentAdminController::class, 'transaksiList'])
+    ->name('dashboard.owner.transaksi.list');
 // routes/web.php
 Route::post('/dashboard/owner/export/mark', function (\Illuminate\Http\Request $r) {
     $ids = collect($r->input('selected_ids', []))
@@ -319,3 +321,9 @@ Route::patch(
     '/dashboard/agents/{idAccount}/status',
     [AgentAdminController::class, 'updateStatusAgent'] // ⬅️ ganti method
 )->name('agents.update-status-agent');
+
+Route::post('/dashboard/owner/transaksi/update-status', [AgentAdminController::class, 'updatetransaksi'])
+    ->name('transaction.updateStatus');
+
+    Route::get('/dashboard/owner/transaksi/history', [AgentAdminController::class, 'transaksiPropertyHistory'])
+    ->name('dashboard.owner.transaksi.history');

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Carbon\Carbon;
+use Illuminate\View\View;
 use App\Models\Agent;
 use App\Models\Event;
 use App\Models\Account;
@@ -838,6 +839,54 @@ $stokerProperties = Property::select(
         ->limit(15)
         ->get();
 
+// ---------- BLOK TRANSAKSI (UNTUK TAB "Transaksi") ----------
+$transaksiProperties = DB::table('property')
+    ->select(
+        'property.id_listing',
+        'property.lokasi',
+        'property.tipe',
+        'property.luas',
+        'property.harga',
+        'property.gambar',
+        'property.status',
+        'property.tanggal_diupdate',
+        DB::raw('NULL::integer as id_transaksi')
+    )
+    ->when(request('search'), function ($query, $search) {
+        return is_numeric($search)
+            ? $query->where('property.id_listing', (int)$search)
+            : $query->whereRaw('1=0');
+    })
+    ->when(request('vendor'), function ($q, $v) {
+        return $q->where('property.vendor', 'ILIKE', '%'.$v.'%');
+        // kalau MySQL: ganti 'ILIKE' -> 'like'
+    })
+    ->when(request('property_type'), function ($q, $v) {
+        return $q->whereRaw('LOWER(property.tipe) = ?', [strtolower($v)]);
+    })
+    ->when(request('province'), fn($q,$v) => $q->where('property.provinsi', $v))
+    ->when(request('city'),     fn($q,$v) => $q->where('property.kota', $v))
+    ->when(request('district'), fn($q,$v) => $q->where('property.kecamatan', $v))
+    ->orderByDesc('property.tanggal_diupdate')
+    ->paginate(10)
+    ->appends(array_merge(
+        request()->only(['search','vendor','property_type','province','city','district']),
+        ['tab'=>'transaksi']
+    ));
+
+        // Riwayat singkat (kanan): terakhir update transaksi
+$transaksiHistory = DB::table('transaction')
+->join('property', 'transaction.id_listing', '=', 'property.id_listing')
+->select(
+    'transaction.id_listing',
+    'property.lokasi',
+    'transaction.status_transaksi as status',
+    'transaction.tanggal_diupdate'
+)
+->orderBy('transaction.tanggal_diupdate', 'desc')
+->limit(15)
+->get();
+
         // Aggregate: jumlah "Hadir" per account
 // 1) Ikut Pemilu: jumlah "Hadir" per account
 $eiStats = DB::table('event_invites')
@@ -1036,6 +1085,8 @@ $exportProperties = $exportQuery
                                             'statusCounts' => $statusCounts,
                                             'stokerProperties'    => $stokerProperties,
                                             'soldProperties'      => $soldProperties,
+                                            'transaksiProperties'  => $transaksiProperties,   // 👈 NEW
+                                            'transaksiHistory'     => $transaksiHistory,
                                             'tab'                 => $tab,
                                             'exportProperties'    => $exportProperties,
                                             'events' => $eventsFormatted ]);
@@ -2188,6 +2239,166 @@ public function stokerBulkSold(Request $request)
         ->with('success', 'Berhasil menandai '.count($ids).' listing sebagai Terjual.');
 }
 
+public function transaksiList(Request $request)
+{
+    // ==== SANITASI INPUT (mirror stokerList) ====
+    $search   = trim((string) $request->get('search', ''));
+    $vendor   = trim((string) $request->get('vendor', ''));
+    $ptype    = $request->get('property_type');
+    $province = $request->get('province');
+    $city     = $request->get('city');
+    $district = $request->get('district');
 
+    // Placeholder yang kudu di-skip (SAMA persis dengan stokerList)
+    $skipValues = ['Pilih Provinsi', 'Pilih Kota/Kab', 'Pilih Kota/Kabupaten', 'Pilih Kecamatan', ''];
+
+    // ==== QUERY MIRROR STOKER, BEDANYA TIDAK DI-FILTER TERSEDIA & ADA STATUS/TANGGAL ====
+    $q = \App\Models\Property::from('property as p')
+        ->leftJoin('agent as ag', 'ag.id_agent', '=', 'p.id_agent') // <== JOIN AGENT
+        ->select(
+            'p.id_listing',
+            'p.lokasi',
+            'p.luas',
+            'p.harga',              // harga markup
+            'p.gambar',
+            'p.status',             // dipakai untuk badge Status / Closing
+            'p.tipe',
+            'p.provinsi',
+            'p.kota',
+            'p.kecamatan',
+            'p.vendor',
+            'p.tanggal_diupdate',
+            \DB::raw("COALESCE(ag.nama, '') as agent_nama"), // <== NAMA AGENT (CO PIC)
+            \DB::raw('NULL::integer as id_transaksi')
+        )
+
+        // SEARCH ID LISTING: hanya angka; selain itu diabaikan (jangan 1=0)
+        ->when($search !== '', function ($query) use ($search) {
+            if (ctype_digit($search)) {
+                return $query->where('p.id_listing', (int) $search);
+            }
+            return $query;
+        })
+
+        // FILTER VENDOR: multi-keyword + alias (mirror stokerList)
+        ->when($vendor !== '', function ($q) use ($vendor) {
+            $tokens = array_filter(preg_split('/\s+/', strtolower($vendor)));
+
+            $alias = [
+                'bri'      => 'bank rakyat indonesia',
+                'bni'      => 'bank negara indonesia',
+                'btn'      => 'bank tabungan negara',
+                'mandiri'  => 'bank mandiri',
+                'bca'      => 'bank central asia',
+                'mega'     => 'bank mega',
+                'bsi'      => 'bank syariah indonesia',
+            ];
+
+            $q->where(function($qq) use ($tokens, $alias) {
+                foreach ($tokens as $t) {
+                    $qq->where(function($w) use ($t, $alias) {
+                        $w->whereRaw('LOWER(TRIM(p.vendor)) LIKE ?', ['%'.$t.'%']);
+
+                        if (isset($alias[$t])) {
+                            $w->orWhereRaw('LOWER(TRIM(p.vendor)) LIKE ?', ['%'.$alias[$t].'%']);
+                        }
+                    });
+                }
+            });
+        })
+
+        // FILTER tipe
+        ->when($ptype, fn($q,$v) => $q->whereRaw('LOWER(p.tipe)=?', [strtolower($v)]))
+
+        // FILTER lokasi: SKIP placeholder kayak "Pilih Provinsi"
+        ->when(!in_array((string)$province, $skipValues, true), fn($q)       => $q->where('p.provinsi',  $province))
+        ->when(!in_array((string)$city,     $skipValues, true), fn($q)       => $q->where('p.kota',      $city))
+        ->when(!in_array((string)$district, $skipValues, true), fn($q)       => $q->where('p.kecamatan', $district))
+
+        ->orderByDesc('p.id_listing');
+
+    // ==== PAGINATION (mirror stokerList) ====
+    $page = max(1, (int) ($request->get('page') ?? 1));
+    $transaksiProperties = $q->paginate(10, ['*'], 'page', $page)
+        ->appends(array_merge(
+            $request->only(['search','vendor','property_type','province','city','district']),
+            ['tab' => 'transaksi']
+        ));
+
+    // Balikin partial (AJAX fragment) – sama seperti stokerList
+    return view('partial.transaksi_list', compact('transaksiProperties'));
+}
+
+public function transaksiPropertyHistory(Request $request): View
+{
+    $idListing = (int) $request->get('id_listing');
+
+    /** @var \App\Models\Property|null $current */
+    $current = \App\Models\Property::find($idListing);
+    if (!$current) {
+        abort(404);
+    }
+
+    // --- Normalisasi sertifikat: huruf + angka saja, lowercase ---
+    $sertKey = null;
+    if (!empty($current->sertifikat)) {
+        $lower  = mb_strtolower($current->sertifikat, 'UTF-8');
+        // buang semua karakter non huruf/angka
+        $sertKey = preg_replace('/[^a-z0-9]/u', '', $lower);
+    }
+
+    // --- Ambil semua listing dengan aset yang sama ---
+    $history = \App\Models\Property::query()
+        ->where('id_listing', '!=', $current->id_listing)
+
+        // sama-sama sertifikat (normalisasi) -> SHGB no 3166 tetap ketemu walau beda kapital / spasi
+        ->when($sertKey, function ($q) use ($sertKey) {
+            $q->whereRaw(
+                "regexp_replace(lower(coalesce(sertifikat, '')), '[^a-z0-9]', '', 'g') = ?",
+                [$sertKey]
+            );
+        })
+
+        // luas sama
+        ->when($current->luas, function ($q) use ($current) {
+            $q->where('luas', $current->luas);
+        })
+
+        // kota sama (tanpa peduli kapital / spasi pinggir)
+        ->when($current->kota, function ($q) use ($current) {
+            $q->whereRaw('LOWER(TRIM(kota)) = ?', [strtolower(trim($current->kota))]);
+        })
+
+        // urutkan berdasarkan tanggal lelang (paling awal = lelang ke-1)
+        ->orderByRaw('COALESCE(batas_akhir_penawaran, tanggal_buyer_meeting, tanggal_dibuat) ASC')
+        ->get();
+
+    // gabungkan current + history, lalu urutkan lagi supaya pasti berurutan
+    $rows = collect([$current])
+        ->merge($history)
+        ->sortBy(function ($row) {
+            return $row->batas_akhir_penawaran
+                ?? $row->tanggal_buyer_meeting
+                ?? $row->tanggal_dibuat;
+        })
+        ->values();
+
+    return view('partial.transaksi_property_history', [
+        'rows'    => $rows,
+        'current' => $current,
+    ]);
+}
+
+public function updatetransaksi(Request $request)
+{
+    // sementara: cek aja apa yang terkirim
+    // dd($request->all());
+
+    // nanti di sini logic:
+    // - kalau belum ada di tabel transaction -> insert
+    // - kalau sudah ada -> update status + tanggal_diupdate
+
+    return back()->with('success', 'Status transaksi berhasil disimpan (dummy).');
+}
 
 }

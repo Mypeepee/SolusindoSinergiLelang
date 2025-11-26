@@ -203,6 +203,15 @@
           ⬇️ Export
         </button>
     </li>
+
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {{ $tab==='transaksi' ? 'active' : '' }}"
+                id="transaksi-tab" data-bs-toggle="tab" data-bs-target="#transaksi"
+                type="button" role="tab" aria-controls="transaksi"
+                aria-selected="{{ $tab==='transaksi' ? 'true' : 'false' }}">
+          💳 Transaksi
+        </button>
+      </li>
   </ul>
 
     <div class="tab-content mt-3" id="mainTabsContent">
@@ -2845,9 +2854,1343 @@ clearAllBtn?.addEventListener('click', clearAll);
     })();
     </script>
 
+{{-- ========== Transaksi ========== --}}
+<div class="tab-pane fade {{ $tab==='transaksi' ? 'show active' : '' }}" id="transaksi" role="tabpanel" aria-labelledby="transaksi-tab">
+    <div class="row">
+      {{-- 3/4 kiri: tabel transaksi (mirror Stoker) --}}
+      <div class="col-lg-9">
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-semibold text-primary">💳 Daftar Transaksi</h5>
+          </div>
+
+          <div class="card-body">
+            {{-- =================== FILTER BAR (TRANSAKSI) =================== --}}
+            <div class="row g-3 p-3 rounded shadow-sm bg-white mb-3 align-items-end transaksi-filter-grid">
+              {{-- Form FILTER (GET) tembus ke grid --}}
+              <form id="transaksi-filter-form"
+                    method="GET"
+                    action="{{ route('dashboard.owner') }}"
+                    class="d-contents">
+                <input type="hidden" name="tab" value="transaksi" />
+
+                {{-- Cari ID Listing (numeric) --}}
+                <div class="col-6 col-lg-1 pe-lg-2">
+                  <label for="transaksi_search" class="form-label mb-1">Cari ID</label>
+                  <input type="text" name="search" id="transaksi_search" value="{{ request('search') }}"
+                         class="form-control form-control-sm" placeholder="ID Listing"
+                         inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+                </div>
+
+                {{-- Cari Vendor (text) --}}
+                <div class="col-12 col-lg-3 pe-lg-2">
+                  <label for="transaksi_vendor" class="form-label mb-1">Cari Vendor</label>
+                  <input type="text" name="vendor" id="transaksi_vendor" value="{{ request('vendor') }}"
+                         class="form-control form-control-sm" placeholder="Contoh : BRI Rajawali" autocomplete="off">
+                </div>
+
+                {{-- Tipe properti --}}
+                <div class="col-6 col-lg-1 pe-lg-2">
+                  <label for="transaksi_property_type" class="form-label mb-1">Tipe</label>
+                  <select name="property_type" id="transaksi_property_type" class="form-select form-select-sm">
+                    <option value="" {{ request('property_type') ? '' : 'selected' }} disabled>Tipe Property</option>
+                    <option value="rumah" @selected(request('property_type')==='rumah')>Rumah</option>
+                    <option value="gudang" @selected(request('property_type')==='gudang')>Gudang</option>
+                    <option value="apartemen" @selected(request('property_type')==='apartemen')>Apartemen</option>
+                    <option value="tanah" @selected(request('property_type')==='tanah')>Tanah</option>
+                    <option value="pabrik" @selected(request('property_type')==='pabrik')>Pabrik</option>
+                    <option value="hotel dan villa" @selected(request('property_type')==='hotel dan villa')>Hotel dan Villa</option>
+                    <option value="ruko" @selected(request('property_type')==='ruko')>Ruko</option>
+                    <option value="toko" @selected(request('property_type')==='toko')>Toko</option>
+                    <option value="inventaris" @selected(request('property_type')==='inventaris')>Inventaris</option>
+                    <option value="lain-lain" @selected(request('property_type')==='lain-lain')>Lainnya</option>
+                  </select>
+                </div>
+
+                {{-- Provinsi --}}
+                <div class="col-6 col-lg-2 pe-lg-2">
+                  <label for="transaksi_province" class="form-label mb-1">Pilih Provinsi</label>
+                  <select id="transaksi_province" name="province" class="form-select form-select-sm">
+                    <option disabled {{ request('province') ? '' : 'selected' }}>Pilih Provinsi</option>
+                  </select>
+                </div>
+
+                {{-- Kota/Kab --}}
+                <div class="col-6 col-lg-2 pe-lg-2">
+                  <label for="transaksi_city" class="form-label mb-1">Pilih Kota/Kab</label>
+                  <select id="transaksi_city" name="city" class="form-select form-select-sm" {{ request('province') ? '' : 'disabled' }}>
+                    <option disabled selected>Pilih Kota/Kab</option>
+                  </select>
+                </div>
+
+                {{-- Kecamatan --}}
+                <div class="col-6 col-lg-2 pe-lg-2">
+                  <label for="transaksi_district" class="form-label mb-1">Pilih Kecamatan</label>
+                  <select id="transaksi_district" name="district" class="form-select form-select-sm" {{ request('city') ? '' : 'disabled' }}>
+                    <option disabled selected>Pilih Kecamatan</option>
+                  </select>
+                </div>
+              </form>
+
+              {{-- Tombol Reset --}}
+              <div class="col-6 col-lg-1">
+                <label class="form-label d-block invisible">Reset</label>
+                <button type="button" id="btn-transaksi-clear" class="btn reset-chip w-100">
+                  <span class="me-1">↺</span>Reset
+                </button>
+              </div>
+            </div>
+
+            {{-- HOST STABIL untuk partial + spinner (mirror Stoker) --}}
+            <div id="transaksi-list-wrap">
+              <div id="transaksi-loading" class="export-loading d-none">
+                <div class="spinner-border" role="status" aria-label="Loading"></div>
+              </div>
+              <div id="transaksi-fragment-host">@include('partial.transaksi_list')</div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {{-- 1/4 kanan: riwayat transaksi --}}
+      <div class="col-lg-3">
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-semibold text-primary">📝 Riwayat Transaksi</h5>
+          </div>
+          <div class="card-body">
+            @if($transaksiHistory->isEmpty())
+              <p class="text-center text-muted mb-0">Belum ada riwayat transaksi.</p>
+            @else
+              <ul class="list-group list-group-flush small" style="max-height: 360px; overflow:auto;">
+                @foreach($transaksiHistory as $t)
+                  <li class="list-group-item">
+                    <strong>{{ \Carbon\Carbon::parse($t->tanggal_diupdate)->format('d M Y') }}</strong>
+                    ({{ $t->id_listing }})
+                    <span class="badge bg-secondary ms-1">{{ $t->status }}</span><br>
+                    <span class="text-muted">{{ $t->lokasi }}</span>
+                  </li>
+                @endforeach
+              </ul>
+            @endif
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {{-- ==== STYLE KHUSUS TRANSAKSI FILTER (mirror Stoker) ==== --}}
+  <style>
+    .transaksi-filter-grid > [class*="col-lg-"] { min-width: 0; }
+    .transaksi-filter-grid .form-label{ font-weight:600; color:#6b7280; }
+    .transaksi-filter-grid .form-control,
+    .transaksi-filter-grid .form-select{
+      border-radius:.625rem;
+    }
+    #transaksi-list-wrap{ position:relative; min-height:120px; }
+    #transaksi-list-wrap .export-loading{
+      position:absolute; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      background: rgba(255,255,255,.6);
+      backdrop-filter: saturate(120%) blur(1px);
+      z-index:3;
+    }
+  </style>
+
+  <script>
+    // =========================
+    //  LOCATION PICKER TRANSAKSI (mirror Stoker)
+    // =========================
+    (function(){
+      const selProv  = document.getElementById('transaksi_province');
+      const selCity  = document.getElementById('transaksi_city');
+      const selDist  = document.getElementById('transaksi_district');
+      const btnClear = document.getElementById('btn-transaksi-clear');
+      const searchEl = document.getElementById('transaksi_search');
+      const selType  = document.getElementById('transaksi_property_type');
+      const vendorEl = document.getElementById('transaksi_vendor');
+
+      if (!selProv || !selCity || !selDist) return;
+
+      function readFilters(){
+        return {
+          search:        (searchEl?.value || '').trim(),
+          vendor:        (vendorEl?.value || '').trim(),
+          property_type: selType?.value || '',
+          province:      selProv?.value || '',
+          city:          selCity?.value || '',
+          district:      selDist?.value || ''
+        };
+      }
+      function isEmptyFilters(f){
+        return !f.search && !f.vendor && !f.property_type && !f.province && !f.city && !f.district;
+      }
+      function isEqual(a,b){ return JSON.stringify(a) === JSON.stringify(b); }
+
+      window.__transaksiReadFilters  = readFilters;
+      window.__transaksiIsEmpty      = isEmptyFilters;
+      window.__transaksiFiltersEqual = isEqual;
+
+      const DATA_URL = "{{ asset('data/indonesia.json') }}";
+      const provinceMap = new Map();
+      const locationMap = new Map();
+
+      const sortCity = (a,b) => {
+        const A = a.toUpperCase().startsWith('KOTA');
+        const B = b.toUpperCase().startsWith('KOTA');
+        if (A && !B) return -1;
+        if (!A && B) return 1;
+        return a.localeCompare(b);
+      };
+
+      function resetSelect(el, ph){ el.innerHTML = `<option disabled selected>${ph}</option>`; }
+      function fillProvinces(){
+        resetSelect(selProv, 'Pilih Provinsi');
+        Array.from(provinceMap.keys()).sort()
+          .forEach(p => selProv.insertAdjacentHTML('beforeend', `<option value="${p}">${p}</option>`));
+      }
+      function fillCities(prov){
+        resetSelect(selCity, 'Pilih Kota/Kab'); resetSelect(selDist, 'Pilih Kecamatan'); selDist.disabled = true;
+        if (!prov || !provinceMap.has(prov)) { selCity.disabled = true; return; }
+        Array.from(provinceMap.get(prov)).sort(sortCity)
+          .forEach(c => selCity.insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`));
+        selCity.disabled = false;
+      }
+      function fillDistricts(prov, city){
+        resetSelect(selDist, 'Pilih Kecamatan');
+        if (!prov || !city || !locationMap.has(prov) || !locationMap.get(prov).has(city)){ selDist.disabled = true; return; }
+        Array.from(locationMap.get(prov).get(city)).sort()
+          .forEach(d => selDist.insertAdjacentHTML('beforeend', `<option value="${d}">${d}</option>`));
+        selDist.disabled = false;
+      }
+
+      fetch(DATA_URL).then(r=>r.json()).then(rows=>{
+        rows.forEach(x=>{
+          const prov=(x.province||'').trim(), city=(x.regency||'').trim(), dist=(x.district||'').trim();
+          if(!prov||!city||!dist) return;
+          if(!provinceMap.has(prov)) provinceMap.set(prov,new Set());
+          provinceMap.get(prov).add(city);
+          if(!locationMap.has(prov)) locationMap.set(prov,new Map());
+          if(!locationMap.get(prov).has(city)) locationMap.get(prov).set(city,new Set());
+          locationMap.get(prov).get(city).add(dist);
+        });
+        fillProvinces();
+
+        const rqProv = @json(request('province'));
+        const rqCity = @json(request('city'));
+        const rqDist = @json(request('district'));
+        if (rqProv && provinceMap.has(rqProv)) {
+          selProv.value = rqProv; fillCities(rqProv);
+          if (rqCity && provinceMap.get(rqProv).has(rqCity)) {
+            selCity.value = rqCity; fillDistricts(rqProv, rqCity);
+            if (rqDist) selDist.value = rqDist;
+          }
+        } else {
+          selCity.disabled = true; selDist.disabled = true;
+          resetSelect(selCity, 'Pilih Kota/Kab'); resetSelect(selDist, 'Pilih Kecamatan');
+        }
+      }).catch(e=>console.error('Gagal load indonesia.json (transaksi):', e));
+
+      const softReload = () => {
+        if (typeof window.__transaksiDebounced === 'function') window.__transaksiDebounced();
+      };
+      selProv.addEventListener('change', ()=>{ fillCities(selProv.value); softReload(); });
+      selCity.addEventListener('change', ()=>{ fillDistricts(selProv.value, selCity.value); softReload(); });
+      selDist.addEventListener('change', softReload);
+
+      btnClear?.addEventListener('click', ()=>{
+        const before = readFilters();
+
+        searchEl && (searchEl.value = '');
+        vendorEl && (vendorEl.value = '');
+        if (selType) selType.selectedIndex = 0;
+
+        selProv.selectedIndex = 0;
+        fillCities(null);
+
+        const after = readFilters();
+
+        if (!isEqual(before, after) && typeof window.__loadTransaksiList === 'function') {
+          window.__loadTransaksiList({ page: 1 });
+        }
+      });
+    })();
+
+// =========================
+//   AJAX TABEL TRANSAKSI (mirror Stoker, tanpa bulk)
+// =========================
+document.addEventListener('DOMContentLoaded', function () {
+  // ==== Filter refs ====
+  const input   = document.getElementById('transaksi_search');
+  const vendor  = document.getElementById('transaksi_vendor');
+  const selType = document.getElementById('transaksi_property_type');
+  const selProv = document.getElementById('transaksi_province');
+  const selCity = document.getElementById('transaksi_city');
+  const selDist = document.getElementById('transaksi_district');
+
+  // ==== Host partial (stabil) ====
+  const host = document.getElementById('transaksi-fragment-host');
+
+  // ==== Route fragment ====
+  const fragmentRoute = "{{ route('dashboard.owner.transaksi.list') }}";
+
+  // ==== Overlay (hanya pada tabel) ====
+  function getOverlay(){ return document.getElementById('transaksi-loading'); }
+  function showLoading(on){ const el = getOverlay(); el && el.classList.toggle('d-none', !on); }
+
+  // ==== Params & state ====
+  let t, lastReqId = 0;
+  function paramsObj(merge = {}) {
+    return {
+      tab: 'transaksi',
+      search:        input?.value || '',
+      vendor:        vendor?.value || '',
+      property_type: selType?.value || '',
+      province:      selProv?.value || '',
+      city:          selCity?.value || '',
+      district:      selDist?.value || '',
+      page: 1,
+      ...merge
+    };
+  }
+  const qs = (o) => new URLSearchParams(o).toString();
+
+  // ==== AJAX loader (replace partial tabel + pagination saja) ====
+  async function loadList(extra = {}) {
+    const myId = ++lastReqId;
+    showLoading(true);
+    try {
+      const url = fragmentRoute + '?' + qs(paramsObj(extra));
+      const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
+      const html = await res.text();
+      if (myId !== lastReqId) return;
+      host.innerHTML = html;     // replace tabel + pagination
+      if (window.afterTransaksiListReplaced) window.afterTransaksiListReplaced();
+    } catch (e) {
+      if (e?.name !== 'AbortError') console.error('transaksi load error:', e);
+    } finally {
+      if (myId === lastReqId) showLoading(false);
+    }
+  }
+  window.__loadTransaksiList = loadList;
+
+  const debounced = () => { clearTimeout(t); t = setTimeout(() => loadList(), 220); };
+  window.__transaksiDebounced = debounced;
+
+  // ==== Filter events ====
+  input?.addEventListener('input', function(){
+    const cleaned = this.value.replace(/[^\d]/g, '');
+    if (this.value !== cleaned) this.value = cleaned;
+    debounced();
+  });
+  vendor?.addEventListener('input', debounced);
+  [selType, selProv, selCity, selDist].forEach(el => el && el.addEventListener('change', debounced));
+
+  // Intercept submit (biar gak full reload)
+  document.getElementById('transaksi-filter-form')
+    ?.addEventListener('submit', function(e){ e.preventDefault(); loadList({ page: 1 }); });
+
+  // Delegasi pagination (butuh link dengan class .js-transaksi-page di partial.transaksi_list)
+  host?.addEventListener('click', function(e){
+    const a = e.target.closest('a.js-transaksi-page');
+    if (!a) return;
+    e.preventDefault();
+    const page = a.dataset.page || '1';
+    loadList({ page });
+  });
+
+  // >>>> TAMBAHKAN FUNGSI INI (GANTI hook kosong yang lama) <<<<
+  window.afterTransaksiListReplaced = function(){
+    const btns = document.querySelectorAll('#transaksi-list-inner .btn-transaksi-closing');
+    btns.forEach(btn => {
+      btn.addEventListener('click', function(){
+        const payload = {
+          id_listing:   this.dataset.idListing,
+          id_transaksi: this.dataset.idTransaksi || null,
+          status:       this.dataset.status || null,
+          lokasi:       this.dataset.lokasi || '',
+          tipe:         this.dataset.tipe || '',
+          harga_markup: Number(this.dataset.hargaMarkup || 0),
+          harga_limit:  Number(this.dataset.hargaLimit  || 0)
+        };
+        if (window.handleTransaksiClosingClick) {
+          try { window.handleTransaksiClosingClick(payload, this); } catch(e){ console.error(e); }
+        } else {
+          console.log('Closing clicked (no handler):', payload);
+        }
+      });
+    });
+  };
+
+  // initial bind untuk render pertama (include blade)
+  window.afterTransaksiListReplaced();
+});
+</script>
+
+
+{{-- ========= MODAL / CARD CLOSING TRANSAKSI ========= --}}
+<div id="transaksi-closing-overlay" class="tc-overlay d-none">
+    <div class="tc-dialog">
+      <div class="tc-card">
+        <button type="button" class="btn-close tc-close-btn transaksi-modal-close" aria-label="Close"></button>
+
+        {{-- FORM SEKARANG MEMBUNGKUS KEDUA KOLOM (FOTO + INPUT) --}}
+        <form id="closingForm" method="POST" action="{{ route('transaction.updateStatus') }}">
+          @csrf
+
+          {{-- hidden --}}
+          <input type="hidden" name="id_listing"   id="tc-id-listing">
+          <input type="hidden" name="id_transaksi" id="tc-id-transaksi">
+
+          <div class="row g-4 align-items-start tc-form-body">
+            {{-- 1/4: FOTO + ID + ALAMAT + TANGGAL --}}
+            <div class="col-12 col-md-3">
+              <div class="tc-photo-wrap mb-3">
+                <img id="tc-photo" src="{{ asset('img/placeholder.jpg') }}" alt="Foto Properti" class="w-100 h-100">
+              </div>
+
+              <div class="small fw-semibold text-muted mb-1" id="tc-summary-id">
+                ID : –
+              </div>
+              <div class="small text-muted mb-2" id="tc-summary-lokasi">
+                Alamat : –
+              </div>
+
+              <label class="form-label small mb-1">Tanggal Closing</label>
+              <input type="date"
+                     name="tanggal_diupdate"
+                     id="tc-tanggal"
+                     class="form-control form-control-sm"
+                     required>
+            </div>
+
+            {{-- 3/4: FORM INPUT UTAMA --}}
+            <div class="col-12 col-md-9">
+              <h5 class="fw-semibold mb-2">Update Status Closing</h5>
+              <p class="small text-muted mb-3">
+                Lengkapi detail closing untuk properti ini. Data akan tersimpan di riwayat transaksi.
+              </p>
+
+              <div class="row g-3">
+                {{-- STATUS (disembunyikan, tetap dikirim ke server) --}}
+                <div class="col-12 col-md-6 d-none">
+                  <label class="form-label small mb-1">Status Transaksi</label>
+                  <select name="status" id="tc-status" class="form-select form-select-sm">
+                    <option value="Closing">Closing</option>
+                    <option value="Kuitansi">Kuitansi</option>
+                    <option value="Kode Billing">Kode Billing</option>
+                    <option value="Kutipan Risalah Lelang">Kutipan Risalah Lelang</option>
+                    <option value="Akte Grosse">Akte Grosse</option>
+                    <option value="Balik Nama">Balik Nama</option>
+                    <option value="Eksekusi Pengosongan">Eksekusi Pengosongan</option>
+                    <option value="Selesai">Selesai</option>
+                  </select>
+                </div>
+
+                {{-- SKEMA KOMISI (custom dropdown, size sama dengan Agent) --}}
+                <div class="col-12 col-md-6">
+                  <label class="form-label small mb-1">Skema komisi</label>
+
+                  {{-- hidden yang dikirim ke server --}}
+                  <input type="hidden" name="closing_type" id="tc-closing-type" value="profit">
+
+                  <div class="dropdown w-100">
+                    <button
+                      class="btn btn-outline-secondary btn-sm w-100 d-flex justify-content-between align-items-center tc-select-btn"
+                      type="button"
+                      data-bs-toggle="dropdown"
+                      aria-expanded="false">
+                      <span id="tc-scheme-label">Persentase komisi</span>
+                      <i class="bi bi-chevron-down ms-2"></i>
+                    </button>
+                    <ul class="dropdown-menu w-100">
+                      <li>
+                        <button type="button"
+                                class="dropdown-item tc-scheme-option"
+                                data-value="profit">
+                          Persentase komisi
+                        </button>
+                      </li>
+                      <li>
+                        <button type="button"
+                                class="dropdown-item tc-scheme-option"
+                                data-value="price_gap">
+                          Selisih harga
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                {{-- AGENT (custom dropdown + avatar kecil, size sama skema) --}}
+                <div class="col-12 col-md-6">
+                  <label class="form-label small mb-1">Agent yang Closing</label>
+
+                  {{-- hidden yang dikirim ke server --}}
+                  <input type="hidden" name="id_agent" id="tc-agent">
+
+                  <div class="dropdown w-100">
+                    <button
+                      class="btn btn-outline-secondary btn-sm w-100 d-flex justify-content-between align-items-center tc-select-btn"
+                      type="button"
+                      data-bs-toggle="dropdown"
+                      aria-expanded="false">
+                      <span class="d-flex align-items-center gap-2">
+                        <span class="tc-agent-avatar" id="tc-agent-avatar-btn">?</span>
+                        <span id="tc-agent-label">Pilih Agent</span>
+                      </span>
+                      <i class="bi bi-chevron-down ms-2"></i>
+                    </button>
+
+                    <ul class="dropdown-menu w-100 tc-agent-menu">
+                      @foreach($performanceAgents as $ag)
+                        @php
+                          $initial = mb_strtoupper(mb_substr($ag->nama, 0, 1, 'UTF-8'));
+                        @endphp
+                        <li>
+                          <button type="button"
+                                  class="dropdown-item d-flex align-items-center gap-2 tc-agent-option"
+                                  data-id="{{ $ag->id_agent }}"
+                                  data-name="{{ $ag->nama }}"
+                                  data-initial="{{ $initial }}">
+                            <span class="tc-agent-avatar">{{ $initial }}</span>
+                            <span>{{ $ag->nama }}</span>
+                          </button>
+                        </li>
+                      @endforeach
+                    </ul>
+                  </div>
+                </div>
+
+                {{-- INFO HARGA + AREA PERHITUNGAN (3 TAB) --}}
+                <div class="col-12">
+                  <div class="tc-price-box mt-2">
+                    {{-- TAB BUTTONS --}}
+                    <div class="tc-tabs small mb-2">
+                      <button type="button"
+                              class="tc-tab-btn tc-tab-btn-active"
+                              data-tab="transaksi">
+                        Informasi Transaksi
+                      </button>
+                      <button type="button"
+                              class="tc-tab-btn"
+                              data-tab="property">
+                        Informasi Properti
+                      </button>
+                      <button type="button"
+                              class="tc-tab-btn"
+                              data-tab="pembagian">
+                        Detail Pembagian
+                      </button>
+                    </div>
+
+                    {{-- PANEL: INFORMASI TRANSAKSI --}}
+                    <div class="tc-tab-panel tc-tab-panel-active" data-tab="transaksi">
+                      {{-- BARIS 1: harga limit | harga menang | komisi/selisih --}}
+                      <div class="row g-3 small align-items-end">
+                        <div class="col-12 col-md-4">
+                          <div class="text-muted">Harga Limit</div>
+                          <div class="fw-semibold" id="tc-harga-limit">Rp 0</div>
+                        </div>
+
+                        <div class="col-12 col-md-4">
+                          <label class="form-label small mb-1 mb-md-0">Harga menang transaksi</label>
+                          <div class="input-group input-group-sm">
+                            <span class="input-group-text">Rp</span>
+                            <input type="text"
+                                   inputmode="numeric"
+                                   name="harga_menang"
+                                   id="tc-harga-menang"
+                                   class="form-control"
+                                   placeholder="Masukkan harga menang">
+                          </div>
+                        </div>
+
+                        <div class="col-12 col-md-4 col-lg-3">
+                          {{-- MODE 1: KOMISI (%) --}}
+                          <div id="tc-komisi-wrapper">
+                            <label class="form-label small mb-1 mb-md-0">Komisi (%)</label>
+                            <div class="input-group input-group-sm">
+                              <input type="number"
+                                     min="0"
+                                     step="0.01"
+                                     name="komisi_persen"
+                                     id="tc-komisi-persen"
+                                     class="form-control"
+                                     placeholder="0">
+                              <span class="input-group-text">%</span>
+                            </div>
+                          </div>
+
+                          {{-- MODE 2: SELISIH (auto Rp) --}}
+                          <div id="tc-selisih-wrapper" class="d-none mt-2 mt-md-0">
+                            <label class="form-label small mb-1 mb-md-0">Selisih</label>
+                            <div class="input-group input-group-sm">
+                              <span class="input-group-text">Rp</span>
+                              <input type="text"
+                                     id="tc-selisih"
+                                     class="form-control"
+                                     readonly>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <hr class="tc-dash my-3">
+
+                      {{-- BARIS 2: Biaya balik nama | biaya eksekusi | CO PIC --}}
+                      <div class="row g-3 small align-items-end">
+                        <div class="col-12 col-md-4">
+                          <label class="form-label small mb-1 mb-md-0">Biaya Balik Nama</label>
+                          <div class="input-group input-group-sm">
+                            <span class="input-group-text">Rp</span>
+                            <input type="text"
+                                   inputmode="numeric"
+                                   name="biaya_balik_nama"
+                                   id="tc-biaya-balik-nama"
+                                   class="form-control"
+                                   placeholder="0">
+                          </div>
+                        </div>
+
+                        <div class="col-12 col-md-4">
+                          <label class="form-label small mb-1 mb-md-0">Biaya Eksekusi</label>
+                          <div class="input-group input-group-sm">
+                            <span class="input-group-text">Rp</span>
+                            <input type="text"
+                                   inputmode="numeric"
+                                   name="biaya_eksekusi"
+                                   id="tc-biaya-eksekusi"
+                                   class="form-control"
+                                   placeholder="0">
+                          </div>
+                        </div>
+
+                        <div class="col-12 col-md-4">
+                          <div class="text-muted mb-1">CO PIC</div>
+                          <div class="fw-semibold" id="tc-copic-name">-</div>
+                        </div>
+                      </div>
+
+                      <hr class="tc-dash my-3">
+
+                      {{-- BARIS 3: auto perhitungan --}}
+                      <div class="tc-price-summary small pt-2 border-top-0">
+                        <div class="row g-3 tc-summary-row">
+                          <div class="col-12 col-md-4">
+                            <div class="text-muted mb-1" id="tc-komisi-label-summary">Perkiraan hasil komisi</div>
+                            <div class="fw-semibold" id="tc-komisi-estimasi">Rp 0</div>
+                          </div>
+                          <div class="col-12 col-md-4 tc-summary-extra" id="tc-kotor-wrapper">
+                            <div class="text-muted mb-1">Pendapatan kotor kantor</div>
+                            <div class="fw-semibold" id="tc-kotor-estimasi">Rp 0</div>
+                          </div>
+                          <div class="col-12 col-md-4 tc-summary-extra" id="tc-kenaikan-wrapper">
+                            <div class="text-muted mb-1">Kenaikan dari limit</div>
+                            <div class="fw-semibold"><span id="tc-kenaikan-persentase">0</span>%</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {{-- PANEL: INFORMASI PROPERTI (riwayat lelang) --}}
+                    <div class="tc-tab-panel" data-tab="property">
+                        <div id="tc-property-history" class="tc-property-history">
+                        <div class="small text-muted">
+                            Riwayat lelang properti akan ditampilkan di sini.
+                        </div>
+                        </div>
+                    </div>
+
+
+                    {{-- PANEL: DETAIL PEMBAGIAN (placeholder) --}}
+                    <div class="tc-tab-panel" data-tab="pembagian">
+                      <div class="small text-muted">
+                        Detail pembagian komisi akan ditampilkan di sini.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-end gap-2 mt-4 tc-form-footer">
+                <button type="button" class="btn btn-light btn-sm transaksi-modal-cancel">
+                  Batal
+                </button>
+                <button type="submit" class="btn btn-primary btn-sm px-3">
+                  Simpan Perubahan
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .tc-overlay{
+      position:fixed;
+      inset:0;
+      z-index:1100; /* di atas navbar (1050) */
+      background:rgba(15,23,42,.45);
+      backdrop-filter:blur(2px);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:1rem;
+    }
+    .tc-overlay.d-none{ display:none!important; }
+
+    .tc-dialog{
+      max-width:900px;
+      width:100%;
+    }
+
+    .tc-card{
+      position:relative;
+      background:#fff;
+      border-radius:1rem;
+      padding:1.5rem 1.75rem;
+      box-shadow:0 18px 45px rgba(15,23,42,.25);
+      display:flex;
+      flex-direction:column;
+      max-height:90vh;
+    }
+
+    #closingForm{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .tc-form-body{
+      flex:1;
+      min-height:0;
+    }
+
+    .tc-form-footer{
+      margin-top:auto;
+    }
+
+    .tc-close-btn{
+      position:absolute;
+      top:.75rem;
+      right:.75rem;
+      font-size:.85rem;
+    }
+
+    /* >>> Foto vertikal ala 3x4 */
+    .tc-photo-wrap{
+      width:100%;
+      aspect-ratio:3 / 4; /* lebih tinggi daripada lebar */
+      border-radius:.75rem;
+      overflow:hidden;
+      background:#f3f4f6;
+      border:1px solid #e5e7eb;
+    }
+    .tc-photo-wrap img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
+
+    /* tombol select (skema & agent) lebih kecil, ukuran sama */
+    .tc-select-btn{
+      border-color:#fd6e14;
+      color:#fd6e14;
+      font-weight:600;
+      border-width:1.5px;
+      border-radius:.5rem;
+      padding:.4rem .8rem;
+      min-height:38px;
+      font-size:.9rem;
+      background:#fff;
+      transition:all .12s ease-in-out;
+    }
+    .tc-select-btn:hover,
+    .tc-select-btn:focus{
+      border-color:#f97316;
+      color:#f97316;
+      box-shadow:0 0 0 .15rem rgba(250,204,21,.35);
+      background:#fffbeb; /* kuning lembut */
+    }
+
+    .tc-price-box{
+      border-radius:.75rem;
+      border:1px dashed #e5e7eb;
+      padding:.9rem 1rem;
+      background:#f9fafb;
+    }
+
+    .tc-dash{
+      border:0;
+      border-top:1px dashed #e5e7eb;
+    }
+
+    /* TAB STYLES */
+    .tc-tabs{
+      display:flex;
+      flex-wrap:wrap;
+      gap:.5rem;
+      justify-content:center; /* center di dalam box abu-abu */
+    }
+    .tc-tab-btn{
+      border-radius:999px;
+      border:1px solid #e5e7eb;
+      background:transparent;
+      color:#6b7280;
+      padding:.25rem .9rem;
+      font-size:.8rem;
+      font-weight:500;
+      cursor:pointer;
+      transition:all .12s ease-in-out;
+    }
+    .tc-tab-btn:hover{
+      border-color:#facc15;
+      background:#fffbeb;   /* hover kuning lembut */
+      color:#374151;
+    }
+    .tc-tab-btn-active{
+      background:#fd6e14;
+      border-color:#fd6e14;
+      color:#fff;
+      box-shadow:0 0 0 .12rem rgba(253,110,20,.16);
+    }
+
+    .tc-tab-panel{
+      display:none;
+      margin-top:.5rem;
+    }
+    .tc-tab-panel-active{
+      display:block;
+    }
+
+    .tc-price-summary{
+      border-radius:.5rem;
+    }
+    .tc-summary-row{
+      align-items:flex-start;
+    }
+
+    .tc-agent-avatar{
+      width:28px;
+      height:28px;
+      border-radius:999px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:.8rem;
+      font-weight:700;
+      background:#fee2e2;
+      color:#b91c1c;
+      flex-shrink:0;
+    }
+
+    /* dropdown agent biar bisa scroll */
+    .tc-agent-menu{
+      max-height:260px;
+      overflow-y:auto;
+    }
+
+    @media (max-width: 768px){
+      .tc-card{ padding:1.25rem 1rem; }
+    }
+    .tc-property-history-list{
+      display:flex;
+      flex-direction:column;
+      gap:.75rem;
+      margin-top:.5rem;
+    }
+    .tc-property-history-item{
+      border-radius:.75rem;
+      border:1px solid #e5e7eb;
+      background:#fefefe;
+      padding:.6rem .75rem;
+    }
+    .tc-ph-badge{
+      padding:.1rem .5rem;
+      border-radius:999px;
+      background:#fffbeb;
+      border:1px solid #facc15;
+      font-size:.7rem;
+      font-weight:600;
+      color:#92400e;
+    }
+    .tc-ph-thumb{
+      width:64px;
+      height:64px;
+      border-radius:.5rem;
+      overflow:hidden;
+      background:#e5e7eb;
+      flex-shrink:0;
+    }
+    .tc-ph-thumb img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+/* LIST RIWAYAT PROPERTI (scroll kalau ketinggian) */
+.tc-property-history-list{
+  display:flex;
+  flex-direction:column;
+  gap:.75rem;
+  margin-top:.75rem;
+
+  max-height:260px;        /* tinggi maksimum area abu-abu history */
+  overflow-y:auto;         /* kalau lebih tinggi dari ini baru bisa scroll */
+  padding-right:.25rem;    /* sedikit space biar scrollbar nggak nempel */
+}
+
+/* Optional: scrollbar tipis & elegan (boleh di-skip kalau nggak mau) */
+.tc-property-history-list::-webkit-scrollbar{
+  width:6px;
+}
+.tc-property-history-list::-webkit-scrollbar-track{
+  background:transparent;
+}
+.tc-property-history-list::-webkit-scrollbar-thumb{
+  background:#d1d5db;
+  border-radius:999px;
+}
+.tc-property-history-list::-webkit-scrollbar-thumb:hover{
+  background:#9ca3af;
+}
+
+  </style>
+
+<script>
+  (function(){
+    const btns = document.querySelectorAll('#transaksi-list-inner .btn-transaksi-closing');
+    btns.forEach(btn => {
+      btn.addEventListener('click', function(){
+        // ambil foto dari data-photo, kalau kosong baru coba parse data-gambar
+        let photo = this.dataset.photo || '';
+        if (!photo) {
+          const raw = this.dataset.gambar || '';
+          if (raw) {
+            const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+            if (parts.length > 0) {
+              photo = parts[0];
+            }
+          }
+        }
+
+        const payload = {
+          id_listing:   this.dataset.idListing,
+          id_transaksi: this.dataset.idTransaksi || null,
+          status:       this.dataset.status || null,
+          lokasi:       this.dataset.lokasi || '',
+          harga_markup: Number(this.dataset.hargaMarkup || 0),
+          harga_limit:  Number(this.dataset.hargaLimit  || 0),
+          photo:        photo,
+          copic_name:   this.dataset.copicName || this.dataset.copic || ''
+        };
+
+        console.log('payload closing:', payload); // bantu debugging
+
+        if (window.handleTransaksiClosingClick) {
+          try { window.handleTransaksiClosingClick(payload, this); } catch(e){ console.error(e); }
+        } else {
+          console.log('Closing clicked (no handler):', payload);
+        }
+      });
+    });
+  })();
+
+  if (window.afterTransaksiListReplaced) {
+    try { window.afterTransaksiListReplaced(); } catch(e) { console.error(e); }
+  }
+</script>
+
+
+<script>
+    (function(){
+      const PLACEHOLDER = "{{ asset('img/placeholder.jpg') }}";
+      const PROPERTY_HISTORY_ROUTE = "{{ route('dashboard.owner.transaksi.history') }}";
+
+      function rupiah(x){
+        const n = Number(x || 0);
+        return 'Rp ' + n.toLocaleString('id-ID');
+      }
+
+      function onlyDigits(str){
+        return (str || '').replace(/[^\d]/g,'');
+      }
+
+      function setup(){
+        const overlay     = document.getElementById('transaksi-closing-overlay');
+        const form        = document.getElementById('closingForm');
+        const closeBtn    = overlay?.querySelector('.transaksi-modal-close');
+        const cancelBtn   = overlay?.querySelector('.transaksi-modal-cancel');
+        const summaryId   = document.getElementById('tc-summary-id');
+        const summaryLok  = document.getElementById('tc-summary-lokasi');
+        const hargaLimitEl= document.getElementById('tc-harga-limit');
+        const inputId     = document.getElementById('tc-id-listing');
+        const inputTrx    = document.getElementById('tc-id-transaksi');
+        const inputStatus = document.getElementById('tc-status');
+        const inputTgl    = document.getElementById('tc-tanggal');
+        const photoEl     = document.getElementById('tc-photo');
+
+        let currentHargaLimit = 0;
+        let currentCopicName  = '-';
+        let loadedHistoryForId = null;
+
+        // elemen custom skema closing
+        const schemeInput = document.getElementById('tc-closing-type');
+        const schemeLabel = document.getElementById('tc-scheme-label');
+        const schemeOpts  = document.querySelectorAll('.tc-scheme-option');
+
+        // elemen custom agent
+        const agentInput       = document.getElementById('tc-agent');
+        const agentLabel       = document.getElementById('tc-agent-label');
+        const agentAvatarBtn   = document.getElementById('tc-agent-avatar-btn');
+        const agentPrevName    = document.getElementById('tc-agent-name');
+        const agentPrevAvatar  = document.getElementById('tc-agent-avatar');
+        const agentOptions     = document.querySelectorAll('.tc-agent-option');
+        const copicNameEl      = document.getElementById('tc-copic-name');
+
+        // elemen perhitungan
+        const hargaMenangInput   = document.getElementById('tc-harga-menang');
+        const komisiPersenInput  = document.getElementById('tc-komisi-persen');
+        const komisiEstimasi     = document.getElementById('tc-komisi-estimasi');
+        const komisiSummaryLbl   = document.getElementById('tc-komisi-label-summary');
+        const komisiWrapper      = document.getElementById('tc-komisi-wrapper');
+        const selisihWrapper     = document.getElementById('tc-selisih-wrapper');
+        const selisihInput       = document.getElementById('tc-selisih');
+        const kotorWrapper       = document.getElementById('tc-kotor-wrapper');
+        const kotorEstimasi      = document.getElementById('tc-kotor-estimasi');
+        const kenaikanWrapper    = document.getElementById('tc-kenaikan-wrapper');
+        const kenaikanPersenEl   = document.getElementById('tc-kenaikan-persentase');
+
+        const biayaBalikNamaInput= document.getElementById('tc-biaya-balik-nama');
+        const biayaEksekusiInput = document.getElementById('tc-biaya-eksekusi');
+
+        // TAB elements
+        const tabButtons = document.querySelectorAll('.tc-tab-btn');
+        const tabPanels  = document.querySelectorAll('.tc-tab-panel');
+        const propertyPanel = document.querySelector('.tc-tab-panel[data-tab="property"]');
+
+        if (!overlay || !form) return;
+
+        function resetScheme(){
+          if (schemeInput) schemeInput.value = 'profit';
+          if (schemeLabel) schemeLabel.textContent = 'Persentase komisi';
+          applySchemeUI('profit');
+        }
+
+        function resetAgent(){
+          if (agentInput) agentInput.value = '';
+          if (agentLabel) agentLabel.textContent = 'Pilih Agent';
+          if (agentAvatarBtn) agentAvatarBtn.textContent = '?';
+          if (agentPrevName) agentPrevName.textContent = 'Belum dipilih';
+          if (agentPrevAvatar) agentPrevAvatar.textContent = '?';
+          // CO PIC akan diset dari payload, jadi di sini tidak disentuh
+        }
+
+        function resetCalculation(){
+          if (hargaMenangInput) hargaMenangInput.value = '';
+          if (komisiPersenInput) komisiPersenInput.value = '';
+          if (selisihInput) selisihInput.value = '';
+          if (komisiEstimasi) komisiEstimasi.textContent = 'Rp 0';
+          if (kotorEstimasi) kotorEstimasi.textContent = 'Rp 0';
+          if (kenaikanPersenEl) kenaikanPersenEl.textContent = '0';
+          if (biayaBalikNamaInput) biayaBalikNamaInput.value = '';
+          if (biayaEksekusiInput) biayaEksekusiInput.value = '';
+        }
+
+        function updateKenaikanPercent(){
+          if (!kenaikanPersenEl) return;
+          const hargaNum = hargaMenangInput ? Number(onlyDigits(hargaMenangInput.value)) || 0 : 0;
+          if (!currentHargaLimit) {
+            kenaikanPersenEl.textContent = '0';
+            return;
+          }
+          const diff = Math.max(hargaNum - currentHargaLimit, 0);
+          const pct  = diff <= 0 ? 0 : (diff / currentHargaLimit) * 100;
+          const pctRounded = Math.round(pct * 10) / 10;
+          kenaikanPersenEl.textContent = pctRounded.toLocaleString('id-ID');
+        }
+
+        function updateKomisiFromPercent(){
+          if (!komisiEstimasi) return;
+          const hargaNum = hargaMenangInput ? Number(onlyDigits(hargaMenangInput.value)) || 0 : 0;
+          const persenRaw= komisiPersenInput ? (komisiPersenInput.value || '') : '';
+          const persen   = parseFloat(persenRaw.replace(',','.')) || 0;
+          const fee      = Math.round(hargaNum * persen / 100);
+          komisiEstimasi.textContent = rupiah(fee);
+          if (kotorEstimasi) kotorEstimasi.textContent = rupiah(fee); // sementara: sama dengan fee
+          updateKenaikanPercent();
+        }
+
+        function updateSelisihFromGap(){
+          if (!selisihInput || !komisiEstimasi) return;
+          const hargaNum = hargaMenangInput ? Number(onlyDigits(hargaMenangInput.value)) || 0 : 0;
+          const gap      = Math.max(hargaNum - currentHargaLimit, 0);
+          selisihInput.value = gap ? gap.toLocaleString('id-ID') : '';
+          komisiEstimasi.textContent = rupiah(gap);
+          if (kotorEstimasi) kotorEstimasi.textContent = rupiah(gap);
+          updateKenaikanPercent();
+        }
+
+        function updateAllCalc(){
+          const mode = schemeInput ? schemeInput.value : 'profit';
+          if (mode === 'price_gap') {
+            updateSelisihFromGap();
+          } else {
+            updateKomisiFromPercent();
+          }
+        }
+
+        function handleHargaMenangInput(){
+          if (!hargaMenangInput) return;
+          const raw = onlyDigits(hargaMenangInput.value);
+          if (!raw){
+            hargaMenangInput.value = '';
+            updateAllCalc();
+            return;
+          }
+          const num = Number(raw);
+          hargaMenangInput.value = num.toLocaleString('id-ID');
+          updateAllCalc();
+        }
+
+        function handleKomisiInput(){
+          updateAllCalc();
+        }
+
+        function handleBiayaInput(e){
+          const el = e.target;
+          const raw = onlyDigits(el.value);
+          if (!raw){
+            el.value = '';
+            return;
+          }
+          el.value = Number(raw).toLocaleString('id-ID');
+        }
+
+        function applySchemeUI(mode){
+          const isPriceGap = (mode === 'price_gap');
+          if (komisiWrapper)  komisiWrapper.classList.toggle('d-none', isPriceGap);
+          if (selisihWrapper) selisihWrapper.classList.toggle('d-none', !isPriceGap);
+
+          if (komisiSummaryLbl){
+            komisiSummaryLbl.textContent = 'Perkiraan hasil komisi';
+          }
+
+          updateAllCalc();
+        }
+
+        // --- loader history untuk tab Informasi Properti ---
+        function loadPropertyHistoryIfNeeded(){
+          if (!propertyPanel || !PROPERTY_HISTORY_ROUTE) return;
+          const idListing = inputId ? (inputId.value || '') : '';
+          if (!idListing) return;
+
+          if (loadedHistoryForId === idListing) return; // sudah pernah load
+
+          loadedHistoryForId = idListing;
+          propertyPanel.innerHTML = '<div class="small text-muted">Memuat riwayat properti...</div>';
+
+          fetch(PROPERTY_HISTORY_ROUTE + '?id_listing=' + encodeURIComponent(idListing), {
+            headers: { 'X-Requested-With':'XMLHttpRequest' }
+          })
+          .then(function(res){ return res.text(); })
+          .then(function(html){
+            propertyPanel.innerHTML = html || '<div class="small text-muted">Riwayat tidak ditemukan.</div>';
+          })
+          .catch(function(err){
+            console.error('Gagal memuat history properti:', err);
+            propertyPanel.innerHTML = '<div class="small text-danger">Gagal memuat riwayat properti.</div>';
+          });
+        }
+
+        function activateTab(key){
+          tabButtons.forEach(function(btn){
+            const isActive = btn.dataset.tab === key;
+            btn.classList.toggle('tc-tab-btn-active', isActive);
+          });
+          tabPanels.forEach(function(panel){
+            const isActive = panel.dataset.tab === key;
+            panel.classList.toggle('tc-tab-panel-active', isActive);
+          });
+
+          if (key === 'property') {
+            loadPropertyHistoryIfNeeded();
+          }
+        }
+
+        function openModal(payload){
+          // harga limit numeric
+          currentHargaLimit = Number(payload.harga_limit || 0);
+          currentCopicName  = payload.copic_name || '-';
+          loadedHistoryForId = null; // reset, supaya history di-load ulang untuk ID ini
+
+          // teks kiri
+          summaryId.textContent  = 'ID : ' + (payload.id_listing || '-');
+          summaryLok.textContent = 'Alamat : ' + (payload.lokasi || 'Lokasi belum tersedia');
+
+          // harga limit (display)
+          if (hargaLimitEl) {
+            hargaLimitEl.textContent = rupiah(currentHargaLimit);
+          }
+
+          // hidden
+          inputId.value  = payload.id_listing || '';
+          inputTrx.value = payload.id_transaksi || '';
+
+          // status dropdown (walaupun hidden, tetap set nilai)
+          if (inputStatus) {
+            if (payload.status) {
+              const opt = Array.from(inputStatus.options)
+                .find(o => o.value.toLowerCase() === String(payload.status).toLowerCase());
+              inputStatus.value = opt ? opt.value : 'Closing';
+            } else {
+              inputStatus.value = 'Closing';
+            }
+          }
+
+          // reset skema, agent, kalkulasi, tab
+          resetScheme();
+          resetAgent();
+          resetCalculation();
+          activateTab('transaksi');
+
+          // reset isi tab property jadi placeholder dulu
+          if (propertyPanel) {
+            propertyPanel.innerHTML = '<div class="small text-muted">Klik "Informasi Properti" untuk melihat riwayat lelang.</div>';
+          }
+
+          // set CO PIC dari payload
+          if (copicNameEl) {
+            copicNameEl.textContent = currentCopicName || '-';
+          }
+
+          // tanggal default hari ini
+          const today = new Date().toISOString().slice(0,10);
+          inputTgl.value = today;
+
+          // foto property
+          if (photoEl) {
+            photoEl.src = payload.photo || PLACEHOLDER;
+          }
+
+          // hide header/navbar
+          const nav = document.getElementById('mainNavbar');
+          if (nav) nav.style.display = 'none';
+
+          overlay.classList.remove('d-none');
+          document.body.classList.add('overflow-hidden');
+        }
+
+        function closeModal(){
+          overlay.classList.add('d-none');
+          document.body.classList.remove('overflow-hidden');
+
+          const nav = document.getElementById('mainNavbar');
+          if (nav) nav.style.display = '';
+        }
+
+        closeBtn?.addEventListener('click', closeModal);
+        cancelBtn?.addEventListener('click', function(e){
+          e.preventDefault();
+          closeModal();
+        });
+
+        overlay.addEventListener('click', function(e){
+          if (e.target === overlay) closeModal();
+        });
+
+        document.addEventListener('keydown', function(e){
+          if (e.key === 'Escape' && !overlay.classList.contains('d-none')) {
+            closeModal();
+          }
+        });
+
+        // handler klik dari tombol Closing di tabel
+        window.handleTransaksiClosingClick = function(payload, btn){
+          openModal(payload);
+        };
+
+        // === binding opsi Skema komisi ===
+        schemeOpts.forEach(function(btn){
+          btn.addEventListener('click', function(e){
+            e.preventDefault();
+            const val  = this.dataset.value || '';
+            const text = this.textContent.trim() || '';
+            if (schemeInput) schemeInput.value = val;
+            if (schemeLabel && text) schemeLabel.textContent = text;
+            applySchemeUI(val || 'profit');
+          });
+        });
+
+        // === binding opsi Agent (hanya untuk dropdown & preview, bukan CO PIC) ===
+        agentOptions.forEach(function(btn){
+          btn.addEventListener('click', function(e){
+            e.preventDefault();
+            const id      = this.dataset.id || '';
+            const name    = this.dataset.name || '';
+            const initial = (this.dataset.initial || '?').toUpperCase();
+
+            if (agentInput) agentInput.value = id;
+            if (agentLabel) agentLabel.textContent = name || 'Pilih Agent';
+            if (agentAvatarBtn) agentAvatarBtn.textContent = initial;
+            if (agentPrevName) agentPrevName.textContent = name || 'Belum dipilih';
+            if (agentPrevAvatar) agentPrevAvatar.textContent = initial;
+            // CO PIC tidak berubah di sini
+          });
+        });
+
+        // === binding perhitungan harga & komisi / selisih ===
+        if (hargaMenangInput) {
+          hargaMenangInput.addEventListener('input', handleHargaMenangInput);
+        }
+        if (komisiPersenInput) {
+          komisiPersenInput.addEventListener('input', handleKomisiInput);
+          komisiPersenInput.addEventListener('change', handleKomisiInput);
+        }
+
+        // === binding input biaya (format ribuan) ===
+        if (biayaBalikNamaInput) {
+          biayaBalikNamaInput.addEventListener('input', handleBiayaInput);
+        }
+        if (biayaEksekusiInput) {
+          biayaEksekusiInput.addEventListener('input', handleBiayaInput);
+        }
+
+        // === binding tab buttons ===
+        tabButtons.forEach(function(btn){
+          btn.addEventListener('click', function(){
+            const key = this.dataset.tab || 'transaksi';
+            activateTab(key);
+          });
+        });
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setup);
+      } else {
+        setup();
+      }
+    })();
+</script>
+
+
+
+
+
+
+
+
+
+
         </div>
     </div>
 </div>
+
 
 <div class="container-fluid px-3 mt-4">
     <div class="row">
