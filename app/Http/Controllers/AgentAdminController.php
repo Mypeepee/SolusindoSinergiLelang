@@ -2252,14 +2252,21 @@ public function transaksiList(Request $request)
     // Placeholder yang kudu di-skip (SAMA persis dengan stokerList)
     $skipValues = ['Pilih Provinsi', 'Pilih Kota/Kab', 'Pilih Kota/Kabupaten', 'Pilih Kecamatan', ''];
 
-    // ==== QUERY MIRROR STOKER, BEDANYA TIDAK DI-FILTER TERSEDIA & ADA STATUS/TANGGAL ====
-    $q = \App\Models\Property::from('property as p')
-        ->leftJoin('agent as ag', 'ag.id_agent', '=', 'p.id_agent') // <== JOIN AGENT
+    // ==== QUERY MIRROR STOKER, + JOIN KE AGENT UNTUK CO PIC ====
+    $q = Property::from('property as p')
+        ->leftJoin('agent as ag', function($join) {
+            // JOIN pakai TRIM + UPPER biar aman kalau ada spasi / beda kapital
+            $join->on(
+                DB::raw('UPPER(TRIM(ag.id_agent))'),
+                '=',
+                DB::raw('UPPER(TRIM(p.id_agent))')
+            );
+        })
         ->select(
             'p.id_listing',
             'p.lokasi',
             'p.luas',
-            'p.harga',              // harga markup
+            'p.harga',              // harga markup (web)
             'p.gambar',
             'p.status',             // dipakai untuk badge Status / Closing
             'p.tipe',
@@ -2268,8 +2275,9 @@ public function transaksiList(Request $request)
             'p.kecamatan',
             'p.vendor',
             'p.tanggal_diupdate',
-            \DB::raw("COALESCE(ag.nama, '') as agent_nama"), // <== NAMA AGENT (CO PIC)
-            \DB::raw('NULL::integer as id_transaksi')
+            'p.id_agent',           // ikut diseleksi buat debugging
+            DB::raw("COALESCE(ag.nama, '') as agent_nama"),
+            DB::raw('NULL::integer as id_transaksi')
         )
 
         // SEARCH ID LISTING: hanya angka; selain itu diabaikan (jangan 1=0)
@@ -2328,6 +2336,8 @@ public function transaksiList(Request $request)
     // Balikin partial (AJAX fragment) – sama seperti stokerList
     return view('partial.transaksi_list', compact('transaksiProperties'));
 }
+
+
 
 public function transaksiPropertyHistory(Request $request): View
 {

@@ -3242,6 +3242,56 @@ document.addEventListener('DOMContentLoaded', function () {
           {{-- hidden --}}
           <input type="hidden" name="id_listing"   id="tc-id-listing">
           <input type="hidden" name="id_transaksi" id="tc-id-transaksi">
+          <script>
+            // Paksa foto modal selalu ngikut data-photo tombol Closing
+            document.addEventListener('click', function(e){
+              const btn = e.target.closest('.btn-transaksi-closing');
+              if (!btn) return; // kalau yang diklik bukan tombol Closing, keluar
+
+              const img = document.getElementById('tc-photo');
+              if (!img) return;
+
+              // Ambil URL dari data-photo
+              var src = (btn.dataset.photo || '').trim();
+
+              // Kalau data-photo kosong, coba parse dari data-gambar (RAW kolom gambar)
+              if (!src && btn.dataset.gambar) {
+                var parts = String(btn.dataset.gambar)
+                  .split(',')
+                  .map(function(s){ return s.trim(); })
+                  .filter(Boolean);
+                if (parts.length > 0) {
+                  src = parts[0];
+                }
+              }
+
+              // Kalau tetap kosong, baru fallback ke placeholder
+              if (!src) {
+                src = "{{ asset('img/placeholder.jpg') }}";
+              }
+
+              img.src = src;
+              img.alt = 'Foto Properti ' + (btn.dataset.idListing || '');
+              console.log('SET FOTO MODAL ->', src);
+            });
+          </script>
+            <style>
+                .tc-photo-wrap{
+                width: 100%;
+                aspect-ratio: 3 / 4;       /* 3x4 */
+                border-radius: .75rem;
+                overflow: hidden;
+                background: #f9fafb;
+                border: 2px solid #000;    /* garis hitam jelas */
+                }
+
+                .tc-photo-wrap img#tc-photo{
+                width: 100%;
+                height: 100%;
+                object-fit: cover;         /* isi frame 3x4 dengan rapi */
+                display: block;
+                }
+            </style>
 
           <div class="row g-4 align-items-start tc-form-body">
             {{-- 1/4: FOTO + ID + ALAMAT + TANGGAL --}}
@@ -3468,9 +3518,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         </div>
 
                         <div class="col-12 col-md-4">
-                          <div class="text-muted mb-1">CO PIC</div>
-                          <div class="fw-semibold" id="tc-copic-name">-</div>
+                            <div class="small text-muted mt-1">
+                                CO PIC dbg: {{ $row->agent_nama ?? '(null)' }} ({{ $row->id_agent ?? 'no-id' }})
+                              </div>
+
                         </div>
+
                       </div>
 
                       <hr class="tc-dash my-3">
@@ -3763,49 +3816,57 @@ document.addEventListener('DOMContentLoaded', function () {
   </style>
 
 <script>
-  (function(){
-    const btns = document.querySelectorAll('#transaksi-list-inner .btn-transaksi-closing');
-    btns.forEach(btn => {
-      btn.addEventListener('click', function(){
-        // ambil foto dari data-photo, kalau kosong baru coba parse data-gambar
-        let photo = this.dataset.photo || '';
-        if (!photo) {
-          const raw = this.dataset.gambar || '';
-          if (raw) {
-            const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
-            if (parts.length > 0) {
-              photo = parts[0];
+    (function(){
+      const btns = document.querySelectorAll('#transaksi-list-inner .btn-transaksi-closing');
+      btns.forEach(btn => {
+        btn.addEventListener('click', function(){
+          // ambil foto dari data-photo, kalau kosong baru coba parse data-gambar
+          let photo = this.dataset.photo || '';
+          if (!photo) {
+            const raw = this.dataset.gambar || '';
+            if (raw) {
+              const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+              if (parts.length > 0) {
+                photo = parts[0];
+              }
             }
           }
-        }
 
-        const payload = {
-          id_listing:   this.dataset.idListing,
-          id_transaksi: this.dataset.idTransaksi || null,
-          status:       this.dataset.status || null,
-          lokasi:       this.dataset.lokasi || '',
-          harga_markup: Number(this.dataset.hargaMarkup || 0),
-          harga_limit:  Number(this.dataset.hargaLimit  || 0),
-          photo:        photo,
-          copic_name:   this.dataset.copicName || this.dataset.copic || ''
-        };
+          // normalisasi path foto seperti asset():
+          // - kalau sudah http/https biarkan
+          // - kalau relatif dan tidak diawali "/", tambahkan "/" di depan
+          if (photo && !/^https?:\/\//i.test(photo)) {
+            if (!photo.startsWith('/')) {
+              photo = '/' + photo;
+            }
+          }
 
-        console.log('payload closing:', payload); // bantu debugging
+          const payload = {
+            id_listing:   this.dataset.idListing,
+            id_transaksi: this.dataset.idTransaksi || null,
+            status:       this.dataset.status || null,
+            lokasi:       this.dataset.lokasi || '',
+            harga_markup: Number(this.dataset.hargaMarkup || 0),
+            harga_limit:  Number(this.dataset.hargaLimit  || 0),
+            photo:        photo,
+            copic_name:   this.dataset.copicName || this.dataset.copic || ''
+          };
 
-        if (window.handleTransaksiClosingClick) {
-          try { window.handleTransaksiClosingClick(payload, this); } catch(e){ console.error(e); }
-        } else {
-          console.log('Closing clicked (no handler):', payload);
-        }
+          console.log('payload closing:', payload); // bantu debugging
+
+          if (window.handleTransaksiClosingClick) {
+            try { window.handleTransaksiClosingClick(payload, this); } catch(e){ console.error(e); }
+          } else {
+            console.log('Closing clicked (no handler):', payload);
+          }
+        });
       });
-    });
-  })();
+    })();
 
-  if (window.afterTransaksiListReplaced) {
-    try { window.afterTransaksiListReplaced(); } catch(e) { console.error(e); }
-  }
-</script>
-
+    if (window.afterTransaksiListReplaced) {
+      try { window.afterTransaksiListReplaced(); } catch(e) { console.error(e); }
+    }
+  </script>
 
 <script>
     (function(){
@@ -4024,6 +4085,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function openModal(payload){
+          console.log('DEBUG OPEN MODAL payload:', payload);
+
           // harga limit numeric
           currentHargaLimit = Number(payload.harga_limit || 0);
           currentCopicName  = payload.copic_name || '-';
@@ -4073,9 +4136,24 @@ document.addEventListener('DOMContentLoaded', function () {
           const today = new Date().toISOString().slice(0,10);
           inputTgl.value = today;
 
-          // foto property
+          // ====== FOTO PROPERTI LANGSUNG DARI DATA BUTTON ======
           if (photoEl) {
-            photoEl.src = payload.photo || PLACEHOLDER;
+            let src = (payload.photo || '').trim();
+
+            // fallback: kalau photo kosong, parse dari payload.gambar (RAW kolom)
+            if (!src && payload.gambar) {
+              const parts = String(payload.gambar)
+                .split(',')
+                .map(function(s){ return s.trim(); })
+                .filter(Boolean);
+              if (parts.length > 0) {
+                src = parts[0];
+              }
+            }
+
+            photoEl.setAttribute('src', src || PLACEHOLDER);
+            photoEl.setAttribute('alt', 'Foto Properti ' + (payload.id_listing || ''));
+            console.log('DEBUG tc-photo.src ->', photoEl.src);
           }
 
           // hide header/navbar
@@ -4177,6 +4255,10 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     })();
 </script>
+
+
+
+
 
 
 

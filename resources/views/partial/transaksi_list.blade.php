@@ -84,20 +84,21 @@
                 @endphp
 
                 <button type="button"
-                        class="btn btn-sm {{ $isDone ? 'btn-outline-success' : 'btn-success' }} rounded-pill btn-transaksi-closing"
-                        data-id-listing="{{ $row->id_listing }}"
-                        data-id-transaksi="{{ $row->id_transaksi ?? '' }}"
-                        data-status="{{ $row->status ?? '' }}"
-                        data-lokasi="{{ $row->lokasi }}"
-                        data-tipe="{{ $row->tipe }}"
-                        data-harga-markup="{{ $hargaMarkup }}"
-                        data-harga-limit="{{ $hargaLimit }}"
-                        data-gambar="{{ $row->gambar ?? '' }}"
-                        data-photo="{{ $thumbSrc }}"                    {{-- <<< kirim URL foto siap pakai --}}
-                        data-copic-name="{{ $row->agent_nama ?? '' }}"  {{-- CO PIC: nama agent --}}
-                        {{ $isDone ? 'disabled' : '' }}>
-                  {{ $isDone ? 'Selesai' : 'Closing' }}
+                    class="btn btn-sm {{ $isDone ? 'btn-outline-success' : 'btn-success' }} rounded-pill btn-transaksi-closing"
+                    data-id-listing="{{ $row->id_listing }}"
+                    data-id-transaksi="{{ $row->id_transaksi ?? '' }}"
+                    data-status="{{ $row->status ?? '' }}"
+                    data-lokasi="{{ $row->lokasi }}"
+                    data-tipe="{{ $row->tipe }}"
+                    data-harga-markup="{{ $hargaMarkup }}"
+                    data-harga-limit="{{ $hargaLimit }}"
+                    data-gambar="{{ $row->gambar ?? '' }}"
+                    data-photo="{{ $thumbSrc }}"
+                    data-copic-name="{{ $row->agent_nama ?? '' }}"  {{-- CO PIC: nama agent --}}
+                    {{ $isDone ? 'disabled' : '' }}>
+                    {{ $isDone ? 'Selesai' : 'Closing' }}
                 </button>
+
 
                 <div class="small text-muted mt-1">
                   Status:
@@ -163,3 +164,44 @@
       </div>
     </div>
   </div>
+
+  <script>
+    // Binding default tombol closing -> lempar ke handler global kalau ada
+    (function(){
+      const btns = document.querySelectorAll('#transaksi-list-inner .btn-transaksi-closing');
+      btns.forEach(btn => {
+        btn.addEventListener('click', function(){
+          const payload = {
+            id_listing  : this.dataset.idListing,
+            id_transaksi: this.dataset.idTransaksi || null,
+            status      : this.dataset.status || null,
+            lokasi      : this.dataset.lokasi || '',
+            harga_markup: Number(this.dataset.hargaMarkup || 0),
+            harga_limit : Number(this.dataset.hargaLimit  || 0),
+
+            // >>> RAW dari kolom gambar + URL thumb yang sudah jadi <<<
+            gambar      : (this.dataset.gambar || '').trim(),
+            photo       : (this.dataset.photo  || '').trim(),
+
+            copic_name  : (this.dataset.copicName || this.dataset.copic || '').trim()
+          };
+
+          console.log('DEBUG CLOSING BUTTON', payload); // bantu debugging
+
+          if (window.handleTransaksiClosingClick) {
+            try { window.handleTransaksiClosingClick(payload, this); } catch(e){ console.error(e); }
+          } else {
+            console.log('Closing clicked (no handler):', payload);
+          }
+        });
+      });
+    })();
+
+    if (window.afterTransaksiListReplaced) {
+      try { window.afterTransaksiListReplaced(); } catch(e) { console.error(e); }
+    }
+  </script>
+
+
+
+
