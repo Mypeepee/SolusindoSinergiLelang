@@ -39,275 +39,280 @@ class AgentAdminController extends Controller
 
     return redirect()->to($to)->with('status', 'Properti berhasil diubah menjadi Terjual');
 }
-    public function index()
-    {
-        $idAccount = session('id_account');
-        $role = session('role');
+public function index()
+{
+    $idAccount = session('id_account');
+    $role = session('role');
 
-        $idAgent = null;
+    $idAgent = null;
 
-        if ($role === 'Agent') {
-            $idAgent = DB::table('agent')
-                ->where('id_account', $idAccount)
-                ->value('id_agent');
-        }
+    if ($role === 'Agent') {
+        $idAgent = DB::table('agent')
+            ->where('id_account', $idAccount)
+            ->value('id_agent');
+    }
 
-        $totalKomisi = DB::table('transaction')
-            ->where('id_agent', $idAgent ?? $idAccount)
-            ->sum('komisi_agent');
+    // Target agent yang dipakai untuk filter transaksi & komisi
+    $targetAgentId = $idAgent ?? $idAccount;
 
-        $totalSelisih = DB::table('transaction')
-            ->where('id_agent', $idAgent ?? $idAccount)
-            ->sum('selisih');
+    // TOTAL KOMISI: sekarang ambil dari transaction_commissions.pendapatan
+    $totalKomisi = DB::table('transaction_commissions')
+        ->where('id_agent', $targetAgentId)
+        ->sum('pendapatan');
 
-        $jumlahListing = 0;
-        $jumlahClients = 0;
-        $clients = collect();
-        $clientsClosing = collect();
-        $clientsPengosongan = collect();
-        $statusCounts = [
-            'followup' => 0,
-            'pending' => 0,
-            'buyer_meeting' => 0,
-            'gagal' => 0,
-            'closing' => 0,
-        ];
-        $pendingAgents = collect();
+    // TOTAL SELISIH masih dari tabel transaction (kolom selisih masih ada)
+    $totalSelisih = DB::table('transaction')
+        ->where('id_agent', $targetAgentId)
+        ->sum('selisih');
 
-        if ($role === 'Owner') {
-            $pendingAgents = DB::table('account')
-                ->where('account.roles', 'Pending')
-                ->select('id_account', 'username', 'nama', 'nomor_telepon')
-                ->get();
-        }
+    $jumlahListing = 0;
+    $jumlahClients = 0;
+    $clients = collect();
+    $clientsClosing = collect();
+    $clientsPengosongan = collect();
+    $statusCounts = [
+        'followup' => 0,
+        'pending' => 0,
+        'buyer_meeting' => 0,
+        'gagal' => 0,
+        'closing' => 0,
+    ];
+    $pendingAgents = collect();
 
-        if ($role === 'Agent') {
-            $statusCounts = DB::table('property_interests')
-                ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
-                ->where('property.id_agent', $idAgent)
-                ->whereNotIn('property_interests.status', [
-                    'closing',
-                    'kutipan_risalah_lelang',
-                    'akte_grosse',
-                    'balik_nama'
-                ])
-                ->selectRaw("
-                    SUM(CASE WHEN property_interests.status = 'FollowUp' THEN 1 ELSE 0 END) as followup,
-                    SUM(CASE WHEN property_interests.status = 'pending' THEN 1 ELSE 0 END) as pending,
-                    SUM(CASE WHEN property_interests.status = 'gagal' THEN 1 ELSE 0 END) as gagal,
-                    SUM(CASE WHEN property_interests.status = 'buyer_meeting' THEN 1 ELSE 0 END) as buyer_meeting
-                ")
-                ->first();
-
-            $jumlahListing = DB::table('property')
-                ->where('id_agent', $idAgent)
-                ->count();
-
-            $jumlahClients = DB::table('property_interests')
-                ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
-                ->where('property.id_agent', $idAgent)
-                ->distinct('property_interests.id_klien')
-                ->count('property_interests.id_klien');
-
-            $clients = DB::table('property_interests')
-                ->join('account', 'property_interests.id_klien', '=', 'account.id_account')
-                ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
-                ->leftJoin('informasi_klien', 'account.id_account', '=', 'informasi_klien.id_account')
-                ->where('property.id_agent', $idAgent)
-                ->whereNotIn(DB::raw('LOWER(TRIM(property_interests.status))'), ['closing', 'balik_nama', 'akte_grosse', 'gagal'])
-                ->select(
-                    'account.id_account',
-                    'account.nama',
-                    'account.nomor_telepon',
-                    'property.id_listing',
-                    'property.lokasi',
-                    'property.harga',
-                    'property_interests.status',
-                    'informasi_klien.gambar_ktp'
-                )
-                ->get();
-        }
-
-        if ($role === 'Register') {
-            $clientsClosing = DB::table('transaction')
-                ->join('account', 'transaction.id_klien', '=', 'account.id_account')
-                ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
-                ->whereIn('transaction.status_transaksi', [
-                    'Closing', 'Kuitansi', 'Kode Billing', 'Kutipan Risalah Lelang', 'Akte Grosse'
-                ])
-                ->where('transaction.status_transaksi', '!=', 'Balik Nama')
-                ->select(
-                    'account.id_account',
-                    'account.nama',
-                    'account.nomor_telepon',
-                    'property.id_listing',
-                    'property.lokasi',
-                    'property.harga',
-                    'transaction.status_transaksi as status',
-                    'transaction.tanggal_diupdate'
-                )
-                ->orderBy('transaction.tanggal_diupdate', 'asc')
-                ->get();
-        }
-
-        if ($role === 'Pengosongan') {
-            $clientsPengosongan = DB::table('transaction')
-                ->join('account', 'transaction.id_klien', '=', 'account.id_account')
-                ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
-                ->whereIn('transaction.status_transaksi', [
-                    'Balik Nama', 'Eksekusi Pengosongan', 'Selesai'
-                ])
-                ->select(
-                    'account.id_account',
-                    'account.nama',
-                    'account.nomor_telepon',
-                    'property.id_listing',
-                    'property.lokasi',
-                    'property.harga',
-                    'transaction.status_transaksi as status',
-                    'transaction.tanggal_diupdate'
-                )
-                ->orderBy('transaction.tanggal_diupdate', 'asc')
-                ->get();
-        }
-
-        // **Penambahan untuk Stoker**
-if ($role === 'Stoker') {
-    $stokerProperties = Property::select(
-        'id_listing','lokasi','luas','harga','gambar','status',
-        'tipe','provinsi','kota','kecamatan','vendor' // << tambahkan vendor
-    )
-    ->whereRaw('LOWER(status) = ?', ['tersedia'])
-    ->when(request('search'), function ($q, $search) {
-        return is_numeric($search)
-            ? $q->where('id_listing', (int)$search)
-            : $q->whereRaw('1=0');
-    })
-    ->when(request('vendor'), function ($q, $v) {
-        $v = mb_strtolower(trim($v), 'UTF-8');
-        return $q->whereRaw('LOWER(vendor) LIKE ?', ['%'.$v.'%']);
-    })
-    ->when(request('property_type'), fn($q,$v) => $q->whereRaw('LOWER(tipe)=?', [strtolower($v)]))
-    ->when(request('province'), fn($q,$v) => $q->where('provinsi', $v))
-    ->when(request('city'), fn($q,$v) => $q->where('kota', $v))
-    ->when(request('district'), fn($q,$v) => $q->where('kecamatan', $v))
-    ->orderByDesc('id_listing')
-    ->paginate(10)
-    ->appends(request()->only(['search','vendor','property_type','province','city','district']));
-}
-
-
-        $salesData = $salesData ?? [];
-        $transactions = $transactions ?? [];
-        // Siapkan label bulan
-        $labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-        // Ambil pendapatan & jumlah transaksi
-        $earnings = DB::table('transaction')
-            ->select(
-                DB::raw('EXTRACT(YEAR FROM tanggal_transaksi) AS year'),
-                DB::raw('EXTRACT(MONTH FROM tanggal_transaksi) AS month'),
-                DB::raw('SUM(selisih) AS total'),
-                DB::raw('COUNT(*) as total_transaksi')
-            )
-            ->where('id_agent', $idAgent ?? $idAccount)
-            ->groupByRaw('EXTRACT(YEAR FROM tanggal_transaksi), EXTRACT(MONTH FROM tanggal_transaksi)')
-            ->orderByRaw('EXTRACT(YEAR FROM tanggal_transaksi), EXTRACT(MONTH FROM tanggal_transaksi)')
+    if ($role === 'Owner') {
+        $pendingAgents = DB::table('account')
+            ->where('account.roles', 'Pending')
+            ->select('id_account', 'username', 'nama', 'nomor_telepon')
             ->get();
+    }
 
-        $revenue = array_fill(0, 12, 0);
-        $transactions = array_fill(0, 12, 0);
-        foreach ($earnings as $e) {
-            $revenue[$e->month - 1] = (int)$e->total;
-            $transactions[$e->month - 1] = (int)$e->total_transaksi;
-        }
-
-        // Status klien untuk pie chart
+    if ($role === 'Agent') {
         $statusCounts = DB::table('property_interests')
             ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
             ->where('property.id_agent', $idAgent)
+            ->whereNotIn('property_interests.status', [
+                'closing',
+                'kutipan_risalah_lelang',
+                'akte_grosse',
+                'balik_nama'
+            ])
             ->selectRaw("
                 SUM(CASE WHEN property_interests.status = 'FollowUp' THEN 1 ELSE 0 END) as followup,
                 SUM(CASE WHEN property_interests.status = 'pending' THEN 1 ELSE 0 END) as pending,
                 SUM(CASE WHEN property_interests.status = 'gagal' THEN 1 ELSE 0 END) as gagal,
-                SUM(CASE WHEN property_interests.status = 'buyer_meeting' THEN 1 ELSE 0 END) as buyer_meeting,
-                SUM(CASE WHEN property_interests.status = 'closing' THEN 1 ELSE 0 END) as closing
+                SUM(CASE WHEN property_interests.status = 'buyer_meeting' THEN 1 ELSE 0 END) as buyer_meeting
             ")
             ->first();
-        //calender
-        $idAccount = session('id_account') ?? Cookie::get('id_account');
-        // Event yang dia buat
-        $myEvents = Event::where('created_by', $idAccount);
 
-        // Event yang dia diundang
-        $invitedEvents = Event::whereHas('invites', function ($q) use ($idAccount) {
-            $q->where('id_account', $idAccount);
-        });
+        $jumlahListing = DB::table('property')
+            ->where('id_agent', $idAgent)
+            ->count();
 
-        // Event dengan akses terbuka
-        $publicEvents = Event::where('akses', 'Terbuka');
+        $jumlahClients = DB::table('property_interests')
+            ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
+            ->where('property.id_agent', $idAgent)
+            ->distinct('property_interests.id_klien')
+            ->count('property_interests.id_klien');
 
-        // Gabungkan ketiga query
-        $events = $myEvents
-            ->union($invitedEvents)
-            ->union($publicEvents)
+        $clients = DB::table('property_interests')
+            ->join('account', 'property_interests.id_klien', '=', 'account.id_account')
+            ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
+            ->leftJoin('informasi_klien', 'account.id_account', '=', 'informasi_klien.id_account')
+            ->where('property.id_agent', $idAgent)
+            ->whereNotIn(DB::raw('LOWER(TRIM(property_interests.status))'), ['closing', 'balik_nama', 'akte_grosse', 'gagal'])
+            ->select(
+                'account.id_account',
+                'account.nama',
+                'account.nomor_telepon',
+                'property.id_listing',
+                'property.lokasi',
+                'property.harga',
+                'property_interests.status',
+                'informasi_klien.gambar_ktp'
+            )
             ->get();
+    }
 
-        $events = Event::leftJoin('account', 'account.id_account', '=', 'events.created_by')
-        ->select(
-            'events.*',
-            'account.nama as creator_name'
+    if ($role === 'Register') {
+        $clientsClosing = DB::table('transaction')
+            ->join('account', 'transaction.id_klien', '=', 'account.id_account')
+            ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
+            ->whereIn('transaction.status_transaksi', [
+                'Closing', 'Kuitansi', 'Kode Billing', 'Kutipan Risalah Lelang', 'Akte Grosse'
+            ])
+            ->where('transaction.status_transaksi', '!=', 'Balik Nama')
+            ->select(
+                'account.id_account',
+                'account.nama',
+                'account.nomor_telepon',
+                'property.id_listing',
+                'property.lokasi',
+                'property.harga',
+                'transaction.status_transaksi as status',
+                'transaction.tanggal_diupdate'
+            )
+            ->orderBy('transaction.tanggal_diupdate', 'asc')
+            ->get();
+    }
+
+    if ($role === 'Pengosongan') {
+        $clientsPengosongan = DB::table('transaction')
+            ->join('account', 'transaction.id_klien', '=', 'account.id_account')
+            ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
+            ->whereIn('transaction.status_transaksi', [
+                'Balik Nama', 'Eksekusi Pengosongan', 'Selesai'
+            ])
+            ->select(
+                'account.id_account',
+                'account.nama',
+                'account.nomor_telepon',
+                'property.id_listing',
+                'property.lokasi',
+                'property.harga',
+                'transaction.status_transaksi as status',
+                'transaction.tanggal_diupdate'
+            )
+            ->orderBy('transaction.tanggal_diupdate', 'asc')
+            ->get();
+    }
+
+    // **Penambahan untuk Stoker**
+    if ($role === 'Stoker') {
+        $stokerProperties = Property::select(
+            'id_listing','lokasi','luas','harga','gambar','status',
+            'tipe','provinsi','kota','kecamatan','vendor' // << tambahkan vendor
         )
+        ->whereRaw('LOWER(status) = ?', ['tersedia'])
+        ->when(request('search'), function ($q, $search) {
+            return is_numeric($search)
+                ? $q->where('id_listing', (int)$search)
+                : $q->whereRaw('1=0');
+        })
+        ->when(request('vendor'), function ($q, $v) {
+            $v = mb_strtolower(trim($v), 'UTF-8');
+            return $q->whereRaw('LOWER(vendor) LIKE ?', ['%'.$v.'%']);
+        })
+        ->when(request('property_type'), fn($q,$v) => $q->whereRaw('LOWER(tipe)=?', [strtolower($v)]))
+        ->when(request('province'), fn($q,$v) => $q->where('provinsi', $v))
+        ->when(request('city'), fn($q,$v) => $q->where('kota', $v))
+        ->when(request('district'), fn($q,$v) => $q->where('kecamatan', $v))
+        ->orderByDesc('id_listing')
+        ->paginate(10)
+        ->appends(request()->only(['search','vendor','property_type','province','city','district']));
+    }
+
+    $salesData = $salesData ?? [];
+    $transactions = $transactions ?? [];
+    // Siapkan label bulan
+    $labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // Ambil pendapatan & jumlah transaksi (berdasarkan selisih per bulan)
+    $earnings = DB::table('transaction')
+        ->select(
+            DB::raw('EXTRACT(YEAR FROM tanggal_transaksi) AS year'),
+            DB::raw('EXTRACT(MONTH FROM tanggal_transaksi) AS month'),
+            DB::raw('SUM(selisih) AS total'),
+            DB::raw('COUNT(*) as total_transaksi')
+        )
+        ->where('id_agent', $targetAgentId)
+        ->groupByRaw('EXTRACT(YEAR FROM tanggal_transaksi), EXTRACT(MONTH FROM tanggal_transaksi)')
+        ->orderByRaw('EXTRACT(YEAR FROM tanggal_transaksi), EXTRACT(MONTH FROM tanggal_transaksi)')
         ->get();
 
-        // Format untuk JS
-        $eventsFormatted = $events->map(function ($event) {
-            return [
-                'id'       => $event->id_event,
-                'title'    => $event->title,
-                'description' => $event->description,
-                'start'    => Carbon::parse($event->mulai)->format('Y-m-d\TH:i:s'),
-                'end'      => $event->selesai ? Carbon::parse($event->selesai)->format('Y-m-d\TH:i:s') : null,
-                'allDay'   => (bool) $event->all_day,
-                'location' => $event->location,
-                'access'   => $event->akses,
-                'created_by'  => $event->creator_name,
-                'created_by_id' => $event->created_by,
-                'duration' => $event->durasi,
-            ];
-        });
+    $revenue = array_fill(0, 12, 0);
+    $transactions = array_fill(0, 12, 0);
+    foreach ($earnings as $e) {
+        $revenue[$e->month - 1] = (int)$e->total;
+        $transactions[$e->month - 1] = (int)$e->total_transaksi;
+    }
 
+    // Status klien untuk pie chart
+    $statusCounts = DB::table('property_interests')
+        ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
+        ->where('property.id_agent', $idAgent)
+        ->selectRaw("
+            SUM(CASE WHEN property_interests.status = 'FollowUp' THEN 1 ELSE 0 END) as followup,
+            SUM(CASE WHEN property_interests.status = 'pending' THEN 1 ELSE 0 END) as pending,
+            SUM(CASE WHEN property_interests.status = 'gagal' THEN 1 ELSE 0 END) as gagal,
+            SUM(CASE WHEN property_interests.status = 'buyer_meeting' THEN 1 ELSE 0 END) as buyer_meeting,
+            SUM(CASE WHEN property_interests.status = 'closing' THEN 1 ELSE 0 END) as closing
+        ")
+        ->first();
+
+    //calender
+    $idAccount = session('id_account') ?? Cookie::get('id_account');
+    // Event yang dia buat
+    $myEvents = Event::where('created_by', $idAccount);
+
+    // Event yang dia diundang
+    $invitedEvents = Event::whereHas('invites', function ($q) use ($idAccount) {
+        $q->where('id_account', $idAccount);
+    });
+
+    // Event dengan akses terbuka
+    $publicEvents = Event::where('akses', 'Terbuka');
+
+    // Gabungkan ketiga query
+    $events = $myEvents
+        ->union($invitedEvents)
+        ->union($publicEvents)
+        ->get();
+
+    $events = Event::leftJoin('account', 'account.id_account', '=', 'events.created_by')
+    ->select(
+        'events.*',
+        'account.nama as creator_name'
+    )
+    ->get();
+
+    // Format untuk JS
+    $eventsFormatted = $events->map(function ($event) {
+        return [
+            'id'       => $event->id_event,
+            'title'    => $event->title,
+            'description' => $event->description,
+            'start'    => Carbon::parse($event->mulai)->format('Y-m-d\TH:i:s'),
+            'end'      => $event->selesai ? Carbon::parse($event->selesai)->format('Y-m-d\TH:i:s') : null,
+            'allDay'   => (bool) $event->all_day,
+            'location' => $event->location,
+            'access'   => $event->akses,
+            'created_by'  => $event->creator_name,
+            'created_by_id' => $event->created_by,
+            'duration' => $event->durasi,
+        ];
+    });
 
     // Fetch sold properties directly from the property table
     $soldProperties = DB::table('property')
-    ->where('status', 'Terjual') // Only fetch sold properties
-    ->orderBy('tanggal_diupdate', 'desc') // Order by update date
-    ->select('id_listing', 'lokasi', 'tanggal_diupdate') // Select only the needed fields
-    ->get();
+        ->where('status', 'Terjual') // Only fetch sold properties
+        ->orderBy('tanggal_diupdate', 'desc') // Order by update date
+        ->select('id_listing', 'lokasi', 'tanggal_diupdate') // Select only the needed fields
+        ->get();
 
-        // Kirim ke view
-        return view('Agent.dashboard-agent', [
-            'totalKomisi' => $totalKomisi,
-            'totalSelisih' => $totalSelisih,
-            'jumlahListing' => $jumlahListing,
-            'jumlahClients' => $jumlahClients,
-            'clients' => $clients,
-            'stokerProperties' => $stokerProperties ?? null,
-            'soldProperties'   => $soldProperties,
-            'clientsClosing' => $clientsClosing,
-            'clientsPengosongan' => $clientsPengosongan,
-            'properties' => $properties ?? null,
-            'salesData' => json_encode($salesData),         // <--- dijamin ada
-            'transactions' => json_encode($transactions),
-            'labels' => $labels,
-            'revenue' => $revenue,
-            'transactions' => $transactions,
-            'statusCounts' => (array) $statusCounts,
-            'pendingAgents' => $pendingAgents,
-            'events' => $eventsFormatted,
-            'soldProperties' => $soldProperties, // <-- Make sure to include this inside the main array
-        ]);
-    }
+    // Kirim ke view
+    return view('Agent.dashboard-agent', [
+        'totalKomisi'      => $totalKomisi,
+        'totalSelisih'     => $totalSelisih,
+        'jumlahListing'    => $jumlahListing,
+        'jumlahClients'    => $jumlahClients,
+        'clients'          => $clients,
+        'stokerProperties' => $stokerProperties ?? null,
+        'soldProperties'   => $soldProperties,
+        'clientsClosing'   => $clientsClosing,
+        'clientsPengosongan' => $clientsPengosongan,
+        'properties'       => $properties ?? null,
+        'salesData'        => json_encode($salesData),         // <--- dijamin ada
+        'transactions'     => json_encode($transactions),
+        'labels'           => $labels,
+        'revenue'          => $revenue,
+        'transactions'     => $transactions,
+        'statusCounts'     => (array) $statusCounts,
+        'pendingAgents'    => $pendingAgents,
+        'events'           => $eventsFormatted,
+        'soldProperties'   => $soldProperties, // <-- Make sure to include this inside the main array
+    ]);
+}
+
 
     public function updateInvite(Request $request)
     {
@@ -763,255 +768,276 @@ $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar'
 
         // progress register
         $clientsClosing = DB::table('transaction')
-                ->join('account', 'transaction.id_klien', '=', 'account.id_account')
-                ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
-                ->whereIn('transaction.status_transaksi', [
-                    'Closing',
-                    'Kuitansi',
-                    'Kode Billing',
-                    'Kutipan Risalah Lelang',
-                    'Akte Grosse'
-                ]) // ✅ HAPUS "Balik Nama" dari sini
-                ->where('transaction.status_transaksi', '!=', 'Balik Nama') // ✅ FILTER yang sudah selesai
-                ->select(
-                    'account.id_account',
-                    'account.nama',
-                    'account.nomor_telepon',
-                    'property.id_listing',
-                    'property.lokasi',
-                    'property.harga',
-                    'transaction.status_transaksi as status',
-                    'transaction.tanggal_diupdate'
-                )
-                ->orderBy('transaction.tanggal_diupdate', 'asc')
-                ->get();
+            ->join('account', 'transaction.id_klien', '=', 'account.id_account')
+            ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
+            ->whereIn('transaction.status_transaksi', [
+                'Closing',
+                'Kuitansi',
+                'Kode Billing',
+                'Kutipan Risalah Lelang',
+                'Akte Grosse'
+            ]) // ✅ HAPUS "Balik Nama" dari sini
+            ->where('transaction.status_transaksi', '!=', 'Balik Nama') // ✅ FILTER yang sudah selesai
+            ->select(
+                'account.id_account',
+                'account.nama',
+                'account.nomor_telepon',
+                'property.id_listing',
+                'property.lokasi',
+                'property.harga',
+                'transaction.status_transaksi as status',
+                'transaction.tanggal_diupdate'
+            )
+            ->orderBy('transaction.tanggal_diupdate', 'asc')
+            ->get();
 
         // progress pengosongan
         $clientsPengosongan = DB::table('transaction')
-        ->join('account', 'transaction.id_klien', '=', 'account.id_account')
-        ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
-        ->whereIn('transaction.status_transaksi', [
-            'Balik Nama',
-            'Eksekusi Pengosongan',
-            'Selesai',
-        ])
-        ->select(
-            'account.id_account',
-            'account.nama',
-            'account.nomor_telepon',
-            'property.id_listing',
-            'property.lokasi',
-            'property.harga',
-            'transaction.status_transaksi as status',
-            'transaction.tanggal_diupdate'
-        )
-        ->orderBy('transaction.tanggal_diupdate', 'asc')
-        ->get();
+            ->join('account', 'transaction.id_klien', '=', 'account.id_account')
+            ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
+            ->whereIn('transaction.status_transaksi', [
+                'Balik Nama',
+                'Eksekusi Pengosongan',
+                'Selesai',
+            ])
+            ->select(
+                'account.id_account',
+                'account.nama',
+                'account.nomor_telepon',
+                'property.id_listing',
+                'property.lokasi',
+                'property.harga',
+                'transaction.status_transaksi as status',
+                'transaction.tanggal_diupdate'
+            )
+            ->orderBy('transaction.tanggal_diupdate', 'asc')
+            ->get();
 
         // ---------- BLOK STOKER (SELALU DISIAPKAN, TIDAK TERGANTUNG ROLE) ----------
-$stokerProperties = Property::select(
-    'id_listing','lokasi','luas','harga','gambar','status',
-    'tipe','provinsi','kota','kecamatan',
-    'vendor' // <- WAJIB, dipakai di partial
-)
-->whereRaw('LOWER(status) = ?', ['tersedia'])
-->when(request('search'), function ($query, $search) {
-    return is_numeric($search)
-        ? $query->where('id_listing', (int)$search)
-        : $query->whereRaw('1=0');
-})
-->when(request('property_type'), fn($q,$v) => $q->whereRaw('LOWER(tipe)=?', [strtolower($v)]))
-->when(request('province'), fn($q,$v) => $q->where('provinsi', $v))
-->when(request('city'), fn($q,$v) => $q->where('kota', $v))
-->when(request('district'), fn($q,$v) => $q->where('kecamatan', $v))
-->orderByDesc('id_listing')
-->paginate(10)
-->appends(array_merge(
-    request()->only(['search','property_type','province','city','district']),
-    ['tab'=>'stoker']
-));
+        $stokerProperties = Property::select(
+            'id_listing','lokasi','luas','harga','gambar','status',
+            'tipe','provinsi','kota','kecamatan',
+            'vendor' // <- WAJIB, dipakai di partial
+        )
+            ->whereRaw('LOWER(status) = ?', ['tersedia'])
+            ->when(request('search'), function ($query, $search) {
+                return is_numeric($search)
+                    ? $query->where('id_listing', (int)$search)
+                    : $query->whereRaw('1=0');
+            })
+            ->when(request('property_type'), fn($q,$v) => $q->whereRaw('LOWER(tipe)=?', [strtolower($v)]))
+            ->when(request('province'), fn($q,$v) => $q->where('provinsi', $v))
+            ->when(request('city'), fn($q,$v) => $q->where('kota', $v))
+            ->when(request('district'), fn($q,$v) => $q->where('kecamatan', $v))
+            ->orderByDesc('id_listing')
+            ->paginate(10)
+            ->appends(array_merge(
+                request()->only(['search','property_type','province','city','district']),
+                ['tab'=>'stoker']
+            ));
 
 
-    $soldProperties = DB::table('property')
-        ->where('status', 'Terjual')
-        ->orderBy('tanggal_diupdate', 'desc')
-        ->select('id_listing', 'lokasi', 'tanggal_diupdate')
-        ->limit(15)
-        ->get();
+        $soldProperties = DB::table('property')
+            ->where('status', 'Terjual')
+            ->orderBy('tanggal_diupdate', 'desc')
+            ->select('id_listing', 'lokasi', 'tanggal_diupdate')
+            ->limit(15)
+            ->get();
 
-// ---------- BLOK TRANSAKSI (UNTUK TAB "Transaksi") ----------
-$transaksiProperties = DB::table('property')
-    ->select(
-        'property.id_listing',
-        'property.lokasi',
-        'property.tipe',
-        'property.luas',
-        'property.harga',
-        'property.gambar',
-        'property.status',
-        'property.tanggal_diupdate',
-        DB::raw('NULL::integer as id_transaksi')
-    )
-    ->when(request('search'), function ($query, $search) {
-        return is_numeric($search)
-            ? $query->where('property.id_listing', (int)$search)
-            : $query->whereRaw('1=0');
-    })
-    ->when(request('vendor'), function ($q, $v) {
-        return $q->where('property.vendor', 'ILIKE', '%'.$v.'%');
-        // kalau MySQL: ganti 'ILIKE' -> 'like'
-    })
-    ->when(request('property_type'), function ($q, $v) {
-        return $q->whereRaw('LOWER(property.tipe) = ?', [strtolower($v)]);
-    })
-    ->when(request('province'), fn($q,$v) => $q->where('property.provinsi', $v))
-    ->when(request('city'),     fn($q,$v) => $q->where('property.kota', $v))
-    ->when(request('district'), fn($q,$v) => $q->where('property.kecamatan', $v))
-    ->orderByDesc('property.tanggal_diupdate')
-    ->paginate(10)
-    ->appends(array_merge(
-        request()->only(['search','vendor','property_type','province','city','district']),
-        ['tab'=>'transaksi']
-    ));
+        // ---------- BLOK TRANSAKSI (UNTUK TAB "Transaksi") ----------
+        $transaksiProperties = DB::table('property')
+            ->select(
+                'property.id_listing',
+                'property.lokasi',
+                'property.tipe',
+                'property.luas',
+                'property.harga',
+                'property.gambar',
+                'property.status',
+                'property.tanggal_diupdate',
+                DB::raw('NULL::integer as id_transaksi')
+            )
+            ->when(request('search'), function ($query, $search) {
+                return is_numeric($search)
+                    ? $query->where('property.id_listing', (int)$search)
+                    : $query->whereRaw('1=0');
+            })
+            ->when(request('vendor'), function ($q, $v) {
+                return $q->where('property.vendor', 'ILIKE', '%'.$v.'%');
+                // kalau MySQL: ganti 'ILIKE' -> 'like'
+            })
+            ->when(request('property_type'), function ($q, $v) {
+                return $q->whereRaw('LOWER(property.tipe) = ?', [strtolower($v)]);
+            })
+            ->when(request('province'), fn($q,$v) => $q->where('property.provinsi', $v))
+            ->when(request('city'),     fn($q,$v) => $q->where('property.kota', $v))
+            ->when(request('district'), fn($q,$v) => $q->where('property.kecamatan', $v))
+            ->orderByDesc('property.tanggal_diupdate')
+            ->paginate(10)
+            ->appends(array_merge(
+                request()->only(['search','vendor','property_type','province','city','district']),
+                ['tab'=>'transaksi']
+            ));
 
         // Riwayat singkat (kanan): terakhir update transaksi
-$transaksiHistory = DB::table('transaction')
-->join('property', 'transaction.id_listing', '=', 'property.id_listing')
-->select(
-    'transaction.id_listing',
-    'property.lokasi',
-    'transaction.status_transaksi as status',
-    'transaction.tanggal_diupdate'
-)
-->orderBy('transaction.tanggal_diupdate', 'desc')
-->limit(15)
-->get();
+        $transaksiHistory = DB::table('transaction')
+            ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
+            ->select(
+                'transaction.id_listing',
+                'property.lokasi',
+                'transaction.status_transaksi as status',
+                'transaction.tanggal_diupdate'
+            )
+            ->orderBy('transaction.tanggal_diupdate', 'desc')
+            ->limit(15)
+            ->get();
+
+        $clientsDropdown = DB::table('account')
+            ->where('roles', 'User')
+            ->select('id_account','nama')
+            ->orderBy('nama')
+            ->get();
 
         // Aggregate: jumlah "Hadir" per account
-// 1) Ikut Pemilu: jumlah "Hadir" per account
-$eiStats = DB::table('event_invites')
-    ->select(
-        'id_account',
-        DB::raw("SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) AS ikut_pemilu_count")
-    )
-    ->groupBy('id_account');
+        // 1) Ikut Pemilu: jumlah "Hadir" per account
+        $eiStats = DB::table('event_invites')
+            ->select(
+                'id_account',
+                DB::raw("SUM(CASE WHEN status = 'Hadir' THEN 1 ELSE 0 END) AS ikut_pemilu_count")
+            )
+            ->groupBy('id_account');
 
-// 2) Share Listing: agregasi referral clicks per agent
-$referralStats = DB::table('referral_clicks')
-    ->select(
-        'id_agent',
-        DB::raw('COUNT(*) AS share_clicks'),                       // total klik
-        DB::raw('COUNT(DISTINCT id_listing) AS share_listing_uniq'), // jumlah listing unik
-        DB::raw('MAX(created_at) AS last_share_click_at')            // opsional: terakhir klik
-    )
-    ->groupBy('id_agent');
+        // 2) Share Listing: agregasi referral clicks per agent
+        $referralStats = DB::table('referral_clicks')
+            ->select(
+                'id_agent',
+                DB::raw('COUNT(*) AS share_clicks'),                         // total klik
+                DB::raw('COUNT(DISTINCT id_listing) AS share_listing_uniq'), // jumlah listing unik
+                DB::raw('MAX(created_at) AS last_share_click_at')           // opsional: terakhir klik
+            )
+            ->groupBy('id_agent');
 
-// 3) Query utama: hanya agent Aktif
-$performanceAgents = DB::table('agent')
-->whereIn('agent.status', ['Aktif', 'Diterminasi'])
-    ->leftJoin('property', 'agent.id_agent', '=', 'property.id_agent')
-    ->leftJoin('transaction', 'agent.id_agent', '=', 'transaction.id_agent')
+        // 2b) Komisi: agregasi dari transaction_commissions
+        $commissionStats = DB::table('transaction_commissions')
+            ->select(
+                'id_agent',
+                DB::raw('SUM(pendapatan) AS total_komisi')
+            )
+            ->groupBy('id_agent');
 
-    // map event_invites.id_account → agent.id_account
-    ->leftJoinSub($eiStats, 'ei_stat', function ($join) {
-        $join->on('ei_stat.id_account', '=', 'agent.id_account');
-    })
+        // 3) Query utama: hanya agent Aktif
+        $performanceAgents = DB::table('agent')
+            ->whereIn('agent.status', ['Aktif', 'Diterminasi'])
+            ->leftJoin('property', 'agent.id_agent', '=', 'property.id_agent')
+            ->leftJoin('transaction', 'agent.id_agent', '=', 'transaction.id_agent')
 
-    // join agregat referral clicks
-    ->leftJoinSub($referralStats, 'ref_stat', function ($join) {
-        $join->on('ref_stat.id_agent', '=', 'agent.id_agent');
-    })
+            // map event_invites.id_account → agent.id_account
+            ->leftJoinSub($eiStats, 'ei_stat', function ($join) {
+                $join->on('ei_stat.id_account', '=', 'agent.id_account');
+            })
 
-    ->select(
-        'agent.id_account',
-        'agent.id_agent',
-        'agent.nama',
-        'agent.status',
-        'agent.jumlah_penjualan',
-        DB::raw('COUNT(DISTINCT property.id_listing) AS jumlah_listing'),
-        DB::raw('SUM(transaction.komisi_agent) AS total_komisi'),
+            // join agregat referral clicks
+            ->leftJoinSub($referralStats, 'ref_stat', function ($join) {
+                $join->on('ref_stat.id_agent', '=', 'agent.id_agent');
+            })
 
-        // Ikut Pemilu (angka)
-        DB::raw('MAX(COALESCE(ei_stat.ikut_pemilu_count, 0)) AS ikut_pemilu'),
+            // join agregat komisi dari transaction_commissions
+            ->leftJoinSub($commissionStats, 'komisi_stat', function ($join) {
+                $join->on('komisi_stat.id_agent', '=', 'agent.id_agent');
+            })
 
-        // Share Listing (pakai total klik)
-        DB::raw('MAX(COALESCE(ref_stat.share_clicks, 0)) AS share_listing'),
+            ->select(
+                'agent.id_account',
+                'agent.id_agent',
+                'agent.nama',
+                'agent.status',
+                'agent.jumlah_penjualan',
+                DB::raw('COUNT(DISTINCT property.id_listing) AS jumlah_listing'),
+                DB::raw('COALESCE(MAX(komisi_stat.total_komisi), 0) AS total_komisi'),
 
-        // Opsional kalau nanti mau dipakai:
-        DB::raw('MAX(COALESCE(ref_stat.share_listing_uniq, 0)) AS share_listing_uniq'),
-        DB::raw('MAX(ref_stat.last_share_click_at) AS last_share_click_at')
-    )
-    ->groupBy(
-        'agent.id_agent',
-        'agent.nama',
-        'agent.status',
-        'agent.jumlah_penjualan'
-    )
-    ->get();
+                // Ikut Pemilu (angka)
+                DB::raw('MAX(COALESCE(ei_stat.ikut_pemilu_count, 0)) AS ikut_pemilu'),
+
+                // Share Listing (pakai total klik)
+                DB::raw('MAX(COALESCE(ref_stat.share_clicks, 0)) AS share_listing'),
+
+                // Opsional kalau nanti mau dipakai:
+                DB::raw('MAX(COALESCE(ref_stat.share_listing_uniq, 0)) AS share_listing_uniq'),
+                DB::raw('MAX(ref_stat.last_share_click_at) AS last_share_click_at')
+            )
+            ->groupBy(
+                'agent.id_agent',
+                'agent.nama',
+                'agent.status',
+                'agent.jumlah_penjualan',
+                'agent.id_account'
+            )
+            ->get();
+
         //grafik
         $monthlyData = DB::table('transaction')
-            ->selectRaw("DATE_TRUNC('month', tanggal_dibuat) as bulan, SUM(harga_deal) as total_pendapatan, COUNT(*) as total_transaksi")
+            ->selectRaw("DATE_TRUNC('month', tanggal_dibuat) as bulan, SUM(basis_pendapatan) as total_pendapatan, COUNT(*) as total_transaksi")
             ->groupByRaw("DATE_TRUNC('month', tanggal_dibuat)")
             ->orderByRaw("DATE_TRUNC('month', tanggal_dibuat)")
             ->get();
 
-            $performanceClients = DB::table('account')
-    ->leftJoin('informasi_klien as ik', 'ik.id_account', '=', 'account.id_account')
-    ->leftJoin('agent', 'agent.id_agent', '=', 'account.kode_referal')
-    ->where('account.roles', 'User') // ⬅️ hanya akun ber-role User
-    ->select(
-        'account.id_account',
-        'account.nama',
-        'account.kode_referal',
-        DB::raw("COALESCE(agent.nama, '-') AS nama_agent"),
-        DB::raw("COALESCE(account.kota, '-') AS kota"),
-        'ik.pekerjaan',
-        'ik.status_verifikasi'
-    )
-    ->orderBy('account.id_account')
-    ->get();
+        $performanceClients = DB::table('account')
+            ->leftJoin('informasi_klien as ik', 'ik.id_account', '=', 'account.id_account')
+            ->leftJoin('agent', 'agent.id_agent', '=', 'account.kode_referal')
+            ->where('account.roles', 'User') // ⬅️ hanya akun ber-role User
+            ->select(
+                'account.id_account',
+                'account.nama',
+                'account.kode_referal',
+                DB::raw("COALESCE(agent.nama, '-') AS nama_agent"),
+                DB::raw("COALESCE(account.kota, '-') AS kota"),
+                'ik.pekerjaan',
+                'ik.status_verifikasi'
+            )
+            ->orderBy('account.id_account')
+            ->get();
 
 
-// ---------- BLOK EXPORT (bersih, tanpa join tabel fiktif) ----------
-$exportQuery = \App\Models\Property::from('property as p')
-    ->select([
-        // Kolom untuk TAMPIL di tabel halaman Export
-        'p.id_listing',          // ditampilkan sebagai ID
-        'p.lokasi',
-        'p.tipe',
-        'p.luas',
-        'p.harga',
-        'p.gambar',              // dipakai Blade: explode(',', $property->gambar)
+        // ---------- BLOK EXPORT (bersih, tanpa join tabel fiktif) ----------
+        $exportQuery = \App\Models\Property::from('property as p')
+            ->select([
+                // Kolom untuk TAMPIL di tabel halaman Export
+                'p.id_listing',          // ditampilkan sebagai ID
+                'p.lokasi',
+                'p.tipe',
+                'p.luas',
+                'p.harga',
+                'p.gambar',              // dipakai Blade: explode(',', $property->gambar)
 
-        // Kolom tambahan untuk EXPORT file
-        'p.sertifikat',
-        'p.id_agent',
-        'p.link',
+                // Kolom tambahan untuk EXPORT file
+                'p.sertifikat',
+                'p.id_agent',
+                'p.link',
 
-        // Link Solusindo (PostgreSQL concatenation pakai ||)
-        DB::raw("('https://solusindolelang.com/property-detail/' || p.id_listing || '/' || COALESCE(p.id_agent, '')) as link_solusindo")
-    ])
+                // Link Solusindo (PostgreSQL concatenation pakai ||)
+                DB::raw("('https://solusindolelang.com/property-detail/' || p.id_listing || '/' || COALESCE(p.id_agent, '')) as link_solusindo")
+            ])
 
-    // Filter (opsional: aktifkan jika mau hanya status 'Tersedia')
-    // ->whereRaw('LOWER(p.status) = ?', ['tersedia'])
+            // Filter (opsional: aktifkan jika mau hanya status 'Tersedia')
+            // ->whereRaw('LOWER(p.status) = ?', ['tersedia'])
 
-    ->when(request('search'), function ($query, $search) {
-        return is_numeric($search)
-            ? $query->where('p.id_listing', (int)$search)
-            : $query->whereRaw('1=0'); // cuma izinkan numerik untuk ID
-    })
-    ->when(request('property_type'), fn($q,$v) => $q->whereRaw('LOWER(p.tipe)=?', [strtolower($v)]))
-    ->when(request('province'),      fn($q,$v) => $q->where('p.provinsi', $v))
-    ->when(request('city'),          fn($q,$v) => $q->where('p.kota', $v))
-    ->when(request('district'),      fn($q,$v) => $q->where('p.kecamatan', $v));
+            ->when(request('search'), function ($query, $search) {
+                return is_numeric($search)
+                    ? $query->where('p.id_listing', (int)$search)
+                    : $query->whereRaw('1=0'); // cuma izinkan numerik untuk ID
+            })
+            ->when(request('property_type'), fn($q,$v) => $q->whereRaw('LOWER(p.tipe)=?', [strtolower($v)]))
+            ->when(request('province'),      fn($q,$v) => $q->where('p.provinsi', $v))
+            ->when(request('city'),          fn($q,$v) => $q->where('p.kota', $v))
+            ->when(request('district'),      fn($q,$v) => $q->where('p.kecamatan', $v));
 
-$exportProperties = $exportQuery
-    ->orderBy('p.id_listing', 'asc')
-    ->paginate(15)
-    ->appends(array_merge(
-        request()->only(['search','property_type','province','city','district']),
-        ['tab'=>'export']
-    ));
+        $exportProperties = $exportQuery
+            ->orderBy('p.id_listing', 'asc')
+            ->paginate(15)
+            ->appends(array_merge(
+                request()->only(['search','property_type','province','city','district']),
+                ['tab'=>'export']
+            ));
 
 
         $labels = $monthlyData->map(fn($d) => \Carbon\Carbon::parse($d->bulan)->isoFormat('MMM YYYY'));
@@ -1043,11 +1069,11 @@ $exportProperties = $exportQuery
             ->get();
 
         $events = Event::leftJoin('account', 'account.id_account', '=', 'events.created_by')
-        ->select(
-            'events.*',
-            'account.nama as creator_name'
-        )
-        ->get();
+            ->select(
+                'events.*',
+                'account.nama as creator_name'
+            )
+            ->get();
 
         // Format untuk JS
         $eventsFormatted = $events->map(function ($event) {
@@ -1070,27 +1096,33 @@ $exportProperties = $exportQuery
             ];
         });
 
-        return view('Agent.dashboardowner', ['pendingAgents' => $pendingAgents,
-                                            'pendingClients' => $pendingClients,
-                                            'clients' => $clients,
-                                            'clientsClosing' => $clientsClosing,
-                                            'clientsPengosongan' => $clientsPengosongan,
-                                            'performanceAgents' => $performanceAgents,
-                                            'performanceClients' => $performanceClients,
-                                            'properties' => $properties,
-                                            'properties' => $properties,
-                                            'labels' => $labels,
-                                            'revenue' => $revenue,
-                                            'transactions' => $transactions,
-                                            'statusCounts' => $statusCounts,
-                                            'stokerProperties'    => $stokerProperties,
-                                            'soldProperties'      => $soldProperties,
-                                            'transaksiProperties'  => $transaksiProperties,   // 👈 NEW
-                                            'transaksiHistory'     => $transaksiHistory,
-                                            'tab'                 => $tab,
-                                            'exportProperties'    => $exportProperties,
-                                            'events' => $eventsFormatted ]);
+        return view('Agent.dashboardowner', [
+            'pendingAgents'       => $pendingAgents,
+            'pendingClients'      => $pendingClients,
+            'clients'             => $clients,
+            'clientsClosing'      => $clientsClosing,
+            'clientsPengosongan'  => $clientsPengosongan,
+            'performanceAgents'   => $performanceAgents,
+            'performanceClients'  => $performanceClients,
+            'properties'          => $properties,
+            'clientsDropdown'     => $clientsDropdown,
+            'properties'          => $properties,
+            'labels'              => $labels,
+            'revenue'             => $revenue,
+            'transactions'        => $transactions,
+            'statusCounts'        => $statusCounts,
+            'stokerProperties'    => $stokerProperties,
+            'soldProperties'      => $soldProperties,
+            'transaksiProperties' => $transaksiProperties,
+            'transaksiHistory'    => $transaksiHistory,
+            'tab'                 => $tab,
+            'exportProperties'    => $exportProperties,
+            'events'              => $eventsFormatted,
+        ]);
     }
+
+
+
 
 
     public function updateStatusAgent(Request $request, string $idAccount)

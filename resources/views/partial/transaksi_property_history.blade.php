@@ -23,7 +23,7 @@
       @php
         $noLelang    = $idx + 1;
         $hargaMarkup = (float) ($item->harga ?? 0);
-        $hargaLimit  = $hargaMarkup > 0 ? round($hargaMarkup / 1.287) : 0;
+        $hargaLimit  = $hargaMarkup > 0 ? round($hargaMarkup / 1.278) : 0;
         $thumb       = ph_first_photo($item->gambar ?? '');
         $tglLelang   = $item->batas_akhir_penawaran
                        ?? $item->tanggal_buyer_meeting
@@ -56,7 +56,7 @@
               @endif
             </div>
             <div class="small">
-              <span class="text-muted">Harga limit saat itu:</span>
+              <span class="text-muted">Harga limit:</span>
               <span class="fw-semibold">
                 Rp {{ number_format($hargaLimit, 0, ',', '.') }}
               </span>

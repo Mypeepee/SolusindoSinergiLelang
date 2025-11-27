@@ -3242,6 +3242,8 @@ document.addEventListener('DOMContentLoaded', function () {
           {{-- hidden --}}
           <input type="hidden" name="id_listing"   id="tc-id-listing">
           <input type="hidden" name="id_transaksi" id="tc-id-transaksi">
+          <input type="hidden" name="id_klien"     id="tc-client">
+
           <script>
             // Paksa foto modal selalu ngikut data-photo tombol Closing
             document.addEventListener('click', function(e){
@@ -3275,23 +3277,23 @@ document.addEventListener('DOMContentLoaded', function () {
               console.log('SET FOTO MODAL ->', src);
             });
           </script>
-            <style>
-                .tc-photo-wrap{
-                width: 100%;
-                aspect-ratio: 3 / 4;       /* 3x4 */
-                border-radius: .75rem;
-                overflow: hidden;
-                background: #f9fafb;
-                border: 2px solid #000;    /* garis hitam jelas */
-                }
+          <style>
+            .tc-photo-wrap{
+              width: 100%;
+              aspect-ratio: 3 / 4;       /* 3x4 */
+              border-radius: .75rem;
+              overflow: hidden;
+              background: #f9fafb;
+              border: 2px solid #000;    /* garis hitam jelas */
+            }
 
-                .tc-photo-wrap img#tc-photo{
-                width: 100%;
-                height: 100%;
-                object-fit: cover;         /* isi frame 3x4 dengan rapi */
-                display: block;
-                }
-            </style>
+            .tc-photo-wrap img#tc-photo{
+              width: 100%;
+              height: 100%;
+              object-fit: cover;         /* isi frame 3x4 dengan rapi */
+              display: block;
+            }
+          </style>
 
           <div class="row g-4 align-items-start tc-form-body">
             {{-- 1/4: FOTO + ID + ALAMAT + TANGGAL --}}
@@ -3338,8 +3340,9 @@ document.addEventListener('DOMContentLoaded', function () {
                   </select>
                 </div>
 
-                {{-- SKEMA KOMISI (custom dropdown, size sama dengan Agent) --}}
-                <div class="col-12 col-md-6">
+                {{-- BARIS: SKEMA KOMISI | AGENT | CLIENT --}}
+                {{-- SKEMA KOMISI --}}
+                <div class="col-12 col-md-4">
                   <label class="form-label small mb-1">Skema komisi</label>
 
                   {{-- hidden yang dikirim ke server --}}
@@ -3373,8 +3376,8 @@ document.addEventListener('DOMContentLoaded', function () {
                   </div>
                 </div>
 
-                {{-- AGENT (custom dropdown + avatar kecil, size sama skema) --}}
-                <div class="col-12 col-md-6">
+                {{-- AGENT (custom dropdown + avatar kecil) --}}
+                <div class="col-12 col-md-4">
                   <label class="form-label small mb-1">Agent yang Closing</label>
 
                   {{-- hidden yang dikirim ke server --}}
@@ -3406,6 +3409,43 @@ document.addEventListener('DOMContentLoaded', function () {
                                   data-initial="{{ $initial }}">
                             <span class="tc-agent-avatar">{{ $initial }}</span>
                             <span>{{ $ag->nama }}</span>
+                          </button>
+                        </li>
+                      @endforeach
+                    </ul>
+                  </div>
+                </div>
+
+                {{-- CLIENT (dropdown mirip Agent, dari account roles=User) --}}
+                <div class="col-12 col-md-4">
+                  <label class="form-label small mb-1">Client</label>
+
+                  <div class="dropdown w-100">
+                    <button
+                      class="btn btn-outline-secondary btn-sm w-100 d-flex justify-content-between align-items-center tc-select-btn"
+                      type="button"
+                      data-bs-toggle="dropdown"
+                      aria-expanded="false">
+                      <span class="d-flex align-items-center gap-2">
+                        <span class="tc-agent-avatar" id="tc-client-avatar-btn">?</span>
+                        <span id="tc-client-label">Pilih Client</span>
+                      </span>
+                      <i class="bi bi-chevron-down ms-2"></i>
+                    </button>
+
+                    <ul class="dropdown-menu w-100 tc-agent-menu">
+                      @foreach($clientsDropdown as $cl)
+                        @php
+                          $initial = mb_strtoupper(mb_substr($cl->nama, 0, 1, 'UTF-8'));
+                        @endphp
+                        <li>
+                          <button type="button"
+                                  class="dropdown-item d-flex align-items-center gap-2 tc-client-option"
+                                  data-id="{{ $cl->id_account }}"
+                                  data-name="{{ $cl->nama }}"
+                                  data-initial="{{ $initial }}">
+                            <span class="tc-agent-avatar">{{ $initial }}</span>
+                            <span>{{ $cl->nama }}</span>
                           </button>
                         </li>
                       @endforeach
@@ -3518,10 +3558,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         </div>
 
                         <div class="col-12 col-md-4">
-                            <div class="small text-muted mt-1">
-                                CO PIC dbg: {{ $row->agent_nama ?? '(null)' }} ({{ $row->id_agent ?? 'no-id' }})
-                              </div>
-
+                          <div class="text-muted mb-1">CO PIC</div>
+                          <div class="fw-semibold" id="tc-copic-name">-</div>
                         </div>
 
                       </div>
@@ -3556,13 +3594,38 @@ document.addEventListener('DOMContentLoaded', function () {
                         </div>
                     </div>
 
-
-                    {{-- PANEL: DETAIL PEMBAGIAN (placeholder) --}}
+                    {{-- PANEL: DETAIL PEMBAGIAN --}}
                     <div class="tc-tab-panel" data-tab="pembagian">
-                      <div class="small text-muted">
-                        Detail pembagian komisi akan ditampilkan di sini.
+                      <div class="tc-pembagian">
+                        <div class="tc-pembagian-header d-flex justify-content-between align-items-baseline mb-2">
+                          <div class="small text-muted" id="tc-base-label">
+                            Basis pembagian akan muncul setelah Anda mengisi harga & komisi.
+                          </div>
+                          <div class="small fw-semibold" id="tc-base-nominal">Rp 0</div>
+                        </div>
+
+                        <div class="table-responsive">
+                          <table class="table table-sm tc-pembagian-table align-middle mb-0">
+                            <thead class="table-light">
+                              <tr>
+                                <th class="text-start">Pos</th>
+                                <th class="text-end">Porsi</th>
+                                <th class="text-end">Nominal</th>
+                                <th class="text-center">Kategori</th>
+                              </tr>
+                            </thead>
+                            <tbody id="tc-pembagian-body">
+                              <tr>
+                                <td colspan="4" class="text-center text-muted small">
+                                  Isi dulu harga menang / komisi untuk melihat detail pembagian.
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     </div>
+
                   </div>
                 </div>
               </div>
@@ -3650,16 +3713,16 @@ document.addEventListener('DOMContentLoaded', function () {
       object-fit:cover;
     }
 
-    /* tombol select (skema & agent) lebih kecil, ukuran sama */
+    /* tombol select (skema & agent & client) */
     .tc-select-btn{
       border-color:#fd6e14;
       color:#fd6e14;
       font-weight:600;
       border-width:1.5px;
       border-radius:.5rem;
-      padding:.4rem .8rem;
-      min-height:38px;
-      font-size:.9rem;
+      padding:.3rem .7rem;
+      min-height:34px;
+      font-size:.85rem;
       background:#fff;
       transition:all .12s ease-in-out;
     }
@@ -3695,8 +3758,8 @@ document.addEventListener('DOMContentLoaded', function () {
       border:1px solid #e5e7eb;
       background:transparent;
       color:#6b7280;
-      padding:.25rem .9rem;
-      font-size:.8rem;
+      padding。.25rem .9rem;
+      font-size。.8rem;
       font-weight:500;
       cursor:pointer;
       transition:all .12s ease-in-out;
@@ -3729,20 +3792,20 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     .tc-agent-avatar{
-      width:28px;
-      height:28px;
+      width:24px;
+      height:24px;
       border-radius:999px;
       display:flex;
       align-items:center;
       justify-content:center;
-      font-size:.8rem;
+      font-size:.75rem;
       font-weight:700;
       background:#fee2e2;
       color:#b91c1c;
       flex-shrink:0;
     }
 
-    /* dropdown agent biar bisa scroll */
+    /* dropdown agent/client biar bisa scroll */
     .tc-agent-menu{
       max-height:260px;
       overflow-y:auto;
@@ -3786,36 +3849,68 @@ document.addEventListener('DOMContentLoaded', function () {
       object-fit:cover;
       display:block;
     }
-/* LIST RIWAYAT PROPERTI (scroll kalau ketinggian) */
-.tc-property-history-list{
-  display:flex;
-  flex-direction:column;
-  gap:.75rem;
-  margin-top:.75rem;
+    /* LIST RIWAYAT PROPERTI (scroll kalau ketinggian) */
+    .tc-property-history-list{
+      display:flex;
+      flex-direction:column;
+      gap:.75rem;
+      margin-top:.75rem;
 
-  max-height:260px;        /* tinggi maksimum area abu-abu history */
-  overflow-y:auto;         /* kalau lebih tinggi dari ini baru bisa scroll */
-  padding-right:.25rem;    /* sedikit space biar scrollbar nggak nempel */
-}
+      max-height:260px;        /* tinggi maksimum area abu-abu history */
+      overflow-y:auto;         /* kalau lebih tinggi dari ini baru bisa scroll */
+      padding-right:.25rem;    /* sedikit space biar scrollbar nggak nempel */
+    }
 
-/* Optional: scrollbar tipis & elegan (boleh di-skip kalau nggak mau) */
-.tc-property-history-list::-webkit-scrollbar{
-  width:6px;
-}
-.tc-property-history-list::-webkit-scrollbar-track{
-  background:transparent;
-}
-.tc-property-history-list::-webkit-scrollbar-thumb{
-  background:#d1d5db;
-  border-radius:999px;
-}
-.tc-property-history-list::-webkit-scrollbar-thumb:hover{
-  background:#9ca3af;
-}
+    .tc-property-history-list::-webkit-scrollbar{
+      width:6px;
+    }
+    .tc-property-history-list::-webkit-scrollbar-track{
+      background:transparent;
+    }
+    .tc-property-history-list::-webkit-scrollbar-thumb{
+      background:#d1d5db;
+      border-radius:999px;
+    }
+    .tc-property-history-list::-webkit-scrollbar-thumb:hover{
+      background:#9ca3af;
+    }
+
+    /* === DETAIL PEMBAGIAN === */
+    .tc-pembagian{
+      border-radius:.75rem;
+      border:1px solid #e5e7eb;
+      background:#fefefe;
+      padding:.8rem .9rem;
+    }
+    .tc-pembagian-header{
+      border-bottom:1px dashed #e5e7eb;
+      padding-bottom:.35rem;
+      margin-bottom:.5rem;
+    }
+    .tc-pembagian-table th,
+    .tc-pembagian-table td{
+      font-size:.78rem;
+      padding:.25rem .4rem;
+    }
+    /* ===== SCROLL UNTUK DETAIL PEMBAGIAN ===== */
+    .tc-pembagian .table-responsive{
+      max-height: 260px;      /* atur tinggi area tabel */
+      overflow-y: auto;       /* isi tabel bisa discroll */
+    }
+
+    /* Header tabel tetap kelihatan saat discroll */
+    .tc-pembagian-table thead th{
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #fee2e2;    /* warna soft supaya kebaca */
+      box-shadow: 0 1px 0 rgba(0,0,0,.04);
+    }
 
   </style>
 
 <script>
+    // Binding default tombol closing -> lempar ke handler global kalau ada
     (function(){
       const btns = document.querySelectorAll('#transaksi-list-inner .btn-transaksi-closing');
       btns.forEach(btn => {
@@ -3873,6 +3968,38 @@ document.addEventListener('DOMContentLoaded', function () {
       const PLACEHOLDER = "{{ asset('img/placeholder.jpg') }}";
       const PROPERTY_HISTORY_ROUTE = "{{ route('dashboard.owner.transaksi.history') }}";
 
+      // === KONSTANTA SKEMA KOMISI (mirror dari tabel skema_komisi_solusindo) ===
+      const THC_RATE    = 0.4000; // 40% untuk "Perkiraan hasil komisi"
+      const KANTOR_RATE = 0.39;   // 39% pendapatan kotor kantor
+
+      const KOMISI_SCHEMA = [
+        { kode:'UP1',       label:'Upline 1',           rate:0.004000 },
+        { kode:'UP2',       label:'Upline 2',           rate:0.003000 },
+        { kode:'UP3',       label:'Upline 3',           rate:0.002000 },
+        { kode:'LISTER',    label:'Lister',             rate:0.010000 },
+        { kode:'COPIC',     label:'CO PIC',             rate:0.002500 },
+        { kode:'CONS',      label:'Consultant',         rate:0.008500 },
+        { kode:'REWARD',    label:'Reward Fund',        rate:0.030000 },
+        { kode:'INV_FUND',  label:'Investment Fund',    rate:0.020000 },
+        { kode:'PROMO_FUND',label:'Promotion Fund',     rate:0.020000 },
+        { kode:'PIC1',      label:'PIC 1',              rate:0.040000 },
+        { kode:'PIC2',      label:'PIC 2',              rate:0.040000 },
+        { kode:'PIC3',      label:'PIC 3',              rate:0.040000 },
+        { kode:'PIC4',      label:'PIC 4',              rate:0.040000 },
+        { kode:'PIC5',      label:'PIC 5',              rate:0.040000 },
+        { kode:'THC',       label:'THC',                rate:0.400000 },
+        { kode:'SERVICE',   label:'Service Fund',       rate:0.100000 },
+        { kode:'PRINC_FEE', label:'Principal Fee',      rate:0.030000 },
+        { kode:'INV_SHARE', label:'Investor Sharing',   rate:0.095200 },
+        { kode:'MGMT_FUND', label:'Management Fund',    rate:0.059500 },
+        { kode:'EMP_INC',   label:'Employee Incentive', rate:0.015300 },
+      ];
+
+      const KANTOR_CODES = [
+        'SERVICE','MGMT_FUND','INV_SHARE','EMP_INC',
+        'PIC1','REWARD','INV_FUND','PROMO_FUND','LISTER'
+      ];
+
       function rupiah(x){
         const n = Number(x || 0);
         return 'Rp ' + n.toLocaleString('id-ID');
@@ -3914,6 +4041,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const agentOptions     = document.querySelectorAll('.tc-agent-option');
         const copicNameEl      = document.getElementById('tc-copic-name');
 
+        // elemen custom client
+        const clientInput      = document.getElementById('tc-client');
+        const clientLabel      = document.getElementById('tc-client-label');
+        const clientAvatarBtn  = document.getElementById('tc-client-avatar-btn');
+        const clientOptions    = document.querySelectorAll('.tc-client-option');
+
         // elemen perhitungan
         const hargaMenangInput   = document.getElementById('tc-harga-menang');
         const komisiPersenInput  = document.getElementById('tc-komisi-persen');
@@ -3935,7 +4068,25 @@ document.addEventListener('DOMContentLoaded', function () {
         const tabPanels  = document.querySelectorAll('.tc-tab-panel');
         const propertyPanel = document.querySelector('.tc-tab-panel[data-tab="property"]');
 
+        // DETAIL PEMBAGIAN elements
+        const baseLabelEl   = document.getElementById('tc-base-label');
+        const baseNominalEl = document.getElementById('tc-base-nominal');
+        const pembagianBody = document.getElementById('tc-pembagian-body');
+
         if (!overlay || !form) return;
+
+        function resetPembagian(){
+          if (baseLabelEl)   baseLabelEl.textContent   = 'Basis pembagian akan muncul setelah Anda mengisi harga & komisi.';
+          if (baseNominalEl) baseNominalEl.textContent = 'Rp 0';
+          if (pembagianBody){
+            pembagianBody.innerHTML =
+              '<tr>' +
+                '<td colspan="4" class="text-center text-muted small">' +
+                  'Isi dulu harga menang / komisi untuk melihat detail pembagian.' +
+                '</td>' +
+              '</tr>';
+          }
+        }
 
         function resetScheme(){
           if (schemeInput) schemeInput.value = 'profit';
@@ -3952,6 +4103,12 @@ document.addEventListener('DOMContentLoaded', function () {
           // CO PIC akan diset dari payload, jadi di sini tidak disentuh
         }
 
+        function resetClient(){
+          if (clientInput) clientInput.value = '';
+          if (clientLabel) clientLabel.textContent = 'Pilih Client';
+          if (clientAvatarBtn) clientAvatarBtn.textContent = '?';
+        }
+
         function resetCalculation(){
           if (hargaMenangInput) hargaMenangInput.value = '';
           if (komisiPersenInput) komisiPersenInput.value = '';
@@ -3961,6 +4118,7 @@ document.addEventListener('DOMContentLoaded', function () {
           if (kenaikanPersenEl) kenaikanPersenEl.textContent = '0';
           if (biayaBalikNamaInput) biayaBalikNamaInput.value = '';
           if (biayaEksekusiInput) biayaEksekusiInput.value = '';
+          resetPembagian();
         }
 
         function updateKenaikanPercent(){
@@ -3976,25 +4134,79 @@ document.addEventListener('DOMContentLoaded', function () {
           kenaikanPersenEl.textContent = pctRounded.toLocaleString('id-ID');
         }
 
+        // Update panel "Detail Pembagian" dari baseAmount
+        function updateDetailPembagian(baseAmount, mode){
+          if (!pembagianBody || !baseLabelEl || !baseNominalEl) return;
+
+          if (!baseAmount || !mode){
+            resetPembagian();
+            return;
+          }
+
+          const label = (mode === 'price_gap')
+            ? 'Basis pembagian: Selisih harga (Harga Menang - Limit)'
+            : 'Basis pembagian: Komisi (fee)';
+
+          baseLabelEl.textContent   = label;
+          baseNominalEl.textContent = rupiah(baseAmount);
+
+          let html = '';
+          KOMISI_SCHEMA.forEach(function(item){
+            const nominal = Math.round(baseAmount * item.rate);
+            const isKantor = KANTOR_CODES.indexOf(item.kode) !== -1;
+
+            html += '<tr>' +
+              '<td class="text-start">' +
+                '<span class="badge bg-light text-muted border me-1">' + item.kode + '</span>' +
+                '<span>' + item.label + '</span>' +
+              '</td>' +
+              '<td class="text-end">' + (item.rate * 100).toFixed(2).replace('.',',') + '%</td>' +
+              '<td class="text-end">' + rupiah(nominal) + '</td>' +
+              '<td class="text-center small ' + (isKantor ? 'text-success' : 'text-muted') + '">' +
+                (isKantor ? 'Kantor' : 'Lainnya') +
+              '</td>' +
+            '</tr>';
+          });
+
+          pembagianBody.innerHTML = html;
+        }
+
         function updateKomisiFromPercent(){
           if (!komisiEstimasi) return;
           const hargaNum = hargaMenangInput ? Number(onlyDigits(hargaMenangInput.value)) || 0 : 0;
           const persenRaw= komisiPersenInput ? (komisiPersenInput.value || '') : '';
           const persen   = parseFloat(persenRaw.replace(',','.')) || 0;
-          const fee      = Math.round(hargaNum * persen / 100);
-          komisiEstimasi.textContent = rupiah(fee);
-          if (kotorEstimasi) kotorEstimasi.textContent = rupiah(fee); // sementara: sama dengan fee
+
+          // base fee (komisi kotor)
+          const fee = Math.round(hargaNum * persen / 100);
+
+          // THC & Kantor berdasarkan skema
+          const komisiThc = Math.round(fee * THC_RATE);
+          const kantor    = Math.round(fee * KANTOR_RATE);
+
+          komisiEstimasi.textContent = rupiah(komisiThc);
+          if (kotorEstimasi) kotorEstimasi.textContent = rupiah(kantor);
+
           updateKenaikanPercent();
+          updateDetailPembagian(fee, 'profit');
         }
 
         function updateSelisihFromGap(){
           if (!selisihInput || !komisiEstimasi) return;
           const hargaNum = hargaMenangInput ? Number(onlyDigits(hargaMenangInput.value)) || 0 : 0;
           const gap      = Math.max(hargaNum - currentHargaLimit, 0);
+
           selisihInput.value = gap ? gap.toLocaleString('id-ID') : '';
-          komisiEstimasi.textContent = rupiah(gap);
-          if (kotorEstimasi) kotorEstimasi.textContent = rupiah(gap);
+
+          // THC & Kantor dari selisih harga
+          const komisiThc = Math.round(gap * THC_RATE);
+          const kantor    = Math.round(gap * KANTOR_RATE);
+
+          komisiEstimasi.textContent = rupiah(komisiThc);
+          if (kotorEstimasi) kotorEstimasi.textContent = rupiah(kantor);
+
           updateKenaikanPercent();
+          updateDetailPembagian(gap, 'price_gap');
         }
 
         function updateAllCalc(){
@@ -4116,9 +4328,10 @@ document.addEventListener('DOMContentLoaded', function () {
             }
           }
 
-          // reset skema, agent, kalkulasi, tab
+          // reset skema, agent, client, kalkulasi, tab, pembagian
           resetScheme();
           resetAgent();
+          resetClient();
           resetCalculation();
           activateTab('transaksi');
 
@@ -4222,6 +4435,20 @@ document.addEventListener('DOMContentLoaded', function () {
           });
         });
 
+        // === binding opsi Client ===
+        clientOptions.forEach(function(btn){
+          btn.addEventListener('click', function(e){
+            e.preventDefault();
+            const id      = this.dataset.id || '';
+            const name    = this.dataset.name || '';
+            const initial = (this.dataset.initial || '?').toUpperCase();
+
+            if (clientInput) clientInput.value = id;
+            if (clientLabel) clientLabel.textContent = name || 'Pilih Client';
+            if (clientAvatarBtn) clientAvatarBtn.textContent = initial;
+          });
+        });
+
         // === binding perhitungan harga & komisi / selisih ===
         if (hargaMenangInput) {
           hargaMenangInput.addEventListener('input', handleHargaMenangInput);
@@ -4255,6 +4482,9 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     })();
 </script>
+
+
+
 
 
 
