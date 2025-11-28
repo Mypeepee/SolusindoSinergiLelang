@@ -2393,7 +2393,7 @@ public function transaksiPropertyHistory(Request $request): View
     $history = \App\Models\Property::query()
         ->where('id_listing', '!=', $current->id_listing)
 
-        // sama-sama sertifikat (normalisasi) -> SHGB no 3166 tetap ketemu walau beda kapital / spasi
+        // sama-sama sertifikat (normalisasi)
         ->when($sertKey, function ($q) use ($sertKey) {
             $q->whereRaw(
                 "regexp_replace(lower(coalesce(sertifikat, '')), '[^a-z0-9]', '', 'g') = ?",
@@ -2406,7 +2406,7 @@ public function transaksiPropertyHistory(Request $request): View
             $q->where('luas', $current->luas);
         })
 
-        // kota sama (tanpa peduli kapital / spasi pinggir)
+        // kota sama
         ->when($current->kota, function ($q) use ($current) {
             $q->whereRaw('LOWER(TRIM(kota)) = ?', [strtolower(trim($current->kota))]);
         })
@@ -2425,22 +2425,135 @@ public function transaksiPropertyHistory(Request $request): View
         })
         ->values();
 
+    // 🔥 ambil nama CO PIC (agent) berdasarkan id_agent di semua row history
+    $agentNames = DB::table('agent')
+        ->whereIn('id_agent', $rows->pluck('id_agent')->filter()->unique())
+        ->pluck('nama', 'id_agent'); // hasil: [id_agent => 'Nama Agent']
+
     return view('partial.transaksi_property_history', [
-        'rows'    => $rows,
-        'current' => $current,
+        'rows'       => $rows,
+        'current'    => $current,
+        'agentNames' => $agentNames,
     ]);
 }
 
 public function updatetransaksi(Request $request)
 {
-    // sementara: cek aja apa yang terkirim
-    // dd($request->all());
+    // Validasi basic
+    $data = $request->validate([
+        'id_listing'      => 'required|integer|exists:property,id_listing',
+        'closing_type'    => 'required|in:profit,price_gap', // 'profit' / 'price_gap'
+        'id_agent'        => 'nullable|string',
+        'id_klien'        => 'nullable|string',
+        'harga_menang'    => 'required|string',   // masih format "4.000.000.000"
+        'komisi_persen'   => 'nullable|numeric',  // contoh: 5, 10
+        'status'          => 'nullable|string',
+        'tanggal_diupdate'=> 'required|date',     // tanggal closing (Y-m-d)
+    ]);
 
-    // nanti di sini logic:
-    // - kalau belum ada di tabel transaction -> insert
-    // - kalau sudah ada -> update status + tanggal_diupdate
+    // --- Ambil property untuk dapat harga_limit ---
+    /** @var \App\Models\Property $property */
+    $property = Property::findOrFail($data['id_listing']);
 
-    return back()->with('success', 'Status transaksi berhasil disimpan (dummy).');
+    $hargaMarkup = (float) ($property->harga ?? 0);
+    $hargaLimit  = $hargaMarkup > 0 ? round($hargaMarkup / 1.278) : 0;
+
+    // --- Normalisasi angka dari input harga_menang (hapus titik/koma dll) ---
+    $hargaBidding = (int) preg_replace('/[^\d]/', '', $data['harga_menang'] ?? '');
+    if ($hargaBidding <= 0) {
+        return back()->with('error', 'Harga menang tidak valid.')->withInput();
+    }
+
+    // --- Hitung selisih ---
+    $selisih = max($hargaBidding - $hargaLimit, 0);
+
+    // --- Map skema_komisi (label) dari closing_type ---
+    $closingType  = $data['closing_type']; // 'profit' / 'price_gap'
+    $skemaKomisi  = $closingType === 'price_gap'
+        ? 'Selisih harga'
+        : 'Persentase komisi';
+
+    // --- Persentase komisi (dalam bentuk 0.05) ---
+    $persentaseKomisi = null;
+    if ($closingType === 'profit') {
+        $rawPersen = $request->input('komisi_persen', 0);
+        // support "5" atau "5,5"
+        $rawPersen = str_replace(',', '.', (string) $rawPersen);
+        $angkaPersen = (float) $rawPersen;
+        $persentaseKomisi = $angkaPersen > 0 ? $angkaPersen / 100 : 0;
+    }
+
+    // --- Basis pendapatan ---
+    if ($closingType === 'price_gap') {
+        // basis = selisih harga
+        $basisPendapatan = $selisih;
+    } else {
+        // basis = harga_bidding * persen
+        $basisPendapatan = (int) round($hargaBidding * ($persentaseKomisi ?? 0));
+    }
+
+    // --- Ambil id_agent & id_klien ---
+    // Dari form kita sudah kirim id_agent = kode AGxxx, jadi langsung pakai
+    $idAgent = $data['id_agent'] ?: $property->id_agent;
+
+    // Client: id_klien = id_account user (dropdown)
+    $idKlien = $data['id_klien'] ?: null;
+
+    // --- Status & tanggal transaksi ---
+    $statusTransaksi   = $data['status'] ?: 'Closing';
+    $tanggalTransaksi  = $data['tanggal_diupdate']; // sudah format Y-m-d
+
+    // --- Generate ID transaksi kalau belum ada ---
+    $idTransaksi = $request->input('id_transaksi');
+
+    if (!$idTransaksi) {
+        // Ambil id_transaction terbesar yang sudah ada, contoh: TR0007
+        $lastId = Transaction::orderBy('id_transaction', 'desc')
+            ->value('id_transaction');
+
+        if (!$lastId) {
+            $nextNumber = 1;
+        } else {
+            // buang huruf, ambil angka di belakang TR
+            $num = (int) preg_replace('/\D/', '', $lastId);
+            $nextNumber = $num + 1;
+        }
+
+        // Format: TR0001 (4 digit)
+        $idTransaksi = 'TR' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+    }
+
+    // --- Siapkan payload untuk insert/update ---
+    $payload = [
+        'id_transaction'     => $idTransaksi,
+        'skema_komisi'       => $skemaKomisi,
+        'id_agent'           => $idAgent,
+        'id_klien'           => $idKlien,
+        'id_listing'         => $property->id_listing,
+        'harga_limit'        => $hargaLimit,
+        'harga_bidding'      => $hargaBidding,
+        'selisih'            => $selisih,
+        'persentase_komisi'  => $persentaseKomisi,
+        'basis_pendapatan'   => $basisPendapatan,
+        'status_transaksi'   => $statusTransaksi,
+        'tanggal_transaksi'  => $tanggalTransaksi,
+    ];
+
+    // --- Insert baru kalau belum ada, kalau sudah ada → update ---
+    $existing = Transaction::where('id_transaction', $idTransaksi)->first();
+
+    if ($existing) {
+        $existing->update($payload);
+    } else {
+        Transaction::create($payload);
+    }
+
+    return back()->with('success', 'Status transaksi berhasil disimpan.');
 }
+
+/**
+ * Generate ID transaksi dengan prefix TR + angka berurutan.
+ * Contoh: TR000001, TR000002, dst.
+ */
 
 }

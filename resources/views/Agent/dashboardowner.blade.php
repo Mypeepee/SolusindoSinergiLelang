@@ -3557,11 +3557,6 @@ document.addEventListener('DOMContentLoaded', function () {
                           </div>
                         </div>
 
-                        <div class="col-12 col-md-4">
-                          <div class="text-muted mb-1">CO PIC</div>
-                          <div class="fw-semibold" id="tc-copic-name">-</div>
-                        </div>
-
                       </div>
 
                       <hr class="tc-dash my-3">
@@ -4482,22 +4477,6 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     })();
 </script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         </div>
     </div>
