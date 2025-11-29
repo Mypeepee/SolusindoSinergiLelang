@@ -2953,30 +2953,472 @@ clearAllBtn?.addEventListener('click', clearAll);
         </div>
       </div>
 
-      {{-- 1/4 kanan: riwayat transaksi --}}
-      <div class="col-lg-3">
-        <div class="card shadow-sm border-0 mb-4">
-          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-semibold text-primary">📝 Riwayat Transaksi</h5>
-          </div>
-          <div class="card-body">
-            @if($transaksiHistory->isEmpty())
-              <p class="text-center text-muted mb-0">Belum ada riwayat transaksi.</p>
-            @else
-              <ul class="list-group list-group-flush small" style="max-height: 360px; overflow:auto;">
-                @foreach($transaksiHistory as $t)
-                  <li class="list-group-item">
-                    <strong>{{ \Carbon\Carbon::parse($t->tanggal_diupdate)->format('d M Y') }}</strong>
-                    ({{ $t->id_listing }})
-                    <span class="badge bg-secondary ms-1">{{ $t->status }}</span><br>
-                    <span class="text-muted">{{ $t->lokasi }}</span>
-                  </li>
-                @endforeach
-              </ul>
-            @endif
+{{-- 1/4 kanan: riwayat transaksi --}}
+<div class="col-lg-3">
+    <div class="card trx-history-card shadow-sm border-0 mb-4">
+      <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+          <span class="trx-status-dot"></span>
+          <div>
+            <h6 class="mb-0 fw-semibold text-danger">Riwayat Transaksi</h6>
+            <small class="text-muted">Update terakhir aktivitas closing</small>
           </div>
         </div>
+        <span class="badge bg-light text-muted border fw-normal small">
+          {{ $transaksiHistory->count() }} aktivitas
+        </span>
       </div>
+
+      <div class="card-body p-0">
+        @if($transaksiHistory->isEmpty())
+          <div class="p-4 text-center text-muted small">
+            <div class="empty-icon mb-2">📄</div>
+            Belum ada riwayat transaksi.
+          </div>
+        @else
+          <div class="trx-history-list">
+            @foreach($transaksiHistory as $t)
+              @php
+                $status      = $t->status ?? 'Closing';
+                $statusLower = strtolower($status);
+
+                $badgeClass = 'status-pill-muted';
+                if ($statusLower === 'closing') {
+                    $badgeClass = 'status-pill-primary';
+                } elseif (in_array($statusLower, ['kuitansi','kode billing'])) {
+                    $badgeClass = 'status-pill-info';
+                } elseif (in_array($statusLower, ['kutipan risalah lelang','akte grosse'])) {
+                    $badgeClass = 'status-pill-warning';
+                } elseif (in_array($statusLower, ['balik nama','eksekusi pengosongan'])) {
+                    $badgeClass = 'status-pill-success';
+                } elseif ($statusLower === 'selesai') {
+                    $badgeClass = 'status-pill-finish';
+                }
+
+                $fotoArray = array_values(array_filter(
+                    array_map('trim', explode(',', (string)($t->gambar ?? '')))
+                ));
+                $fotoUtama = $fotoArray[0] ?? '';
+                if ($fotoUtama !== '' && preg_match('~^https?://~i', $fotoUtama)) {
+                    $thumbSrc = $fotoUtama;
+                } elseif ($fotoUtama !== '') {
+                    $thumbSrc = asset(ltrim($fotoUtama, '/'));
+                } else {
+                    $thumbSrc = asset('img/placeholder.jpg');
+                }
+              @endphp
+
+              <div class="trx-history-item">
+                <div class="trx-history-left">
+                  <div class="trx-history-thumb">
+                    <img src="{{ $thumbSrc }}"
+                         alt="Property {{ $t->id_listing }}"
+                         loading="lazy">
+                  </div>
+
+                  <div class="trx-history-main">
+                    {{-- Baris: ID transaksi – nama agent --}}
+                    <div class="d-flex align-items-center gap-1 mb-1">
+                      <span class="trx-history-id">
+                        {{ $t->id_transaction ?? 'TR—' }}
+                      </span>
+                      @if(!empty($t->agent_nama))
+                        <span class="text-muted">•</span>
+                        <span class="trx-history-agent text-truncate">
+                          {{ $t->agent_nama }}
+                        </span>
+                      @endif
+                    </div>
+
+                    {{-- Baris: tanggal • #id listing (tanpa tulisan "ID Listing") --}}
+                    <div class="trx-history-meta mb-1">
+                      <span>{{ \Carbon\Carbon::parse($t->tanggal_diupdate)->format('d M Y') }}</span>
+                      <span class="mx-1">•</span>
+                      <span>#{{ $t->id_listing }}</span>
+                    </div>
+
+                    {{-- Harga bidding (kalau ada), fallback harga_limit --}}
+                    <div class="trx-history-amount mb-1">
+                      Rp {{ number_format($t->harga_bidding ?? $t->harga_limit ?? 0, 0, ',', '.') }}
+                    </div>
+
+                    {{-- Lokasi singkat --}}
+                    <div class="trx-history-location text-truncate">
+                      {{ $t->lokasi }}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="trx-history-right">
+                  <span class="trx-status-pill {{ $badgeClass }}">
+                    {{ $t->status }}
+                  </span>
+
+                  @php
+    $komisiPersen = '';
+
+    if (is_object($t) && property_exists($t, 'persentase_komisi') && $t->persentase_komisi !== null) {
+        // di DB disimpan 0.050000 → jadikan 5
+        $komisiPersen = (float) $t->persentase_komisi * 100;
+    }
+@endphp
+
+<button type="button"
+        class="btn btn-sm btn-outline-danger rounded-pill mt-2 trx-history-edit"
+        data-id-listing="{{ $t->id_listing }}"
+        data-id-transaksi="{{ $t->id_transaction ?? '' }}"
+        data-status="{{ $t->status ?? '' }}"
+        data-lokasi="{{ $t->lokasi }}"
+        data-tipe="{{ $t->tipe ?? '' }}"
+        data-harga-limit="{{ $t->harga_limit ?? 0 }}"
+        data-harga-menang="{{ $t->harga_bidding ?? 0 }}"
+        data-closing-type="{{ ($t->skema_komisi ?? '') === 'Selisih harga' ? 'price_gap' : 'profit' }}"
+        data-komisi-persen="{{ $komisiPersen }}"
+        data-biaya-balik-nama="{{ $t->biaya_baliknama ?? '' }}"
+        data-biaya-eksekusi="{{ $t->biaya_pengosongan ?? '' }}"
+        data-tanggal="{{ \Carbon\Carbon::parse($t->tanggal_transaksi ?? $t->tanggal_diupdate)->format('Y-m-d') }}"
+        data-id-agent="{{ $t->id_agent ?? '' }}"
+        data-id-klien="{{ $t->id_klien ?? '' }}"
+        data-gambar="{{ $t->gambar ?? '' }}"
+        data-photo="{{ $thumbSrc }}"
+        data-copic-name="{{ $t->agent_nama ?? '' }}">
+  Edit
+</button>
+
+
+
+                </div>
+              </div>
+            @endforeach
+          </div>
+        @endif
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      // Format angka → "1.500.000"
+      function formatRupiahFromNumber(value){
+        if (value === null || value === undefined || value === '') return '';
+        const n = Number(String(value).replace(/[^\d\-]/g,''));
+        if (isNaN(n)) return '';
+        return n.toLocaleString('id-ID');
+      }
+
+      // Isi semua field di modal dari data-* tombol Edit
+      function prefillClosingFormFromDataset(btn){
+        const ds = btn.dataset;
+
+        const inputIdListing   = document.getElementById('tc-id-listing');
+        const inputIdTrans     = document.getElementById('tc-id-transaksi');
+        const inputTgl         = document.getElementById('tc-tanggal');
+        const selectStatus     = document.getElementById('tc-status');
+        const inputClosingType = document.getElementById('tc-closing-type');
+        const hargaMenangInput = document.getElementById('tc-harga-menang');
+        const hargaLimitEl     = document.getElementById('tc-harga-limit');
+        const komisiInput      = document.getElementById('tc-komisi-persen');
+        const biayaBNInput     = document.getElementById('tc-biaya-balik-nama');
+        const biayaEksInput    = document.getElementById('tc-biaya-eksekusi');
+
+        // hidden: id listing & id transaksi
+        if (inputIdListing) inputIdListing.value = ds.idListing || '';
+        if (inputIdTrans)   inputIdTrans.value   = ds.idTransaksi || '';
+
+        // tanggal closing
+        if (inputTgl && ds.tanggal) {
+          inputTgl.value = ds.tanggal; // Y-m-d
+        }
+
+        // status transaksi
+        if (selectStatus && ds.status){
+          const opt = Array.from(selectStatus.options)
+            .find(o => o.value.toLowerCase() === ds.status.toLowerCase());
+          selectStatus.value = opt ? opt.value : 'Closing';
+        }
+
+        // === Skema komisi (persentase / selisih) ===
+        const closingType = ds.closingType || 'profit';
+        if (inputClosingType) inputClosingType.value = closingType;
+
+        const schemeBtn = document.querySelector(
+          '.tc-scheme-option[data-value="'+ closingType +'"]'
+        );
+        if (schemeBtn) {
+          schemeBtn.click(); // biar JS lama jalan: toggle UI + basis perhitungan
+        }
+
+        // === Harga Limit (label kiri) ===
+        if (hargaLimitEl) {
+          const limitText = formatRupiahFromNumber(ds.hargaLimit || '');
+          hargaLimitEl.textContent = 'Rp ' + (limitText || '0');
+        }
+
+        // === Harga Menang ===
+        if (hargaMenangInput && ds.hargaMenang) {
+          const hmText = formatRupiahFromNumber(ds.hargaMenang);
+          hargaMenangInput.value = hmText;
+          // panggil handler lama → hitung komisi, kantor, kenaikan dari limit
+          hargaMenangInput.dispatchEvent(new Event('input', { bubbles:true }));
+        }
+
+        // === Komisi (%) kalau mode profit ===
+        if (closingType === 'profit'
+            && komisiInput
+            && ds.komisiPersen !== undefined
+            && ds.komisiPersen !== '') {
+
+          komisiInput.value = ds.komisiPersen; // contoh: "5" atau "7.5"
+          komisiInput.dispatchEvent(new Event('input',  { bubbles:true }));
+          komisiInput.dispatchEvent(new Event('change', { bubbles:true }));
+        }
+
+        // === Biaya Balik Nama ===
+        if (biayaBNInput
+            && ds.biayaBalikNama !== undefined
+            && ds.biayaBalikNama !== '') {
+
+          biayaBNInput.value = formatRupiahFromNumber(ds.biayaBalikNama);
+          biayaBNInput.dispatchEvent(new Event('input', { bubbles:true }));
+        }
+
+        // === Biaya Eksekusi ===
+        if (biayaEksInput
+            && ds.biayaEksekusi !== undefined
+            && ds.biayaEksekusi !== '') {
+
+          biayaEksInput.value = formatRupiahFromNumber(ds.biayaEksekusi);
+          biayaEksInput.dispatchEvent(new Event('input', { bubbles:true }));
+        }
+
+        // === Pilih Agent (klik option dropdown) ===
+        if (ds.idAgent) {
+          const agBtn = document.querySelector(
+            '.tc-agent-option[data-id="'+ ds.idAgent +'"]'
+          );
+          if (agBtn) agBtn.click(); // sekalian set avatar & nama di header
+        }
+
+        // === Pilih Client ===
+        if (ds.idKlien) {
+          const clBtn = document.querySelector(
+            '.tc-client-option[data-id="'+ ds.idKlien +'"]'
+          );
+          if (clBtn) clBtn.click();
+        }
+      }
+
+      // Klik Edit di riwayat → buka modal + prefill
+      const editBtns = document.querySelectorAll('.trx-history-edit');
+      editBtns.forEach(function(btn){
+        btn.addEventListener('click', function(){
+
+          // Payload dasar untuk buka modal (handleTransaksiClosingClick sudah ada)
+          const payload = {
+            id_listing   : this.dataset.idListing,
+            id_transaksi : this.dataset.idTransaksi || null,
+            status       : this.dataset.status || null,
+            lokasi       : this.dataset.lokasi || '',
+            tipe         : this.dataset.tipe || '',
+            harga_limit  : Number(this.dataset.hargaLimit || 0),
+            gambar       : (this.dataset.gambar || '').trim(),
+            photo        : (this.dataset.photo  || '').trim(),
+            copic_name   : (this.dataset.copicName || '').trim()
+          };
+
+          // 1. Buka modal + set foto, ID, alamat, harga_limit (logika lama)
+          if (window.handleTransaksiClosingClick) {
+            try { window.handleTransaksiClosingClick(payload, this); }
+            catch(e){ console.error(e); }
+          }
+
+          // 2. Isi semua inputan dari data-* transaksi
+          prefillClosingFormFromDataset(this);
+        });
+      });
+    })();
+  </script>
+
+
+
+  <style>
+  .trx-history-card{
+    border-radius: 1.25rem;
+    overflow: hidden;
+  }
+
+  .trx-history-card .card-header{
+    border-bottom: 1px solid rgba(148,163,184,.25);
+  }
+
+  .trx-status-dot{
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    background: linear-gradient(135deg,#22c55e,#3b82f6);
+    box-shadow: 0 0 0 3px rgba(59,130,246,.25);
+    display:inline-block;
+  }
+
+  .trx-history-list{
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 0.75rem 0.75rem 0.9rem;
+  }
+  .trx-history-list::-webkit-scrollbar{
+    width: 5px;
+  }
+  .trx-history-list::-webkit-scrollbar-thumb{
+    background: rgba(148,163,184,.6);
+    border-radius: 999px;
+  }
+
+  /* CARD TRANSAKSI */
+  .trx-history-item{
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: .65rem;
+    padding: .75rem .9rem;
+    margin-bottom: .55rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(148,163,184,.35);
+    background: linear-gradient(120deg,#ecfdf3,#ffffff); /* hijau muda soft */
+    box-shadow: 0 6px 16px rgba(15,23,42,.03);
+    position: relative;
+    transition: all .18s ease-out;
+  }
+  .trx-history-item:hover{
+    box-shadow: 0 10px 24px rgba(15,23,42,.08);
+    transform: translateY(-1px);
+    border-color: rgba(22,163,74,.45);
+  }
+
+  /* LEFT SIDE */
+  .trx-history-left{
+    display:flex;
+    gap:.75rem;
+    min-width:0;
+  }
+
+  /* THUMB: kotak 1:1 */
+  .trx-history-thumb{
+    width:64px;
+    height:64px;
+    border-radius: 16px;
+    overflow:hidden;
+    flex-shrink:0;
+    background:#e5e7eb;
+  }
+  .trx-history-thumb img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+
+  .trx-history-main{
+    min-width:0;
+  }
+
+  .trx-history-id{
+    font-size: .78rem;
+    font-weight: 600;
+    color:#111827;
+    letter-spacing:.06em;
+  }
+
+  .trx-history-agent{
+    font-size: .78rem;
+    max-width: 130px;
+    color:#111827;
+    font-weight:500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .trx-history-meta{
+    font-size:.74rem;
+    color:#6b7280;
+  }
+
+  .trx-history-amount{
+    font-size:.95rem;
+    font-weight:700;
+    color:#0f172a;
+  }
+
+  .trx-history-location{
+    font-size:.72rem;
+    color:#6b7280;
+    text-transform: uppercase;
+    letter-spacing:.02em;
+  }
+
+  /* RIGHT SIDE */
+  .trx-history-right{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:.25rem;
+  }
+
+  .trx-status-pill{
+    padding: .18rem .7rem;
+    border-radius: 999px;
+    font-size: .7rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+    text-transform: capitalize;
+  }
+  .status-pill-primary{
+    background: rgba(248,113,113,.09);
+    border-color: rgba(239,68,68,.7);
+    color:#b91c1c;
+  }
+  .status-pill-info{
+    background: rgba(56,189,248,.1);
+    border-color: rgba(56,189,248,.7);
+    color:#0369a1;
+  }
+  .status-pill-warning{
+    background: rgba(234,179,8,.08);
+    border-color: rgba(234,179,8,.7);
+    color:#92400e;
+  }
+  .status-pill-success{
+    background: rgba(34,197,94,.08);
+    border-color: rgba(34,197,94,.7);
+    color:#166534;
+  }
+  .status-pill-finish{
+    background: rgba(22,163,74,.1);
+    border-color: rgba(22,163,74,.75);
+    color:#14532d;
+  }
+  .status-pill-muted{
+    background: rgba(148,163,184,.12);
+    border-color: rgba(148,163,184,.7);
+    color:#4b5563;
+  }
+
+  .trx-history-edit{
+    padding-inline: 1.1rem;
+    font-size:.75rem;
+  }
+
+  /* mobile */
+  @media (max-width: 991.98px){
+    .trx-history-card{
+      margin-top:.75rem;
+    }
+  }
+  </style>
+
+
+
     </div>
   </div>
 
@@ -3565,7 +4007,7 @@ document.addEventListener('DOMContentLoaded', function () {
                       <div class="tc-price-summary small pt-2 border-top-0">
                         <div class="row g-3 tc-summary-row">
                           <div class="col-12 col-md-4">
-                            <div class="text-muted mb-1" id="tc-komisi-label-summary">Perkiraan hasil komisi</div>
+                            <div class="text-muted mb-1" id="tc-komisi-label-summary">Komisi Agent</div>
                             <div class="fw-semibold" id="tc-komisi-estimasi">Rp 0</div>
                           </div>
                           <div class="col-12 col-md-4 tc-summary-extra" id="tc-kotor-wrapper">

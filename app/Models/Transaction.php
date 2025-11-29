@@ -41,6 +41,7 @@ class Transaction extends Model
         'rating',
         'comment',
         'catatan',
+        'kenaikan_dari_limit',
     ];
 
     // ================== RELATIONSHIPS ==================

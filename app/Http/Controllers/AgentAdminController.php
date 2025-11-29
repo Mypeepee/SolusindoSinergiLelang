@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Session;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Models\TransactionCommission;
 
 class AgentAdminController extends Controller
 {
@@ -937,17 +938,25 @@ $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar'
         }
 
         // Riwayat singkat (kanan): terakhir update transaksi
+        // Riwayat singkat (kanan): terakhir update transaksi
         $transaksiHistory = DB::table('transaction')
-            ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
-            ->select(
-                'transaction.id_listing',
-                'property.lokasi',
-                'transaction.status_transaksi as status',
-                'transaction.tanggal_diupdate'
-            )
-            ->orderBy('transaction.tanggal_diupdate', 'desc')
-            ->limit(15)
-            ->get();
+        ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
+        ->leftJoin('agent', 'transaction.id_agent', '=', 'agent.id_agent')
+        ->select(
+            'transaction.id_transaction',
+            'transaction.id_listing',
+            'transaction.harga_bidding',
+            'transaction.status_transaksi as status',
+            'transaction.tanggal_diupdate',
+            'property.lokasi',
+            'property.gambar',
+            'property.harga',
+            'agent.nama as closing_agent_name'
+        )
+        ->orderBy('transaction.tanggal_diupdate', 'desc')
+        ->limit(15)
+        ->get();
+
 
         $clientsDropdown = DB::table('account')
             ->where('roles', 'User')
@@ -2426,8 +2435,6 @@ public function transaksiList(Request $request)
     return view('partial.transaksi_list', compact('transaksiProperties'));
 }
 
-
-
 public function transaksiPropertyHistory(Request $request): View
 {
     $idListing = (int) $request->get('id_listing');
@@ -2621,8 +2628,235 @@ public function updatetransaksi(Request $request)
         Transaction::create($payload);
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    |  SINKRONISASI DETAIL PEMBAGIAN KE TABEL transaction_commissions
+    |--------------------------------------------------------------------------
+    |  - Basis = $basisPendapatan (fee / selisih harga)
+    |  - Skema pembagian mengikuti KONSTANTA yang sama seperti di JS
+    |  - COPIC: dibagi rata ke semua agent yang PERNAH pegang aset yg sama
+    |    (berdasarkan sertifikat + luas + kota), tanpa dobel kalau agent sama.
+    */
+
+    // Kalau basis 0, cukup hapus detail lama saja
+    TransactionCommission::where('id_transaction', $idTransaksi)->delete();
+
+    if ($basisPendapatan > 0) {
+
+        // --- 1. Konstanta skema (harus sama dengan JS) ---
+        $KOMISI_SCHEMA = [
+            ['kode' => 'UP1',       'rate' => 0.004000],
+            ['kode' => 'UP2',       'rate' => 0.003000],
+            ['kode' => 'UP3',       'rate' => 0.002000],
+            ['kode' => 'LISTER',    'rate' => 0.010000],
+            ['kode' => 'COPIC',     'rate' => 0.002500],
+            ['kode' => 'CONS',      'rate' => 0.008500],
+            ['kode' => 'REWARD',    'rate' => 0.030000],
+            ['kode' => 'INV_FUND',  'rate' => 0.020000],
+            ['kode' => 'PROMO_FUND','rate' => 0.020000],
+            ['kode' => 'PIC1',      'rate' => 0.040000],
+            ['kode' => 'PIC2',      'rate' => 0.040000],
+            ['kode' => 'PIC3',      'rate' => 0.040000],
+            ['kode' => 'PIC4',      'rate' => 0.040000],
+            ['kode' => 'PIC5',      'rate' => 0.040000],
+            ['kode' => 'THC',       'rate' => 0.400000],
+            ['kode' => 'SERVICE',   'rate' => 0.100000],
+            ['kode' => 'PRINC_FEE', 'rate' => 0.030000],
+            ['kode' => 'INV_SHARE', 'rate' => 0.095200],
+            ['kode' => 'MGMT_FUND', 'rate' => 0.059500],
+            ['kode' => 'EMP_INC',   'rate' => 0.015300],
+        ];
+
+        // mapping kode skema -> id_agent tetap (seperti di JS)
+        $KOMISI_KODE_TO_AGENT_ID = [
+            'LISTER'     => 'AG001',
+            'CONS'       => 'AG014',
+            'REWARD'     => 'AG006',
+            'INV_FUND'   => 'AG006',
+            'PROMO_FUND' => 'AG006',
+            'PIC1'       => 'AG006',
+            'PIC2'       => 'AG012',
+            'PIC3'       => 'AG008',
+            'PIC4'       => 'AG014',
+            'PIC5'       => 'AG009',
+            'SERVICE'    => 'AG006',
+            'PRINC_FEE'  => 'AG012',
+            'INV_SHARE'  => 'AG001',
+            'MGMT_FUND'  => 'AG006',
+            'EMP_INC'    => 'AG001',
+        ];
+
+        // --- 2. Hitung upline dari closing agent (sama seperti JS) ---
+        $getUplineId = function (?string $agentId, ?string $defaultId = null) {
+            if (!$agentId) {
+                return $defaultId;
+            }
+            // NOTE: ganti 'upline_id' kalau nama kolom di tabel agent berbeda
+            $up = DB::table('agent')
+                ->where('id_agent', $agentId)
+                ->value('upline_id');
+
+            if ($up && trim($up) !== '') {
+                return (string) $up;
+            }
+            return $defaultId;
+        };
+
+        $up1Id = $getUplineId($idAgent, 'AG006');    // default AG006 kalau tidak ada
+        $up2Id = $getUplineId($up1Id, 'AG001');      // default AG001
+        $up3Id = $getUplineId($up2Id, 'AG001');      // default AG001
+
+        // --- 3. Cari daftar agent COPIC dari sejarah aset yang sama ---
+        $copicAgentIds = [];
+
+        // normalisasi sertifikat: huruf + angka lowercase
+        $sertKey = null;
+        if (!empty($property->sertifikat)) {
+            $lower   = mb_strtolower($property->sertifikat, 'UTF-8');
+            $sertKey = preg_replace('/[^a-z0-9]/u', '', $lower);
+        }
+
+        $history = Property::query()
+            ->where('id_listing', '!=', $property->id_listing)
+            ->when($sertKey, function ($q) use ($sertKey) {
+                $q->whereRaw(
+                    "regexp_replace(lower(coalesce(sertifikat, '')), '[^a-z0-9]', '', 'g') = ?",
+                    [$sertKey]
+                );
+            })
+            ->when($property->luas, function ($q) use ($property) {
+                $q->where('luas', $property->luas);
+            })
+            ->when($property->kota, function ($q) use ($property) {
+                $q->whereRaw('LOWER(TRIM(kota)) = ?', [strtolower(trim($property->kota))]);
+            })
+            ->get();
+
+        $rows = collect([$property])->merge($history);
+
+        // Kumpulkan semua id_agent unik yang PERNAH pegang aset ini
+        $copicAgentIds = $rows->pluck('id_agent')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();    // contoh: ['AG001','AG002']
+
+        // --- 4. Susun map role -> daftar id_agent ---
+        $roleAgentMap = [];
+
+        // THC = agent closing
+        if ($idAgent) {
+            $roleAgentMap['THC'] = [$idAgent];
+        }
+
+        // Upline
+        if ($up1Id) {
+            $roleAgentMap['UP1'] = [$up1Id];
+        }
+        if ($up2Id) {
+            $roleAgentMap['UP2'] = [$up2Id];
+        }
+        if ($up3Id) {
+            $roleAgentMap['UP3'] = [$up3Id];
+        }
+
+        // Static mapping (LISTER, CONS, PIC1.., office funds, dll)
+        foreach ($KOMISI_KODE_TO_AGENT_ID as $kode => $agentStaticId) {
+            if ($agentStaticId) {
+                $roleAgentMap[$kode] = [$agentStaticId];
+            }
+        }
+
+        // COPIC: semua agent unik dari aset yang sama
+        if (!empty($copicAgentIds)) {
+            $roleAgentMap['COPIC'] = $copicAgentIds;
+        }
+
+        // Pastikan tiap list unik & tidak kosong
+        foreach ($roleAgentMap as $kode => $ids) {
+            $ids = array_filter($ids);
+            $ids = array_values(array_unique($ids));
+            if (empty($ids)) {
+                unset($roleAgentMap[$kode]);
+            } else {
+                $roleAgentMap[$kode] = $ids;
+            }
+        }
+
+        // --- 5. Insert ke transaction_commissions ---
+        foreach ($KOMISI_SCHEMA as $item) {
+            $kode = $item['kode'];
+            $rate = (float) $item['rate'];
+
+            // Kalau tidak ada agent untuk kode ini, skip
+            if (!isset($roleAgentMap[$kode]) || empty($roleAgentMap[$kode])) {
+                continue;
+            }
+
+            $agents = $roleAgentMap[$kode];
+
+            if ($kode === 'COPIC') {
+                // COPIC 0.25% dibagi rata ke semua agent COPIC
+                $count = count($agents);
+                if ($count < 1) {
+                    continue;
+                }
+                $perRate = $rate / $count;
+
+                foreach ($agents as $agId) {
+                    $pendapatan = (int) round($basisPendapatan * $perRate);
+                    if ($pendapatan <= 0) {
+                        continue;
+                    }
+
+                    TransactionCommission::create([
+                        'id_transaction' => $idTransaksi,
+                        'role'           => $kode,
+                        'id_agent'       => $agId,
+                        'pendapatan'     => $pendapatan,
+                    ]);
+                }
+            } else {
+                // Kode lain: masing2 agent (biasanya cuma 1) dapat full rate
+                foreach ($agents as $agId) {
+                    $pendapatan = (int) round($basisPendapatan * $rate);
+                    if ($pendapatan <= 0) {
+                        continue;
+                    }
+
+                    TransactionCommission::create([
+                        'id_transaction' => $idTransaksi,
+                        'role'           => $kode,
+                        'id_agent'       => $agId,
+                        'pendapatan'     => $pendapatan,
+                    ]);
+                }
+            }
+        }
+
+        // --- 6. Update status property & listing similar menjadi 'Terjual' ---
+        //    - current listing
+        //    - semua listing lain yg similar (sertifikat + luas + kota)
+        $similarListingIds = $rows
+            ->pluck('id_listing')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all(); // contoh: [300, 400, 58183]
+
+        if (!empty($similarListingIds)) {
+            Property::whereIn('id_listing', $similarListingIds)
+                ->update([
+                    'status'          => 'Terjual',
+                    'tanggal_diupdate'=> now(),
+                ]);
+        }
+    }
+
     return back()->with('success', 'Status transaksi berhasil disimpan.');
 }
+
+
 
 
 /**
