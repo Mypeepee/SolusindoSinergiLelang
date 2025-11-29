@@ -879,6 +879,63 @@ $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar'
                 ['tab'=>'transaksi']
             ));
 
+        // 🔥🔥 COPIC MAP: id_listing -> daftar agent yang pernah pegang aset yang sama (untuk bagi CO PIC 0.25%)
+        $copicAgentsMap = [];
+
+        if ($transaksiProperties->count() > 0) {
+            foreach ($transaksiProperties as $p) {
+                /** @var \App\Models\Property|null $current */
+                $current = \App\Models\Property::find((int) $p->id_listing);
+                if (!$current) {
+                    continue;
+                }
+
+                // --- Normalisasi sertifikat: huruf + angka saja, lowercase ---
+                $sertKey = null;
+                if (!empty($current->sertifikat)) {
+                    $lower  = mb_strtolower($current->sertifikat, 'UTF-8');
+                    $sertKey = preg_replace('/[^a-z0-9]/u', '', $lower);
+                }
+
+                // --- Ambil semua listing lain dengan aset yang sama ---
+                $history = \App\Models\Property::query()
+                    ->where('id_listing', '!=', $current->id_listing)
+                    ->when($sertKey, function ($q) use ($sertKey) {
+                        $q->whereRaw(
+                            "regexp_replace(lower(coalesce(sertifikat, '')), '[^a-z0-9]', '', 'g') = ?",
+                            [$sertKey]
+                        );
+                    })
+                    ->when($current->luas, function ($q) use ($current) {
+                        $q->where('luas', $current->luas);
+                    })
+                    ->when($current->kota, function ($q) use ($current) {
+                        $q->whereRaw('LOWER(TRIM(kota)) = ?', [strtolower(trim($current->kota))]);
+                    })
+                    ->get();
+
+                // gabungkan current + history
+                $rows = collect([$current])->merge($history);
+
+                // kumpulkan semua id_agent unik yang pernah pegang aset ini
+                $agentIds = $rows->pluck('id_agent')->filter()->unique()->values();
+                if ($agentIds->isEmpty()) {
+                    continue;
+                }
+
+                // ambil nama agent
+                $agentNames = DB::table('agent')
+                    ->whereIn('id_agent', $agentIds->all())
+                    ->pluck('nama', 'id_agent')
+                    ->toArray();
+
+                $copicAgentsMap[$current->id_listing] = [
+                    'ids'   => $agentIds->all(),             // contoh: ['AG003','AG001','AG008']
+                    'names' => array_values($agentNames),    // contoh: ['Jason ...','Lie Ming', ...]
+                ];
+            }
+        }
+
         // Riwayat singkat (kanan): terakhir update transaksi
         $transaksiHistory = DB::table('transaction')
             ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
@@ -1118,10 +1175,10 @@ $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar'
             'tab'                 => $tab,
             'exportProperties'    => $exportProperties,
             'events'              => $eventsFormatted,
+            // 🔥 kirim map COPIC ke Blade (id_listing => ['ids'=>[],'names'=>[]])
+            'copicAgentsMap'      => $copicAgentsMap,
         ]);
     }
-
-
 
 
 
@@ -2441,14 +2498,16 @@ public function updatetransaksi(Request $request)
 {
     // Validasi basic
     $data = $request->validate([
-        'id_listing'      => 'required|integer|exists:property,id_listing',
-        'closing_type'    => 'required|in:profit,price_gap', // 'profit' / 'price_gap'
-        'id_agent'        => 'nullable|string',
-        'id_klien'        => 'nullable|string',
-        'harga_menang'    => 'required|string',   // masih format "4.000.000.000"
-        'komisi_persen'   => 'nullable|numeric',  // contoh: 5, 10
-        'status'          => 'nullable|string',
-        'tanggal_diupdate'=> 'required|date',     // tanggal closing (Y-m-d)
+        'id_listing'       => 'required|integer|exists:property,id_listing',
+        'closing_type'     => 'required|in:profit,price_gap', // 'profit' / 'price_gap'
+        'id_agent'         => 'nullable|string',
+        'id_klien'         => 'nullable|string',
+        'harga_menang'     => 'required|string',   // masih format "4.000.000.000"
+        'komisi_persen'    => 'nullable|numeric',  // contoh: 5, 10
+        'status'           => 'nullable|string',
+        'tanggal_diupdate' => 'required|date',     // tanggal closing (Y-m-d)
+        'biaya_balik_nama' => 'nullable|string',  // ← NEW: dari input modal
+        'biaya_eksekusi'   => 'nullable|string',  // ← NEW: dari input modal
     ]);
 
     // --- Ambil property untuk dapat harga_limit ---
@@ -2466,6 +2525,16 @@ public function updatetransaksi(Request $request)
 
     // --- Hitung selisih ---
     $selisih = max($hargaBidding - $hargaLimit, 0);
+
+    // --- Hitung kenaikan_dari_limit (persentase) ---
+    $kenaikanDariLimit = 0;
+    if ($hargaLimit > 0 && $selisih > 0) {
+        $kenaikanDariLimit = round(($selisih / $hargaLimit) * 100, 2); // contoh: 15.25 (%)
+    }
+
+    // --- Normalisasi biaya balik nama & biaya pengosongan (eksekusi) ---
+    $biayaBalikNama = (int) preg_replace('/[^\d]/', '', $data['biaya_balik_nama'] ?? '');
+    $biayaPengosongan = (int) preg_replace('/[^\d]/', '', $data['biaya_eksekusi'] ?? '');
 
     // --- Map skema_komisi (label) dari closing_type ---
     $closingType  = $data['closing_type']; // 'profit' / 'price_gap'
@@ -2525,18 +2594,22 @@ public function updatetransaksi(Request $request)
 
     // --- Siapkan payload untuk insert/update ---
     $payload = [
-        'id_transaction'     => $idTransaksi,
-        'skema_komisi'       => $skemaKomisi,
-        'id_agent'           => $idAgent,
-        'id_klien'           => $idKlien,
-        'id_listing'         => $property->id_listing,
-        'harga_limit'        => $hargaLimit,
-        'harga_bidding'      => $hargaBidding,
-        'selisih'            => $selisih,
-        'persentase_komisi'  => $persentaseKomisi,
-        'basis_pendapatan'   => $basisPendapatan,
-        'status_transaksi'   => $statusTransaksi,
-        'tanggal_transaksi'  => $tanggalTransaksi,
+        'id_transaction'      => $idTransaksi,
+        'skema_komisi'        => $skemaKomisi,
+        'id_agent'            => $idAgent,
+        'id_klien'            => $idKlien,
+        'id_listing'          => $property->id_listing,
+        'harga_limit'         => $hargaLimit,
+        'harga_bidding'       => $hargaBidding,
+        'selisih'             => $selisih,
+        'persentase_komisi'   => $persentaseKomisi,
+        'basis_pendapatan'    => $basisPendapatan,
+        'status_transaksi'    => $statusTransaksi,
+        'tanggal_transaksi'   => $tanggalTransaksi,
+        // NEW COLUMNS:
+        'kenaikan_dari_limit' => $kenaikanDariLimit, // dalam persen (misal 12.5)
+        'biaya_baliknama'     => $biayaBalikNama,
+        'biaya_pengosongan'   => $biayaPengosongan,
     ];
 
     // --- Insert baru kalau belum ada, kalau sudah ada → update ---
@@ -2550,6 +2623,7 @@ public function updatetransaksi(Request $request)
 
     return back()->with('success', 'Status transaksi berhasil disimpan.');
 }
+
 
 /**
  * Generate ID transaksi dengan prefix TR + angka berurutan.

@@ -3606,7 +3606,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <th class="text-start">Pos</th>
                                 <th class="text-end">Porsi</th>
                                 <th class="text-end">Nominal</th>
-                                <th class="text-center">Kategori</th>
+                                <th class="text-center">Nama Agent</th>
                               </tr>
                             </thead>
                             <tbody id="tc-pembagian-body">
@@ -3884,8 +3884,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     .tc-pembagian-table th,
     .tc-pembagian-table td{
-      font-size:.78rem;
-      padding:.25rem .4rem;
+      font-size。.78rem;
+      padding。.25rem .4rem;
     }
     /* ===== SCROLL UNTUK DETAIL PEMBAGIAN ===== */
     .tc-pembagian .table-responsive{
@@ -3958,6 +3958,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   </script>
 
+@php
+  // Ambil mapping upline langsung di Blade (id_agent => upline_id)
+  $allAgentsForUpline = \DB::table('agent')
+      ->select('id_agent','upline_id')
+      ->get();
+  $agentUplineMap = $allAgentsForUpline->pluck('upline_id','id_agent');
+@endphp
+
 <script>
     (function(){
       const PLACEHOLDER = "{{ asset('img/placeholder.jpg') }}";
@@ -3995,6 +4003,42 @@ document.addEventListener('DOMContentLoaded', function () {
         'PIC1','REWARD','INV_FUND','PROMO_FUND','LISTER'
       ];
 
+      // mapping kode skema -> id_agent (dari pesanmu)
+      const KOMISI_KODE_TO_AGENT_ID = {
+        LISTER:     'AG001',
+        CONS:       'AG014',
+        REWARD:     'AG006',
+        INV_FUND:   'AG006',
+        PROMO_FUND: 'AG006',
+        PIC1:       'AG006',
+        PIC2:       'AG012',
+        PIC3:       'AG008',
+        PIC4:       'AG014',
+        PIC5:       'AG009',
+        SERVICE:    'AG006',
+        PRINC_FEE:  'AG012',
+        INV_SHARE:  'AG001',
+        MGMT_FUND:  'AG006',
+        EMP_INC:    'AG001',
+      };
+
+      // map id_agent -> nama (data agent aktif)
+      const AGENT_NAME_MAP   = @json($performanceAgents->pluck('nama','id_agent'));
+      // map id_agent -> upline_id (semua agent, dipakai untuk UP1/2/3)
+      const AGENT_UPLINE_MAP = @json($agentUplineMap);
+      // 🔥 map COPIC dari controller: id_listing -> { ids: [...], names: [...] }
+      const COPIC_AGENTS_MAP = @json($copicAgentsMap ?? []);
+      const GLOBAL_COPIC_MAP = COPIC_AGENTS_MAP || {};
+
+      // kode yang selalu tampil 2 angka desimal (sudah betul + COPIC & CONS)
+      const FIXED_TWO_DECIMAL_CODES = ['INV_SHARE','MGMT_FUND','EMP_INC','COPIC','CONS'];
+
+      // kode yang badge di Pos pakai label penuh
+      const FULL_LABEL_BADGE_CODES = [
+        'REWARD','INV_FUND','PROMO_FUND',
+        'SERVICE','PRINC_FUND','INV_SHARE','MGMT_FUND','EMP_INC'
+      ];
+
       function rupiah(x){
         const n = Number(x || 0);
         return 'Rp ' + n.toLocaleString('id-ID');
@@ -4002,6 +4046,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
       function onlyDigits(str){
         return (str || '').replace(/[^\d]/g,'');
+      }
+
+      // 🔧 BERSIHKAN NAMA COPIC (hilangkan "Lelang ke-2 ID..." dll)
+      function cleanCopicName(raw){
+        if (!raw) return '';
+        let s = String(raw).replace(/\s+/g,' ').trim();
+        if (!s) return '';
+
+        let upper = s.toUpperCase();
+        const stops = [
+          ' LELANG', ' ID:', ' ID ', ' TANGGAL',
+          ' HARGA LIMIT', ' HARGA ', ' CO PIC:'
+        ];
+        let cutPos = s.length;
+        stops.forEach(function(sw){
+          const idx = upper.indexOf(sw);
+          if (idx !== -1 && idx < cutPos) {
+            cutPos = idx;
+          }
+        });
+        s = s.substring(0, cutPos).trim();
+        // buang titik/koma di akhir
+        s = s.replace(/[.,;:]+$/,'').trim();
+        return s;
       }
 
       function setup(){
@@ -4018,9 +4086,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const inputTgl    = document.getElementById('tc-tanggal');
         const photoEl     = document.getElementById('tc-photo');
 
-        let currentHargaLimit = 0;
-        let currentCopicName  = '-';
-        let loadedHistoryForId = null;
+        let currentHargaLimit    = 0;
+        let currentCopicName     = '-';
+        let currentCopicAgents   = []; // daftar nama CO PIC (bisa >1, unik)
+        let loadedHistoryForId   = null;
+        let biayaBalikNamaManual = false;
+        let currentClosingAgentName = ''; // nama agent yang closing (untuk THC)
+        let currentClosingAgentId   = ''; // id_agent yang closing (untuk UP1/2/3)
+
+        // nama agent untuk UP1/UP2/UP3 (ditentukan dari upline)
+        let up1AgentName = '';
+        let up2AgentName = '';
+        let up3AgentName = '';
 
         // elemen custom skema closing
         const schemeInput = document.getElementById('tc-closing-type');
@@ -4070,6 +4147,41 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!overlay || !form) return;
 
+        // ==== HELPER UNTUK UPLINE ====
+        function resolveAgentNameById(agentId){
+          if (!agentId) return '';
+          if (!AGENT_NAME_MAP) return '';
+          return AGENT_NAME_MAP[agentId] || '';
+        }
+
+        function getUplineId(agentId, defaultId){
+          if (!agentId) return defaultId || null;
+          if (!AGENT_UPLINE_MAP) return defaultId || null;
+          const up = AGENT_UPLINE_MAP[agentId];
+          if (up && String(up).trim() !== '') {
+            return String(up);
+          }
+          return defaultId || null;
+        }
+
+        function recomputeUplineNames(){
+          if (!currentClosingAgentId) {
+            up1AgentName = '';
+            up2AgentName = '';
+            up3AgentName = '';
+            return;
+          }
+
+          const up1Id = getUplineId(currentClosingAgentId, 'AG006');
+          const up2Id = getUplineId(up1Id, 'AG001');
+          const up3Id = getUplineId(up2Id, 'AG001');
+
+          up1AgentName = resolveAgentNameById(up1Id);
+          up2AgentName = resolveAgentNameById(up2Id);
+          up3AgentName = resolveAgentNameById(up3Id);
+        }
+        // =============================
+
         function resetPembagian(){
           if (baseLabelEl)   baseLabelEl.textContent   = 'Basis pembagian akan muncul setelah Anda mengisi harga & komisi.';
           if (baseNominalEl) baseNominalEl.textContent = 'Rp 0';
@@ -4095,7 +4207,11 @@ document.addEventListener('DOMContentLoaded', function () {
           if (agentAvatarBtn) agentAvatarBtn.textContent = '?';
           if (agentPrevName) agentPrevName.textContent = 'Belum dipilih';
           if (agentPrevAvatar) agentPrevAvatar.textContent = '?';
-          // CO PIC akan diset dari payload, jadi di sini tidak disentuh
+          currentClosingAgentName = '';
+          currentClosingAgentId   = '';
+          up1AgentName = '';
+          up2AgentName = '';
+          up3AgentName = '';
         }
 
         function resetClient(){
@@ -4113,6 +4229,7 @@ document.addEventListener('DOMContentLoaded', function () {
           if (kenaikanPersenEl) kenaikanPersenEl.textContent = '0';
           if (biayaBalikNamaInput) biayaBalikNamaInput.value = '';
           if (biayaEksekusiInput) biayaEksekusiInput.value = '';
+          biayaBalikNamaManual = false;
           resetPembagian();
         }
 
@@ -4128,6 +4245,55 @@ document.addEventListener('DOMContentLoaded', function () {
           const pctRounded = Math.round(pct * 10) / 10;
           kenaikanPersenEl.textContent = pctRounded.toLocaleString('id-ID');
         }
+
+        // ==== AMBIL COPIC DARI TEKS "CO PIC:" DI RIWAYAT LELANG ====
+        function refreshCopicAgentsFromHistory(){
+          if (!propertyPanel) return;
+
+          const found = [];
+
+          const nodes = propertyPanel.querySelectorAll('*');
+          nodes.forEach(function(el){
+            const text = (el.textContent || '').trim();
+            if (!text) return;
+
+            const upper = text.toUpperCase();
+            const marker = 'CO PIC:';
+            const idx = upper.indexOf(marker);
+            if (idx === -1) return;
+
+            // ambil substring setelah "CO PIC:"
+            let raw = text.substring(idx + marker.length).trim();
+            const name = cleanCopicName(raw);
+            if (!name) return;
+            if (name === '-' || name === '–') return;
+
+            found.push(name);
+          });
+
+          // tambahkan juga COPIC listing sekarang (kalau ada)
+          const cleanedCurrent = cleanCopicName(currentCopicName);
+          if (cleanedCurrent && cleanedCurrent !== '-' && cleanedCurrent !== '–') {
+            found.push(cleanedCurrent);
+          }
+
+          // unikkan berdasarkan versi lowercase + single space
+          const seen = new Set();
+          const uniq = [];
+          found.forEach(function(n){
+            const key = n.replace(/\s+/g,' ').trim().toLowerCase();
+            if (!key || seen.has(key)) return;
+            seen.add(key);
+            uniq.push(n.replace(/\s+/g,' ').trim());
+          });
+
+          if (uniq.length > 0) {
+            currentCopicAgents = uniq;
+            console.log('DEBUG COPIC agents from history (clean):', currentCopicAgents);
+            updateAllCalc();
+          }
+        }
+        // ================================================================
 
         // Update panel "Detail Pembagian" dari baseAmount
         function updateDetailPembagian(baseAmount, mode){
@@ -4147,18 +4313,114 @@ document.addEventListener('DOMContentLoaded', function () {
 
           let html = '';
           KOMISI_SCHEMA.forEach(function(item){
-            const nominal = Math.round(baseAmount * item.rate);
+
+            const isCopic  = (item.kode === 'COPIC');
             const isKantor = KANTOR_CODES.indexOf(item.kode) !== -1;
+
+            // ===== KHUSUS COPIC: bisa banyak agent & 0,25% dibagi rata =====
+            if (isCopic) {
+              let agents = currentCopicAgents && currentCopicAgents.length
+                ? currentCopicAgents
+                : (cleanCopicName(currentCopicName) && currentCopicName !== '-' && currentCopicName !== '–'
+                    ? [cleanCopicName(currentCopicName)]
+                    : []);
+
+              if (agents.length > 0) {
+                const totalRate = item.rate;         // 0.0025
+                const perRate   = totalRate / agents.length;
+
+                const posHtml =
+                  '<span class="badge bg-light text-muted border me-1">' +
+                    item.kode +
+                  '</span>' +
+                  '<span>' + item.label + '</span>';
+
+                agents.forEach(function(agentNameRaw){
+                  const agentName = cleanCopicName(agentNameRaw) || '-';
+
+                  const nominal = Math.round(baseAmount * perRate);
+
+                  let rawPercent = perRate * 100;
+                  let percentText = rawPercent.toFixed(2);
+                  percentText = percentText.replace('.',',') + '%';
+
+                  html += '<tr>' +
+                    '<td class="text-start">' + posHtml + '</td>' +
+                    '<td class="text-end">' + percentText + '</td>' +
+                    '<td class="text-end">' + rupiah(nominal) + '</td>' +
+                    '<td class="text-center small text-muted">' + agentName + '</td>' +
+                  '</tr>';
+                });
+
+                return; // skip logika default
+              }
+              // kalau tidak ada agent COPIC sama sekali, jatuh ke logika default di bawah
+            }
+            // ===== END KHUSUS COPIC =====
+
+            const nominal = Math.round(baseAmount * item.rate);
+
+            // format persen dinamis
+            const rawPercent = item.rate * 100;
+            let percentText;
+
+            if (FIXED_TWO_DECIMAL_CODES.indexOf(item.kode) !== -1) {
+              percentText = rawPercent.toFixed(2);
+            } else {
+              const rounded = Math.round(rawPercent * 10) / 10;
+              if (Number.isInteger(rounded)) {
+                percentText = rounded.toFixed(0);
+              } else {
+                percentText = rounded.toString();
+              }
+            }
+            percentText = percentText.replace('.',',') + '%';
+
+            // nama agent dari mapping / agent closing (THC & UP1/UP2/UP3)
+            let agentName = '';
+            if (item.kode === 'THC') {
+              agentName = currentClosingAgentName || '';
+            } else if (item.kode === 'UP1') {
+              agentName = up1AgentName || '';
+            } else if (item.kode === 'UP2') {
+              agentName = up2AgentName || '';
+            } else if (item.kode === 'UP3') {
+              agentName = up3AgentName || '';
+            } else {
+              const agentId = KOMISI_KODE_TO_AGENT_ID[item.kode];
+              if (agentId && AGENT_NAME_MAP && AGENT_NAME_MAP[agentId]) {
+                agentName = AGENT_NAME_MAP[agentId];
+              }
+            }
+            if (!agentName) {
+              agentName = isKantor ? 'Kantor' : '-';
+            }
+
+            // tampilan badge Pos
+            let posHtml = '';
+            if (FULL_LABEL_BADGE_CODES.indexOf(item.kode) !== -1) {
+              posHtml =
+                '<span class="badge bg-light text-muted border me-1">' +
+                  item.label +
+                '</span>';
+            } else {
+              posHtml =
+                '<span class="badge bg-light text-muted border me-1">' +
+                  item.kode +
+                '</span>' +
+                '<span>' + item.label + '</span>';
+            }
+
+            const agentClass = isKantor ? 'text-success' : 'text-muted';
 
             html += '<tr>' +
               '<td class="text-start">' +
-                '<span class="badge bg-light text-muted border me-1">' + item.kode + '</span>' +
-                '<span>' + item.label + '</span>' +
+                posHtml +
               '</td>' +
-              '<td class="text-end">' + (item.rate * 100).toFixed(2).replace('.',',') + '%</td>' +
+              '<td class="text-end">' + percentText + '</td>' +
               '<td class="text-end">' + rupiah(nominal) + '</td>' +
-              '<td class="text-center small ' + (isKantor ? 'text-success' : 'text-muted') + '">' +
-                (isKantor ? 'Kantor' : 'Lainnya') +
+              '<td class="text-center small ' + agentClass + '">' +
+                agentName +
               '</td>' +
             '</tr>';
           });
@@ -4172,10 +4434,8 @@ document.addEventListener('DOMContentLoaded', function () {
           const persenRaw= komisiPersenInput ? (komisiPersenInput.value || '') : '';
           const persen   = parseFloat(persenRaw.replace(',','.')) || 0;
 
-          // base fee (komisi kotor)
           const fee = Math.round(hargaNum * persen / 100);
 
-          // THC & Kantor berdasarkan skema
           const komisiThc = Math.round(fee * THC_RATE);
           const kantor    = Math.round(fee * KANTOR_RATE);
 
@@ -4193,7 +4453,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
           selisihInput.value = gap ? gap.toLocaleString('id-ID') : '';
 
-          // THC & Kantor dari selisih harga
           const komisiThc = Math.round(gap * THC_RATE);
           const kantor    = Math.round(gap * KANTOR_RATE);
 
@@ -4224,6 +4483,13 @@ document.addEventListener('DOMContentLoaded', function () {
           const num = Number(raw);
           hargaMenangInput.value = num.toLocaleString('id-ID');
           updateAllCalc();
+
+          if (biayaBalikNamaInput && !biayaBalikNamaManual) {
+            const autoBN = Math.round(num * 0.085) + 7000000;
+            biayaBalikNamaInput.value = autoBN
+              ? autoBN.toLocaleString('id-ID')
+              : '';
+          }
         }
 
         function handleKomisiInput(){
@@ -4252,13 +4518,13 @@ document.addEventListener('DOMContentLoaded', function () {
           updateAllCalc();
         }
 
-        // --- loader history untuk tab Informasi Properti ---
+        // loader history untuk tab Informasi Properti
         function loadPropertyHistoryIfNeeded(){
           if (!propertyPanel || !PROPERTY_HISTORY_ROUTE) return;
           const idListing = inputId ? (inputId.value || '') : '';
           if (!idListing) return;
 
-          if (loadedHistoryForId === idListing) return; // sudah pernah load
+          if (loadedHistoryForId === idListing) return;
 
           loadedHistoryForId = idListing;
           propertyPanel.innerHTML = '<div class="small text-muted">Memuat riwayat properti...</div>';
@@ -4269,6 +4535,7 @@ document.addEventListener('DOMContentLoaded', function () {
           .then(function(res){ return res.text(); })
           .then(function(html){
             propertyPanel.innerHTML = html || '<div class="small text-muted">Riwayat tidak ditemukan.</div>';
+            refreshCopicAgentsFromHistory();
           })
           .catch(function(err){
             console.error('Gagal memuat history properti:', err);
@@ -4294,25 +4561,39 @@ document.addEventListener('DOMContentLoaded', function () {
         function openModal(payload){
           console.log('DEBUG OPEN MODAL payload:', payload);
 
-          // harga limit numeric
-          currentHargaLimit = Number(payload.harga_limit || 0);
-          currentCopicName  = payload.copic_name || '-';
-          loadedHistoryForId = null; // reset, supaya history di-load ulang untuk ID ini
+          currentHargaLimit    = Number(payload.harga_limit || 0);
+          currentCopicName     = cleanCopicName(payload.copic_name || '-');
+          currentCopicAgents   = [];
+          loadedHistoryForId   = null;
 
-          // teks kiri
+          if (currentCopicName && currentCopicName !== '-' && currentCopicName !== '–') {
+            currentCopicAgents = [currentCopicName];
+          }
+
+          // override pakai map COPIC dari controller (kalau ada)
+          try {
+            const key     = String(payload.id_listing || '').trim();
+            const mapData = GLOBAL_COPIC_MAP[key] || null;
+            if (mapData && Array.isArray(mapData.names) && mapData.names.length > 0) {
+              currentCopicAgents = mapData.names
+                .map(cleanCopicName)
+                .filter(Boolean);
+            }
+            console.log('DEBUG COPIC from map for listing', key, '=>', currentCopicAgents);
+          } catch (e) {
+            console.error('Error baca GLOBAL_COPIC_MAP untuk COPIC:', e);
+          }
+
           summaryId.textContent  = 'ID : ' + (payload.id_listing || '-');
           summaryLok.textContent = 'Alamat : ' + (payload.lokasi || 'Lokasi belum tersedia');
 
-          // harga limit (display)
           if (hargaLimitEl) {
             hargaLimitEl.textContent = rupiah(currentHargaLimit);
           }
 
-          // hidden
           inputId.value  = payload.id_listing || '';
           inputTrx.value = payload.id_transaksi || '';
 
-          // status dropdown (walaupun hidden, tetap set nilai)
           if (inputStatus) {
             if (payload.status) {
               const opt = Array.from(inputStatus.options)
@@ -4323,32 +4604,30 @@ document.addEventListener('DOMContentLoaded', function () {
             }
           }
 
-          // reset skema, agent, client, kalkulasi, tab, pembagian
           resetScheme();
           resetAgent();
           resetClient();
           resetCalculation();
           activateTab('transaksi');
 
-          // reset isi tab property jadi placeholder dulu
           if (propertyPanel) {
             propertyPanel.innerHTML = '<div class="small text-muted">Klik "Informasi Properti" untuk melihat riwayat lelang.</div>';
           }
 
-          // set CO PIC dari payload
           if (copicNameEl) {
-            copicNameEl.textContent = currentCopicName || '-';
+            if (currentCopicAgents && currentCopicAgents.length > 0) {
+              copicNameEl.textContent = currentCopicAgents.join(', ');
+            } else {
+              copicNameEl.textContent = currentCopicName || '-';
+            }
           }
 
-          // tanggal default hari ini
           const today = new Date().toISOString().slice(0,10);
           inputTgl.value = today;
 
-          // ====== FOTO PROPERTI LANGSUNG DARI DATA BUTTON ======
           if (photoEl) {
             let src = (payload.photo || '').trim();
 
-            // fallback: kalau photo kosong, parse dari payload.gambar (RAW kolom)
             if (!src && payload.gambar) {
               const parts = String(payload.gambar)
                 .split(',')
@@ -4364,7 +4643,6 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log('DEBUG tc-photo.src ->', photoEl.src);
           }
 
-          // hide header/navbar
           const nav = document.getElementById('mainNavbar');
           if (nav) nav.style.display = 'none';
 
@@ -4401,7 +4679,7 @@ document.addEventListener('DOMContentLoaded', function () {
           openModal(payload);
         };
 
-        // === binding opsi Skema komisi ===
+        // binding opsi Skema komisi
         schemeOpts.forEach(function(btn){
           btn.addEventListener('click', function(e){
             e.preventDefault();
@@ -4413,7 +4691,7 @@ document.addEventListener('DOMContentLoaded', function () {
           });
         });
 
-        // === binding opsi Agent (hanya untuk dropdown & preview, bukan CO PIC) ===
+        // binding opsi Agent (dropdown) + update THC & UP1/2/3
         agentOptions.forEach(function(btn){
           btn.addEventListener('click', function(e){
             e.preventDefault();
@@ -4426,11 +4704,15 @@ document.addEventListener('DOMContentLoaded', function () {
             if (agentAvatarBtn) agentAvatarBtn.textContent = initial;
             if (agentPrevName) agentPrevName.textContent = name || 'Belum dipilih';
             if (agentPrevAvatar) agentPrevAvatar.textContent = initial;
-            // CO PIC tidak berubah di sini
+
+            currentClosingAgentName = name || ''; // penting utk THC
+            currentClosingAgentId   = id || '';   // penting utk UP1/2/3
+            recomputeUplineNames();
+            updateAllCalc();
           });
         });
 
-        // === binding opsi Client ===
+        // binding opsi Client
         clientOptions.forEach(function(btn){
           btn.addEventListener('click', function(e){
             e.preventDefault();
@@ -4444,7 +4726,7 @@ document.addEventListener('DOMContentLoaded', function () {
           });
         });
 
-        // === binding perhitungan harga & komisi / selisih ===
+        // binding perhitungan harga & komisi / selisih
         if (hargaMenangInput) {
           hargaMenangInput.addEventListener('input', handleHargaMenangInput);
         }
@@ -4453,15 +4735,18 @@ document.addEventListener('DOMContentLoaded', function () {
           komisiPersenInput.addEventListener('change', handleKomisiInput);
         }
 
-        // === binding input biaya (format ribuan) ===
+        // binding input biaya (format ribuan)
         if (biayaBalikNamaInput) {
           biayaBalikNamaInput.addEventListener('input', handleBiayaInput);
+          biayaBalikNamaInput.addEventListener('input', function(){
+            biayaBalikNamaManual = true;
+          });
         }
         if (biayaEksekusiInput) {
           biayaEksekusiInput.addEventListener('input', handleBiayaInput);
         }
 
-        // === binding tab buttons ===
+        // binding tab buttons
         tabButtons.forEach(function(btn){
           btn.addEventListener('click', function(){
             const key = this.dataset.tab || 'transaksi';
@@ -4477,6 +4762,14 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     })();
 </script>
+
+
+
+
+
+
+
+
 
         </div>
     </div>
