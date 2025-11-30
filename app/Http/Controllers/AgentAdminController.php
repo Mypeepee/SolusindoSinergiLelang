@@ -939,24 +939,38 @@ $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar'
 
         // Riwayat singkat (kanan): terakhir update transaksi
         // Riwayat singkat (kanan): terakhir update transaksi
-        $transaksiHistory = DB::table('transaction')
-        ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
-        ->leftJoin('agent', 'transaction.id_agent', '=', 'agent.id_agent')
-        ->select(
-            'transaction.id_transaction',
-            'transaction.id_listing',
-            'transaction.harga_bidding',
-            'transaction.status_transaksi as status',
-            'transaction.tanggal_diupdate',
-            'property.lokasi',
-            'property.gambar',
-            'property.harga',
-            'agent.nama as closing_agent_name'
-        )
-        ->orderBy('transaction.tanggal_diupdate', 'desc')
-        ->limit(15)
-        ->get();
+        $transaksiHistory = DB::table('transaction as trx')
+        ->join('property as p', 'p.id_listing', '=', 'trx.id_listing')
+        ->leftJoin('agent   as a', 'a.id_agent', '=', 'trx.id_agent')
+        ->leftJoin('account as c', 'c.id_account', '=', 'trx.id_klien')
+        ->select([
+            'trx.id_transaction',
+            'trx.skema_komisi',
+            'trx.id_agent',
+            'trx.id_klien',
+            'trx.id_listing',
+            'trx.harga_limit',
+            'trx.harga_bidding',
+            'trx.selisih',
+            'trx.persentase_komisi',
+            'trx.basis_pendapatan',
+            'trx.biaya_baliknama',
+            'trx.biaya_pengosongan',
+            'trx.status_transaksi as status',
+            'trx.tanggal_transaksi',
+            'trx.kenaikan_dari_limit',
 
+            'p.lokasi',
+            'p.gambar',
+            'p.tipe',
+            'p.harga',
+
+            'a.nama as agent_nama',
+            'c.nama as client_nama',
+        ])
+        ->orderByDesc('trx.tanggal_transaksi')
+        ->limit(20)
+        ->get();
 
         $clientsDropdown = DB::table('account')
             ->where('roles', 'User')
@@ -2513,8 +2527,8 @@ public function updatetransaksi(Request $request)
         'komisi_persen'    => 'nullable|numeric',  // contoh: 5, 10
         'status'           => 'nullable|string',
         'tanggal_diupdate' => 'required|date',     // tanggal closing (Y-m-d)
-        'biaya_balik_nama' => 'nullable|string',  // ← NEW: dari input modal
-        'biaya_eksekusi'   => 'nullable|string',  // ← NEW: dari input modal
+        'biaya_balik_nama' => 'nullable|string',  // dari input modal (boleh ada titik)
+        'biaya_eksekusi'   => 'nullable|string',  // dari input modal (boleh ada titik)
     ]);
 
     // --- Ambil property untuk dapat harga_limit ---
@@ -2540,7 +2554,7 @@ public function updatetransaksi(Request $request)
     }
 
     // --- Normalisasi biaya balik nama & biaya pengosongan (eksekusi) ---
-    $biayaBalikNama = (int) preg_replace('/[^\d]/', '', $data['biaya_balik_nama'] ?? '');
+    $biayaBalikNama   = (int) preg_replace('/[^\d]/', '', $data['biaya_balik_nama'] ?? '');
     $biayaPengosongan = (int) preg_replace('/[^\d]/', '', $data['biaya_eksekusi'] ?? '');
 
     // --- Map skema_komisi (label) dari closing_type ---
@@ -2599,7 +2613,7 @@ public function updatetransaksi(Request $request)
         $idTransaksi = 'TR' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
     }
 
-    // --- Siapkan payload untuk insert/update ---
+    // --- Siapkan payload untuk insert/update transaksi utama ---
     $payload = [
         'id_transaction'      => $idTransaksi,
         'skema_komisi'        => $skemaKomisi,
@@ -2613,7 +2627,6 @@ public function updatetransaksi(Request $request)
         'basis_pendapatan'    => $basisPendapatan,
         'status_transaksi'    => $statusTransaksi,
         'tanggal_transaksi'   => $tanggalTransaksi,
-        // NEW COLUMNS:
         'kenaikan_dari_limit' => $kenaikanDariLimit, // dalam persen (misal 12.5)
         'biaya_baliknama'     => $biayaBalikNama,
         'biaya_pengosongan'   => $biayaPengosongan,
@@ -2638,10 +2651,10 @@ public function updatetransaksi(Request $request)
     |    (berdasarkan sertifikat + luas + kota), tanpa dobel kalau agent sama.
     */
 
-    // Kalau basis 0, cukup hapus detail lama saja
-    TransactionCommission::where('id_transaction', $idTransaksi)->delete();
-
-    if ($basisPendapatan > 0) {
+    // Kalau basis 0 → hapus semua detail komisi & lompat ke update status property
+    if ($basisPendapatan <= 0) {
+        TransactionCommission::where('id_transaction', $idTransaksi)->delete();
+    } else {
 
         // --- 1. Konstanta skema (harus sama dengan JS) ---
         $KOMISI_SCHEMA = [
@@ -2707,9 +2720,6 @@ public function updatetransaksi(Request $request)
         $up3Id = $getUplineId($up2Id, 'AG001');      // default AG001
 
         // --- 3. Cari daftar agent COPIC dari sejarah aset yang sama ---
-        $copicAgentIds = [];
-
-        // normalisasi sertifikat: huruf + angka lowercase
         $sertKey = null;
         if (!empty($property->sertifikat)) {
             $lower   = mb_strtolower($property->sertifikat, 'UTF-8');
@@ -2783,7 +2793,9 @@ public function updatetransaksi(Request $request)
             }
         }
 
-        // --- 5. Insert ke transaction_commissions ---
+        // --- 5. Sinkronisasi ke transaction_commissions (tanpa reset ID) ---
+        $keptIds = []; // id row yang dipertahankan / diupdate
+
         foreach ($KOMISI_SCHEMA as $item) {
             $kode = $item['kode'];
             $rate = (float) $item['rate'];
@@ -2809,12 +2821,18 @@ public function updatetransaksi(Request $request)
                         continue;
                     }
 
-                    TransactionCommission::create([
-                        'id_transaction' => $idTransaksi,
-                        'role'           => $kode,
-                        'id_agent'       => $agId,
-                        'pendapatan'     => $pendapatan,
-                    ]);
+                    $row = TransactionCommission::updateOrCreate(
+                        [
+                            'id_transaction' => $idTransaksi,
+                            'role'           => $kode,
+                            'id_agent'       => $agId,
+                        ],
+                        [
+                            'pendapatan'     => $pendapatan,
+                        ]
+                    );
+
+                    $keptIds[] = $row->id;
                 }
             } else {
                 // Kode lain: masing2 agent (biasanya cuma 1) dapat full rate
@@ -2824,37 +2842,54 @@ public function updatetransaksi(Request $request)
                         continue;
                     }
 
-                    TransactionCommission::create([
-                        'id_transaction' => $idTransaksi,
-                        'role'           => $kode,
-                        'id_agent'       => $agId,
-                        'pendapatan'     => $pendapatan,
-                    ]);
+                    $row = TransactionCommission::updateOrCreate(
+                        [
+                            'id_transaction' => $idTransaksi,
+                            'role'           => $kode,
+                            'id_agent'       => $agId,
+                        ],
+                        [
+                            'pendapatan'     => $pendapatan,
+                        ]
+                    );
+
+                    $keptIds[] = $row->id;
                 }
             }
         }
 
-        // --- 6. Update status property & listing similar menjadi 'Terjual' ---
-        //    - current listing
-        //    - semua listing lain yg similar (sertifikat + luas + kota)
-        $similarListingIds = $rows
-            ->pluck('id_listing')
-            ->filter()
-            ->unique()
-            ->values()
-            ->all(); // contoh: [300, 400, 58183]
-
-        if (!empty($similarListingIds)) {
-            Property::whereIn('id_listing', $similarListingIds)
-                ->update([
-                    'status'          => 'Terjual',
-                    'tanggal_diupdate'=> now(),
-                ]);
+        // Hapus row yang tidak lagi relevan (misal COPIC dulu 3 agent, sekarang tinggal 2)
+        if (!empty($keptIds)) {
+            TransactionCommission::where('id_transaction', $idTransaksi)
+                ->whereNotIn('id', $keptIds)
+                ->delete();
+        } else {
+            // Safety: kalau aneh hasilnya kosong → buang semua
+            TransactionCommission::where('id_transaction', $idTransaksi)->delete();
         }
+    }
+
+    // --- 6. Update status property & listing similar menjadi 'Terjual' ---
+    //    - current listing
+    //    - semua listing lain yg similar (sertifikat + luas + kota)
+    $similarListingIds = $rows
+        ->pluck('id_listing')
+        ->filter()
+        ->unique()
+        ->values()
+        ->all(); // contoh: [300, 400, 58183]
+
+    if (!empty($similarListingIds)) {
+        Property::whereIn('id_listing', $similarListingIds)
+            ->update([
+                'status'          => 'Terjual',
+                'tanggal_diupdate'=> now(),
+            ]);
     }
 
     return back()->with('success', 'Status transaksi berhasil disimpan.');
 }
+
 
 
 

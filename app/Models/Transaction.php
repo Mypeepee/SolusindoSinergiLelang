@@ -34,6 +34,8 @@ class Transaction extends Model
         'selisih',
         'persentase_komisi',
         'basis_pendapatan',
+        'biaya_baliknama',      // ← TAMBAH
+        'biaya_pengosongan',
         'status_transaksi',
         'tanggal_transaksi',
         'tanggal_dibuat',
@@ -43,6 +45,21 @@ class Transaction extends Model
         'catatan',
         'kenaikan_dari_limit',
     ];
+
+    protected $casts = [
+        'harga_limit'         => 'integer',
+        'harga_bidding'       => 'integer',
+        'selisih'             => 'integer',
+        'basis_pendapatan'    => 'integer',
+        'biaya_baliknama'     => 'integer',
+        'biaya_pengosongan'   => 'integer',
+        'persentase_komisi'   => 'float',
+        'kenaikan_dari_limit' => 'float',
+        'tanggal_transaksi'   => 'date',
+        'tanggal_dibuat'      => 'datetime',
+        'tanggal_diupdate'    => 'datetime',
+    ];
+
 
     // ================== RELATIONSHIPS ==================
 

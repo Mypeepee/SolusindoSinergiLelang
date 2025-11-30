@@ -3032,7 +3032,7 @@ clearAllBtn?.addEventListener('click', clearAll);
 
                     {{-- Baris: tanggal • #id listing (tanpa tulisan "ID Listing") --}}
                     <div class="trx-history-meta mb-1">
-                      <span>{{ \Carbon\Carbon::parse($t->tanggal_diupdate)->format('d M Y') }}</span>
+                      <span>{{ \Carbon\Carbon::parse($t->tanggal_transaksi)->format('d M Y') }}</span>
                       <span class="mx-1">•</span>
                       <span>#{{ $t->id_listing }}</span>
                     </div>
@@ -3055,37 +3055,46 @@ clearAllBtn?.addEventListener('click', clearAll);
                   </span>
 
                   @php
-    $komisiPersen = '';
+                    // aman kalau $t stdClass atau model
+                    $komisiPersen = '';
+                    if (isset($t->persentase_komisi) && $t->persentase_komisi !== null) {
+                        // di DB 0.050000 → 5
+                        $komisiPersen = (float) $t->persentase_komisi * 100;
+                    }
 
-    if (is_object($t) && property_exists($t, 'persentase_komisi') && $t->persentase_komisi !== null) {
-        // di DB disimpan 0.050000 → jadikan 5
-        $komisiPersen = (float) $t->persentase_komisi * 100;
-    }
-@endphp
+                    // fallback harga_limit:
+                    // 1) pakai transaksi.harga_limit kalau ada
+                    // 2) kalau kosong, pakai property.harga / 1.278 (markup → limit)
+                    $hargaLimitBtn = 0;
+                    if (isset($t->harga_limit) && $t->harga_limit > 0) {
+                        $hargaLimitBtn = (int) $t->harga_limit;
+                    } elseif (isset($t->harga) && $t->harga > 0) {
+                        $hargaLimitBtn = (int) round($t->harga / 1.278);
+                    }
+                @endphp
 
-<button type="button"
-        class="btn btn-sm btn-outline-danger rounded-pill mt-2 trx-history-edit"
-        data-id-listing="{{ $t->id_listing }}"
-        data-id-transaksi="{{ $t->id_transaction ?? '' }}"
-        data-status="{{ $t->status ?? '' }}"
-        data-lokasi="{{ $t->lokasi }}"
-        data-tipe="{{ $t->tipe ?? '' }}"
-        data-harga-limit="{{ $t->harga_limit ?? 0 }}"
-        data-harga-menang="{{ $t->harga_bidding ?? 0 }}"
-        data-closing-type="{{ ($t->skema_komisi ?? '') === 'Selisih harga' ? 'price_gap' : 'profit' }}"
-        data-komisi-persen="{{ $komisiPersen }}"
-        data-biaya-balik-nama="{{ $t->biaya_baliknama ?? '' }}"
-        data-biaya-eksekusi="{{ $t->biaya_pengosongan ?? '' }}"
-        data-tanggal="{{ \Carbon\Carbon::parse($t->tanggal_transaksi ?? $t->tanggal_diupdate)->format('Y-m-d') }}"
-        data-id-agent="{{ $t->id_agent ?? '' }}"
-        data-id-klien="{{ $t->id_klien ?? '' }}"
-        data-gambar="{{ $t->gambar ?? '' }}"
-        data-photo="{{ $thumbSrc }}"
-        data-copic-name="{{ $t->agent_nama ?? '' }}">
-  Edit
-</button>
-
-
+                <button type="button"
+                        class="btn btn-sm btn-outline-danger rounded-pill mt-2 trx-history-edit"
+                        data-id-listing="{{ $t->id_listing }}"
+                        data-id-transaksi="{{ $t->id_transaction ?? '' }}"
+                        data-status="{{ $t->status ?? '' }}"
+                        data-lokasi="{{ $t->lokasi }}"
+                        data-tipe="{{ $t->tipe ?? '' }}"
+                        data-harga-limit="{{ $hargaLimitBtn }}"
+                        data-harga-menang="{{ $t->harga_bidding ?? 0 }}"
+                        data-closing-type="{{ ($t->skema_komisi ?? '') === 'Selisih harga' ? 'price_gap' : 'profit' }}"
+                        data-komisi-persen="{{ $komisiPersen }}"
+                        data-biaya-balik-nama="{{ $t->biaya_baliknama ?? '' }}"
+                        data-biaya-eksekusi="{{ $t->biaya_pengosongan ?? '' }}"
+                        data-tanggal="{{ \Carbon\Carbon::parse($t->tanggal_transaksi ?? $t->tanggal_diupdate)->format('Y-m-d') }}"
+                        data-id-agent="{{ $t->id_agent ?? '' }}"
+                        data-agent-nama="{{ $t->agent_nama ?? '' }}"
+                        data-id-klien="{{ $t->id_klien ?? '' }}"
+                        data-gambar="{{ $t->gambar ?? '' }}"
+                        data-photo="{{ $thumbSrc }}"
+                        data-copic-name="{{ $t->agent_nama ?? '' }}">
+                        Edit
+                </button>
 
                 </div>
               </div>
@@ -3110,101 +3119,122 @@ clearAllBtn?.addEventListener('click', clearAll);
       function prefillClosingFormFromDataset(btn){
         const ds = btn.dataset;
 
-        const inputIdListing   = document.getElementById('tc-id-listing');
-        const inputIdTrans     = document.getElementById('tc-id-transaksi');
-        const inputTgl         = document.getElementById('tc-tanggal');
-        const selectStatus     = document.getElementById('tc-status');
-        const inputClosingType = document.getElementById('tc-closing-type');
-        const hargaMenangInput = document.getElementById('tc-harga-menang');
-        const hargaLimitEl     = document.getElementById('tc-harga-limit');
-        const komisiInput      = document.getElementById('tc-komisi-persen');
-        const biayaBNInput     = document.getElementById('tc-biaya-balik-nama');
-        const biayaEksInput    = document.getElementById('tc-biaya-eksekusi');
+        const inputIdListing    = document.getElementById('tc-id-listing');
+        const inputIdTrans      = document.getElementById('tc-id-transaksi');
+        const inputTgl          = document.getElementById('tc-tanggal');
+        const selectStatus      = document.getElementById('tc-status');
+        const inputClosingType  = document.getElementById('tc-closing-type');
 
-        // hidden: id listing & id transaksi
+        const hargaMenangInput  = document.getElementById('tc-harga-menang');
+        const hargaLimitEl      = document.getElementById('tc-harga-limit');
+        const komisiInput       = document.getElementById('tc-komisi-persen');
+        const biayaBNInput      = document.getElementById('tc-biaya-balik-nama');
+        const biayaEksInput     = document.getElementById('tc-biaya-eksekusi');
+
+        const hiddenAgentInput  = document.getElementById('tc-agent');
+        const agentLabelEl      = document.getElementById('tc-agent-label');
+        const agentAvatarEl     = document.getElementById('tc-agent-avatar-btn');
+
+        const hiddenClientInput = document.getElementById('tc-client');
+        const clientLabelEl     = document.getElementById('tc-client-label');
+        const clientAvatarEl    = document.getElementById('tc-client-avatar-btn');
+
+        // --- hidden: id listing & id transaksi ---
         if (inputIdListing) inputIdListing.value = ds.idListing || '';
         if (inputIdTrans)   inputIdTrans.value   = ds.idTransaksi || '';
 
-        // tanggal closing
+        // --- tanggal closing ---
         if (inputTgl && ds.tanggal) {
-          inputTgl.value = ds.tanggal; // Y-m-d
+          inputTgl.value = ds.tanggal; // format Y-m-d
         }
 
-        // status transaksi
+        // --- status transaksi ---
         if (selectStatus && ds.status){
+          const lower = ds.status.toLowerCase();
           const opt = Array.from(selectStatus.options)
-            .find(o => o.value.toLowerCase() === ds.status.toLowerCase());
+            .find(o => o.value.toLowerCase() === lower);
           selectStatus.value = opt ? opt.value : 'Closing';
         }
 
-        // === Skema komisi (persentase / selisih) ===
+        // --- skema komisi (persentase / selisih) ---
         const closingType = ds.closingType || 'profit';
         if (inputClosingType) inputClosingType.value = closingType;
 
-        const schemeBtn = document.querySelector(
+        const schemeOpt = document.querySelector(
           '.tc-scheme-option[data-value="'+ closingType +'"]'
         );
-        if (schemeBtn) {
-          schemeBtn.click(); // biar JS lama jalan: toggle UI + basis perhitungan
-        }
+        if (schemeOpt) schemeOpt.click();  // trigger UI & logic lama
 
-        // === Harga Limit (label kiri) ===
+        // --- Harga Limit (label kiri) ---
         if (hargaLimitEl) {
           const limitText = formatRupiahFromNumber(ds.hargaLimit || '');
           hargaLimitEl.textContent = 'Rp ' + (limitText || '0');
         }
 
-        // === Harga Menang ===
+        // --- Harga Menang ---
         if (hargaMenangInput && ds.hargaMenang) {
           const hmText = formatRupiahFromNumber(ds.hargaMenang);
           hargaMenangInput.value = hmText;
-          // panggil handler lama → hitung komisi, kantor, kenaikan dari limit
           hargaMenangInput.dispatchEvent(new Event('input', { bubbles:true }));
         }
 
-        // === Komisi (%) kalau mode profit ===
+        // --- Komisi (%) kalau mode profit ---
         if (closingType === 'profit'
             && komisiInput
             && ds.komisiPersen !== undefined
             && ds.komisiPersen !== '') {
 
-          komisiInput.value = ds.komisiPersen; // contoh: "5" atau "7.5"
+          komisiInput.value = ds.komisiPersen; // contoh "5" / "7.5"
           komisiInput.dispatchEvent(new Event('input',  { bubbles:true }));
           komisiInput.dispatchEvent(new Event('change', { bubbles:true }));
         }
 
-        // === Biaya Balik Nama ===
-        if (biayaBNInput
-            && ds.biayaBalikNama !== undefined
-            && ds.biayaBalikNama !== '') {
-
+        // --- Biaya Balik Nama ---
+        if (biayaBNInput && ds.biayaBalikNama !== undefined && ds.biayaBalikNama !== '') {
           biayaBNInput.value = formatRupiahFromNumber(ds.biayaBalikNama);
           biayaBNInput.dispatchEvent(new Event('input', { bubbles:true }));
         }
 
-        // === Biaya Eksekusi ===
-        if (biayaEksInput
-            && ds.biayaEksekusi !== undefined
-            && ds.biayaEksekusi !== '') {
-
+        // --- Biaya Eksekusi ---
+        if (biayaEksInput && ds.biayaEksekusi !== undefined && ds.biayaEksekusi !== '') {
           biayaEksInput.value = formatRupiahFromNumber(ds.biayaEksekusi);
           biayaEksInput.dispatchEvent(new Event('input', { bubbles:true }));
         }
 
-        // === Pilih Agent (klik option dropdown) ===
+        // --- Pilih Agent (klik option dropdown) ---
         if (ds.idAgent) {
           const agBtn = document.querySelector(
             '.tc-agent-option[data-id="'+ ds.idAgent +'"]'
           );
-          if (agBtn) agBtn.click(); // sekalian set avatar & nama di header
+          if (agBtn) {
+            // klik supaya event handler lama jalan
+            agBtn.click();
+          } else {
+            // Fallback: set hidden + label manual
+            if (hiddenAgentInput) hiddenAgentInput.value = ds.idAgent;
+            if (agentLabelEl && ds.agentNama) agentLabelEl.textContent = ds.agentNama;
+            if (agentAvatarEl && ds.agentNama) {
+              agentAvatarEl.textContent = ds.agentNama.trim().charAt(0).toUpperCase() || '?';
+            }
+          }
         }
 
-        // === Pilih Client ===
+        // --- Pilih Client (kalau ada) ---
         if (ds.idKlien) {
           const clBtn = document.querySelector(
             '.tc-client-option[data-id="'+ ds.idKlien +'"]'
           );
-          if (clBtn) clBtn.click();
+          if (clBtn) {
+            clBtn.click();
+          } else {
+            if (hiddenClientInput) hiddenClientInput.value = ds.idKlien;
+            // label client fallback sengaja gak dipaksa, biasanya tidak terlalu penting
+          }
+        }
+
+        // --- Re-hit harga menang sekali lagi supaya semua summary (komisi, kantor, kenaikan) pakai nilai final ---
+        if (hargaMenangInput && hargaMenangInput.value) {
+          hargaMenangInput.dispatchEvent(new Event('input', { bubbles:true }));
         }
       }
 
@@ -3213,31 +3243,34 @@ clearAllBtn?.addEventListener('click', clearAll);
       editBtns.forEach(function(btn){
         btn.addEventListener('click', function(){
 
-          // Payload dasar untuk buka modal (handleTransaksiClosingClick sudah ada)
+          const ds = this.dataset;
+
+          // Payload dasar untuk buka modal (script lama)
           const payload = {
-            id_listing   : this.dataset.idListing,
-            id_transaksi : this.dataset.idTransaksi || null,
-            status       : this.dataset.status || null,
-            lokasi       : this.dataset.lokasi || '',
-            tipe         : this.dataset.tipe || '',
-            harga_limit  : Number(this.dataset.hargaLimit || 0),
-            gambar       : (this.dataset.gambar || '').trim(),
-            photo        : (this.dataset.photo  || '').trim(),
-            copic_name   : (this.dataset.copicName || '').trim()
+            id_listing   : ds.idListing,
+            id_transaksi : ds.idTransaksi || null,
+            status       : ds.status || null,
+            lokasi       : ds.lokasi || '',
+            tipe         : ds.tipe || '',
+            harga_limit  : Number(ds.hargaLimit || 0),
+            gambar       : (ds.gambar || '').trim(),
+            photo        : (ds.photo  || '').trim(),
+            copic_name   : (ds.copicName || '').trim()
           };
 
-          // 1. Buka modal + set foto, ID, alamat, harga_limit (logika lama)
           if (window.handleTransaksiClosingClick) {
             try { window.handleTransaksiClosingClick(payload, this); }
             catch(e){ console.error(e); }
           }
 
-          // 2. Isi semua inputan dari data-* transaksi
+          // Sesudah modal terbuka → isi field dari data-*
           prefillClosingFormFromDataset(this);
         });
       });
     })();
-  </script>
+    </script>
+
+
 
 
 
@@ -4071,7 +4104,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <button type="button" class="btn btn-light btn-sm transaksi-modal-cancel">
                   Batal
                 </button>
-                <button type="submit" class="btn btn-primary btn-sm px-3">
+                <button type="submit" class="btn btn-primary btn-sm px-3" id="tc-submit-btn">
                   Simpan Perubahan
                 </button>
               </div>
@@ -4079,9 +4112,66 @@ document.addEventListener('DOMContentLoaded', function () {
           </div>
         </form>
 
+        <script>
+          (function(){
+            const form = document.getElementById('closingForm');
+            if (!form) return;
+            const submitBtn = document.getElementById('tc-submit-btn') || form.querySelector('button[type="submit"]');
+            if (!submitBtn) return;
+
+            let isSubmitting = false;
+
+            form.addEventListener('submit', function(e){
+              if (isSubmitting) {
+                e.preventDefault();
+                return;
+              }
+
+              const agentInput  = document.getElementById('tc-agent');
+              const hargaInput  = document.getElementById('tc-harga-menang');
+              const schemeInput = document.getElementById('tc-closing-type');
+              const komisiInput = document.getElementById('tc-komisi-persen');
+
+              const agentVal = (agentInput && agentInput.value ? agentInput.value : '').trim();
+              const hargaRaw = (hargaInput && hargaInput.value ? hargaInput.value : '').replace(/[^\d]/g,'');
+              const hargaNum = hargaRaw ? parseInt(hargaRaw, 10) : 0;
+              const schemeVal = (schemeInput && schemeInput.value ? schemeInput.value : '').trim();
+              const komisiRaw = (komisiInput && komisiInput.value ? komisiInput.value : '').trim();
+              const komisiNum = komisiRaw ? parseFloat(komisiRaw.replace(',','.')) : 0;
+
+              if (!agentVal) {
+                e.preventDefault();
+                alert('Silakan pilih agent yang closing terlebih dahulu.');
+                return;
+              }
+
+              if (!hargaNum || isNaN(hargaNum) || hargaNum <= 0) {
+                e.preventDefault();
+                alert('Silakan isi harga menang transaksi dengan benar.');
+                return;
+              }
+
+              if (schemeVal === 'profit' && (!komisiRaw || isNaN(komisiNum) || komisiNum <= 0)) {
+                e.preventDefault();
+                alert('Silakan isi persentase komisi (%).');
+                return;
+              }
+
+              // lulus validasi → aktifkan spinner & lock tombol
+              isSubmitting = true;
+              submitBtn.disabled = true;
+              submitBtn.dataset.originalHtml = submitBtn.innerHTML;
+              submitBtn.innerHTML =
+                '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>' +
+                'Menyimpan...';
+            });
+          })();
+        </script>
+
       </div>
     </div>
   </div>
+
 
   <style>
     .tc-overlay{
@@ -4954,7 +5044,7 @@ document.addEventListener('DOMContentLoaded', function () {
           if (selisihWrapper) selisihWrapper.classList.toggle('d-none', !isPriceGap);
 
           if (komisiSummaryLbl){
-            komisiSummaryLbl.textContent = 'Perkiraan hasil komisi';
+            komisiSummaryLbl.textContent = 'Komisi Agent';
           }
 
           updateAllCalc();
