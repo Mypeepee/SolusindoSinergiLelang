@@ -3951,109 +3951,176 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
 
                     {{-- PANEL: INFORMASI TRANSAKSI --}}
-                    <div class="tc-tab-panel tc-tab-panel-active" data-tab="transaksi">
-                      {{-- BARIS 1: harga limit | harga menang | komisi/selisih --}}
-                      <div class="row g-3 small align-items-end">
-                        <div class="col-12 col-md-4">
-                          <div class="text-muted">Harga Limit</div>
-                          <div class="fw-semibold" id="tc-harga-limit">Rp 0</div>
-                        </div>
+<div class="tc-tab-panel tc-tab-panel-active" data-tab="transaksi">
 
-                        <div class="col-12 col-md-4">
-                          <label class="form-label small mb-1 mb-md-0">Harga menang transaksi</label>
-                          <div class="input-group input-group-sm">
-                            <span class="input-group-text">Rp</span>
-                            <input type="text"
-                                   inputmode="numeric"
-                                   name="harga_menang"
-                                   id="tc-harga-menang"
-                                   class="form-control"
-                                   placeholder="Masukkan harga menang">
-                          </div>
-                        </div>
+    {{-- BARIS 1: harga limit | harga deal | harga menang | komisi/selisih --}}
+    <div class="row g-2 small align-items-end">
 
-                        <div class="col-12 col-md-4 col-lg-3">
-                          {{-- MODE 1: KOMISI (%) --}}
-                          <div id="tc-komisi-wrapper">
-                            <label class="form-label small mb-1 mb-md-0">Komisi (%)</label>
-                            <div class="input-group input-group-sm">
-                              <input type="number"
-                                     min="0"
-                                     step="0.01"
-                                     name="komisi_persen"
-                                     id="tc-komisi-persen"
-                                     class="form-control"
-                                     placeholder="0">
-                              <span class="input-group-text">%</span>
-                            </div>
-                          </div>
+      {{-- Harga Limit (EXISTING - TIDAK DIUBAH) --}}
+      <div class="col-6 col-md-3">
+        <div class="text-muted">Harga Limit</div>
+        <div class="fw-semibold" id="tc-harga-limit">Rp 0</div>
+      </div>
 
-                          {{-- MODE 2: SELISIH (auto Rp) --}}
-                          <div id="tc-selisih-wrapper" class="d-none mt-2 mt-md-0">
-                            <label class="form-label small mb-1 mb-md-0">Selisih</label>
-                            <div class="input-group input-group-sm">
-                              <span class="input-group-text">Rp</span>
-                              <input type="text"
-                                     id="tc-selisih"
-                                     class="form-control"
-                                     readonly>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+      {{-- Harga Deal (NEW) --}}
+      <div class="col-6 col-md-3">
+        <label class="form-label small mb-1">Harga Deal</label>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text">Rp</span>
+          <input type="text"
+                 inputmode="numeric"
+                 name="harga_deal"
+                 id="tc-harga-deal"
+                 class="form-control"
+                 placeholder="0">
+        </div>
+      </div>
 
-                      <hr class="tc-dash my-3">
+      {{-- Harga Menang Transaksi (EXISTING - TIDAK DIUBAH ISINYA) --}}
+      <div class="col-6 col-md-3">
+        <label class="form-label small mb-1">Harga bidding</label>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text">Rp</span>
+          <input type="text"
+                 inputmode="numeric"
+                 name="harga_menang"
+                 id="tc-harga-menang"
+                 class="form-control"
+                 placeholder="0">
+        </div>
+      </div>
 
-                      {{-- BARIS 2: Biaya balik nama | biaya eksekusi | CO PIC --}}
-                      <div class="row g-3 small align-items-end">
-                        <div class="col-12 col-md-4">
-                          <label class="form-label small mb-1 mb-md-0">Biaya Balik Nama</label>
-                          <div class="input-group input-group-sm">
-                            <span class="input-group-text">Rp</span>
-                            <input type="text"
-                                   inputmode="numeric"
-                                   name="biaya_balik_nama"
-                                   id="tc-biaya-balik-nama"
-                                   class="form-control"
-                                   placeholder="0">
-                          </div>
-                        </div>
+      {{-- Komisi / Selisih (EXISTING - TIDAK DIUBAH LOGIC) --}}
+      <div class="col-6 col-md-3">
 
-                        <div class="col-12 col-md-4">
-                          <label class="form-label small mb-1 mb-md-0">Biaya Eksekusi</label>
-                          <div class="input-group input-group-sm">
-                            <span class="input-group-text">Rp</span>
-                            <input type="text"
-                                   inputmode="numeric"
-                                   name="biaya_eksekusi"
-                                   id="tc-biaya-eksekusi"
-                                   class="form-control"
-                                   placeholder="0">
-                          </div>
-                        </div>
+        {{-- MODE 1: KOMISI (%) --}}
+        <div id="tc-komisi-wrapper">
+          <label class="form-label small mb-1">Komisi (%)</label>
+          <div class="input-group input-group-sm">
+            <input type="number"
+                   min="0"
+                   step="0.01"
+                   name="komisi_persen"
+                   id="tc-komisi-persen"
+                   class="form-control"
+                   placeholder="0">
+            <span class="input-group-text">%</span>
+          </div>
+        </div>
 
-                      </div>
+        {{-- MODE 2: SELISIH (auto Rp) --}}
+        <div id="tc-selisih-wrapper" class="d-none">
+          <label class="form-label small mb-1">Selisih</label>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text">Rp</span>
+            <input type="text"
+                   id="tc-selisih"
+                   class="form-control"
+                   readonly>
+          </div>
+        </div>
 
-                      <hr class="tc-dash my-3">
+      </div>
+    </div>
 
-                      {{-- BARIS 3: auto perhitungan --}}
-                      <div class="tc-price-summary small pt-2 border-top-0">
-                        <div class="row g-3 tc-summary-row">
-                          <div class="col-12 col-md-4">
-                            <div class="text-muted mb-1" id="tc-komisi-label-summary">Komisi Agent</div>
-                            <div class="fw-semibold" id="tc-komisi-estimasi">Rp 0</div>
-                          </div>
-                          <div class="col-12 col-md-4 tc-summary-extra" id="tc-kotor-wrapper">
-                            <div class="text-muted mb-1">Pendapatan kotor kantor</div>
-                            <div class="fw-semibold" id="tc-kotor-estimasi">Rp 0</div>
-                          </div>
-                          <div class="col-12 col-md-4 tc-summary-extra" id="tc-kenaikan-wrapper">
-                            <div class="text-muted mb-1">Kenaikan dari limit</div>
-                            <div class="fw-semibold"><span id="tc-kenaikan-persentase">0</span>%</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+    <hr class="tc-dash my-3">
+
+    {{-- BARIS 2: Biaya balik nama | biaya eksekusi | royalty | cobroke --}}
+    <div class="row g-2 small align-items-end">
+
+      {{-- Biaya Balik Nama (EXISTING) --}}
+      <div class="col-6 col-md-3">
+        <label class="form-label small mb-1">Biaya Balik Nama</label>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text">Rp</span>
+          <input type="text"
+                 inputmode="numeric"
+                 name="biaya_balik_nama"
+                 id="tc-biaya-balik-nama"
+                 class="form-control"
+                 placeholder="0">
+        </div>
+      </div>
+
+      {{-- Biaya Eksekusi (EXISTING) --}}
+      <div class="col-6 col-md-3">
+        <label class="form-label small mb-1">Biaya Eksekusi</label>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text">Rp</span>
+          <input type="text"
+                 inputmode="numeric"
+                 name="biaya_eksekusi"
+                 id="tc-biaya-eksekusi"
+                 class="form-control"
+                 placeholder="0">
+        </div>
+      </div>
+
+      {{-- Royalty Fee (NEW) --}}
+      <div class="col-6 col-md-3">
+        <label class="form-label small mb-1">Royalty Fee</label>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text">Rp</span>
+          <input type="text"
+                 inputmode="numeric"
+                 name="royalty_fee"
+                 id="tc-royalty-fee"
+                 class="form-control"
+                 placeholder="0">
+        </div>
+      </div>
+
+      {{-- Cobroke Fee (NEW) --}}
+      <div class="col-6 col-md-3">
+        <label class="form-label small mb-1">Cobroke Fee</label>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text">Rp</span>
+          <input type="text"
+                 inputmode="numeric"
+                 name="cobroke_fee"
+                 id="tc-cobroke-fee"
+                 class="form-control"
+                 placeholder="0">
+        </div>
+      </div>
+
+    </div>
+
+    <hr class="tc-dash my-3">
+
+{{-- BARIS 3: auto perhitungan --}}
+<div class="tc-price-summary small pt-2 border-top-0">
+    <div class="row g-2 tc-summary-row">
+
+      <div class="col-6 col-md-3">
+        <div class="text-muted mb-1" id="tc-komisi-label-summary">Komisi Agent</div>
+        <div class="fw-semibold" id="tc-komisi-estimasi">Rp 0</div>
+      </div>
+
+      <div class="col-6 col-md-3 tc-summary-extra" id="tc-kotor-wrapper">
+        <div class="text-muted mb-1">Gross Profit kantor</div>
+        <div class="fw-semibold" id="tc-kotor-estimasi">Rp 0</div>
+      </div>
+
+      <div class="col-6 col-md-3 tc-summary-extra" id="tc-kenaikan-wrapper">
+        <div class="text-muted mb-1">Kenaikan dari limit</div>
+        <div class="fw-semibold">
+          <span id="tc-kenaikan-persentase">0</span>%
+        </div>
+      </div>
+
+      {{-- Selisih (NEW - DISPLAY ONLY) --}}
+      <div class="col-6 col-md-3 tc-summary-extra" id="tc-selisih-summary-wrapper">
+        <div class="text-muted mb-1">Selisih</div>
+        <div class="fw-semibold" id="tc-selisih-summary">Rp 0</div>
+      </div>
+
+    </div>
+  </div>
+
+
+  </div>
+
 
                     {{-- PANEL: INFORMASI PROPERTI (riwayat lelang) --}}
                     <div class="tc-tab-panel" data-tab="property">
