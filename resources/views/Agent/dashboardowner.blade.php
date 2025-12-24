@@ -3704,6 +3704,10 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 
+
+
+
+
 {{-- ========= MODAL / CARD CLOSING TRANSAKSI ========= --}}
 <div id="transaksi-closing-overlay" class="tc-overlay d-none">
     <div class="tc-dialog">
@@ -4574,6 +4578,9 @@ document.addEventListener('DOMContentLoaded', function () {
       const THC_RATE    = 0.4000; // 40% untuk "Perkiraan hasil komisi"
       const KANTOR_RATE = 0.39;   // 39% pendapatan kotor kantor
 
+      // maksimal Fee Team Leader
+      const FEE_TL_MAX = 2000000;
+
       const KOMISI_SCHEMA = [
         { kode:'UP1',       label:'Upline 1',           rate:0.004000 },
         { kode:'UP2',       label:'Upline 2',           rate:0.003000 },
@@ -4591,6 +4598,7 @@ document.addEventListener('DOMContentLoaded', function () {
         { kode:'PIC5',      label:'PIC 5',              rate:0.040000 },
         { kode:'THC',       label:'THC',                rate:0.400000 },
         { kode:'SERVICE',   label:'Service Fund',       rate:0.100000 },
+        { kode:'FEE_TL',    label:'Fee Team Leader',    rate:0.000000 }, // NEW (dinamis, dipotong dari Service Fund)
         { kode:'PRINC_FEE', label:'Principal Fee',      rate:0.030000 },
         { kode:'INV_SHARE', label:'Investor Sharing',   rate:0.095200 },
         { kode:'MGMT_FUND', label:'Management Fund',    rate:0.059500 },
@@ -4630,7 +4638,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const GLOBAL_COPIC_MAP = COPIC_AGENTS_MAP || {};
 
       // kode yang selalu tampil 2 angka desimal (sudah betul + COPIC & CONS)
-      const FIXED_TWO_DECIMAL_CODES = ['INV_SHARE','MGMT_FUND','EMP_INC','COPIC','CONS'];
+      const FIXED_TWO_DECIMAL_CODES = ['INV_SHARE','MGMT_FUND','EMP_INC','COPIC','CONS','FEE_TL'];
 
       // kode yang badge di Pos pakai label penuh
       const FULL_LABEL_BADGE_CODES = [
@@ -4685,6 +4693,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const inputTgl    = document.getElementById('tc-tanggal');
         const photoEl     = document.getElementById('tc-photo');
 
+        // NEW: Selisih summary display (yang kamu bilang selalu Rp 0)
+        const selisihSummaryEl = document.getElementById('tc-selisih-summary');
+
         let currentHargaLimit    = 0;
         let currentCopicName     = '-';
         let currentCopicAgents   = []; // daftar nama CO PIC (bisa >1, unik)
@@ -4719,7 +4730,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const clientOptions    = document.querySelectorAll('.tc-client-option');
 
         // elemen perhitungan
-        const hargaMenangInput   = document.getElementById('tc-harga-menang');
+        const hargaMenangInput   = document.getElementById('tc-harga-menang'); // dipakai sebagai harga_bidding
+        const hargaDealInput     = document.getElementById('tc-harga-deal');  // NEW: harga_deal
+        const cobrokeFeeInput    = document.getElementById('tc-cobroke-fee'); // NEW: cobroke_fee
+        const royaltyFeeInput    = document.getElementById('tc-royalty-fee'); // NEW: royalty_fee (auto)
+
         const komisiPersenInput  = document.getElementById('tc-komisi-persen');
         const komisiEstimasi     = document.getElementById('tc-komisi-estimasi');
         const komisiSummaryLbl   = document.getElementById('tc-komisi-label-summary');
@@ -4821,8 +4836,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function resetCalculation(){
           if (hargaMenangInput) hargaMenangInput.value = '';
+          if (hargaDealInput) hargaDealInput.value = '';
+          if (cobrokeFeeInput) cobrokeFeeInput.value = '';
+          if (royaltyFeeInput) royaltyFeeInput.value = '';
           if (komisiPersenInput) komisiPersenInput.value = '';
           if (selisihInput) selisihInput.value = '';
+          if (selisihSummaryEl) selisihSummaryEl.textContent = 'Rp 0';
           if (komisiEstimasi) komisiEstimasi.textContent = 'Rp 0';
           if (kotorEstimasi) kotorEstimasi.textContent = 'Rp 0';
           if (kenaikanPersenEl) kenaikanPersenEl.textContent = '0';
@@ -4904,14 +4923,72 @@ document.addEventListener('DOMContentLoaded', function () {
           }
 
           const label = (mode === 'price_gap')
-            ? 'Basis pembagian: Selisih harga (Harga Menang - Limit)'
+            ? 'Basis pembagian: Selisih (Harga Deal - (Harga Bidding + Balik Nama + Eksekusi + Cobroke))'
             : 'Basis pembagian: Komisi (fee)';
 
           baseLabelEl.textContent   = label;
           baseNominalEl.textContent = rupiah(baseAmount);
 
+          // helper ambil rate schema berdasarkan kode
+          function getSchemaRate(kode, fallback){
+            for (let i=0; i<KOMISI_SCHEMA.length; i++){
+              if (KOMISI_SCHEMA[i].kode === kode) return Number(KOMISI_SCHEMA[i].rate || 0);
+            }
+            return Number(fallback || 0);
+          }
+
+          // ===== DYNAMIC FEE TL (HANYA UNTUK MODE price_gap) =====
+          let dynamicNominalMap = null;
+          if (mode === 'price_gap') {
+            const base = Number(baseAmount || 0);
+
+            const serviceRate = getSchemaRate('SERVICE', 0.10);
+            const rewardRate  = getSchemaRate('REWARD', 0.03);
+            const promoRate   = getSchemaRate('PROMO_FUND', 0.02);
+
+            let serviceNom = Math.round(base * serviceRate);
+            let rewardNom  = Math.round(base * rewardRate);
+            let promoNom   = Math.round(base * promoRate);
+
+            // Fee TL = min( (Selisih*10%), 2.000.000 ) -> secara default diambil dari Service Fund
+            let feeTlNom = Math.round(Math.min(base * 0.10, FEE_TL_MAX));
+
+            // potong dulu dari Service Fund
+            serviceNom = serviceNom - feeTlNom;
+
+            // fallback kalau service fund kurang (sesuai rule lama: ambil dari REWARD lalu PROMO)
+            if (serviceNom < 0) {
+              let sisa = -serviceNom;
+              serviceNom = 0;
+
+              rewardNom = rewardNom - sisa;
+              if (rewardNom < 0) {
+                sisa = -rewardNom;
+                rewardNom = 0;
+
+                promoNom = promoNom - sisa;
+                if (promoNom < 0) {
+                  promoNom = 0;
+                }
+              }
+            }
+
+            dynamicNominalMap = {
+              FEE_TL: feeTlNom,
+              SERVICE: Math.max(serviceNom, 0),
+              REWARD: Math.max(rewardNom, 0),
+              PROMO_FUND: Math.max(promoNom, 0)
+            };
+          }
+          // ======================================================
+
           let html = '';
           KOMISI_SCHEMA.forEach(function(item){
+
+            // jangan tampilkan FEE_TL kalau mode bukan price_gap (biar gak bingung)
+            if (item.kode === 'FEE_TL' && mode !== 'price_gap') {
+              return;
+            }
 
             const isCopic  = (item.kode === 'COPIC');
             const isKantor = KANTOR_CODES.indexOf(item.kode) !== -1;
@@ -4957,10 +5034,20 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             // ===== END KHUSUS COPIC =====
 
-            const nominal = Math.round(baseAmount * item.rate);
+            // nominal + rate yang mungkin dinamis (SERVICE/REWARD/PROMO/FEE_TL saat price_gap)
+            let nominal;
+            let rateUsed;
+
+            if (dynamicNominalMap && Object.prototype.hasOwnProperty.call(dynamicNominalMap, item.kode)) {
+              nominal = Number(dynamicNominalMap[item.kode] || 0);
+              rateUsed = baseAmount ? (nominal / Number(baseAmount || 1)) : 0;
+            } else {
+              nominal = Math.round(baseAmount * item.rate);
+              rateUsed = Number(item.rate || 0);
+            }
 
             // format persen dinamis
-            const rawPercent = item.rate * 100;
+            const rawPercent = rateUsed * 100;
             let percentText;
 
             if (FIXED_TWO_DECIMAL_CODES.indexOf(item.kode) !== -1) {
@@ -4985,6 +5072,8 @@ document.addEventListener('DOMContentLoaded', function () {
               agentName = up2AgentName || '';
             } else if (item.kode === 'UP3') {
               agentName = up3AgentName || '';
+            } else if (item.kode === 'FEE_TL') {
+              agentName = 'Team Leader';
             } else {
               const agentId = KOMISI_KODE_TO_AGENT_ID[item.kode];
               if (agentId && AGENT_NAME_MAP && AGENT_NAME_MAP[agentId]) {
@@ -5027,6 +5116,32 @@ document.addEventListener('DOMContentLoaded', function () {
           pembagianBody.innerHTML = html;
         }
 
+        function computeSelisihDanRoyalty(){
+          const hargaBidding = hargaMenangInput ? Number(onlyDigits(hargaMenangInput.value)) || 0 : 0;
+          const hargaDeal    = hargaDealInput ? Number(onlyDigits(hargaDealInput.value)) || 0 : 0;
+          const biayaBN      = biayaBalikNamaInput ? Number(onlyDigits(biayaBalikNamaInput.value)) || 0 : 0;
+          const biayaEks     = biayaEksekusiInput ? Number(onlyDigits(biayaEksekusiInput.value)) || 0 : 0;
+          const cobrokeFee   = cobrokeFeeInput ? Number(onlyDigits(cobrokeFeeInput.value)) || 0 : 0;
+
+          const selisih = Math.max(hargaDeal - (hargaBidding + biayaBN + biayaEks + cobrokeFee), 0);
+
+          if (selisihInput) {
+            selisihInput.value = selisih ? selisih.toLocaleString('id-ID') : '';
+          }
+
+          // FIX: update Selisih summary display (tc-selisih-summary)
+          if (selisihSummaryEl) {
+            selisihSummaryEl.textContent = rupiah(selisih);
+          }
+
+          const royalty = Math.round(selisih * 0.003); // (selisih*3%)*10% = selisih*0.003
+          if (royaltyFeeInput) {
+            royaltyFeeInput.value = royalty ? royalty.toLocaleString('id-ID') : '';
+          }
+
+          return selisih;
+        }
+
         function updateKomisiFromPercent(){
           if (!komisiEstimasi) return;
           const hargaNum = hargaMenangInput ? Number(onlyDigits(hargaMenangInput.value)) || 0 : 0;
@@ -5045,27 +5160,27 @@ document.addEventListener('DOMContentLoaded', function () {
           updateDetailPembagian(fee, 'profit');
         }
 
-        function updateSelisihFromGap(){
-          if (!selisihInput || !komisiEstimasi) return;
-          const hargaNum = hargaMenangInput ? Number(onlyDigits(hargaMenangInput.value)) || 0 : 0;
-          const gap      = Math.max(hargaNum - currentHargaLimit, 0);
+        function updateSelisihFromGap(selisih){
+          if (!komisiEstimasi) return;
 
-          selisihInput.value = gap ? gap.toLocaleString('id-ID') : '';
+          const base = Number(selisih || 0);
 
-          const komisiThc = Math.round(gap * THC_RATE);
-          const kantor    = Math.round(gap * KANTOR_RATE);
+          const komisiThc = Math.round(base * THC_RATE);
+          const kantor    = Math.round(base * KANTOR_RATE);
 
           komisiEstimasi.textContent = rupiah(komisiThc);
           if (kotorEstimasi) kotorEstimasi.textContent = rupiah(kantor);
 
           updateKenaikanPercent();
-          updateDetailPembagian(gap, 'price_gap');
+          updateDetailPembagian(base, 'price_gap');
         }
 
         function updateAllCalc(){
+          const selisihDeal = computeSelisihDanRoyalty();
+
           const mode = schemeInput ? schemeInput.value : 'profit';
           if (mode === 'price_gap') {
-            updateSelisihFromGap();
+            updateSelisihFromGap(selisihDeal);
           } else {
             updateKomisiFromPercent();
           }
@@ -5088,6 +5203,7 @@ document.addEventListener('DOMContentLoaded', function () {
             biayaBalikNamaInput.value = autoBN
               ? autoBN.toLocaleString('id-ID')
               : '';
+            updateAllCalc();
           }
         }
 
@@ -5336,13 +5452,55 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // binding input biaya (format ribuan)
         if (biayaBalikNamaInput) {
-          biayaBalikNamaInput.addEventListener('input', handleBiayaInput);
-          biayaBalikNamaInput.addEventListener('input', function(){
+          biayaBalikNamaInput.addEventListener('input', function(e){
+            handleBiayaInput(e);
             biayaBalikNamaManual = true;
+            updateAllCalc();
+          });
+          biayaBalikNamaInput.addEventListener('change', function(e){
+            handleBiayaInput(e);
+            updateAllCalc();
           });
         }
         if (biayaEksekusiInput) {
-          biayaEksekusiInput.addEventListener('input', handleBiayaInput);
+          biayaEksekusiInput.addEventListener('input', function(e){
+            handleBiayaInput(e);
+            updateAllCalc();
+          });
+          biayaEksekusiInput.addEventListener('change', function(e){
+            handleBiayaInput(e);
+            updateAllCalc();
+          });
+        }
+
+        // binding input Harga Deal (auto ribuan) + trigger hitung
+        if (hargaDealInput) {
+          hargaDealInput.addEventListener('input', function(e){
+            handleBiayaInput(e);
+            updateAllCalc();
+          });
+          hargaDealInput.addEventListener('change', function(e){
+            handleBiayaInput(e);
+            updateAllCalc();
+          });
+        }
+
+        // binding input Cobroke Fee (auto ribuan) + trigger hitung
+        if (cobrokeFeeInput) {
+          cobrokeFeeInput.addEventListener('input', function(e){
+            handleBiayaInput(e);
+            updateAllCalc();
+          });
+          cobrokeFeeInput.addEventListener('change', function(e){
+            handleBiayaInput(e);
+            updateAllCalc();
+          });
+        }
+
+        // (opsional) kalau royalty bisa diinput manual, tetap format ribuan
+        if (royaltyFeeInput) {
+          royaltyFeeInput.addEventListener('input', handleBiayaInput);
+          royaltyFeeInput.addEventListener('change', handleBiayaInput);
         }
 
         // binding tab buttons
@@ -5361,6 +5519,9 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     })();
 </script>
+
+
+
 
 
 
