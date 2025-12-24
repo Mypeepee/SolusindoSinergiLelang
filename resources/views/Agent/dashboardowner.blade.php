@@ -3073,28 +3073,32 @@ clearAllBtn?.addEventListener('click', clearAll);
                     }
                 @endphp
 
-                <button type="button"
-                        class="btn btn-sm btn-outline-danger rounded-pill mt-2 trx-history-edit"
-                        data-id-listing="{{ $t->id_listing }}"
-                        data-id-transaksi="{{ $t->id_transaction ?? '' }}"
-                        data-status="{{ $t->status ?? '' }}"
-                        data-lokasi="{{ $t->lokasi }}"
-                        data-tipe="{{ $t->tipe ?? '' }}"
-                        data-harga-limit="{{ $hargaLimitBtn }}"
-                        data-harga-menang="{{ $t->harga_bidding ?? 0 }}"
-                        data-closing-type="{{ ($t->skema_komisi ?? '') === 'Selisih harga' ? 'price_gap' : 'profit' }}"
-                        data-komisi-persen="{{ $komisiPersen }}"
-                        data-biaya-balik-nama="{{ $t->biaya_baliknama ?? '' }}"
-                        data-biaya-eksekusi="{{ $t->biaya_pengosongan ?? '' }}"
-                        data-tanggal="{{ \Carbon\Carbon::parse($t->tanggal_transaksi ?? $t->tanggal_diupdate)->format('Y-m-d') }}"
-                        data-id-agent="{{ $t->id_agent ?? '' }}"
-                        data-agent-nama="{{ $t->agent_nama ?? '' }}"
-                        data-id-klien="{{ $t->id_klien ?? '' }}"
-                        data-gambar="{{ $t->gambar ?? '' }}"
-                        data-photo="{{ $thumbSrc }}"
-                        data-copic-name="{{ $t->agent_nama ?? '' }}">
-                        Edit
-                </button>
+<button type="button"
+        class="btn btn-sm btn-outline-danger rounded-pill mt-2 trx-history-edit"
+        data-id-listing="{{ $t->id_listing }}"
+        data-id-transaksi="{{ $t->id_transaction ?? '' }}"
+        data-status="{{ $t->status ?? '' }}"
+        data-lokasi="{{ $t->lokasi }}"
+        data-tipe="{{ $t->tipe ?? '' }}"
+        data-harga-limit="{{ $hargaLimitBtn }}"
+        data-harga-menang="{{ $t->harga_bidding ?? 0 }}"
+        data-harga-deal="{{ $t->harga_deal ?? 0 }}"
+        data-cobroke-fee="{{ $t->cobroke_fee ?? 0 }}"
+        data-royalty-fee="{{ $t->royalty_fee ?? 0 }}"
+        data-closing-type="{{ ($t->skema_komisi ?? '') === 'Selisih harga' ? 'price_gap' : 'profit' }}"
+        data-komisi-persen="{{ $komisiPersen }}"
+        data-biaya-balik-nama="{{ $t->biaya_baliknama ?? '' }}"
+        data-biaya-eksekusi="{{ $t->biaya_pengosongan ?? '' }}"
+        data-tanggal="{{ \Carbon\Carbon::parse($t->tanggal_transaksi ?? $t->tanggal_diupdate)->format('Y-m-d') }}"
+        data-id-agent="{{ $t->id_agent ?? '' }}"
+        data-agent-nama="{{ $t->agent_nama ?? '' }}"
+        data-id-klien="{{ $t->id_klien ?? '' }}"
+        data-gambar="{{ $t->gambar ?? '' }}"
+        data-photo="{{ $thumbSrc }}"
+        data-copic-name="{{ $t->agent_nama ?? '' }}">
+        Edit
+</button>
+
 
                 </div>
               </div>
@@ -3117,6 +3121,7 @@ clearAllBtn?.addEventListener('click', clearAll);
 
       // Isi semua field di modal dari data-* tombol Edit
       function prefillClosingFormFromDataset(btn){
+
         const ds = btn.dataset;
 
         const inputIdListing    = document.getElementById('tc-id-listing');
@@ -3126,18 +3131,23 @@ clearAllBtn?.addEventListener('click', clearAll);
         const inputClosingType  = document.getElementById('tc-closing-type');
 
         const hargaMenangInput  = document.getElementById('tc-harga-menang');
+        const hargaDealInput    = document.getElementById('tc-harga-deal');
+        const cobrokeFeeInput   = document.getElementById('tc-cobroke-fee');
+        const royaltyFeeInput   = document.getElementById('tc-royalty-fee');
+
         const hargaLimitEl      = document.getElementById('tc-harga-limit');
         const komisiInput       = document.getElementById('tc-komisi-persen');
         const biayaBNInput      = document.getElementById('tc-biaya-balik-nama');
         const biayaEksInput     = document.getElementById('tc-biaya-eksekusi');
+
+        const selisihInputEl    = document.getElementById('tc-selisih');
+        const selisihSummaryEl  = document.getElementById('tc-selisih-summary');
 
         const hiddenAgentInput  = document.getElementById('tc-agent');
         const agentLabelEl      = document.getElementById('tc-agent-label');
         const agentAvatarEl     = document.getElementById('tc-agent-avatar-btn');
 
         const hiddenClientInput = document.getElementById('tc-client');
-        const clientLabelEl     = document.getElementById('tc-client-label');
-        const clientAvatarEl    = document.getElementById('tc-client-avatar-btn');
 
         // --- hidden: id listing & id transaksi ---
         if (inputIdListing) inputIdListing.value = ds.idListing || '';
@@ -3145,7 +3155,7 @@ clearAllBtn?.addEventListener('click', clearAll);
 
         // --- tanggal closing ---
         if (inputTgl && ds.tanggal) {
-          inputTgl.value = ds.tanggal; // format Y-m-d
+          inputTgl.value = ds.tanggal;
         }
 
         // --- status transaksi ---
@@ -3156,6 +3166,28 @@ clearAllBtn?.addEventListener('click', clearAll);
           selectStatus.value = opt ? opt.value : 'Closing';
         }
 
+        // --- Harga Limit (label kiri) ---
+        if (hargaLimitEl) {
+          const limitText = formatRupiahFromNumber(ds.hargaLimit || '');
+          hargaLimitEl.textContent = 'Rp ' + (limitText || '0');
+        }
+
+        // ===== PENTING: set field-field NEW dulu, baru trigger kalkulasi =====
+        // --- Harga Deal (NEW) ---
+        if (hargaDealInput && ds.hargaDeal !== undefined && ds.hargaDeal !== '') {
+          hargaDealInput.value = formatRupiahFromNumber(ds.hargaDeal);
+        }
+
+        // --- Cobroke Fee (NEW) ---
+        if (cobrokeFeeInput && ds.cobrokeFee !== undefined && ds.cobrokeFee !== '') {
+          cobrokeFeeInput.value = formatRupiahFromNumber(ds.cobrokeFee);
+        }
+
+        // --- Royalty Fee (NEW) ---
+        if (royaltyFeeInput && ds.royaltyFee !== undefined && ds.royaltyFee !== '') {
+          royaltyFeeInput.value = formatRupiahFromNumber(ds.royaltyFee);
+        }
+
         // --- skema komisi (persentase / selisih) ---
         const closingType = ds.closingType || 'profit';
         if (inputClosingType) inputClosingType.value = closingType;
@@ -3163,18 +3195,11 @@ clearAllBtn?.addEventListener('click', clearAll);
         const schemeOpt = document.querySelector(
           '.tc-scheme-option[data-value="'+ closingType +'"]'
         );
-        if (schemeOpt) schemeOpt.click();  // trigger UI & logic lama
-
-        // --- Harga Limit (label kiri) ---
-        if (hargaLimitEl) {
-          const limitText = formatRupiahFromNumber(ds.hargaLimit || '');
-          hargaLimitEl.textContent = 'Rp ' + (limitText || '0');
-        }
+        if (schemeOpt) schemeOpt.click();
 
         // --- Harga Menang ---
-        if (hargaMenangInput && ds.hargaMenang) {
-          const hmText = formatRupiahFromNumber(ds.hargaMenang);
-          hargaMenangInput.value = hmText;
+        if (hargaMenangInput && ds.hargaMenang !== undefined && ds.hargaMenang !== '') {
+          hargaMenangInput.value = formatRupiahFromNumber(ds.hargaMenang);
           hargaMenangInput.dispatchEvent(new Event('input', { bubbles:true }));
         }
 
@@ -3184,7 +3209,7 @@ clearAllBtn?.addEventListener('click', clearAll);
             && ds.komisiPersen !== undefined
             && ds.komisiPersen !== '') {
 
-          komisiInput.value = ds.komisiPersen; // contoh "5" / "7.5"
+          komisiInput.value = ds.komisiPersen;
           komisiInput.dispatchEvent(new Event('input',  { bubbles:true }));
           komisiInput.dispatchEvent(new Event('change', { bubbles:true }));
         }
@@ -3207,10 +3232,8 @@ clearAllBtn?.addEventListener('click', clearAll);
             '.tc-agent-option[data-id="'+ ds.idAgent +'"]'
           );
           if (agBtn) {
-            // klik supaya event handler lama jalan
             agBtn.click();
           } else {
-            // Fallback: set hidden + label manual
             if (hiddenAgentInput) hiddenAgentInput.value = ds.idAgent;
             if (agentLabelEl && ds.agentNama) agentLabelEl.textContent = ds.agentNama;
             if (agentAvatarEl && ds.agentNama) {
@@ -3219,59 +3242,90 @@ clearAllBtn?.addEventListener('click', clearAll);
           }
         }
 
-        // --- Pilih Client (kalau ada) ---
-        if (ds.idKlien) {
-          const clBtn = document.querySelector(
-            '.tc-client-option[data-id="'+ ds.idKlien +'"]'
-          );
-          if (clBtn) {
-            clBtn.click();
-          } else {
-            if (hiddenClientInput) hiddenClientInput.value = ds.idKlien;
-            // label client fallback sengaja gak dipaksa, biasanya tidak terlalu penting
-          }
+        // --- Pilih Client ---
+        if (ds.idKlien && hiddenClientInput) {
+          hiddenClientInput.value = ds.idKlien;
         }
 
-        // --- Re-hit harga menang sekali lagi supaya semua summary (komisi, kantor, kenaikan) pakai nilai final ---
-        if (hargaMenangInput && hargaMenangInput.value) {
-          hargaMenangInput.dispatchEvent(new Event('input', { bubbles:true }));
+        // Trigger input/change supaya listener “auto ribuan + updateAllCalc” jalan
+        if (hargaDealInput) {
+          hargaDealInput.dispatchEvent(new Event('input', { bubbles:true }));
+          hargaDealInput.dispatchEvent(new Event('change', { bubbles:true }));
+        }
+        if (cobrokeFeeInput) {
+          cobrokeFeeInput.dispatchEvent(new Event('input', { bubbles:true }));
+          cobrokeFeeInput.dispatchEvent(new Event('change', { bubbles:true }));
+        }
+        if (royaltyFeeInput) {
+          royaltyFeeInput.dispatchEvent(new Event('input', { bubbles:true }));
+          royaltyFeeInput.dispatchEvent(new Event('change', { bubbles:true }));
+        }
+
+        // Sync selisih summary
+        if (selisihSummaryEl) {
+          const v = selisihInputEl ? (selisihInputEl.value || '') : '';
+          selisihSummaryEl.textContent = 'Rp ' + (v || '0');
         }
       }
 
-      // Klik Edit di riwayat → buka modal + prefill
-      const editBtns = document.querySelectorAll('.trx-history-edit');
-      editBtns.forEach(function(btn){
-        btn.addEventListener('click', function(){
+      // EVENT DELEGATION: aman walau tombol muncul setelah AJAX
+      document.addEventListener('click', function(e){
+        const btn = e.target.closest('.trx-history-edit');
+        if (!btn) return;
 
-          const ds = this.dataset;
+        const ds = btn.dataset;
 
-          // Payload dasar untuk buka modal (script lama)
-          const payload = {
-            id_listing   : ds.idListing,
-            id_transaksi : ds.idTransaksi || null,
-            status       : ds.status || null,
-            lokasi       : ds.lokasi || '',
-            tipe         : ds.tipe || '',
-            harga_limit  : Number(ds.hargaLimit || 0),
-            gambar       : (ds.gambar || '').trim(),
-            photo        : (ds.photo  || '').trim(),
-            copic_name   : (ds.copicName || '').trim()
-          };
+        // ===== DEBUG (ini yang kamu butuh untuk diagnosa) =====
+        console.group('DEBUG EDIT CLICK');
+        console.log('ATTR data-harga-deal   :', btn.getAttribute('data-harga-deal'));
+        console.log('ATTR data-cobroke-fee  :', btn.getAttribute('data-cobroke-fee'));
+        console.log('ATTR data-royalty-fee  :', btn.getAttribute('data-royalty-fee'));
+        console.table({
+          ds_hargaDeal: ds.hargaDeal,
+          ds_cobrokeFee: ds.cobrokeFee,
+          ds_royaltyFee: ds.royaltyFee,
+          ds_hargaMenang: ds.hargaMenang,
+          ds_idTransaksi: ds.idTransaksi
+        });
+        console.groupEnd();
 
-          if (window.handleTransaksiClosingClick) {
-            try { window.handleTransaksiClosingClick(payload, this); }
-            catch(e){ console.error(e); }
-          }
+        // Payload dasar untuk buka modal
+        const payload = {
+          id_listing   : ds.idListing,
+          id_transaksi : ds.idTransaksi || null,
+          status       : ds.status || null,
+          lokasi       : ds.lokasi || '',
+          tipe         : ds.tipe || '',
+          harga_deal   : ds.hargaDeal,
+          cobroke_fee  : ds.cobrokeFee,
+          royalty_fee  : ds.royaltyFee,
+          harga_limit  : Number(ds.hargaLimit || 0),
+          gambar       : (ds.gambar || '').trim(),
+          photo        : (ds.photo  || '').trim(),
+          copic_name   : (ds.copicName || '').trim()
+        };
 
-          // Sesudah modal terbuka → isi field dari data-*
-          prefillClosingFormFromDataset(this);
+        if (window.handleTransaksiClosingClick) {
+          try { window.handleTransaksiClosingClick(payload, btn); }
+          catch(err){ console.error(err); }
+        }
+
+        // Prefill setelah modal “beneran” kebuka/dirender
+        requestAnimationFrame(function(){
+          prefillClosingFormFromDataset(btn);
+
+          // Debug hasil akhir input
+          console.group('DEBUG AFTER PREFILL');
+          console.table({
+            input_harga_deal: document.getElementById('tc-harga-deal')?.value,
+            input_cobroke_fee: document.getElementById('tc-cobroke-fee')?.value,
+            input_royalty_fee: document.getElementById('tc-royalty-fee')?.value
+          });
+          console.groupEnd();
         });
       });
     })();
     </script>
-
-
-
 
 
   <style>
@@ -3473,7 +3527,7 @@ clearAllBtn?.addEventListener('click', clearAll);
     }
   </style>
 
-  <script>
+<script>
     // =========================
     //  LOCATION PICKER TRANSAKSI (mirror Stoker)
     // =========================
@@ -3592,6 +3646,7 @@ clearAllBtn?.addEventListener('click', clearAll);
       });
     })();
 
+
 // =========================
 //   AJAX TABEL TRANSAKSI (mirror Stoker, tanpa bulk)
 // =========================
@@ -3675,38 +3730,96 @@ document.addEventListener('DOMContentLoaded', function () {
     loadList({ page });
   });
 
-  // >>>> TAMBAHKAN FUNGSI INI (GANTI hook kosong yang lama) <<<<
+  // >>>> REVISI: event delegation untuk tombol CLOSING + EDIT (kebal replace innerHTML) <<<<
   window.afterTransaksiListReplaced = function(){
-    const btns = document.querySelectorAll('#transaksi-list-inner .btn-transaksi-closing');
-    btns.forEach(btn => {
-      btn.addEventListener('click', function(){
+    if (!host) return;
+
+    // pasang 1x saja
+    if (host.dataset.tcDelegated === '1') return;
+    host.dataset.tcDelegated = '1';
+
+    host.addEventListener('click', function(e){
+
+      // ====== EDIT ======
+      const editBtn = e.target.closest('#transaksi-list-inner .trx-history-edit');
+      if (editBtn) {
+        e.preventDefault();
+
+        const ds = editBtn.dataset;
+
         const payload = {
-          id_listing:   this.dataset.idListing,
-          id_transaksi: this.dataset.idTransaksi || null,
-          status:       this.dataset.status || null,
-          lokasi:       this.dataset.lokasi || '',
-          tipe:         this.dataset.tipe || '',
-          harga_markup: Number(this.dataset.hargaMarkup || 0),
-          harga_limit:  Number(this.dataset.hargaLimit  || 0)
+          id_listing   : ds.idListing,
+          id_transaksi : ds.idTransaksi || null,
+          status       : ds.status || null,
+          lokasi       : ds.lokasi || '',
+          tipe         : ds.tipe || '',
+          harga_limit  : Number(ds.hargaLimit || 0),
+          gambar       : (ds.gambar || '').trim(),
+          photo        : (ds.photo  || '').trim(),
+          copic_name   : (ds.copicName || '').trim(),
+
+          // === FIELD BARU (EDIT) ===
+          harga_deal   : ds.hargaDeal || '',
+          cobroke_fee  : ds.cobrokeFee || '',
+          royalty_fee  : ds.royaltyFee || ''
         };
+
         if (window.handleTransaksiClosingClick) {
-          try { window.handleTransaksiClosingClick(payload, this); } catch(e){ console.error(e); }
+          try {
+            // OPEN dulu (ini biasanya reset)
+            window.handleTransaksiClosingClick(payload, editBtn);
+
+            // lalu PREFILL dari dataset (biar gak ketiban resetCalculation)
+            if (typeof window.prefillClosingFormFromDataset === 'function') {
+              window.prefillClosingFormFromDataset(editBtn);
+            }
+          } catch(err) {
+            console.error(err);
+          }
+        } else {
+          console.log('Edit clicked (no handler):', payload);
+        }
+        return;
+      }
+
+      // ====== CLOSING (LIST) ======
+      const closeBtn = e.target.closest('#transaksi-list-inner .btn-transaksi-closing');
+      if (closeBtn) {
+        e.preventDefault();
+
+        const ds = closeBtn.dataset;
+
+        const payload = {
+          id_listing:   ds.idListing,
+          id_transaksi: ds.idTransaksi || null,
+          status:       ds.status || null,
+          lokasi:       ds.lokasi || '',
+          tipe:         ds.tipe || '',
+          harga_markup: Number(ds.hargaMarkup || 0),
+          harga_limit:  Number(ds.hargaLimit  || 0),
+
+          // kalau tombol closing juga membawa nilai edit (opsional)
+          harga_deal   : ds.hargaDeal || '',
+          cobroke_fee  : ds.cobrokeFee || '',
+          royalty_fee  : ds.royaltyFee || ''
+        };
+
+        if (window.handleTransaksiClosingClick) {
+          try { window.handleTransaksiClosingClick(payload, closeBtn); } catch(err){ console.error(err); }
         } else {
           console.log('Closing clicked (no handler):', payload);
         }
-      });
+        return;
+      }
+
     });
   };
 
   // initial bind untuk render pertama (include blade)
   window.afterTransaksiListReplaced();
 });
+
 </script>
-
-
-
-
-
 
 {{-- ========= MODAL / CARD CLOSING TRANSAKSI ========= --}}
 <div id="transaksi-closing-overlay" class="tc-overlay d-none">
@@ -4569,7 +4682,9 @@ document.addEventListener('DOMContentLoaded', function () {
   $agentUplineMap = $allAgentsForUpline->pluck('upline_id','id_agent');
 @endphp
 
+
 <script>
+
     (function(){
       const PLACEHOLDER = "{{ asset('img/placeholder.jpg') }}";
       const PROPERTY_HISTORY_ROUTE = "{{ route('dashboard.owner.transaksi.history') }}";
@@ -4579,7 +4694,9 @@ document.addEventListener('DOMContentLoaded', function () {
       const KANTOR_RATE = 0.39;   // 39% pendapatan kotor kantor
 
       // maksimal Fee Team Leader
-      const FEE_TL_MAX = 2000000;
+      const FEE_TL_MAX  = 2000000;
+      // Fee TL dihitung dari 10% basis (selisih / fee) dengan maksimal 2jt
+      const FEE_TL_RATE = 0.10;
 
       const KOMISI_SCHEMA = [
         { kode:'UP1',       label:'Upline 1',           rate:0.004000 },
@@ -4643,7 +4760,8 @@ document.addEventListener('DOMContentLoaded', function () {
       // kode yang badge di Pos pakai label penuh
       const FULL_LABEL_BADGE_CODES = [
         'REWARD','INV_FUND','PROMO_FUND',
-        'SERVICE','PRINC_FUND','INV_SHARE','MGMT_FUND','EMP_INC'
+        'SERVICE','PRINC_FUND','INV_SHARE','MGMT_FUND','EMP_INC',
+        'FEE_TL' // NEW: biar rapi
       ];
 
       function rupiah(x){
@@ -4653,6 +4771,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
       function onlyDigits(str){
         return (str || '').replace(/[^\d]/g,'');
+      }
+
+      // NEW: helper format input uang (pakai id-ID) + trigger event
+      function setMoneyInput(el, val){
+        if (!el) return;
+        const num = Number(String(val ?? '').replace(/[^\d]/g,'')) || 0;
+        el.value = num ? num.toLocaleString('id-ID') : '';
+        // trigger supaya handler lama jalan (format + hitung)
+        el.dispatchEvent(new Event('input',  { bubbles:true }));
+        el.dispatchEvent(new Event('change', { bubbles:true }));
       }
 
       // 🔧 BERSIHKAN NAMA COPIC (hilangkan "Lelang ke-2 ID..." dll)
@@ -4695,6 +4823,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // NEW: Selisih summary display (yang kamu bilang selalu Rp 0)
         const selisihSummaryEl = document.getElementById('tc-selisih-summary');
+
+        // NEW: guard supaya saat openModal() reset, kalkulasi nggak “nembak 0 dulu”
+        let isHydratingModal = false;
+
+        // NEW: simpan payload terakhir (buat debug)
+        let lastModalPayload  = null;
 
         let currentHargaLimit    = 0;
         let currentCopicName     = '-';
@@ -4937,26 +5071,34 @@ document.addEventListener('DOMContentLoaded', function () {
             return Number(fallback || 0);
           }
 
-          // ===== DYNAMIC FEE TL (HANYA UNTUK MODE price_gap) =====
+          // ===== DYNAMIC FEE TL (BERLAKU UNTUK price_gap DAN profit) =====
+          // NOTE:
+          // - Fee TL = min( base*10%, 2.000.000 )
+          // - Diambil dari porsi Service Fund (dan kalau minus, fallback ke Reward lalu Promotion)
           let dynamicNominalMap = null;
-          if (mode === 'price_gap') {
+
+          // sebelumnya hanya untuk price_gap:
+          // if (mode === 'price_gap') { ... }
+          if (mode === 'price_gap' || mode === 'profit') {
             const base = Number(baseAmount || 0);
 
             const serviceRate = getSchemaRate('SERVICE', 0.10);
             const rewardRate  = getSchemaRate('REWARD', 0.03);
             const promoRate   = getSchemaRate('PROMO_FUND', 0.02);
 
+            // nominal awal fund (dibulatkan)
             let serviceNom = Math.round(base * serviceRate);
             let rewardNom  = Math.round(base * rewardRate);
             let promoNom   = Math.round(base * promoRate);
 
-            // Fee TL = min( (Selisih*10%), 2.000.000 ) -> secara default diambil dari Service Fund
-            let feeTlNom = Math.round(Math.min(base * 0.10, FEE_TL_MAX));
+            // Fee TL berdasarkan 10% basis (bukan rate schema), max 2jt
+            const feeBase = base * FEE_TL_RATE;
+            let feeTlNom  = Math.round(Math.min(feeBase, FEE_TL_MAX));
 
             // potong dulu dari Service Fund
             serviceNom = serviceNom - feeTlNom;
 
-            // fallback kalau service fund kurang (sesuai rule lama: ambil dari REWARD lalu PROMO)
+            // fallback kalau service fund kurang (ambil dari REWARD lalu PROMO)
             if (serviceNom < 0) {
               let sisa = -serviceNom;
               serviceNom = 0;
@@ -4974,9 +5116,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             dynamicNominalMap = {
-              FEE_TL: feeTlNom,
-              SERVICE: Math.max(serviceNom, 0),
-              REWARD: Math.max(rewardNom, 0),
+              FEE_TL:     Math.max(feeTlNom, 0),
+              SERVICE:    Math.max(serviceNom, 0),
+              REWARD:     Math.max(rewardNom, 0),
               PROMO_FUND: Math.max(promoNom, 0)
             };
           }
@@ -4985,10 +5127,11 @@ document.addEventListener('DOMContentLoaded', function () {
           let html = '';
           KOMISI_SCHEMA.forEach(function(item){
 
+            // sebelumnya FEE_TL hanya tampil saat price_gap:
             // jangan tampilkan FEE_TL kalau mode bukan price_gap (biar gak bingung)
-            if (item.kode === 'FEE_TL' && mode !== 'price_gap') {
-              return;
-            }
+            // if (item.kode === 'FEE_TL' && mode !== 'price_gap') {
+            //   return;
+            // }
 
             const isCopic  = (item.kode === 'COPIC');
             const isKantor = KANTOR_CODES.indexOf(item.kode) !== -1;
@@ -5034,7 +5177,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             // ===== END KHUSUS COPIC =====
 
-            // nominal + rate yang mungkin dinamis (SERVICE/REWARD/PROMO/FEE_TL saat price_gap)
+            // nominal + rate yang mungkin dinamis (SERVICE/REWARD/PROMO/FEE_TL saat price_gap & profit)
             let nominal;
             let rateUsed;
 
@@ -5176,6 +5319,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function updateAllCalc(){
+          // NEW: jangan hitung saat modal sedang “hydrating/reset”
+          if (isHydratingModal) {
+            return;
+          }
+
           const selisihDeal = computeSelisihDanRoyalty();
 
           const mode = schemeInput ? schemeInput.value : 'profit';
@@ -5276,6 +5424,12 @@ document.addEventListener('DOMContentLoaded', function () {
         function openModal(payload){
           console.log('DEBUG OPEN MODAL payload:', payload);
 
+          // NEW: simpan payload terakhir (buat debug + edit prefill)
+          lastModalPayload = payload || null;
+
+          // NEW: aktifkan guard supaya resetScheme()/applySchemeUI() tidak menghitung 0 dulu
+          isHydratingModal = true;
+
           currentHargaLimit    = Number(payload.harga_limit || 0);
           currentCopicName     = cleanCopicName(payload.copic_name || '-');
           currentCopicAgents   = [];
@@ -5337,8 +5491,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
           }
 
+          // NEW: kalau edit mode mengirim tanggal, pakai itu. kalau tidak, default hari ini.
           const today = new Date().toISOString().slice(0,10);
-          inputTgl.value = today;
+          inputTgl.value = payload.tanggal || today;
 
           if (photoEl) {
             let src = (payload.photo || '').trim();
@@ -5363,6 +5518,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
           overlay.classList.remove('d-none');
           document.body.classList.add('overflow-hidden');
+
+          // =========================
+          // NEW: PREFILL FIELD EDIT (harga_deal, cobroke_fee, royalty_fee)
+          // Supaya nilainya sesuai tabel transaction saat edit.
+          // NOTE: field ini DISET setelah resetCalculation() supaya tidak ketimpa.
+          // =========================
+          try {
+            console.log('DEBUG PREFILL NEW FIELDS:',
+              'harga_deal=', payload.harga_deal,
+              'cobroke_fee=', payload.cobroke_fee,
+              'royalty_fee=', payload.royalty_fee
+            );
+
+            setMoneyInput(hargaDealInput,  payload.harga_deal);
+            setMoneyInput(cobrokeFeeInput, payload.cobroke_fee);
+
+            // Royalty tetap kita isi dari DB dulu (biar sesuai), setelah itu kalkulasi bisa update lagi jika perlu
+            setMoneyInput(royaltyFeeInput, payload.royalty_fee);
+          } catch(e) {
+            console.error('Error prefill new fields:', e);
+          }
+
+          // NEW: matikan guard setelah semua field prefill
+          isHydratingModal = false;
+
+          // NEW: hitung ulang sekali setelah prefill (selisih, royalty, detail pembagian, dll)
+          updateAllCalc();
         }
 
         function closeModal(){
@@ -5510,6 +5692,12 @@ document.addEventListener('DOMContentLoaded', function () {
             activateTab(key);
           });
         });
+
+        // NEW: expose debug helper (opsional) biar kamu bisa cek payload terakhir dari console
+        window.__tcLastModalPayload = function(){
+          console.log('DEBUG __tcLastModalPayload:', lastModalPayload);
+          return lastModalPayload;
+        };
       }
 
       if (document.readyState === 'loading') {
@@ -5519,6 +5707,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     })();
 </script>
+
 
 
 

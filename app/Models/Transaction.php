@@ -31,7 +31,10 @@ class Transaction extends Model
         'id_listing',
         'harga_limit',
         'harga_bidding',
+        'harga_deal',
         'selisih',
+        'royalty_fee',
+        'cobroke_fee',
         'persentase_komisi',
         'basis_pendapatan',
         'biaya_baliknama',      // ← TAMBAH
@@ -49,7 +52,10 @@ class Transaction extends Model
     protected $casts = [
         'harga_limit'         => 'integer',
         'harga_bidding'       => 'integer',
+        'harga_deal'          => 'integer',
         'selisih'             => 'integer',
+        'royalty_fee'         => 'integer',
+        'cobroke_fee'         => 'integer',
         'basis_pendapatan'    => 'integer',
         'biaya_baliknama'     => 'integer',
         'biaya_pengosongan'   => 'integer',

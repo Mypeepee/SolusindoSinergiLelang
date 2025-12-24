@@ -952,6 +952,22 @@ $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar'
             'trx.harga_limit',
             'trx.harga_bidding',
             'trx.selisih',
+
+            // =========================
+            // NEW FIELDS (PASTI MASUK KE VIEW)
+            // =========================
+            'trx.harga_deal',
+            'trx.cobroke_fee',
+            'trx.royalty_fee',
+
+            // optional alias (biar aman kalau ada tempat lain pakai nama berbeda)
+            'trx.harga_deal   as trx_harga_deal',
+            'trx.cobroke_fee  as trx_cobroke_fee',
+            'trx.royalty_fee  as trx_royalty_fee',
+
+            // =========================
+            // OLD FIELDS (JANGAN DIUBAH)
+            // =========================
             'trx.persentase_komisi',
             'trx.basis_pendapatan',
             'trx.biaya_baliknama',
@@ -971,6 +987,7 @@ $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar'
         ->orderByDesc('trx.tanggal_transaksi')
         ->limit(20)
         ->get();
+
 
         $clientsDropdown = DB::table('account')
             ->where('roles', 'User')
@@ -2523,7 +2540,10 @@ public function updatetransaksi(Request $request)
         'closing_type'     => 'required|in:profit,price_gap', // 'profit' / 'price_gap'
         'id_agent'         => 'nullable|string',
         'id_klien'         => 'nullable|string',
-        'harga_menang'     => 'required|string',   // masih format "4.000.000.000"
+        'harga_menang'     => 'required|string',   // masih format "4.000.000.000" (HARGA BIDDING)
+        'harga_deal'       => 'nullable|string',   // NEW: dari input modal (boleh ada titik)
+        'royalty_fee'      => 'nullable|string',   // NEW: dari input modal (boleh ada titik) -> akan dioverride perhitungan server
+        'cobroke_fee'      => 'nullable|string',   // NEW: dari input modal (boleh ada titik)
         'komisi_persen'    => 'nullable|numeric',  // contoh: 5, 10
         'status'           => 'nullable|string',
         'tanggal_diupdate' => 'required|date',     // tanggal closing (Y-m-d)
@@ -2544,21 +2564,39 @@ public function updatetransaksi(Request $request)
         return back()->with('error', 'Harga menang tidak valid.')->withInput();
     }
 
-    // --- Hitung selisih ---
-    $selisih = max($hargaBidding - $hargaLimit, 0);
-
-    // --- Hitung kenaikan_dari_limit (persentase) ---
-    $kenaikanDariLimit = 0;
-    if ($hargaLimit > 0 && $selisih > 0) {
-        $kenaikanDariLimit = round(($selisih / $hargaLimit) * 100, 2); // contoh: 15.25 (%)
-    }
+    // --- Normalisasi input NEW: harga_deal, cobroke_fee, royalty_fee (hapus titik/koma dll) ---
+    $hargaDeal   = (int) preg_replace('/[^\d]/', '', $data['harga_deal'] ?? '');
+    $cobrokeFee  = (int) preg_replace('/[^\d]/', '', $data['cobroke_fee'] ?? '');
+    $royaltyIn   = (int) preg_replace('/[^\d]/', '', $data['royalty_fee'] ?? '');
 
     // --- Normalisasi biaya balik nama & biaya pengosongan (eksekusi) ---
     $biayaBalikNama   = (int) preg_replace('/[^\d]/', '', $data['biaya_balik_nama'] ?? '');
     $biayaPengosongan = (int) preg_replace('/[^\d]/', '', $data['biaya_eksekusi'] ?? '');
 
-    // --- Map skema_komisi (label) dari closing_type ---
+    // --- Validasi tambahan: kalau price_gap wajib ada harga_deal ---
     $closingType  = $data['closing_type']; // 'profit' / 'price_gap'
+    if ($closingType === 'price_gap' && $hargaDeal <= 0) {
+        return back()->with('error', 'Harga deal wajib diisi untuk skema Selisih harga.')->withInput();
+    }
+
+    // --- Hitung selisih (NEW FORMULA) ---
+    // selisih = harga_deal - (harga_bidding + biaya_balik_nama + biaya_pengosongan + cobroke_fee)
+    $selisih = max($hargaDeal - ($hargaBidding + $biayaBalikNama + $biayaPengosongan + $cobrokeFee), 0);
+
+    // --- Hitung royalty (AUTO SERVER) ---
+    // royalty = (selisih * 3%) * 10% = selisih * 0.003
+    $royaltyFee = (int) round($selisih * 0.003);
+
+    // --- Hitung selisih dari limit (khusus kenaikan_dari_limit, tetap berdasarkan bidding vs limit) ---
+    $selisihLimit = max($hargaBidding - $hargaLimit, 0);
+
+    // --- Hitung kenaikan_dari_limit (persentase) ---
+    $kenaikanDariLimit = 0;
+    if ($hargaLimit > 0 && $selisihLimit > 0) {
+        $kenaikanDariLimit = round(($selisihLimit / $hargaLimit) * 100, 2); // contoh: 15.25 (%)
+    }
+
+    // --- Map skema_komisi (label) dari closing_type ---
     $skemaKomisi  = $closingType === 'price_gap'
         ? 'Selisih harga'
         : 'Persentase komisi';
@@ -2575,7 +2613,7 @@ public function updatetransaksi(Request $request)
 
     // --- Basis pendapatan ---
     if ($closingType === 'price_gap') {
-        // basis = selisih harga
+        // basis = selisih (NEW)
         $basisPendapatan = $selisih;
     } else {
         // basis = harga_bidding * persen
@@ -2622,12 +2660,15 @@ public function updatetransaksi(Request $request)
         'id_listing'          => $property->id_listing,
         'harga_limit'         => $hargaLimit,
         'harga_bidding'       => $hargaBidding,
-        'selisih'             => $selisih,
+        'harga_deal'          => $hargaDeal,       // NEW
+        'cobroke_fee'         => $cobrokeFee,      // NEW
+        'royalty_fee'         => $royaltyFee,      // NEW (AUTO)
+        'selisih'             => $selisih,         // NEW selisih formula
         'persentase_komisi'   => $persentaseKomisi,
         'basis_pendapatan'    => $basisPendapatan,
         'status_transaksi'    => $statusTransaksi,
         'tanggal_transaksi'   => $tanggalTransaksi,
-        'kenaikan_dari_limit' => $kenaikanDariLimit, // dalam persen (misal 12.5)
+        'kenaikan_dari_limit' => $kenaikanDariLimit, // dalam persen (misal 12.5) -> tetap bidding vs limit
         'biaya_baliknama'     => $biayaBalikNama,
         'biaya_pengosongan'   => $biayaPengosongan,
     ];
@@ -2649,7 +2690,35 @@ public function updatetransaksi(Request $request)
     |  - Skema pembagian mengikuti KONSTANTA yang sama seperti di JS
     |  - COPIC: dibagi rata ke semua agent yang PERNAH pegang aset yg sama
     |    (berdasarkan sertifikat + luas + kota), tanpa dobel kalau agent sama.
+    |  - NEW: FEE_TL (Fee Team Leader) dinamis:
+    |      fee_tl = min(basis*10%, 2.000.000)
+    |      diambil dari SERVICE dulu, kalau kurang -> REWARD, kalau masih kurang -> PROMO_FUND
     */
+
+    // --- Siapkan $rows untuk update status property & listing similar (dipakai di bawah) ---
+    $sertKey = null;
+    if (!empty($property->sertifikat)) {
+        $lower   = mb_strtolower($property->sertifikat, 'UTF-8');
+        $sertKey = preg_replace('/[^a-z0-9]/u', '', $lower);
+    }
+
+    $history = Property::query()
+        ->where('id_listing', '!=', $property->id_listing)
+        ->when($sertKey, function ($q) use ($sertKey) {
+            $q->whereRaw(
+                "regexp_replace(lower(coalesce(sertifikat, '')), '[^a-z0-9]', '', 'g') = ?",
+                [$sertKey]
+            );
+        })
+        ->when($property->luas, function ($q) use ($property) {
+            $q->where('luas', $property->luas);
+        })
+        ->when($property->kota, function ($q) use ($property) {
+            $q->whereRaw('LOWER(TRIM(kota)) = ?', [strtolower(trim($property->kota))]);
+        })
+        ->get();
+
+    $rows = collect([$property])->merge($history);
 
     // Kalau basis 0 → hapus semua detail komisi & lompat ke update status property
     if ($basisPendapatan <= 0) {
@@ -2674,6 +2743,7 @@ public function updatetransaksi(Request $request)
             ['kode' => 'PIC5',      'rate' => 0.040000],
             ['kode' => 'THC',       'rate' => 0.400000],
             ['kode' => 'SERVICE',   'rate' => 0.100000],
+            ['kode' => 'FEE_TL',    'rate' => 0.000000], // NEW (dinamis, dipotong dari SERVICE/REWARD/PROMO_FUND)
             ['kode' => 'PRINC_FEE', 'rate' => 0.030000],
             ['kode' => 'INV_SHARE', 'rate' => 0.095200],
             ['kode' => 'MGMT_FUND', 'rate' => 0.059500],
@@ -2720,30 +2790,6 @@ public function updatetransaksi(Request $request)
         $up3Id = $getUplineId($up2Id, 'AG001');      // default AG001
 
         // --- 3. Cari daftar agent COPIC dari sejarah aset yang sama ---
-        $sertKey = null;
-        if (!empty($property->sertifikat)) {
-            $lower   = mb_strtolower($property->sertifikat, 'UTF-8');
-            $sertKey = preg_replace('/[^a-z0-9]/u', '', $lower);
-        }
-
-        $history = Property::query()
-            ->where('id_listing', '!=', $property->id_listing)
-            ->when($sertKey, function ($q) use ($sertKey) {
-                $q->whereRaw(
-                    "regexp_replace(lower(coalesce(sertifikat, '')), '[^a-z0-9]', '', 'g') = ?",
-                    [$sertKey]
-                );
-            })
-            ->when($property->luas, function ($q) use ($property) {
-                $q->where('luas', $property->luas);
-            })
-            ->when($property->kota, function ($q) use ($property) {
-                $q->whereRaw('LOWER(TRIM(kota)) = ?', [strtolower(trim($property->kota))]);
-            })
-            ->get();
-
-        $rows = collect([$property])->merge($history);
-
         // Kumpulkan semua id_agent unik yang PERNAH pegang aset ini
         $copicAgentIds = $rows->pluck('id_agent')
             ->filter()
@@ -2762,6 +2808,7 @@ public function updatetransaksi(Request $request)
         // Upline
         if ($up1Id) {
             $roleAgentMap['UP1'] = [$up1Id];
+            $roleAgentMap['FEE_TL'] = [$up1Id]; // NEW: Fee TL diarahkan ke UP1 (Team Leader)
         }
         if ($up2Id) {
             $roleAgentMap['UP2'] = [$up2Id];
@@ -2793,12 +2840,58 @@ public function updatetransaksi(Request $request)
             }
         }
 
+        // --- 4.5. NEW: Perhitungan dinamis FEE_TL & pengurangan SERVICE/REWARD/PROMO_FUND (HANYA SAAT price_gap) ---
+        $dynFeeTl   = 0;
+        $dynService = null;
+        $dynReward  = null;
+        $dynPromo   = null;
+
+        if ($closingType === 'price_gap') {
+            $maxFeeTl = 2000000;
+
+            $serviceNom = (int) round($basisPendapatan * 0.10);
+            $rewardNom  = (int) round($basisPendapatan * 0.03);
+            $promoNom   = (int) round($basisPendapatan * 0.02);
+
+            $feeTlNom = (int) round(min($basisPendapatan * 0.10, $maxFeeTl));
+
+            // potong dari SERVICE dulu
+            $serviceNom = $serviceNom - $feeTlNom;
+
+            // fallback kalau service kurang -> REWARD -> PROMO
+            if ($serviceNom < 0) {
+                $sisa = -$serviceNom;
+                $serviceNom = 0;
+
+                $rewardNom = $rewardNom - $sisa;
+                if ($rewardNom < 0) {
+                    $sisa = -$rewardNom;
+                    $rewardNom = 0;
+
+                    $promoNom = $promoNom - $sisa;
+                    if ($promoNom < 0) {
+                        $promoNom = 0;
+                    }
+                }
+            }
+
+            $dynFeeTl   = max($feeTlNom, 0);
+            $dynService = max($serviceNom, 0);
+            $dynReward  = max($rewardNom, 0);
+            $dynPromo   = max($promoNom, 0);
+        }
+
         // --- 5. Sinkronisasi ke transaction_commissions (tanpa reset ID) ---
         $keptIds = []; // id row yang dipertahankan / diupdate
 
         foreach ($KOMISI_SCHEMA as $item) {
             $kode = $item['kode'];
             $rate = (float) $item['rate'];
+
+            // NEW: hanya tampilkan/simpan FEE_TL ketika price_gap
+            if ($kode === 'FEE_TL' && $closingType !== 'price_gap') {
+                continue;
+            }
 
             // Kalau tidak ada agent untuk kode ini, skip
             if (!isset($roleAgentMap[$kode]) || empty($roleAgentMap[$kode])) {
@@ -2835,9 +2928,23 @@ public function updatetransaksi(Request $request)
                     $keptIds[] = $row->id;
                 }
             } else {
-                // Kode lain: masing2 agent (biasanya cuma 1) dapat full rate
+
                 foreach ($agents as $agId) {
-                    $pendapatan = (int) round($basisPendapatan * $rate);
+
+                    // NEW: override nominal untuk SERVICE/REWARD/PROMO/FEE_TL saat price_gap
+                    if ($closingType === 'price_gap' && $kode === 'SERVICE' && $dynService !== null) {
+                        $pendapatan = (int) $dynService;
+                    } elseif ($closingType === 'price_gap' && $kode === 'REWARD' && $dynReward !== null) {
+                        $pendapatan = (int) $dynReward;
+                    } elseif ($closingType === 'price_gap' && $kode === 'PROMO_FUND' && $dynPromo !== null) {
+                        $pendapatan = (int) $dynPromo;
+                    } elseif ($closingType === 'price_gap' && $kode === 'FEE_TL') {
+                        $pendapatan = (int) $dynFeeTl;
+                    } else {
+                        // Kode lain: masing2 agent (biasanya cuma 1) dapat full rate
+                        $pendapatan = (int) round($basisPendapatan * $rate);
+                    }
+
                     if ($pendapatan <= 0) {
                         continue;
                     }
@@ -2889,6 +2996,7 @@ public function updatetransaksi(Request $request)
 
     return back()->with('success', 'Status transaksi berhasil disimpan.');
 }
+
 
 
 
