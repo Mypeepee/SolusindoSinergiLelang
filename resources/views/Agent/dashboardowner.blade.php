@@ -379,263 +379,127 @@
         </div>
 
         <!-- Progress Lelang -->
-        <div class="tab-pane fade {{ $tab==='progress' ? 'show active' : '' }}" id="progress" role="tabpanel" aria-labelledby="progress-tab">
-            <!-- Sub Tabs Progress -->
-            <ul class="nav nav-pills mb-3" id="progressSubTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="progress-agent-tab" data-bs-toggle="pill" data-bs-target="#progress-agent" type="button" role="tab" aria-controls="progress-agent" aria-selected="true">
-                        🧑‍💼 Agent
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="progress-register-tab" data-bs-toggle="pill" data-bs-target="#progress-register" type="button" role="tab" aria-controls="progress-register" aria-selected="false">
-                        📝 Register
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="progress-pengosongan-tab" data-bs-toggle="pill" data-bs-target="#progress-pengosongan" type="button" role="tab" aria-controls="progress-pengosongan" aria-selected="false">
-                        🏠 Pengosongan
-                    </button>
-                </li>
-            </ul>
-            <div class="tab-content" id="progressSubTabsContent">
-                <div class="tab-pane fade show active" id="progress-agent" role="tabpanel" aria-labelledby="progress-agent-tab">
-                    <!-- Isi tabel progress agent di sini -->
-                    <div class="card shadow-sm border-0 mb-4">
-                        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0 fw-semibold text-primary">📋 Daftar Klien Tertarik</h5>
-                        </div>
-                                    <div class="card-body table-responsive">
-                                        <table class="table align-middle table-hover" id="clientTable">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th>#</th>
-                                                    <th>ID Klien</th>
-                                                    <th>Nama</th>
-                                                    <th>ID Properti</th>
-                                                    <th>ID Agent</th>
-                                                    <th>Lokasi</th>
-                                                    <th>Harga</th>
-                                                    <th>Progress</th>
-                                                    <th>Status</th>
-                                                    <th>Detail</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @forelse ($clients as $index => $client)
-                                                    @php
-                                                        $status = $client->status;
-                                                        $progress = match($status) {
-                                                            'Pending' => 0,
-                                                            'FollowUp' => 33,
-                                                            'BuyerMeeting' => 66,
-                                                            'Closing', 'Gagal' => 100,
-                                                            default => 0,
-                                                        };
-                                                        $barClass = match($status) {
-                                                            'gagal' => 'bg-danger',
-                                                            'pending' => 'bg-warning',
-                                                            default => 'bg-success',
-                                                        };
-                                                    @endphp
-                                                    <tr id="row-{{ $client->id_account }}-{{ $client->id_listing }}">
-                                                        <td>{{ $index + 1 }}</td>
-                                                        <td><span class="badge bg-light text-dark">{{ $client->id_account }}</span></td>
-                                                        <td>{{ $client->nama }}</td>
-                                                        <td><span class="badge bg-secondary">{{ $client->id_listing }}</span></td>
-                                                        <td>{{ $client->id_agent }}</td>
-                                                        <td>{{ $client->lokasi }}</td>
-                                                        <td>Rp {{ number_format($client->harga, 0, ',', '.') }}</td>
-                                                        <td style="min-width: 160px;">
-                                                            <div class="progress" style="height: 18px;">
-                                                                <div class="progress-bar {{ $barClass }}"
-                                                                    role="progressbar"
-                                                                    style="width: {{ $progress }}%;"
-                                                                    aria-valuenow="{{ $progress }}"
-                                                                    aria-valuemin="0"
-                                                                    aria-valuemax="100">
-                                                                    {{ $progress }}%
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        @php
-                                                            $status = $client->status; // biar konsisten kita nggak ubah case
-                                                        @endphp
-                                                        <td>{{ $client->status }}</td>
-                                                        <td>
-                                                            <form action="{{ route('dashboard.detail', ['id_listing' => $client->id_listing, 'id_account' => $client->id_account]) }}" method="GET">
-                                                                @csrf
-                                                                <button type="submit" class="btn btn-sm bg-secondary text-white rounded-pill px-3 shadow-sm">
-                                                                    Detail
-                                                                </button>
-                                                            </form>
-                                                        </td>
-                                                    </tr>
-                                                @empty
-                                            <tr>
-                                        <td colspan="8" class="text-center text-muted py-4">Belum ada klien yang tertarik saat ini.</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+<div class="tab-pane fade {{ $tab==='progress' ? 'show active' : '' }}" id="progress" role="tabpanel" aria-labelledby="progress-tab">
 
-                </div>
-                <div class="tab-pane fade" id="progress-register" role="tabpanel" aria-labelledby="progress-register-tab">
-                    <!-- Isi tabel progress register di sini -->
-                    <div class="card shadow-sm border-0 mb-4">
-                        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0 fw-semibold text-primary">📋 Register Jobdesk</h5>
-                        </div>
-                        <div class="card-body table-responsive">
-                            <table class="table align-middle table-hover text-center" id="clientClosingTable">
-                                <thead class="table-light align-middle">
-                                    <tr>
-                                        <th style="width: 40px;">#</th> <!-- ✅ Mepet -->
-                                        <th style="width: 80px;">ID</th> <!-- ✅ Mepet -->
-                                        <th style="min-width: 180px;">Nama</th> <!-- ✅ Lebar untuk nama panjang -->
-                                        <th style="width: 100px;">Property ID</th>
-                                        <th style="min-width: 200px;">Lokasi</th> <!-- ✅ Lebih lebar -->
-                                        <th style="min-width: 120px;">Harga</th>
-                                        <th style="min-width: 160px;">Progess</th>
-                                        <th>Status</th>
-                                        <th style="min-width: 160px;">Detail</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse ($clientsClosing as $index => $client)
-                                    <tr id="row-{{ $client->id_account }}-{{ $client->id_listing }}">
-                                        <td>{{ $index + 1 }}</td>
-                                        <td><span class="badge bg-light text-dark">{{ $client->id_account }}</span></td>
-                                        <td class="text-truncate" style="max-width: 220px;">{{ $client->nama }}</td>
-                                        <td><span class="badge bg-secondary">{{ $client->id_listing }}</span></td>
-                                        <td class="text-truncate" style="max-width: 300px;">{{ $client->lokasi }}</td>
-                                        <td>Rp {{ number_format($client->harga, 0, ',', '.') }}</td>
-                                        <td>
-                                            @php
-                                            $tahap = $client->status ?? 'Closing'; // Ambil status dari query
-                                            $progress = match($tahap) {
-                                                'Closing' => 0,
-                                                'Kuitansi' => 20,
-                                                'Kode Billing' => 40,
-                                                'Kutipan Risalah Lelang' => 60,
-                                                'Akte Grosse' => 80,
-                                                'Balik Nama' => 100,
-                                                default => 0
-                                            };
-                                        @endphp
-                                            <div class="progress" style="height: 14px;">
-                                                <div class="progress-bar {{ $progress == 100 ? 'bg-success' : 'bg-secondary' }}"
-                                                    role="progressbar"
-                                                    style="width: {{ $progress }}%;"
-                                                    aria-valuenow="{{ $progress }}"
-                                                    aria-valuemin="0"
-                                                    aria-valuemax="100">
-                                                    {{ $progress }}%
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>{{ $client->status }}</td>
-                                        <td>
-                                            <form action="{{ route('dashboard.detail', ['id_listing' => $client->id_listing, 'id_account' => $client->id_account]) }}" method="GET">
-                                                @csrf
-                                                <button type="submit" class="btn btn-sm bg-secondary text-white rounded-pill px-3 shadow-sm">
-                                                    Detail
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                    @empty
-                                    <tr>
-                                        <td colspan="9" class="text-center text-muted py-4">Belum ada klien closing.</td>
-                                    </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+    {{-- ORIGINAL (disimpan, tidak dihapus):
+    <ul class="nav nav-pills mb-3" id="progressSubTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="progress-agent-tab" data-bs-toggle="pill" data-bs-target="#progress-agent" type="button" role="tab" aria-controls="progress-agent" aria-selected="true">
+                🧑‍💼 Agent
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="progress-register-tab" data-bs-toggle="pill" data-bs-target="#progress-register" type="button" role="tab" aria-controls="progress-register" aria-selected="false">
+                📝 Register
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="progress-pengosongan-tab" data-bs-toggle="pill" data-bs-target="#progress-pengosongan" type="button" role="tab" aria-controls="progress-pengosongan" aria-selected="false">
+                🏠 Pengosongan
+            </button>
+        </li>
+    </ul>
+    --}}
 
-                </div>
-                <div class="tab-pane fade" id="progress-pengosongan" role="tabpanel" aria-labelledby="progress-pengosongan-tab">
-                    <!-- Isi tabel progress pengosongan di sini -->
-                    <div class="orders mt-4">
-                        <div class="card">
-                            <div class="card-body">
-                                <h5 class="fw-bold mb-3"><i class="bi bi-truck me-2 text-warning"></i> Progress Pengosongan</h5>
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover" id="pengosonganTable">
-                                        <thead class="table-light align-middle">
-                                            <tr>
-                                                <th>#</th>
-                                                <th>ID</th>
-                                                <th>Nama</th>
-                                                <th>Property ID</th>
-                                                <th>Lokasi</th>
-                                                <th>Harga</th>
-                                                <th>Progress</th>
-                                                <th>Status</th>
-                                                <th>Detail</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @php $now = \Carbon\Carbon::now(); @endphp
-                                            @forelse ($clientsPengosongan as $client)
-                                                @if ($client->status === 'Balik Nama' || $client->status === 'Eksekusi Pengosongan' || $client->status === 'Selesai')
-                                                    @php
-                                                        $tahap = $client->status ?? 'Balik Nama'; // Ambil status dari query
-                                                        $progress = match($tahap) {
-                                                            'Balik Nama' => 0,
-                                                            'Eksekusi Pengosongan' => 50,
-                                                            'Selesai' => 100,
-                                                            default => 0
-                                                        };
-                                                        $progressColor = match($client->status) {
-                                                            'balik_nama' => 'bg-secondary',
-                                                            'eksekusi_pengosongan' => 'bg-warning',
-                                                            'closing' => 'bg-success',
-                                                            default => 'bg-light'
-                                                        };
-                                                    @endphp
-                                                    <tr id="row-{{ $client->id_account }}-{{ $client->id_listing }}">
-                                                        <td>{{ $index + 1 }}</td>
-                                                        <td>{{ $client->id_account }}</td>
-                                                        <td>{{ $client->nama }}</td>
-                                                        <td>{{ $client->id_listing }}</td>
-                                                        <td>{{ $client->lokasi }}</td>
-                                                        <td>Rp {{ number_format($client->harga, 0, ',', '.') }}</td>
-                                                        <td>
-                                                            <div class="progress" style="height: 20px;">
-                                                                <div class="progress-bar {{ $progressColor }}" style="width: {{ $progress }}%;">
-                                                                    {{ $progress }}%
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td>{{ $client->status }}</td>
-                                                        <td>
-                                                            <form action="{{ route('dashboard.detail', ['id_listing' => $client->id_listing, 'id_account' => $client->id_account]) }}" method="GET">
-                                                                @csrf
-                                                                <button type="submit" class="btn btn-sm bg-secondary text-white rounded-pill px-3 shadow-sm">
-                                                                    Detail
-                                                                </button>
-                                                            </form>
-                                                        </td>
-                                                    </tr>
-                                                @endif
-                                            @empty
-                                                <tr>
-                                                    <td colspan="8" class="text-center text-muted py-4">Tidak ada data pengosongan.</td>
-                                                </tr>
-                                            @endforelse
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-semibold text-primary">📋 Progress Lelang (Semua Transaksi)</h5>
         </div>
+
+        <div class="card-body table-responsive">
+            <table class="table align-middle table-hover text-center" id="progressAllTable">
+                <thead class="table-light align-middle">
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th style="min-width: 180px;">Agent</th>
+                        <th style="width: 120px;">Property ID</th>
+                        <th style="min-width: 260px;">Lokasi</th>
+                        <th style="min-width: 140px;">Harga</th>
+                        <th style="min-width: 180px;">Progress</th>
+                        <th style="min-width: 140px;">Status</th>
+                        <th style="width: 120px;">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($progressTransactions as $index => $trx)
+                        @php
+                            $status = $trx->status ?? 'Closing';
+
+                            // Progress single timeline (naik terus sampai selesai)
+                            $progress = match($status) {
+                                'Closing' => 0,
+                                'Kuitansi' => 20,
+                                'Kode Billing' => 40,
+                                'Kutipan Risalah Lelang' => 60,
+                                'Akte Grosse' => 80,
+                                'Balik Nama' => 90,
+                                'Eksekusi Pengosongan' => 95,
+                                'Selesai' => 100,
+                                default => 0,
+                            };
+
+                            $barClass = match($status) {
+                                'Selesai' => 'bg-success',
+                                'Eksekusi Pengosongan' => 'bg-warning',
+                                default => 'bg-secondary',
+                            };
+
+                            // Detail URL: kalau id_klien null, tetap bisa buka pakai route opsional
+                            $detailUrl = !empty($trx->id_klien)
+                                ? route('dashboard.detail', ['id_listing' => $trx->id_listing, 'id_account' => $trx->id_klien])
+                                : route('dashboard.detail', ['id_listing' => $trx->id_listing]);
+                        @endphp
+
+                        <tr id="row-{{ $trx->id_transaction }}-{{ $trx->id_listing }}">
+                            <td>{{ $index + 1 }}</td>
+                            <td class="text-start">
+                                <div class="fw-semibold">{{ $trx->agent_nama }}</div>
+                                <div class="small text-muted">{{ $trx->id_agent }}</div>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ $trx->id_listing }}</span>
+                            </td>
+                            <td class="text-start">
+                                <span class="text-truncate d-inline-block" style="max-width: 360px;">
+                                    {{ $trx->lokasi }}
+                                </span>
+                            </td>
+                            <td>
+                                Rp {{ number_format((int) ($trx->harga ?? 0), 0, ',', '.') }}
+                            </td>
+                            <td>
+                                <div class="progress" style="height: 16px;">
+                                    <div class="progress-bar {{ $barClass }}"
+                                         role="progressbar"
+                                         style="width: {{ $progress }}%;"
+                                         aria-valuenow="{{ $progress }}"
+                                         aria-valuemin="0"
+                                         aria-valuemax="100">
+                                        {{ $progress }}%
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark">{{ $status }}</span>
+                            </td>
+                            <td>
+                                <a href="{{ $detailUrl }}" class="btn btn-sm bg-secondary text-white rounded-pill px-3 shadow-sm">
+                                    Detail
+                                </a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">Belum ada data transaksi.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
 
         <!-- Performance -->
         @php
@@ -676,194 +540,409 @@
 
         <div class="tab-content" id="performanceSubTabsContent">
 
-          {{-- ========== Performance - Agent (konten lama kamu dipindah ke sini) ========== --}}
-          <div class="tab-pane fade {{ $ptab==='agent' ? 'show active' : '' }}" id="performance-agent" role="tabpanel" aria-labelledby="performance-agent-tab">
+            {{-- ========== Performance - Agent (konten lama kamu dipindah ke sini) ========== --}}
+            <div class="tab-pane fade {{ $ptab==='agent' ? 'show active' : '' }}" id="performance-agent" role="tabpanel" aria-labelledby="performance-agent-tab">
 
-            {{-- Filter Controls (tetap) --}}
-            <div class="row mb-3">
-              <div class="col-md-3">
-                <input type="text" id="filterIdAgent" class="form-control" placeholder="Cari ID Agent">
-              </div>
-              <div class="col-md-3">
-                <input type="text" id="filterNama" class="form-control" placeholder="Cari Nama">
-              </div>
-              <div class="col-md-2">
-                <select id="filterStatus" class="form-select">
-                  <option value="">Semua Status</option>
-                  <option value="Aktif">Aktif</option>
-                  <option value="Ditolak">Nonaktif</option>
-                  <option value="Pending">Pending</option>
-                </select>
-              </div>
-              <div class="col-md-4 d-flex gap-2">
-                <select id="sortListing" class="form-select">
-                  <option value="">Sort Listing</option>
-                  <option value="asc">Low → High</option>
-                  <option value="desc">High → Low</option>
-                </select>
-                <select id="sortPenjualan" class="form-select">
-                  <option value="">Sort Penjualan</option>
-                  <option value="asc">Low → High</option>
-                  <option value="desc">High → Low</option>
-                </select>
-                <select id="sortKomisi" class="form-select">
-                  <option value="">Sort Komisi</option>
-                  <option value="asc">Low → High</option>
-                  <option value="desc">High → Low</option>
-                </select>
-              </div>
-            </div>
+              {{-- Filter Controls (tetap) --}}
+              {{-- <div class="row mb-3">
+                <div class="col-md-3">
+                  <input type="text" id="filterIdAgent" class="form-control" placeholder="Cari ID Agent">
+                </div>
+                <div class="col-md-3">
+                  <input type="text" id="filterNama" class="form-control" placeholder="Cari Nama">
+                </div>
+                <div class="col-md-2">
+                  <select id="filterStatus" class="form-select">
+                    <option value="">Semua Status</option>
+                    <option value="Aktif">Aktif</option>
+                    <option value="Diterminasi">Diterminasi</option>
+                    <option value="Pending">Pending</option>
+                  </select>
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                  <select id="sortListing" class="form-select">
+                    <option value="">Sort Listing</option>
+                    <option value="asc">Low → High</option>
+                    <option value="desc">High → Low</option>
+                  </select>
+                  <select id="sortPenjualan" class="form-select">
+                    <option value="">Sort Penjualan</option>
+                    <option value="asc">Low → High</option>
+                    <option value="desc">High → Low</option>
+                  </select>
+                  <select id="sortKomisi" class="form-select">
+                    <option value="">Sort Komisi</option>
+                    <option value="asc">Low → High</option>
+                    <option value="desc">High → Low</option>
+                  </select>
+                </div>
+              </div> --}}
 
-            <div class="table-responsive">
-              <table class="table align-middle table-hover" id="performanceTable">
-                <thead class="table-light">
-                  <tr>
-                    <th>#</th>
-                    <th>ID Agent</th>
-                    <th>Nama</th>
-                    <th>Status</th>
-                    <th>Ikut Pemilu</th>
-                    <th>Jumlah Listing</th>
-                    <th>Jumlah Penjualan</th>
-                    <th>Total Komisi</th>
-                    <th>Referral Click</th>
-                  </tr>
-                </thead>
-                <tbody id="performanceBody">
-                  @forelse ($performanceAgents as $index => $agent)
+              <div class="table-responsive">
+                <table class="table align-middle table-hover" id="performanceTable">
+                  <thead class="table-light">
                     <tr>
-                      <td>{{ $index + 1 }}</td>
-                      <td class="agent-id">{{ $agent->id_agent }}</td>
-                      <td class="agent-nama">{{ $agent->nama }}</td>
-                      <td class="agent-status">
-                        <div class="dropdown d-inline-block position-relative" data-id-account="{{ $agent->id_account }}">
-                          <button
-                            class="btn btn-sm rounded-pill fw-semibold status-btn dropdown-toggle
-                                   {{ $agent->status === 'Aktif' ? 'btn-active' : 'btn-terminated' }}"
-                            type="button"
-                            data-bs-toggle="dropdown"
-                            aria-expanded="false">
-                            {{ $agent->status }}
-                          </button>
+                      <th>#</th>
+                      <th>ID Agent</th>
 
-                          <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                            <li>
-                              <button class="dropdown-item js-choose-status" data-status="Aktif">
-                                Aktif
-                              </button>
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                              <button class="dropdown-item text-danger js-choose-status" data-status="Diterminasi">
-                                Diterminasi
-                              </button>
-                            </li>
-                          </ul>
+                      <th>Nama</th>
 
-                          <div class="spinner-border spinner-border-sm text-muted d-none js-spin"
-                               style="position:absolute; right:-8px; top:-8px;" role="status"></div>
-                        </div>
-                      </td>
-                      <style>
-                        .btn-active {
-                          background:#ff5a1f; /* oranye brand-like */
-                          color:#fff;
-                          border-color:#ff5a1f;
-                        }
-                        .btn-active:hover { filter:brightness(0.95); }
+                      {{-- NEW: Kolom Upline --}}
+                      <th>Upline</th>
 
-                        .btn-terminated {
-                          background:#6c757d; /* abu */
-                          color:#fff;
-                          border-color:#6c757d;
-                        }
-                        .btn-terminated:hover { filter:brightness(0.95); }
+                      <th>Status</th>
 
-                        .status-btn { padding:.25rem .75rem; }
-                      </style>
-<script>
-    (() => {
-      const CSRF = '{{ csrf_token() }}';
-      const routeTpl = `{{ route('agents.update-status-agent', ':id') }}`; // ⬅️ update
+                      {{-- NEW: Header sort klik (arrow kiri) --}}
+                      <th>
+                        <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 js-sort"
+                                data-sort-key="ikut_pemilu" data-sort-dir="">
+                          <span class="me-1 js-sort-arrow">↕</span>
+                          <span>Ikut Pemilu</span>
+                        </button>
+                      </th>
 
-      function setUI(drop, status) {
-        const btn = drop.querySelector('.status-btn');
-        btn.textContent = status;
-        btn.classList.remove('btn-active','btn-terminated');
-        btn.classList.add(status === 'Aktif' ? 'btn-active' : 'btn-terminated');
-      }
-      function setLoading(drop, on) {
-        const spin = drop.querySelector('.js-spin');
-        drop.querySelector('.status-btn').disabled = on;
-        if (spin) spin.classList.toggle('d-none', !on);
-      }
+                      <th>
+                        <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 js-sort"
+                                data-sort-key="jumlah_listing" data-sort-dir="">
+                          <span class="me-1 js-sort-arrow">↕</span>
+                          <span>Jumlah Listing</span>
+                        </button>
+                      </th>
 
-      document.querySelectorAll('.agent-status .dropdown').forEach(drop => {
-        drop.addEventListener('click', async (e) => {
-          const item = e.target.closest('.js-choose-status');
-          if (!item) return;
+                      <th>
+                        <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 js-sort"
+                                data-sort-key="jumlah_penjualan" data-sort-dir="">
+                          <span class="me-1 js-sort-arrow">↕</span>
+                          <span>Jumlah Penjualan</span>
+                        </button>
+                      </th>
 
-          const newStatus = item.dataset.status;
-          const btn  = drop.querySelector('.status-btn');
-          const prev = btn.textContent.trim();
-          if (newStatus === prev) return;
+                      <th>
+                        <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 js-sort"
+                                data-sort-key="total_komisi" data-sort-dir="">
+                          <span class="me-1 js-sort-arrow">↕</span>
+                          <span>Total Komisi</span>
+                        </button>
+                      </th>
 
-          const idAccount = drop.dataset.idAccount;
-          if (!idAccount) { alert('ID Account tidak ditemukan'); return; }
-
-          if (newStatus === 'Diterminasi' &&
-              !confirm('Yakin ubah ke "Diterminasi"? Role agent akan menjadi "User".')) {
-            return;
-          }
-
-          setLoading(drop, true);
-          setUI(drop, newStatus);
-
-          try {
-            const url = routeTpl.replace(':id', idAccount);
-            const res = await fetch(url, {
-              method: 'PATCH',
-              headers: {
-                'X-CSRF-TOKEN': CSRF,
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ status: newStatus })
-            });
-            if (!res.ok) throw new Error('save-failed');
-          } catch (err) {
-            setUI(drop, prev);
-            alert('Gagal memperbarui status. Coba lagi.');
-          } finally {
-            setLoading(drop, false);
-          }
-        });
-      });
-    })();
-    </script>
-
-
-
-                      <td class="agent-ikut-pemilu">
-                        <span class="badge bg-primary">{{ (int) ($agent->ikut_pemilu ?? 0) }}</span>
-                      </td>
-                      <td class="agent-listing">{{ $agent->jumlah_listing }}</td>
-                      <td class="agent-penjualan">{{ $agent->jumlah_penjualan }}</td>
-                      <td class="agent-komisi" data-komisi="{{ $agent->total_komisi ?? 0 }}">
-                        Rp {{ number_format($agent->total_komisi ?? 0, 0, ',', '.') }}
-                      </td>
-                      <td class="agent-share-listing text-center">
-                        {{ (int) ($agent->share_listing ?? 0) }}
-                      </td>
+                      <th>
+                        <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 js-sort"
+                                data-sort-key="referral_click" data-sort-dir="">
+                          <span class="me-1 js-sort-arrow">↕</span>
+                          <span>Referral Click</span>
+                        </button>
+                      </th>
                     </tr>
-                  @empty
-                    <tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data agent.</td></tr>
-                  @endforelse
-                </tbody>
-              </table>
+                  </thead>
+
+                  <tbody id="performanceBody">
+                    @forelse ($performanceAgents as $index => $agent)
+                      <tr>
+                        <td>{{ $index + 1 }}</td>
+
+                        <td class="agent-id">{{ $agent->id_agent }}</td>
+
+                        <td class="agent-nama">{{ $agent->nama }}</td>
+
+                        {{-- NEW: isi upline nama --}}
+                        <td class="agent-upline">
+                          {{ $agent->upline_nama ?? '-' }}
+                        </td>
+
+                        <td class="agent-status">
+                          <div class="dropdown d-inline-block position-relative" data-id-account="{{ $agent->id_account }}">
+                            <button
+                              class="btn btn-sm rounded-pill fw-semibold status-btn dropdown-toggle
+                                     {{ $agent->status === 'Aktif' ? 'btn-active' : 'btn-terminated' }}"
+                              type="button"
+                              data-bs-toggle="dropdown"
+                              aria-expanded="false">
+                              {{ $agent->status }}
+                            </button>
+
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                              <li>
+                                <button class="dropdown-item js-choose-status" data-status="Aktif">
+                                  Aktif
+                                </button>
+                              </li>
+                              <li><hr class="dropdown-divider"></li>
+                              <li>
+                                <button class="dropdown-item text-danger js-choose-status" data-status="Diterminasi">
+                                  Diterminasi
+                                </button>
+                              </li>
+                            </ul>
+
+                            <div class="spinner-border spinner-border-sm text-muted d-none js-spin"
+                                 style="position:absolute; right:-8px; top:-8px;" role="status"></div>
+                          </div>
+                        </td>
+
+                        <style>
+                          .btn-active {
+                            background:#ff5a1f; /* oranye brand-like */
+                            color:#fff;
+                            border-color:#ff5a1f;
+                          }
+                          .btn-active:hover { filter:brightness(0.95); }
+
+                          .btn-terminated {
+                            background:#6c757d; /* abu */
+                            color:#fff;
+                            border-color:#6c757d;
+                          }
+                          .btn-terminated:hover { filter:brightness(0.95); }
+
+                          .status-btn { padding:.25rem .75rem; }
+
+                          /* NEW: kecilin tombol sort biar rapih */
+                          #performanceTable thead .js-sort {
+                            color: inherit;
+                            font-weight: 600;
+                          }
+                          #performanceTable thead .js-sort:hover {
+                            opacity: .85;
+                          }
+                          #performanceTable thead .js-sort:focus {
+                            box-shadow: none;
+                          }
+                        </style>
+
+                        <script>
+                          (() => {
+                            const CSRF = '{{ csrf_token() }}';
+                            const routeTpl = `{{ route('agents.update-status-agent', ':id') }}`; // ⬅️ update
+
+                            function setUI(drop, status) {
+                              const btn = drop.querySelector('.status-btn');
+                              btn.textContent = status;
+                              btn.classList.remove('btn-active','btn-terminated');
+                              btn.classList.add(status === 'Aktif' ? 'btn-active' : 'btn-terminated');
+                            }
+                            function setLoading(drop, on) {
+                              const spin = drop.querySelector('.js-spin');
+                              drop.querySelector('.status-btn').disabled = on;
+                              if (spin) spin.classList.toggle('d-none', !on);
+                            }
+
+                            document.querySelectorAll('.agent-status .dropdown').forEach(drop => {
+                              drop.addEventListener('click', async (e) => {
+                                const item = e.target.closest('.js-choose-status');
+                                if (!item) return;
+
+                                const newStatus = item.dataset.status;
+                                const btn  = drop.querySelector('.status-btn');
+                                const prev = btn.textContent.trim();
+                                if (newStatus === prev) return;
+
+                                const idAccount = drop.dataset.idAccount;
+                                if (!idAccount) { alert('ID Account tidak ditemukan'); return; }
+
+                                if (newStatus === 'Diterminasi' &&
+                                    !confirm('Yakin ubah ke "Diterminasi"? Role agent akan menjadi "User".')) {
+                                  return;
+                                }
+
+                                setLoading(drop, true);
+                                setUI(drop, newStatus);
+
+                                try {
+                                  const url = routeTpl.replace(':id', idAccount);
+                                  const res = await fetch(url, {
+                                    method: 'PATCH',
+                                    headers: {
+                                      'X-CSRF-TOKEN': CSRF,
+                                      'Accept': 'application/json',
+                                      'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({ status: newStatus })
+                                  });
+                                  if (!res.ok) throw new Error('save-failed');
+                                } catch (err) {
+                                  setUI(drop, prev);
+                                  alert('Gagal memperbarui status. Coba lagi.');
+                                } finally {
+                                  setLoading(drop, false);
+                                }
+                              });
+                            });
+                          })();
+                        </script>
+
+                        <td class="agent-ikut-pemilu">
+                          <span class="badge bg-primary">{{ (int) ($agent->ikut_pemilu ?? 0) }}</span>
+                        </td>
+
+                        <td class="agent-listing">{{ $agent->jumlah_listing }}</td>
+
+                        <td class="agent-penjualan">{{ $agent->jumlah_penjualan }}</td>
+
+                        <td class="agent-komisi" data-komisi="{{ $agent->total_komisi ?? 0 }}">
+                          Rp {{ number_format($agent->total_komisi ?? 0, 0, ',', '.') }}
+                        </td>
+
+                        <td class="agent-share-listing text-center">
+                          {{ (int) ($agent->share_listing ?? 0) }}
+                        </td>
+                      </tr>
+                    @empty
+                      <tr><td colspan="10" class="text-center text-muted py-4">Tidak ada data agent.</td></tr>
+                    @endforelse
+                  </tbody>
+                </table>
+              </div>
+
+              {{-- =========================================================
+                   NEW: Script sorting header (klik panah ↑/↓)
+                   - Sort numeric untuk: ikut_pemilu, jumlah_listing, jumlah_penjualan, total_komisi, referral_click
+                   - Tidak menghapus filter/select sort yang sudah ada
+                 ========================================================= --}}
+              <script>
+                (function(){
+                  const table = document.getElementById('performanceTable');
+                  const tbody = document.getElementById('performanceBody');
+                  if (!table || !tbody) return;
+
+                  function digitsOnly(v){
+                    return String(v || '').replace(/[^\d\-]/g, '');
+                  }
+
+                  function toInt(v){
+                    const n = parseInt(digitsOnly(v), 10);
+                    return isNaN(n) ? 0 : n;
+                  }
+
+                  function getValue(tr, key){
+                    if (!tr) return 0;
+
+                    if (key === 'ikut_pemilu') {
+                      const el = tr.querySelector('.agent-ikut-pemilu');
+                      return toInt(el ? el.textContent : 0);
+                    }
+
+                    if (key === 'jumlah_listing') {
+                      const el = tr.querySelector('.agent-listing');
+                      return toInt(el ? el.textContent : 0);
+                    }
+
+                    if (key === 'jumlah_penjualan') {
+                      const el = tr.querySelector('.agent-penjualan');
+                      return toInt(el ? el.textContent : 0);
+                    }
+
+                    if (key === 'total_komisi') {
+                      const el = tr.querySelector('.agent-komisi');
+                      if (el && el.dataset && el.dataset.komisi !== undefined) {
+                        return toInt(el.dataset.komisi);
+                      }
+                      return toInt(el ? el.textContent : 0);
+                    }
+
+                    if (key === 'referral_click') {
+                      const el = tr.querySelector('.agent-share-listing');
+                      return toInt(el ? el.textContent : 0);
+                    }
+
+                    return 0;
+                  }
+
+                  function setArrow(btn, dir){
+                    const arrow = btn.querySelector('.js-sort-arrow');
+                    if (!arrow) return;
+
+                    // dir: 'asc' => low->high (▲), 'desc' => high->low (▼), '' => netral (↕)
+                    if (dir === 'asc')  arrow.textContent = '▲';
+                    if (dir === 'desc') arrow.textContent = '▼';
+                    if (!dir) arrow.textContent = '↕';
+                  }
+
+                  function clearOtherSortButtons(activeBtn){
+                    table.querySelectorAll('thead .js-sort').forEach(b => {
+                      if (b !== activeBtn) {
+                        b.dataset.sortDir = '';
+                        setArrow(b, '');
+                      }
+                    });
+                  }
+
+                  function sortRowsBy(key, dir){
+                    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+                    // simpan index awal untuk stable sort
+                    const withIndex = rows.map((tr, idx) => ({ tr, idx }));
+
+                    withIndex.sort((a, b) => {
+                      const va = getValue(a.tr, key);
+                      const vb = getValue(b.tr, key);
+
+                      if (va === vb) return a.idx - b.idx;
+
+                      if (dir === 'asc')  return va - vb;  // low -> high
+                      if (dir === 'desc') return vb - va;  // high -> low
+
+                      return 0;
+                    });
+
+                    // render ulang (append akan memindahkan node)
+                    withIndex.forEach(x => tbody.appendChild(x.tr));
+                  }
+
+                  // klik tombol sort di header
+                  table.querySelectorAll('thead .js-sort').forEach(btn => {
+                    btn.addEventListener('click', function(e){
+                      e.preventDefault();
+
+                      const key = this.dataset.sortKey || '';
+                      if (!key) return;
+
+                      // toggle: default pertama kali => desc (high->low)
+                      let dir = this.dataset.sortDir || '';
+                      dir = (dir === 'desc') ? 'asc' : 'desc';
+
+                      this.dataset.sortDir = dir;
+
+                      clearOtherSortButtons(this);
+                      setArrow(this, dir);
+
+                      sortRowsBy(key, dir);
+                    });
+                  });
+
+                  // tetap dukung select sort yang sudah kamu punya (kalau kamu masih pakai)
+                  const sortListing   = document.getElementById('sortListing');
+                  const sortPenjualan = document.getElementById('sortPenjualan');
+                  const sortKomisi    = document.getElementById('sortKomisi');
+
+                  if (sortListing) {
+                    sortListing.addEventListener('change', function(){
+                      const v = this.value || '';
+                      if (!v) return;
+                      sortRowsBy('jumlah_listing', v);
+                    });
+                  }
+                  if (sortPenjualan) {
+                    sortPenjualan.addEventListener('change', function(){
+                      const v = this.value || '';
+                      if (!v) return;
+                      sortRowsBy('jumlah_penjualan', v);
+                    });
+                  }
+                  if (sortKomisi) {
+                    sortKomisi.addEventListener('change', function(){
+                      const v = this.value || '';
+                      if (!v) return;
+                      sortRowsBy('total_komisi', v);
+                    });
+                  }
+
+                })();
+              </script>
+
             </div>
-          </div>
-          {{-- ========== /Performance - Agent ========== --}}
+            {{-- ========== /Performance - Agent ========== --}}
+
+
 
           {{-- ========== Performance - Client (baru) ========== --}}
           <div class="tab-pane fade {{ $ptab==='client' ? 'show active' : '' }}" id="performance-client" role="tabpanel" aria-labelledby="performance-client-tab">

@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Session;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Models\TransactionCommission;
+use Illuminate\Support\Facades\Schema;
 
 class AgentAdminController extends Controller
 {
@@ -748,94 +749,49 @@ $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar'
             )
             ->get();
 
-        //progress agent
-        $clients = DB::table('property_interests')
-            ->join('account', 'property_interests.id_klien', '=', 'account.id_account')
-            ->join('property', 'property_interests.id_listing', '=', 'property.id_listing')
-            ->leftJoin('informasi_klien', 'account.id_account', '=', 'informasi_klien.id_account')
-            ->whereNotIn(DB::raw('LOWER(TRIM(property_interests.status))'), ['closing', 'balik_nama', 'akte_grosse', 'gagal']) // cek lowercase dan trim
-            ->select(
-                'account.id_account',
-                'account.nama',
-                'account.nomor_telepon',
-                'property.id_listing',
-                'property.id_agent',
-                'property.lokasi',
-                'property.harga',
-                'property_interests.status',
-                'informasi_klien.gambar_ktp'
-            )
-            ->get();
+       // ===============================
+// PROGRESS LELANG (SEMUA TRANSAKSI DALAM 1 TABEL)
+// ===============================
+$progressTransactions = DB::table('transaction')
+->leftJoin('property', 'transaction.id_listing', '=', 'property.id_listing')
+->leftJoin('agent', 'transaction.id_agent', '=', 'agent.id_agent')
+->select(
+    'transaction.id_transaction',
+    'transaction.id_agent',
+    DB::raw("COALESCE(agent.nama, '-') AS agent_nama"),
+    'transaction.id_klien',
+    'transaction.id_listing',
+    DB::raw("COALESCE(property.lokasi, '-') AS lokasi"),
+    DB::raw("COALESCE(property.harga, 0) AS harga"),
+    'transaction.status_transaksi as status',
+    'transaction.tanggal_diupdate'
+)
+->orderByDesc('transaction.tanggal_diupdate')
+->get();
 
-        // progress register
-        $clientsClosing = DB::table('transaction')
-            ->join('account', 'transaction.id_klien', '=', 'account.id_account')
-            ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
-            ->whereIn('transaction.status_transaksi', [
-                'Closing',
-                'Kuitansi',
-                'Kode Billing',
-                'Kutipan Risalah Lelang',
-                'Akte Grosse'
-            ]) // ✅ HAPUS "Balik Nama" dari sini
-            ->where('transaction.status_transaksi', '!=', 'Balik Nama') // ✅ FILTER yang sudah selesai
-            ->select(
-                'account.id_account',
-                'account.nama',
-                'account.nomor_telepon',
-                'property.id_listing',
-                'property.lokasi',
-                'property.harga',
-                'transaction.status_transaksi as status',
-                'transaction.tanggal_diupdate'
-            )
-            ->orderBy('transaction.tanggal_diupdate', 'asc')
-            ->get();
+// ---------- BLOK STOKER (SELALU DISIAPKAN, TIDAK TERGANTUNG ROLE) ----------
+$stokerProperties = Property::select(
+'id_listing','lokasi','luas','harga','gambar','status',
+'tipe','provinsi','kota','kecamatan',
+'vendor' // <- WAJIB, dipakai di partial
+)
+->whereRaw('LOWER(status) = ?', ['tersedia'])
+->when(request('search'), function ($query, $search) {
+    return is_numeric($search)
+        ? $query->where('id_listing', (int)$search)
+        : $query->whereRaw('1=0');
+})
+->when(request('property_type'), fn($q,$v) => $q->whereRaw('LOWER(tipe)=?', [strtolower($v)]))
+->when(request('province'), fn($q,$v) => $q->where('provinsi', $v))
+->when(request('city'), fn($q,$v) => $q->where('kota', $v))
+->when(request('district'), fn($q,$v) => $q->where('kecamatan', $v))
+->orderByDesc('id_listing')
+->paginate(10)
+->appends(array_merge(
+    request()->only(['search','property_type','province','city','district']),
+    ['tab'=>'stoker']
+));
 
-        // progress pengosongan
-        $clientsPengosongan = DB::table('transaction')
-            ->join('account', 'transaction.id_klien', '=', 'account.id_account')
-            ->join('property', 'transaction.id_listing', '=', 'property.id_listing')
-            ->whereIn('transaction.status_transaksi', [
-                'Balik Nama',
-                'Eksekusi Pengosongan',
-                'Selesai',
-            ])
-            ->select(
-                'account.id_account',
-                'account.nama',
-                'account.nomor_telepon',
-                'property.id_listing',
-                'property.lokasi',
-                'property.harga',
-                'transaction.status_transaksi as status',
-                'transaction.tanggal_diupdate'
-            )
-            ->orderBy('transaction.tanggal_diupdate', 'asc')
-            ->get();
-
-        // ---------- BLOK STOKER (SELALU DISIAPKAN, TIDAK TERGANTUNG ROLE) ----------
-        $stokerProperties = Property::select(
-            'id_listing','lokasi','luas','harga','gambar','status',
-            'tipe','provinsi','kota','kecamatan',
-            'vendor' // <- WAJIB, dipakai di partial
-        )
-            ->whereRaw('LOWER(status) = ?', ['tersedia'])
-            ->when(request('search'), function ($query, $search) {
-                return is_numeric($search)
-                    ? $query->where('id_listing', (int)$search)
-                    : $query->whereRaw('1=0');
-            })
-            ->when(request('property_type'), fn($q,$v) => $q->whereRaw('LOWER(tipe)=?', [strtolower($v)]))
-            ->when(request('province'), fn($q,$v) => $q->where('provinsi', $v))
-            ->when(request('city'), fn($q,$v) => $q->where('kota', $v))
-            ->when(request('district'), fn($q,$v) => $q->where('kecamatan', $v))
-            ->orderByDesc('id_listing')
-            ->paginate(10)
-            ->appends(array_merge(
-                request()->only(['search','property_type','province','city','district']),
-                ['tab'=>'stoker']
-            ));
 
 
         $soldProperties = DB::table('property')
@@ -1022,54 +978,102 @@ $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar'
             )
             ->groupBy('id_agent');
 
-        // 3) Query utama: hanya agent Aktif
-        $performanceAgents = DB::table('agent')
-            ->whereIn('agent.status', ['Aktif', 'Diterminasi'])
-            ->leftJoin('property', 'agent.id_agent', '=', 'property.id_agent')
-            ->leftJoin('transaction', 'agent.id_agent', '=', 'transaction.id_agent')
 
-            // map event_invites.id_account → agent.id_account
-            ->leftJoinSub($eiStats, 'ei_stat', function ($join) {
-                $join->on('ei_stat.id_account', '=', 'agent.id_account');
-            })
 
-            // join agregat referral clicks
-            ->leftJoinSub($referralStats, 'ref_stat', function ($join) {
-                $join->on('ref_stat.id_agent', '=', 'agent.id_agent');
-            })
+        // =========================
+// NEW: agregat jumlah penjualan dari tabel transaction
+// - dihitung dari count transaksi per id_agent
+// - pakai COUNT(DISTINCT id_transaction) biar aman
+// =========================
+$trxStats = DB::table('transaction')
+->select(
+    'id_agent',
+    DB::raw('COUNT(DISTINCT id_transaction) AS jumlah_penjualan')
+)
+->groupBy('id_agent');
 
-            // join agregat komisi dari transaction_commissions
-            ->leftJoinSub($commissionStats, 'komisi_stat', function ($join) {
-                $join->on('komisi_stat.id_agent', '=', 'agent.id_agent');
-            })
+// 3) Query utama: hanya agent Aktif
+$performanceAgents = DB::table('agent')
+->whereIn('agent.status', ['Aktif', 'Diterminasi'])
 
-            ->select(
-                'agent.id_account',
-                'agent.id_agent',
-                'agent.nama',
-                'agent.status',
-                'agent.jumlah_penjualan',
-                DB::raw('COUNT(DISTINCT property.id_listing) AS jumlah_listing'),
-                DB::raw('COALESCE(MAX(komisi_stat.total_komisi), 0) AS total_komisi'),
+// =========================
+// NEW: Self join untuk upline
+// =========================
+->leftJoin('agent as upline', 'agent.upline_id', '=', 'upline.id_agent')
 
-                // Ikut Pemilu (angka)
-                DB::raw('MAX(COALESCE(ei_stat.ikut_pemilu_count, 0)) AS ikut_pemilu'),
+->leftJoin('property', 'agent.id_agent', '=', 'property.id_agent')
 
-                // Share Listing (pakai total klik)
-                DB::raw('MAX(COALESCE(ref_stat.share_clicks, 0)) AS share_listing'),
+// ❌ HAPUS join transaction langsung (ini yang bikin potensi dobel hitung karena join property)
+// ->leftJoin('transaction', 'agent.id_agent', '=', 'transaction.id_agent')
 
-                // Opsional kalau nanti mau dipakai:
-                DB::raw('MAX(COALESCE(ref_stat.share_listing_uniq, 0)) AS share_listing_uniq'),
-                DB::raw('MAX(ref_stat.last_share_click_at) AS last_share_click_at')
-            )
-            ->groupBy(
-                'agent.id_agent',
-                'agent.nama',
-                'agent.status',
-                'agent.jumlah_penjualan',
-                'agent.id_account'
-            )
-            ->get();
+// =========================
+// NEW: join agregat jumlah penjualan dari transaction
+// =========================
+->leftJoinSub($trxStats, 'trx_stat', function ($join) {
+    $join->on('trx_stat.id_agent', '=', 'agent.id_agent');
+})
+
+// map event_invites.id_account → agent.id_account
+->leftJoinSub($eiStats, 'ei_stat', function ($join) {
+    $join->on('ei_stat.id_account', '=', 'agent.id_account');
+})
+
+// join agregat referral clicks
+->leftJoinSub($referralStats, 'ref_stat', function ($join) {
+    $join->on('ref_stat.id_agent', '=', 'agent.id_agent');
+})
+
+// join agregat komisi dari transaction_commissions
+->leftJoinSub($commissionStats, 'komisi_stat', function ($join) {
+    $join->on('komisi_stat.id_agent', '=', 'agent.id_agent');
+})
+
+->select(
+    'agent.id_account',
+    'agent.id_agent',
+    'agent.nama',
+    'agent.status',
+
+    // =========================
+    // NEW: upline id + upline nama
+    // =========================
+    'agent.upline_id',
+    DB::raw("COALESCE(upline.nama, '-') AS upline_nama"),
+
+    // =========================
+    // NEW: jumlah_penjualan dari tabel transaction (bukan kolom agent)
+    // pakai MAX(...) supaya aman walau ada join property
+    // =========================
+    DB::raw('COALESCE(MAX(trx_stat.jumlah_penjualan), 0) AS jumlah_penjualan'),
+
+    DB::raw('COUNT(DISTINCT property.id_listing) AS jumlah_listing'),
+    DB::raw('COALESCE(MAX(komisi_stat.total_komisi), 0) AS total_komisi'),
+
+    // Ikut Pemilu (angka)
+    DB::raw('MAX(COALESCE(ei_stat.ikut_pemilu_count, 0)) AS ikut_pemilu'),
+
+    // Share Listing (pakai total klik)
+    DB::raw('MAX(COALESCE(ref_stat.share_clicks, 0)) AS share_listing'),
+
+    // Opsional kalau nanti mau dipakai:
+    DB::raw('MAX(COALESCE(ref_stat.share_listing_uniq, 0)) AS share_listing_uniq'),
+    DB::raw('MAX(ref_stat.last_share_click_at) AS last_share_click_at')
+)
+->groupBy(
+    'agent.id_agent',
+    'agent.nama',
+    'agent.status',
+    'agent.id_account',
+
+    // =========================
+    // NEW: groupBy untuk upline
+    // =========================
+    'agent.upline_id',
+    'upline.nama'
+)
+->get();
+
+
 
         //grafik
         $monthlyData = DB::table('transaction')
@@ -1196,9 +1200,7 @@ $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar'
         return view('Agent.dashboardowner', [
             'pendingAgents'       => $pendingAgents,
             'pendingClients'      => $pendingClients,
-            'clients'             => $clients,
-            'clientsClosing'      => $clientsClosing,
-            'clientsPengosongan'  => $clientsPengosongan,
+            'progressTransactions' => $progressTransactions,
             'performanceAgents'   => $performanceAgents,
             'performanceClients'  => $performanceClients,
             'properties'          => $properties,
@@ -1588,42 +1590,85 @@ $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar'
     public function updateStatus(Request $request)
 {
     try {
-        $id_account = $request->id_account;
-        $id_listing = $request->id_listing;
-        $status = $request->status;
+        $status = trim((string) $request->input('status'));
+        $note   = $request->input('comment'); // textarea kamu name="comment"
 
-        // Update status di property_interests
-        DB::table('property_interests')
-            ->where('id_klien', $id_account) // sesuai schema kamu pakai id_klien
-            ->where('id_listing', $id_listing)
-            ->update([
-                'status' => $status,
-                'tanggal_diupdate' => now() // ✅ fix kolom timestamp
-            ]);
+        // daftar status yang VALID sesuai CHECK constraint tabel transaction kamu
+        $allowed = [
+            'Closing',
+            'Kuitansi',
+            'Kode Billing',
+            'Kutipan Risalah Lelang',
+            'Akte Grosse',
+            'Balik Nama',
+            'Eksekusi Pengosongan',
+            'Selesai',
+        ];
 
-        // Jika status = closing, simpan ke transaction dan company_earnings
-        if (strtolower($status) === 'closing') {
-            $harga_deal = (int) preg_replace('/[^\d]/', '', $request->harga_deal ?? 0);
-            $harga_bidding = (int) preg_replace('/[^\d]/', '', $request->harga_bidding ?? 0);
-            $selisih = $harga_deal - $harga_bidding;
-            $komisi_agent = $selisih * 0.4;
-            $pendapatan_bersih = $selisih * 0.6;
+        if ($status === '' || !in_array($status, $allowed, true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Status tidak valid untuk tabel transaction.'
+            ], 422);
+        }
 
-            DB::table('company_earnings')->insert([
-                'id_listing' => $id_listing,
-                'id_account' => session('id_account'),
-                'tanggal' => now(),
-                'harga_deal' => $harga_deal,
-                'harga_bidding' => $harga_bidding,
-                'selisih' => $selisih,
-                'komisi_agent' => $komisi_agent,
-                'pendapatan_bersih' => $pendapatan_bersih,
-                'deskripsi' => 'Pendapatan dari transaksi properti'
-            ]);
+        // Prioritas 1: update by id_transaction (PALING AMAN)
+        $id_transaction = $request->input('id_transaction');
 
-            DB::table('property')
-                ->where('id_listing', $id_listing)
-                ->update(['status' => 'sold']);
+        // Fallback kalau id_transaction tidak dikirim
+        $id_listing = $request->input('id_listing');
+        $id_account = $request->input('id_account'); // id_klien
+
+        $q = DB::table('transaction');
+
+        if (!empty($id_transaction)) {
+            $q->where('id_transaction', $id_transaction);
+        } else {
+            if (empty($id_listing)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'id_transaction atau id_listing wajib dikirim.'
+                ], 422);
+            }
+
+            $q->where('id_listing', $id_listing);
+
+            // kalau id_klien ada, pakai sebagai filter
+            if (!empty($id_account)) {
+                $q->where('id_klien', $id_account);
+            }
+
+            // kalau tidak ada id_transaction, update 1 transaksi terakhir pada listing tsb
+            $last = (clone $q)->orderByDesc('tanggal_diupdate')->first();
+            if (!$last) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data transaksi tidak ditemukan.'
+                ], 404);
+            }
+            $q = DB::table('transaction')->where('id_transaction', $last->id_transaction);
+        }
+
+        // Payload update: hanya status_transaksi + tanggal_diupdate + catatan jika ada
+        $payload = [
+            'status_transaksi' => $status,
+            'tanggal_diupdate' => now(),
+        ];
+
+        if (!is_null($note) && trim((string)$note) !== '') {
+            // tabel kamu punya kolom "comment" dan "catatan"
+            // simpan ke keduanya supaya aman dipakai di view mana pun
+            $payload['comment'] = $note;
+            $payload['catatan'] = $note;
+        }
+
+        $updated = $q->update($payload);
+
+        if (!$updated) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Update gagal atau tidak ada row yang berubah.'
+            ], 400);
         }
 
         return response()->json(['success' => true]);
@@ -1633,6 +1678,7 @@ $properties = Property::select('id_listing', 'lokasi', 'luas', 'harga', 'gambar'
         return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
     }
 }
+
 
 public function updateStatusClosing(Request $request)
 {
@@ -1837,42 +1883,53 @@ public function updateStatusClosing(Request $request)
         return redirect()->away("https://wa.me/{$waNumber}?text={$message}");
     }
 
-    public function dashboardDetail($id_listing, $id_account)
-    {
-        $property = DB::table('property')->where('id_listing', $id_listing)->first();
+    public function dashboardDetail($id_listing, $id_account = null)
+{
+    $property = DB::table('property')->where('id_listing', $id_listing)->first();
 
-        if (!$property) {
-            return redirect()->route('dashboard.owner')->with('error', 'Properti tidak ditemukan.');
-        }
+    if (!$property) {
+        return redirect()->route('dashboard.owner')->with('error', 'Properti tidak ditemukan.');
+    }
 
-        $client = null;
-        $statusTransaksi = null;
-        $progressType = null;
+    // normalisasi id_account dummy "0"
+    if ($id_account === '0' || $id_account === 0) {
+        $id_account = null;
+    }
 
+    $client = null;
+    $statusTransaksi = null;
+    $progressType = null;
+
+    $transaction = null;
+    $transactionNotes = collect();
+
+    // cari transaksi:
+    // - kalau ada id_account -> cari by id_klien
+    // - kalau tidak ada -> cari by id_listing saja (untuk kasus transaksi tanpa id_klien)
+    if ($id_account) {
         $transaction = Transaction::where('id_listing', $id_listing)
             ->where('id_klien', $id_account)
             ->first();
+    } else {
+        $transaction = Transaction::where('id_listing', $id_listing)->first();
+    }
 
-        if ($transaction) {
-            $statusTransaksi = $transaction->status_transaksi;
+    if ($transaction) {
+        $statusTransaksi = $transaction->status_transaksi;
 
-            if (in_array($statusTransaksi, ['Closing', 'Kuitansi', 'Kode Billing', 'Kutipan Risalah Lelang', 'Akte Grosse'])) {
-                $progressType = 'register';
-            } elseif (in_array($statusTransaksi, ['Balik Nama', 'Eksekusi Pengosongan', 'Selesai'])) {
-                $progressType = 'pengosongan';
-            }
-
-            // Ambil catatan dari transaction_details
-            $transactionNotes = DB::table('transaction_details')
-                ->join('account', 'transaction_details.id_account', '=', 'account.id_account')
-                ->where('transaction_details.id_transaction', $transaction->id_transaction)
-                ->orderByDesc('transaction_details.tanggal_dibuat')
-                ->select(
-                    'transaction_details.*',
-                    'account.nama as account_name'
-                )
-                ->get();
+        // progressType (kalau masih dipakai)
+        if (in_array($statusTransaksi, ['Closing', 'Kuitansi', 'Kode Billing', 'Kutipan Risalah Lelang', 'Akte Grosse'])) {
+            $progressType = 'register';
+        } elseif (in_array($statusTransaksi, ['Balik Nama', 'Eksekusi Pengosongan', 'Selesai'])) {
+            $progressType = 'pengosongan';
         } else {
+            $progressType = 'register';
+        }
+
+        // kalau kamu BELUM punya tabel transaction_details, JANGAN query ke sana
+        // $transactionNotes = collect();
+    } else {
+        if ($id_account) {
             $propertyInterest = PropertyInterest::where('id_listing', $id_listing)
                 ->where('id_klien', $id_account)
                 ->first();
@@ -1881,197 +1938,220 @@ public function updateStatusClosing(Request $request)
                 $statusTransaksi = $propertyInterest->status;
                 $progressType = 'agent';
             }
-
-            $transactionNotes = collect(); // atau []
         }
 
-
-        // Ambil data klien
-        if ($id_account) {
-            $account = Account::where('id_account', $id_account)->first();
-            $informasi = InformasiKlien::where('id_account', $id_account)->first();
-
-            $client = (object)[
-                'id_account'    => $id_account,
-                'nama'          => $account->nama ?? '-',
-                'nomor_telepon' => $account->nomor_telepon ?? '-',
-                'gambar_ktp'    => $informasi->gambar_ktp ?? null,
-                'gambar_npwp'   => $informasi->gambar_npwp ?? null,
-            ];
-        }
-
-        return view('Agent.detail', [
-            'property'         => $property,
-            'client'           => $client,
-            'statusTransaksi'  => $statusTransaksi,
-            'progressType'     => $progressType,
-            'transactionNotes' => $transactionNotes,
-        ]);
+        $transactionNotes = collect();
     }
 
-    public function updateOwner(Request $request, $id_listing, $id_account)
-    {
-        $request->validate([
-            'status' => 'required|string',
-            'buyer_meeting_datetime' => 'nullable|date',
-        ]);
+    // ✅ INI YANG PENTING: transactionId aman untuk view
+    $transactionId = $transaction->id_transaction ?? null;
 
-        $status = $request->status;
+    // Ambil data klien (hanya kalau ada id_account)
+    if ($id_account) {
+        $account = Account::where('id_account', $id_account)->first();
+        $informasi = InformasiKlien::where('id_account', $id_account)->first();
 
-        // ✅ Kalau Closing → lakukan proses tambahan
-        if ($status === 'Closing') {
-            try {
-                DB::beginTransaction();
+        $client = (object)[
+            'id_account'    => $id_account,
+            'nama'          => $account->nama ?? '-',
+            'nomor_telepon' => $account->nomor_telepon ?? '-',
+            'gambar_ktp'    => $informasi->gambar_ktp ?? null,
+            'gambar_npwp'   => $informasi->gambar_npwp ?? null,
+        ];
+    }
 
-                // Ambil data property
-                $property = DB::table('property')->where('id_listing', $id_listing)->first();
-                if (!$property) {
-                    throw new \Exception('Property tidak ditemukan.');
-                }
+    return view('Agent.detail', [
+        'property'         => $property,
+        'client'           => $client,
+        'statusTransaksi'  => $statusTransaksi,
+        'progressType'     => $progressType,
+        'transactionNotes' => $transactionNotes,
 
-                // Ambil data agent dari property
-                $idAgent = $property->id_agent;
-                $hargaDeal = (int) $property->harga;
+        // ✅ kirim ini ke blade
+        'transactionId'    => $transactionId,
+    ]);
+}
 
-                // Ambil id_account agent yang login
-                $idAccountAgent = session('id_account') ?? Cookie::get('id_account');
-                $account = Account::find($idAccountAgent);
 
-                // Harga bidding dari request
-                $hargaBidding = (int) str_replace('.', '', $request->harga_bidding);
-                if ($hargaBidding < 1) {
-                    return back()->withErrors(['harga_bidding' => 'Harga bidding harus lebih besar dari 0.']);
-                }
-                if ($hargaBidding > $hargaDeal) {
-                    return back()->withErrors(['harga_bidding' => 'Harga bidding tidak boleh lebih besar dari harga deal.']);
-                }
+public function updateOwner(Request $request, $id_listing, $id_account = null)
+{
+    $request->validate([
+        'status' => 'required|string',
+        'buyer_meeting_datetime' => 'nullable|date',
+        'comment' => 'nullable|string',
+        'id_transaction' => 'nullable|string',
+    ]);
 
-                // Generate ID transaksi unik (TRX001, TRX002)
-                $lastTransaction = DB::table('transaction')->latest('id_transaction')->first();
-                $newIdNumber = $lastTransaction
-                    ? str_pad((int)substr($lastTransaction->id_transaction, 3) + 1, 3, '0', STR_PAD_LEFT)
-                    : '001';
-                $idTransaction = 'TRX' . $newIdNumber;
+    // kalau route pakai dummy "0", anggap tidak ada client
+    if ($id_account === '0' || $id_account === 0) {
+        $id_account = null;
+    }
 
-                // Hitung selisih & komisi agent
-                $selisih = $hargaDeal - $hargaBidding;
-                $komisiAgent = floor($selisih * 0.4);
+    $status = $request->status;
 
-                // Insert ke tabel transaction
-                DB::table('transaction')->insert([
-                    'id_transaction'     => $idTransaction,
-                    'id_agent'           => $idAgent,
-                    'id_klien'           => $id_account,
-                    'id_listing'         => $id_listing,
-                    'harga_deal'         => $hargaDeal,
-                    'harga_bidding'      => $hargaBidding,
-                    'selisih'            => $selisih,
-                    'komisi_agent'       => $komisiAgent,
-                    'status_transaksi'   => 'Closing',
-                    'tanggal_transaksi'  => now()->toDateString(),
-                    'tanggal_dibuat'     => now(),
-                    'tanggal_diupdate'   => now(),
-                ]);
+    // ✅ Kalau Closing → lakukan proses tambahan
+    if ($status === 'Closing') {
+        try {
+            DB::beginTransaction();
 
-                // Insert ke transaction_details
-                DB::table('transaction_details')->insert([
-                    'id_account'         => $idAccountAgent,
-                    'id_transaction'     => $idTransaction,
-                    'status_transaksi'   => 'Closing',
-                    'catatan'            => 'Transaksi berhasil dibuat.',
-                    'tanggal_dibuat'     => now(),
-                    'tanggal_diupdate'   => now(),
-                ]);
-
-                // Update status di property_interests
-                DB::table('property_interests')
-                    ->where('id_listing', $id_listing)
-                    ->where('id_klien', $id_account)
-                    ->update([
-                        'status'            => 'Closing',
-                        'tanggal_diupdate'  => now(),
-                    ]);
-
-                // Update status di property
-                DB::table('property')
-                    ->where('id_listing', $id_listing)
-                    ->update([
-                        'status'            => 'Terjual',
-                        'tanggal_diupdate'  => now(),
-                    ]);
-
-                // Tambah jumlah penjualan agent
-                DB::table('agent')
-                    ->where('id_agent', $idAgent)
-                    ->update([
-                        'jumlah_penjualan' => DB::raw('jumlah_penjualan + 1'),
-                    ]);
-
-                DB::commit();
-
-                if ($account && $account->roles === 'Owner') {
-                    return redirect()->route('dashboard.owner')->with('success', 'Transaksi Closing berhasil disimpan.');
-                } else {
-                    return redirect()->route('dashboard.agent')->with('success', 'Status berhasil diperbarui.');
-                }
-
-            } catch (\Throwable $e) {
-                DB::rollBack();
-                return back()->withErrors(['error' => '❌ Gagal Closing: ' . $e->getMessage()]);
-            }
-        }
-
-        // ✅ Kalau status lain → jalankan logika biasa
-        if (in_array($status, ['Pending', 'FollowUp', 'BuyerMeeting', 'Gagal'])) {
-            // Progress Agent → property_interests
-            PropertyInterest::where('id_listing', $id_listing)
-                ->where('id_klien', $id_account)
-                ->update(['status' => $status]);
-
-            // Kalau BuyerMeeting → update tanggal di property
-            if ($status === 'BuyerMeeting' && $request->buyer_meeting_datetime) {
-                DB::table('property')->where('id_listing', $id_listing)
-                    ->update(['tanggal_buyer_meeting' => $request->buyer_meeting_datetime]);
+            if (!$id_account) {
+                throw new \Exception('ID klien kosong. Tidak bisa Closing tanpa id_klien.');
             }
 
-        } elseif (in_array($status, [
-            'Kuitansi', 'Kode Billing', 'Kutipan Risalah Lelang',
-            'Akte Grosse', 'Balik Nama', 'Eksekusi Pengosongan', 'Selesai'
-        ])) {
-            $transaction = Transaction::where('id_listing', $id_listing)
-                ->where('id_klien', $id_account)
-                ->first();
+            $property = DB::table('property')->where('id_listing', $id_listing)->first();
+            if (!$property) {
+                throw new \Exception('Property tidak ditemukan.');
+            }
+
+            $idAgent   = $property->id_agent;
+            $hargaDeal = (int) $property->harga;
 
             $idAccountAgent = session('id_account') ?? Cookie::get('id_account');
             $account = Account::find($idAccountAgent);
 
-            // Progress Register/Pengosongan → transaction
-            DB::table('transaction')
-            ->where('id_listing', $id_listing)
-            ->where('id_klien', $id_account)
-            ->update([
-                'status_transaksi' => $status,
-                'tanggal_diupdate' => now(),
-            ]);
+            $hargaBidding = (int) str_replace('.', '', (string) $request->harga_bidding);
+            if ($hargaBidding < 1) {
+                DB::rollBack();
+                return back()->withErrors(['harga_bidding' => 'Harga bidding harus lebih besar dari 0.']);
+            }
+            if ($hargaBidding > $hargaDeal) {
+                DB::rollBack();
+                return back()->withErrors(['harga_bidding' => 'Harga bidding tidak boleh lebih besar dari harga deal.']);
+            }
 
-            DB::table('transaction_details')->insert([
-                'id_account'         => $idAccountAgent,
-                'id_transaction'     => $transaction->id_transaction,
-                'status_transaksi'   => $status,
-                'catatan'            => $request->input('comment'),
+            $lastTransaction = DB::table('transaction')->latest('id_transaction')->first();
+            $newIdNumber = $lastTransaction
+                ? str_pad((int) substr($lastTransaction->id_transaction, 3) + 1, 3, '0', STR_PAD_LEFT)
+                : '001';
+            $idTransaction = 'TRX' . $newIdNumber;
+
+            $selisih     = $hargaDeal - $hargaBidding;
+            $komisiAgent = floor($selisih * 0.4);
+
+            DB::table('transaction')->insert([
+                'id_transaction'     => $idTransaction,
+                'id_agent'           => $idAgent,
+                'id_klien'           => $id_account,
+                'id_listing'         => $id_listing,
+                'harga_deal'         => $hargaDeal,
+                'harga_bidding'      => $hargaBidding,
+                'selisih'            => $selisih,
+                'komisi_agent'       => $komisiAgent,
+                'status_transaksi'   => 'Closing',
+                'tanggal_transaksi'  => now()->toDateString(),
                 'tanggal_dibuat'     => now(),
                 'tanggal_diupdate'   => now(),
             ]);
 
+            DB::table('transaction_details')->insert([
+                'id_account'         => $idAccountAgent,
+                'id_transaction'     => $idTransaction,
+                'status_transaksi'   => 'Closing',
+                'catatan'            => $request->input('comment') ?: 'Transaksi berhasil dibuat.',
+                'tanggal_dibuat'     => now(),
+                'tanggal_diupdate'   => now(),
+            ]);
 
-        }
+            DB::table('property_interests')
+                ->where('id_listing', $id_listing)
+                ->where('id_klien', $id_account)
+                ->update([
+                    'status'           => 'Closing',
+                    'tanggal_diupdate' => now(),
+                ]);
 
-        if ($account && $account->roles === 'Owner') {
-            return redirect()->route('dashboard.owner')->with('success', 'Transaksi Closing berhasil disimpan.');
-        } else {
+            DB::table('property')
+                ->where('id_listing', $id_listing)
+                ->update([
+                    'status'           => 'Terjual',
+                    'tanggal_diupdate' => now(),
+                ]);
+
+            DB::table('agent')
+                ->where('id_agent', $idAgent)
+                ->update([
+                    'jumlah_penjualan' => DB::raw('jumlah_penjualan + 1'),
+                ]);
+
+            DB::commit();
+
+            if ($account && $account->roles === 'Owner') {
+                return redirect()->route('dashboard.owner')->with('success', 'Transaksi Closing berhasil disimpan.');
+            }
+
             return redirect()->route('dashboard.agent')->with('success', 'Status berhasil diperbarui.');
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return back()->withErrors(['error' => '❌ Gagal Closing: ' . $e->getMessage()]);
         }
     }
+
+    // ✅ Status agent → property_interests
+    if (in_array($status, ['Pending', 'FollowUp', 'BuyerMeeting', 'Gagal'], true)) {
+
+        if (!$id_account) {
+            return back()->withErrors(['error' => 'ID klien kosong. Tidak bisa update status agent tanpa id_klien.']);
+        }
+
+        PropertyInterest::where('id_listing', $id_listing)
+            ->where('id_klien', $id_account)
+            ->update([
+                'status' => $status,
+                'tanggal_diupdate' => now(),
+            ]);
+
+        if ($status === 'BuyerMeeting' && $request->buyer_meeting_datetime) {
+            DB::table('property')
+                ->where('id_listing', $id_listing)
+                ->update([
+                    'tanggal_buyer_meeting' => $request->buyer_meeting_datetime,
+                    'tanggal_diupdate' => now(),
+                ]);
+        }
+
+        return back()->with('success', 'Status berhasil diperbarui.');
+    }
+
+    // ✅ Status transaksi → transaction.status_transaksi (+ catatan)
+    if (in_array($status, [
+        'Kuitansi', 'Kode Billing', 'Kutipan Risalah Lelang',
+        'Akte Grosse', 'Balik Nama', 'Eksekusi Pengosongan', 'Selesai'
+    ], true)) {
+
+        $idAccountAgent = session('id_account') ?? Cookie::get('id_account');
+
+        $transaction = null;
+
+        if ($request->filled('id_transaction')) {
+            $transaction = Transaction::where('id_transaction', $request->input('id_transaction'))->first();
+        }
+
+        if (!$transaction && $id_account) {
+            $transaction = Transaction::where('id_listing', $id_listing)
+                ->where('id_klien', $id_account)
+                ->first();
+        }
+
+        if (!$transaction) {
+            return back()->withErrors(['error' => 'Transaksi tidak ditemukan. Pastikan id_transaction terkirim dari form.']);
+        }
+
+        DB::table('transaction')
+            ->where('id_transaction', $transaction->id_transaction)
+            ->update([
+                'status_transaksi' => $status,
+                'tanggal_diupdate' => now(),
+                'status_transaksi'   => $status,
+                'catatan'            => $request->input('comment') ?: null,
+            ]);
+
+            return redirect()->route('dashboard.owner')->with('success', 'Status berhasil diperbarui.');
+    }
+
+    return back()->withErrors(['error' => 'Status tidak dikenali.']);
+}
+
 
 
 
