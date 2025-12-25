@@ -4975,38 +4975,62 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!overlay || !form) return;
 
         // ==== HELPER UNTUK UPLINE ====
-        function resolveAgentNameById(agentId){
-          if (!agentId) return '';
-          if (!AGENT_NAME_MAP) return '';
-          return AGENT_NAME_MAP[agentId] || '';
-        }
 
-        function getUplineId(agentId, defaultId){
-          if (!agentId) return defaultId || null;
-          if (!AGENT_UPLINE_MAP) return defaultId || null;
-          const up = AGENT_UPLINE_MAP[agentId];
-          if (up && String(up).trim() !== '') {
-            return String(up);
-          }
-          return defaultId || null;
-        }
+// Amanin kalau variabel map belum didefinisikan
+const _AGENT_NAME_MAP   = (typeof AGENT_NAME_MAP !== 'undefined' && AGENT_NAME_MAP) ? AGENT_NAME_MAP : {};
+const _AGENT_UPLINE_MAP = (typeof AGENT_UPLINE_MAP !== 'undefined' && AGENT_UPLINE_MAP) ? AGENT_UPLINE_MAP : {};
 
-        function recomputeUplineNames(){
-          if (!currentClosingAgentId) {
-            up1AgentName = '';
-            up2AgentName = '';
-            up3AgentName = '';
-            return;
-          }
+// resolve nama agent dari id_agent
+// ✅ kalau id tidak ada di map, tampilkan teks aslinya (misal: "Cash")
+function resolveAgentNameById(agentId){
+  if (agentId === null || agentId === undefined) return '';
+  const key = String(agentId).trim();
+  if (!key) return '';
+  return _AGENT_NAME_MAP[key] || key;
+}
 
-          const up1Id = getUplineId(currentClosingAgentId, 'AG006');
-          const up2Id = getUplineId(up1Id, 'AG001');
-          const up3Id = getUplineId(up2Id, 'AG001');
+// cari upline id dari agentId
+// ✅ kalau tidak ketemu, balikin defaultId (misal "Cash")
+function getUplineId(agentId, defaultId){
+  const fallback = (defaultId === null || defaultId === undefined) ? null : String(defaultId).trim();
 
-          up1AgentName = resolveAgentNameById(up1Id);
-          up2AgentName = resolveAgentNameById(up2Id);
-          up3AgentName = resolveAgentNameById(up3Id);
-        }
+  if (agentId === null || agentId === undefined) return fallback;
+  const key = String(agentId).trim();
+  if (!key) return fallback;
+
+  const up = _AGENT_UPLINE_MAP[key];
+
+  if (up === null || up === undefined) return fallback;
+
+  const upStr = String(up).trim();
+  if (upStr !== '') return upStr;
+
+  return fallback;
+}
+
+function recomputeUplineNames(){
+  // pastikan variabel output ada (kalau belum ada, bikin)
+  if (typeof up1AgentName === 'undefined') window.up1AgentName = '';
+  if (typeof up2AgentName === 'undefined') window.up2AgentName = '';
+  if (typeof up3AgentName === 'undefined') window.up3AgentName = '';
+
+  // pastikan currentClosingAgentId ada
+  if (typeof currentClosingAgentId === 'undefined' || !currentClosingAgentId) {
+    up1AgentName = '';
+    up2AgentName = '';
+    up3AgentName = '';
+    return;
+  }
+
+  const up1Id = getUplineId(currentClosingAgentId, 'AG006');
+  const up2Id = getUplineId(up1Id, 'AG001');
+  const up3Id = getUplineId(up2Id, 'Cash');
+
+  up1AgentName = resolveAgentNameById(up1Id);
+  up2AgentName = resolveAgentNameById(up2Id);
+  up3AgentName = resolveAgentNameById(up3Id);
+}
+
         // =============================
 
         function resetPembagian(){
