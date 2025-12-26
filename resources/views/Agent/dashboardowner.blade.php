@@ -4552,17 +4552,911 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
 
                 <div class="d-flex justify-content-end gap-2 mt-4 tc-form-footer">
-                  <button type="button" class="btn btn-light btn-sm transaksi-modal-cancel">
-                    Batal
-                  </button>
-                  <button type="submit" class="btn btn-primary btn-sm px-3" id="tc-submit-btn">
-                    Simpan Perubahan
-                  </button>
-                </div>
+                    <button type="button" class="btn btn-light btn-sm transaksi-modal-cancel">
+                      Batal
+                    </button>
+
+                    {{-- NEW: tombol ubah pembagian --}}
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="tc-btn-ubah-pembagian">
+                      Ubah Pembagian
+                    </button>
+
+                    <button type="submit" class="btn btn-primary btn-sm px-3" id="tc-submit-btn">
+                      Simpan Perubahan
+                    </button>
+                  </div>
               </div>
             </div>
           </div>
+
+{{-- ===================== MODAL: UBAH PEMBAGIAN ===================== --}}
+<style>
+    /* header tabel seperti lampiran */
+    .tc-ubah-table thead th{
+      background: #fdecec !important;
+      border-bottom: 2px solid rgba(0,0,0,.2);
+      font-weight: 700;
+    }
+
+    /* tampilan Pos: badge kode + label */
+    .tc-pos-wrap{
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+    }
+    .tc-pos-badge{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 56px;
+      height: 34px;
+      padding: 0 .75rem;
+      border-radius: .55rem;
+      background: #fdecec;
+      border: 2px solid rgba(0,0,0,.15);
+      font-weight: 800;
+      letter-spacing: .3px;
+      color: #4b5563;
+    }
+    .tc-pos-label{
+      font-size: 1.15rem;
+      font-weight: 500;
+      color: #374151;
+      line-height: 1.2;
+    }
+
+    /* === FIX: overlay & modal bisa discroll (isi panjang) === */
+    #tc-ubah-pembagian-overlay{
+      position: fixed;
+      inset: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 24px 12px;
+    }
+    #tc-ubah-pembagian-overlay.tc-overlay{
+      /* jaga-jaga kalau class tc-overlay punya display/flex sendiri */
+      display: block;
+    }
+    #tc-ubah-pembagian-overlay .tc-dialog{
+      height: auto !important;
+      align-items: flex-start !important;
+    }
+    #tc-ubah-pembagian-overlay .tc-card{
+      width: 100%;
+      max-width: 980px;
+      max-height: calc(100vh - 48px);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      margin: 0 auto;
+    }
+
+    /* bagian head/body/foot */
+    #tc-ubah-pembagian-overlay .tc-ubah-head{
+      padding: 12px 16px 10px 16px;
+      flex: 0 0 auto;
+    }
+    #tc-ubah-pembagian-overlay .tc-ubah-body{
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0 16px 12px 16px;
+      flex: 1 1 auto;
+    }
+    #tc-ubah-pembagian-overlay .tc-ubah-foot{
+      padding: 10px 16px 14px 16px;
+      border-top: 1px solid rgba(0,0,0,.08);
+      background: #fff;
+      flex: 0 0 auto;
+    }
+
+    /* biar tabel rapi */
+    .tc-ubah-table td{
+      padding-top: .9rem;
+      padding-bottom: .9rem;
+      vertical-align: middle;
+    }
+
+    /* sticky header table (biar enak scroll) */
+    .tc-ubah-table thead th{
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    /* input porsi */
+    .tc-porsi-input{
+      width: 110px;
+      font-size: 1.05rem;
+    }
+
+    /* select agent */
+    .tc-agent-select{
+      min-width: 280px;
+      font-size: 1.05rem;
+    }
+
+    /* summary total porsi */
+    .tc-porsi-summary{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .tc-porsi-badge{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: #f8fafc;
+      border: 1px solid rgba(0,0,0,.08);
+      font-size: .95rem;
+    }
+    .tc-porsi-ok{ color: #059669; }
+    .tc-porsi-bad{ color: #dc2626; }
+  </style>
+
+  {{-- Hidden container untuk nyimpen perubahan pembagian (dibawa saat submit closingForm) --}}
+  <div id="tc-pembagian-overrides-hidden" class="d-none"></div>
+
+  <div id="tc-ubah-pembagian-overlay" class="tc-overlay d-none" style="z-index: 9999;">
+    <div class="tc-dialog">
+      <div class="tc-card">
+        <button type="button" class="btn-close tc-close-btn" id="tc-ubah-pembagian-close" aria-label="Close"></button>
+
+        <div class="tc-ubah-head">
+          <h4 class="fw-semibold mb-1">Ubah Pembagian</h4>
+          <p class="small text-muted mb-2">
+            Pilih agent & porsi untuk setiap pos pembagian. Total porsi wajib <b>100%</b>.
+          </p>
+
+          <div class="tc-porsi-summary">
+            <div class="tc-porsi-badge">
+              Total Porsi:
+              <strong id="tc-ubah-total-porsi">0.00%</strong>
+            </div>
+            <div class="small" id="tc-ubah-porsi-hint"></div>
+          </div>
+        </div>
+
+        <div class="tc-ubah-body">
+          <div class="table-responsive">
+            <table class="table align-middle tc-ubah-table">
+              <thead>
+                <tr>
+                  <th class="text-start" style="width: 45%;">Pos</th>
+                  <th class="text-start" style="width: 20%;">Porsi (%)</th>
+                  <th class="text-start">Nama Agent</th>
+                </tr>
+              </thead>
+              <tbody id="tc-ubah-pembagian-body">
+                <tr>
+                  <td class="text-muted small">Memuat...</td>
+                  <td class="text-muted small">Memuat...</td>
+                  <td class="text-muted small">Memuat...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="tc-ubah-foot d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-light btn-sm" id="tc-ubah-pembagian-cancel">
+            Tutup
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" id="tc-ubah-pembagian-save">
+            Simpan
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ====== INI WAJIB: daftar agent untuk dropdown (ambil dari $agentsDropdown) ======
+    // diletakkan DI ATAS script utama supaya AGENTS tidak kosong
+    window.__TC_AGENT_LIST = window.__TC_AGENT_LIST || [];
+    (function(){
+      const seen = new Set(window.__TC_AGENT_LIST.map(a => a.id));
+      @foreach($agentsDropdown as $ag)
+        (function(){
+          const id = @json($ag->id_agent);
+          const nm = @json($ag->nama);
+          if (!id || seen.has(id)) return;
+          window.__TC_AGENT_LIST.push({ id: id, name: nm || id });
+          seen.add(id);
+        })();
+      @endforeach
+
+      // sort A-Z by name biar rapi
+      window.__TC_AGENT_LIST.sort(function(a,b){
+        return String(a.name||'').localeCompare(String(b.name||''), 'id', { sensitivity:'base' });
+      });
+    })();
+  </script>
+
+<script>
+    (function(){
+      // =========================================================
+      // 1) TEMPLATE DEFAULT (SESUAI YANG ANDA MAU)
+      //    rate = desimal (0.004000) => tampil di modal sebagai persen (0.4)
+      // =========================================================
+      const DEFAULT_TEMPLATE = {
+        UP1:        { label:'Upline 1',            agent:'',      rate:0.004000 },
+        UP2:        { label:'Upline 2',            agent:'',      rate:0.003000 },
+        UP3:        { label:'Upline 3',            agent:'',      rate:0.002000 },
+        COPIC:      { label:'CO PIC',              agent:'',      rate:0.002500 },
+        THC:        { label:'THC',                 agent:'',      rate:0.400000 },
+        LISTER:     { label:'Lister',              agent:'AG001', rate:0.010000 },
+        CONS:       { label:'Consultant',          agent:'AG014', rate:0.008500 },
+        REWARD:     { label:'Reward Fund',         agent:'AG006', rate:0.030000 },
+        INV_FUND:   { label:'Investment Fund',     agent:'AG006', rate:0.020000 },
+        PROMO_FUND: { label:'Promotion Fund',      agent:'AG006', rate:0.020000 },
+        PIC1:       { label:'PIC 1',               agent:'AG006', rate:0.040000 },
+        PIC2:       { label:'PIC 2',               agent:'AG012', rate:0.040000 },
+        PIC3:       { label:'PIC 3',               agent:'AG008', rate:0.040000 },
+        PIC4:       { label:'PIC 4',               agent:'AG014', rate:0.040000 },
+        PIC5:       { label:'PIC 5',               agent:'AG009', rate:0.040000 },
+        SERVICE:    { label:'Service Fund',        agent:'AG006', rate:0.100000 },
+
+        // Fee TL ditampilkan AUTO, bukan porsi 100%
+        FEE_TL:     { label:'Fee Team Leader (AUTO)', agent:'',   rate:0.000000 },
+
+        PRINC_FEE:  { label:'Principal Fee',       agent:'AG012', rate:0.030000 },
+        INV_SHARE:  { label:'Investor Sharing',    agent:'AG001', rate:0.095200 },
+
+        // MGMT FUND split 2: total 0.0595 => masing2 0.02975
+        MGMT_FUND1: { label:'Management Fund 1',   agent:'AG006', rate:0.029750 },
+        MGMT_FUND2: { label:'Management Fund 2',   agent:'AG001', rate:0.029750 },
+
+        // EMP_INC default Yedija
+        EMP_INC:    { label:'Employee Incentive',  agent:'AG035', rate:0.015300 },
+      };
+
+      const POS_ORDER = [
+        'UP1','UP2','UP3','LISTER','COPIC','CONS',
+        'REWARD','INV_FUND','PROMO_FUND','PIC1','PIC2','PIC3','PIC4','PIC5',
+        'THC','SERVICE','FEE_TL',
+        'PRINC_FEE','INV_SHARE','MGMT_FUND1','MGMT_FUND2','EMP_INC'
+      ];
+
+      // =========================================================
+      // 2) HELPERS: HTML & NUMBER
+      // =========================================================
+      function escapeHtml(str){
+        return String(str)
+          .replace(/&/g,'&amp;')
+          .replace(/</g,'&lt;')
+          .replace(/>/g,'&gt;')
+          .replace(/"/g,'&quot;')
+          .replace(/'/g,'&#039;');
+      }
+      function toNumberSafe(v){
+        const s = String(v ?? '').replace(',', '.').trim();
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
+      }
+      function formatPercentValue(n){
+        // value untuk input type=number JANGAN pakai locale
+        const num = Number(n || 0);
+        const fixed = Math.round(num * 100) / 100;
+        return (fixed === 0 ? '' : String(fixed));
+      }
+
+      // =========================================================
+      // 2.1) ✅ UPLINE RESOLVER (UP1/UP2/UP3 dari agent closing)
+      // =========================================================
+      function getClosingAgentId(){
+        const el = document.getElementById('tc-agent');
+        const id = el ? String(el.value || '').trim() : '';
+        return id;
+      }
+
+      function getAgentNameMap(){
+        // support: const AGENT_NAME_MAP (lokal) yang kamu punya + window.AGENT_NAME_MAP
+        try {
+          if (window.AGENT_NAME_MAP && typeof window.AGENT_NAME_MAP === 'object') return window.AGENT_NAME_MAP;
+        } catch(e){}
+        try {
+          if (typeof AGENT_NAME_MAP !== 'undefined' && AGENT_NAME_MAP) return AGENT_NAME_MAP;
+        } catch(e){}
+        return {};
+      }
+
+      function getAgentUplineMap(){
+        try {
+          if (window.AGENT_UPLINE_MAP && typeof window.AGENT_UPLINE_MAP === 'object') return window.AGENT_UPLINE_MAP;
+        } catch(e){}
+        try {
+          if (typeof AGENT_UPLINE_MAP !== 'undefined' && AGENT_UPLINE_MAP) return AGENT_UPLINE_MAP;
+        } catch(e){}
+        return {};
+      }
+
+      function resolveAgentNameById(agentId){
+        const key = (agentId === null || agentId === undefined) ? '' : String(agentId).trim();
+        if (!key) return '';
+        const MAP = getAgentNameMap();
+        return (MAP && MAP[key]) ? String(MAP[key]).trim() : key;
+      }
+
+      function getUplineId(agentId, fallback){
+        const fallbackStr = (fallback === null || fallback === undefined) ? '' : String(fallback).trim();
+        const id = (agentId === null || agentId === undefined) ? '' : String(agentId).trim();
+        if (!id) return fallbackStr;
+
+        const UP = getAgentUplineMap();
+        const up = UP ? UP[id] : null;
+        if (up === null || up === undefined) return fallbackStr;
+
+        const upStr = String(up).trim();
+        return upStr !== '' ? upStr : fallbackStr;
+      }
+
+      function computeUplineIdsFromClosing(){
+        const closingId = getClosingAgentId();
+        if (!closingId) return { up1:'', up2:'', up3:'' };
+
+        const up1 = getUplineId(closingId, 'AG006');
+        const up2 = getUplineId(up1,       'AG001');
+        const up3 = getUplineId(up2,       'Cash');
+
+        return { up1, up2, up3 };
+      }
+
+      // =========================================================
+      // 3) MODAL UBAH PEMBAGIAN (EVENT DELEGATION + INIT AMAN)
+      // =========================================================
+      document.addEventListener('click', function(e){
+        const btn = e.target.closest('#tc-btn-ubah-pembagian');
+        if (!btn) return;
+        e.preventDefault();
+        try {
+          if (window.__TC_OPEN_UBAH_PEMBAGIAN__) window.__TC_OPEN_UBAH_PEMBAGIAN__();
+        } catch(err){
+          console.error('Gagal membuka modal Ubah Pembagian:', err);
+        }
+      });
+
+      function initUbahPembagianModal(){
+        const overlay    = document.getElementById('tc-ubah-pembagian-overlay');
+        const btnClose   = document.getElementById('tc-ubah-pembagian-close');
+        const btnCancel  = document.getElementById('tc-ubah-pembagian-cancel');
+        const btnSave    = document.getElementById('tc-ubah-pembagian-save');
+        const body       = document.getElementById('tc-ubah-pembagian-body');
+        const hiddenWrap = document.getElementById('tc-pembagian-overrides-hidden');
+        const totalEl    = document.getElementById('tc-ubah-total-porsi');
+        const hintEl     = document.getElementById('tc-ubah-porsi-hint');
+
+        if (!overlay || !body || !hiddenWrap || !totalEl || !hintEl) {
+          window.__TC_OPEN_UBAH_PEMBAGIAN__ = function(){
+            initUbahPembagianModal();
+            if (window.__TC_OPEN_UBAH_PEMBAGIAN__) window.__TC_OPEN_UBAH_PEMBAGIAN__();
+          };
+          return;
+        }
+
+        // list agent dropdown
+        window.__TC_AGENT_LIST = window.__TC_AGENT_LIST || [];
+        const AGENTS = Array.isArray(window.__TC_AGENT_LIST) ? window.__TC_AGENT_LIST.slice() : [];
+
+        function closeModal(){
+          overlay.classList.add('d-none');
+        }
+
+        function getPrevOverridePorsi(posCode){
+          const name = 'pembagian_override_porsi['+ posCode +']';
+          const el = hiddenWrap.querySelector('input[name="'+ (window.CSS && CSS.escape ? CSS.escape(name) : name) +'"]');
+          if (!el || !el.value) return null;
+          return toNumberSafe(el.value);
+        }
+        function getPrevOverrideAgent(posCode){
+          const name = 'pembagian_override_agent['+ posCode +']';
+          const el = hiddenWrap.querySelector('input[name="'+ (window.CSS && CSS.escape ? CSS.escape(name) : name) +'"]');
+          return (el && el.value) ? String(el.value).trim() : '';
+        }
+
+        function calcTotalPorsi(){
+          // ⛔ FEE_TL tidak ikut total (input disabled)
+          const inputs = Array.from(body.querySelectorAll('input.tc-porsi-input'));
+          let total = 0;
+          inputs.forEach(function(inp){
+            if (inp.disabled) return;
+            total += toNumberSafe(inp.value);
+          });
+          total = Math.round(total * 100) / 100;
+          return total;
+        }
+
+        function updateTotalUI(){
+          const total = calcTotalPorsi();
+          totalEl.textContent = total.toFixed(2) + '%';
+          const diff = Math.round((100 - total) * 100) / 100;
+
+          if (Math.abs(diff) <= 0.01) {
+            hintEl.innerHTML = '<span class="tc-porsi-ok fw-semibold">✅ Total sudah 100%</span>';
+          } else if (diff > 0) {
+            hintEl.innerHTML = '<span class="tc-porsi-bad fw-semibold">❌ Kurang ' + diff.toFixed(2) + '%</span>';
+          } else {
+            hintEl.innerHTML = '<span class="tc-porsi-bad fw-semibold">❌ Lebih ' + Math.abs(diff).toFixed(2) + '%</span>';
+          }
+        }
+
+        function persistOverridesFromTable(){
+          // agents
+          Array.from(body.querySelectorAll('select.tc-agent-select')).forEach(function(sel){
+            const pos = sel.dataset.pos || '';
+            const val = String(sel.value || '').trim();
+
+            const name = 'pembagian_override_agent['+ pos +']';
+            const q = 'input[name="'+ (window.CSS && CSS.escape ? CSS.escape(name) : name) +'"]';
+            let input = hiddenWrap.querySelector(q);
+
+            if (!val) { if (input) input.remove(); return; }
+
+            if (!input) {
+              input = document.createElement('input');
+              input.type = 'hidden';
+              input.name = name;
+              hiddenWrap.appendChild(input);
+            }
+            input.value = val;
+          });
+
+          // porsi
+          Array.from(body.querySelectorAll('input.tc-porsi-input')).forEach(function(inp){
+            const pos = inp.dataset.pos || '';
+            if (!pos) return;
+
+            // FEE_TL AUTO -> jangan disimpan sebagai porsi
+            if (inp.disabled) {
+              const name = 'pembagian_override_porsi['+ pos +']';
+              const q = 'input[name="'+ (window.CSS && CSS.escape ? CSS.escape(name) : name) +'"]';
+              const ex = hiddenWrap.querySelector(q);
+              if (ex) ex.remove();
+              return;
+            }
+
+            const valNum = toNumberSafe(inp.value);
+            const name = 'pembagian_override_porsi['+ pos +']';
+            const q = 'input[name="'+ (window.CSS && CSS.escape ? CSS.escape(name) : name) +'"]';
+            let input = hiddenWrap.querySelector(q);
+
+            if (!valNum) { if (input) input.remove(); return; }
+
+            if (!input) {
+              input = document.createElement('input');
+              input.type = 'hidden';
+              input.name = name;
+              hiddenWrap.appendChild(input);
+            }
+            input.value = String(valNum);
+          });
+        }
+
+        function buildAgentOptions(selectedId){
+          let optHtml = '<option value="">-</option>';
+          if (AGENTS.length){
+            AGENTS.forEach(function(a){
+              const sel = (String(a.id) === String(selectedId)) ? ' selected' : '';
+              optHtml += '<option value="'+ escapeHtml(a.id) +'"'+sel+'>' +
+                escapeHtml(a.name) + ' ('+ escapeHtml(a.id) +')' +
+              '</option>';
+            });
+          }
+          return optHtml;
+        }
+
+        function openModal(){
+          const out = [];
+
+          // ✅ ambil UP1/UP2/UP3 berdasarkan agent closing SEKARANG
+          const upl = computeUplineIdsFromClosing();
+
+          POS_ORDER.forEach(function(code){
+            const tpl = DEFAULT_TEMPLATE[code];
+            if (!tpl) return;
+
+            const prevP = getPrevOverridePorsi(code);
+            const prevA = getPrevOverrideAgent(code);
+
+            // default percent (rate desimal -> persen)
+            const defaultPercent = Number(tpl.rate || 0) * 100;
+
+            let porsiValue = (prevP !== null) ? prevP : defaultPercent;
+            let agentValue = prevA ? prevA : (tpl.agent || '');
+
+            // ✅ THC agent: ambil dari dropdown closing #tc-agent (kalau sudah dipilih)
+            if (code === 'THC') {
+              const thcId = getClosingAgentId();
+              if (thcId && !prevA) agentValue = thcId;
+            }
+
+            // ✅ UP1/UP2/UP3: ambil dari penelusuran upline agent closing (kalau belum override)
+            if (!prevA) {
+              if (code === 'UP1' && upl.up1) agentValue = upl.up1;
+              if (code === 'UP2' && upl.up2) agentValue = upl.up2;
+              if (code === 'UP3' && upl.up3) agentValue = upl.up3;
+            }
+
+            // COPIC agent tidak dipilih manual (auto dari CO PIC)
+            const isCopic = (code === 'COPIC');
+
+            // FEE_TL auto (porsi tidak bisa diubah)
+            const isFeeTl = (code === 'FEE_TL');
+
+            const porsiInput =
+              isFeeTl
+                ? ('<input type="text" class="form-control form-control-sm tc-porsi-input" data-pos="'+ escapeHtml(code) +'" value="AUTO" disabled>')
+                : ('<input type="number" min="0" step="0.01" class="form-control form-control-sm tc-porsi-input" data-pos="'+ escapeHtml(code) +'" value="'+ escapeHtml(formatPercentValue(porsiValue)) +'" placeholder="0">');
+
+            const agentSelect =
+              (isCopic || isFeeTl)
+                ? ('<select class="form-select form-select-sm tc-agent-select" data-pos="'+ escapeHtml(code) +'" disabled>' +
+                    '<option value="">AUTO</option>' +
+                  '</select>')
+                : ('<select class="form-select form-select-sm tc-agent-select" data-pos="'+ escapeHtml(code) +'">' +
+                    buildAgentOptions(agentValue) +
+                  '</select>');
+
+            out.push(
+              '<tr data-pos-code="'+ escapeHtml(code) +'">' +
+                '<td class="text-start">' +
+                  '<div class="tc-pos-wrap">' +
+                    '<span class="tc-pos-badge">' + escapeHtml(code) + '</span>' +
+                    '<span class="tc-pos-label">' + escapeHtml(tpl.label || code) + '</span>' +
+                  '</div>' +
+                '</td>' +
+                '<td class="text-start">' +
+                  '<div class="d-flex align-items-center gap-2">' +
+                    porsiInput +
+                    '<span class="text-muted">%</span>' +
+                  '</div>' +
+                '</td>' +
+                '<td class="text-start">' + agentSelect + '</td>' +
+              '</tr>'
+            );
+          });
+
+          body.innerHTML = out.join('');
+          overlay.classList.remove('d-none');
+
+          updateTotalUI();
+
+          // isi hidden pertama kali (biar detail pembagian langsung ikut template)
+          persistOverridesFromTable();
+        }
+
+        function isTotalValid100(){
+          const total = calcTotalPorsi();
+          return Math.abs(100 - total) <= 0.01;
+        }
+
+        window.__TC_OPEN_UBAH_PEMBAGIAN__ = openModal;
+
+        if (btnClose)  btnClose.addEventListener('click', closeModal);
+        if (btnCancel) btnCancel.addEventListener('click', closeModal);
+        overlay.addEventListener('click', function(e){
+          if (e.target === overlay) closeModal();
+        });
+
+        body.addEventListener('input', function(e){
+          const inp = e.target.closest('input.tc-porsi-input');
+          if (!inp) return;
+          updateTotalUI();
+          persistOverridesFromTable();
+        });
+
+        body.addEventListener('change', function(e){
+          const sel = e.target.closest('select.tc-agent-select');
+          if (!sel) return;
+          persistOverridesFromTable();
+        });
+
+        if (btnSave) {
+          btnSave.addEventListener('click', function(){
+            updateTotalUI();
+            if (!isTotalValid100()) {
+              alert('Total porsi wajib tepat 100%. Silakan sesuaikan dulu.');
+              return;
+            }
+            persistOverridesFromTable();
+            closeModal();
+
+            // refresh detail pembagian (kalau fungsi updateAllCalc ada di scope global)
+            if (typeof window.updateAllCalc === 'function') {
+              try { window.updateAllCalc(); } catch(e){}
+            }
+          });
+        }
+      }
+
+      // init safe
+      if (document.readyState !== 'loading') {
+        initUbahPembagianModal();
+      } else {
+        document.addEventListener('DOMContentLoaded', initUbahPembagianModal);
+      }
+
+      // =========================================================
+      // 4) DETAIL PEMBAGIAN DI MODAL CLOSING
+      //    - BASIS dari override modal ubah pembagian
+      //    - default dari DEFAULT_TEMPLATE (bukan KOMISI_SCHEMA)
+      //    - COPIC multi agent
+      //    - FEE TL auto + potong SERVICE->REWARD->PROMO
+      //    - ✅ UP1/UP2/UP3 dari upline agent closing
+      // =========================================================
+      window.updateDetailPembagian = function(baseAmount, mode){
+        const baseLabelEl   = document.getElementById('tc-base-label');
+        const baseNominalEl = document.getElementById('tc-base-nominal');
+        const pembagianBody = document.getElementById('tc-pembagian-body');
+        const hiddenWrap    = document.getElementById('tc-pembagian-overrides-hidden');
+
+        if (!pembagianBody || !baseLabelEl || !baseNominalEl) return;
+
+        function rupiah(x){
+          const n = Number(x || 0);
+          return 'Rp ' + n.toLocaleString('id-ID');
+        }
+
+        function resetPembagian(){
+          baseLabelEl.textContent   = 'Basis pembagian akan muncul setelah Anda mengisi harga & komisi.';
+          baseNominalEl.textContent = 'Rp 0';
+          pembagianBody.innerHTML =
+            '<tr><td colspan="4" class="text-center text-muted small">Isi dulu harga menang / komisi untuk melihat detail pembagian.</td></tr>';
+        }
+
+        if (!baseAmount || !mode){
+          resetPembagian();
+          return;
+        }
+
+        const label = (mode === 'price_gap')
+          ? 'Basis pembagian: Selisih (Harga Deal - (Harga Bidding + Balik Nama + Eksekusi + Cobroke))'
+          : 'Basis pembagian: Komisi (fee)';
+        baseLabelEl.textContent   = label;
+        baseNominalEl.textContent = rupiah(baseAmount);
+
+        // ===== baca override persen & agent dari hidden input =====
+        function getOverridePorsiPercent(kode){
+          if (!hiddenWrap) return null;
+          const name = 'pembagian_override_porsi['+ kode +']';
+          const el = hiddenWrap.querySelector('input[name="'+ (window.CSS && CSS.escape ? CSS.escape(name) : name) +'"]');
+          if (!el || el.value == null || String(el.value).trim() === '') return null;
+          const n = parseFloat(String(el.value).replace(',','.'));
+          return isNaN(n) ? null : n; // ini sudah persen (contoh 0.4 / 10 / 7.5)
+        }
+        function getOverrideAgent(kode){
+          if (!hiddenWrap) return '';
+          const name = 'pembagian_override_agent['+ kode +']';
+          const el = hiddenWrap.querySelector('input[name="'+ (window.CSS && CSS.escape ? CSS.escape(name) : name) +'"]');
+          return (el && el.value) ? String(el.value).trim() : '';
+        }
+
+        function resolveAgentName(id){
+          return resolveAgentNameById(id) || String(id || '').trim();
+        }
+
+        function getClosingAgentName(){
+          const id = getClosingAgentId();
+          if (!id) return '';
+          return resolveAgentName(id);
+        }
+
+        function getTeamLeaderNameSafe(){
+          try {
+            if (typeof window.getSelectedTeamLeaderName === 'function') return window.getSelectedTeamLeaderName();
+          } catch(e){}
+          const tl = document.getElementById('tc-team-leader') ? String(document.getElementById('tc-team-leader').value || '').trim() : '';
+          return tl ? resolveAgentName(tl) : 'Team Leader';
+        }
+
+        function getEffectiveRate(kode){
+          const pct = getOverridePorsiPercent(kode);
+          if (pct !== null) return Number(pct) / 100;
+          const tpl = DEFAULT_TEMPLATE[kode];
+          return tpl ? Number(tpl.rate || 0) : 0;
+        }
+
+        function formatPercentFromRate(rate, forceTwo){
+          const raw = Number(rate || 0) * 100;
+          if (forceTwo) return raw.toFixed(2).replace('.',',') + '%';
+          const rounded = Math.round(raw * 10) / 10;
+          if (Number.isInteger(rounded)) return rounded.toFixed(0).replace('.',',') + '%';
+          return String(rounded).replace('.',',') + '%';
+        }
+
+        // ======================================================
+        // ✅ DYNAMIC FEE TL
+        // ======================================================
+        const FEE_TL_MAX  = (typeof window.FEE_TL_MAX  !== 'undefined') ? window.FEE_TL_MAX  : 2000000;
+        const FEE_TL_RATE = (typeof window.FEE_TL_RATE !== 'undefined') ? window.FEE_TL_RATE : 0.10;
+
+        let dynamicNominal = null;
+        if (mode === 'price_gap' || mode === 'profit') {
+          const base = Number(baseAmount || 0);
+
+          const serviceRate = getEffectiveRate('SERVICE');
+          const rewardRate  = getEffectiveRate('REWARD');
+          const promoRate   = getEffectiveRate('PROMO_FUND');
+
+          let serviceNom = Math.round(base * serviceRate);
+          let rewardNom  = Math.round(base * rewardRate);
+          let promoNom   = Math.round(base * promoRate);
+
+          const feeBase = base * FEE_TL_RATE;
+          let feeTlNom  = Math.round(Math.min(feeBase, FEE_TL_MAX));
+
+          serviceNom -= feeTlNom;
+          if (serviceNom < 0) {
+            let sisa = -serviceNom;
+            serviceNom = 0;
+            rewardNom -= sisa;
+            if (rewardNom < 0) {
+              sisa = -rewardNom;
+              rewardNom = 0;
+              promoNom -= sisa;
+              if (promoNom < 0) promoNom = 0;
+            }
+          }
+
+          dynamicNominal = {
+            FEE_TL: feeTlNom,
+            SERVICE: serviceNom,
+            REWARD: rewardNom,
+            PROMO_FUND: promoNom
+          };
+        }
+
+        // ======================================================
+        // COPIC multi agent (mengikuti variabel dari script closing anda)
+        // ======================================================
+        function cleanCopicNameSafe(raw){
+          if (typeof window.cleanCopicName === 'function') return window.cleanCopicName(raw);
+          return String(raw || '').replace(/\s+/g,' ').trim();
+        }
+        const currentCopicAgents = window.currentCopicAgents || [];
+        const currentCopicName   = window.currentCopicName || '-';
+
+        // ✅ hitung upline name untuk UP1/UP2/UP3 dari closing
+        const upl = computeUplineIdsFromClosing();
+        const up1Name = upl.up1 ? resolveAgentName(upl.up1) : '';
+        const up2Name = upl.up2 ? resolveAgentName(upl.up2) : '';
+        const up3Name = upl.up3 ? resolveAgentName(upl.up3) : '';
+
+        let html = '';
+
+        POS_ORDER.forEach(function(kode){
+          const tpl = DEFAULT_TEMPLATE[kode];
+          if (!tpl) return;
+
+          const isCopic = (kode === 'COPIC');
+
+          // ===== COPIC multi row =====
+          if (isCopic) {
+            let agents = (Array.isArray(currentCopicAgents) && currentCopicAgents.length)
+              ? currentCopicAgents
+              : (cleanCopicNameSafe(currentCopicName) && currentCopicName !== '-' && currentCopicName !== '–'
+                  ? [cleanCopicNameSafe(currentCopicName)]
+                  : []);
+
+            const totalRate = getEffectiveRate('COPIC');
+
+            if (agents.length > 0 && totalRate > 0) {
+              const perRate = totalRate / agents.length;
+
+              agents.forEach(function(nmRaw){
+                const nm = cleanCopicNameSafe(nmRaw) || '-';
+                const nominal = Math.round(Number(baseAmount || 0) * perRate);
+
+                html += '<tr>' +
+                  '<td class="text-start">' +
+                    '<span class="badge bg-light text-muted border me-1">COPIC</span><span>CO PIC</span>' +
+                  '</td>' +
+                  '<td class="text-end">' + formatPercentFromRate(perRate, true) + '</td>' +
+                  '<td class="text-end">' + rupiah(nominal) + '</td>' +
+                  '<td class="text-center small text-muted">' + escapeHtml(nm) + '</td>' +
+                '</tr>';
+              });
+              return;
+            }
+          }
+
+          // ===== nominal + rateUsed =====
+          let nominal = 0;
+          let rateUsed = 0;
+
+          if (dynamicNominal && Object.prototype.hasOwnProperty.call(dynamicNominal, kode)) {
+            nominal = Number(dynamicNominal[kode] || 0);
+            rateUsed = baseAmount ? (nominal / Number(baseAmount || 1)) : 0;
+          } else {
+            rateUsed = getEffectiveRate(kode);
+            nominal = Math.round(Number(baseAmount || 0) * rateUsed);
+          }
+
+          // ===== agent name by kode (✅ UP1/UP2/UP3 dari upline) =====
+          let agentName = '-';
+          const overrideAgentId = getOverrideAgent(kode);
+
+          if (kode === 'THC') {
+            agentName = overrideAgentId ? resolveAgentName(overrideAgentId) : (getClosingAgentName() || '-');
+          }
+          else if (kode === 'UP1') {
+            agentName = overrideAgentId ? resolveAgentName(overrideAgentId) : (up1Name || '-');
+          }
+          else if (kode === 'UP2') {
+            agentName = overrideAgentId ? resolveAgentName(overrideAgentId) : (up2Name || '-');
+          }
+          else if (kode === 'UP3') {
+            agentName = overrideAgentId ? resolveAgentName(overrideAgentId) : (up3Name || '-');
+          }
+          else if (kode === 'FEE_TL') {
+            agentName = overrideAgentId ? resolveAgentName(overrideAgentId) : (getTeamLeaderNameSafe() || 'Team Leader');
+          }
+          else {
+            const defAgent = tpl.agent || '';
+            if (overrideAgentId) agentName = resolveAgentName(overrideAgentId);
+            else agentName = defAgent ? resolveAgentName(defAgent) : '-';
+          }
+
+          const forceTwo = ['INV_SHARE','MGMT_FUND1','MGMT_FUND2','EMP_INC','COPIC','CONS','FEE_TL'].indexOf(kode) !== -1;
+          const percentText = formatPercentFromRate(rateUsed, forceTwo);
+
+          html += '<tr>' +
+            '<td class="text-start">' +
+              '<span class="badge bg-light text-muted border me-1">'+ escapeHtml(kode) +'</span>' +
+              '<span>'+ escapeHtml(tpl.label || kode) +'</span>' +
+            '</td>' +
+            '<td class="text-end">'+ percentText +'</td>' +
+            '<td class="text-end">'+ rupiah(nominal) +'</td>' +
+            '<td class="text-center small text-muted">'+ escapeHtml(agentName) +'</td>' +
+          '</tr>';
+        });
+
+        pembagianBody.innerHTML = html || '<tr><td colspan="4" class="text-center text-muted small">-</td></tr>';
+      };
+
+    })();
+    </script>
+
+
+
         </form>
+
+
+        <style>
+            /* === FIX: tombol footer jangan keluar dari modal === */
+            #transaksi-closing-overlay .tc-card{
+              position: relative;
+              display: flex;
+              flex-direction: column;
+              max-height: calc(100vh - 60px);
+              overflow: hidden; /* ini penting biar tidak "keluar" */
+            }
+
+            /* body form dibuat scroll */
+            #transaksi-closing-overlay .tc-form-body{
+              flex: 1 1 auto;
+              overflow: auto;
+              -webkit-overflow-scrolling: touch;
+              padding-bottom: 12px;
+            }
+
+            /* footer tombol tetap di dalam card */
+            #transaksi-closing-overlay .tc-form-footer{
+              flex: 0 0 auto;
+              position: sticky;   /* nempel bawah tapi masih di dalam card */
+              bottom: 0;
+              background: #fff;
+              padding: 12px 0;
+              margin-top: 0 !important;
+              border-top: 1px solid rgba(0,0,0,.08);
+              z-index: 5;
+            }
+          </style>
 
         {{-- NEW: JS untuk Team Leader dropdown + sinkron ringkasan --}}
         <script>
@@ -5023,62 +5917,9 @@ document.addEventListener('DOMContentLoaded', function () {
       const PLACEHOLDER = "{{ asset('img/placeholder.jpg') }}";
       const PROPERTY_HISTORY_ROUTE = "{{ route('dashboard.owner.transaksi.history') }}";
 
-      // === KONSTANTA SKEMA KOMISI (mirror dari tabel skema_komisi_solusindo) ===
+      // === RATE UNTUK RINGKASAN (TIDAK UNTUK DETAIL PEMBAGIAN) ===
       const THC_RATE    = 0.4000; // 40% untuk "Perkiraan hasil komisi"
       const KANTOR_RATE = 0.39;   // 39% pendapatan kotor kantor
-
-      // maksimal Fee Team Leader
-      const FEE_TL_MAX  = 2000000;
-      // Fee TL dihitung dari 10% basis (selisih / fee) dengan maksimal 2jt
-      const FEE_TL_RATE = 0.10;
-
-      const KOMISI_SCHEMA = [
-        { kode:'UP1',       label:'Upline 1',           rate:0.004000 },
-        { kode:'UP2',       label:'Upline 2',           rate:0.003000 },
-        { kode:'UP3',       label:'Upline 3',           rate:0.002000 },
-        { kode:'LISTER',    label:'Lister',             rate:0.010000 },
-        { kode:'COPIC',     label:'CO PIC',             rate:0.002500 },
-        { kode:'CONS',      label:'Consultant',         rate:0.008500 },
-        { kode:'REWARD',    label:'Reward Fund',        rate:0.030000 },
-        { kode:'INV_FUND',  label:'Investment Fund',    rate:0.020000 },
-        { kode:'PROMO_FUND',label:'Promotion Fund',     rate:0.020000 },
-        { kode:'PIC1',      label:'PIC 1',              rate:0.040000 },
-        { kode:'PIC2',      label:'PIC 2',              rate:0.040000 },
-        { kode:'PIC3',      label:'PIC 3',              rate:0.040000 },
-        { kode:'PIC4',      label:'PIC 4',              rate:0.040000 },
-        { kode:'PIC5',      label:'PIC 5',              rate:0.040000 },
-        { kode:'THC',       label:'THC',                rate:0.400000 },
-        { kode:'SERVICE',   label:'Service Fund',       rate:0.100000 },
-        { kode:'FEE_TL',    label:'Fee Team Leader',    rate:0.000000 }, // dinamis
-        { kode:'PRINC_FEE', label:'Principal Fee',      rate:0.030000 },
-        { kode:'INV_SHARE', label:'Investor Sharing',   rate:0.095200 },
-        { kode:'MGMT_FUND', label:'Management Fund',    rate:0.059500 },
-        { kode:'EMP_INC',   label:'Employee Incentive', rate:0.015300 },
-      ];
-
-      const KANTOR_CODES = [
-        'SERVICE','MGMT_FUND','INV_SHARE','EMP_INC',
-        'PIC1','REWARD','INV_FUND','PROMO_FUND','LISTER'
-      ];
-
-      // mapping kode skema -> id_agent
-      const KOMISI_KODE_TO_AGENT_ID = {
-        LISTER:     'AG001',
-        CONS:       'AG014',
-        REWARD:     'AG006',
-        INV_FUND:   'AG006',
-        PROMO_FUND: 'AG006',
-        PIC1:       'AG006',
-        PIC2:       'AG012',
-        PIC3:       'AG008',
-        PIC4:       'AG014',
-        PIC5:       'AG009',
-        SERVICE:    'AG006',
-        PRINC_FEE:  'AG012',
-        INV_SHARE:  'AG001',
-        MGMT_FUND:  'AG006',
-        EMP_INC:    'AG001',
-      };
 
       // map id_agent -> nama (data agent aktif)
       const AGENT_NAME_MAP   = @json($performanceAgents->pluck('nama','id_agent'));
@@ -5088,14 +5929,52 @@ document.addEventListener('DOMContentLoaded', function () {
       const COPIC_AGENTS_MAP = @json($copicAgentsMap ?? []);
       const GLOBAL_COPIC_MAP = COPIC_AGENTS_MAP || {};
 
-      // kode yang selalu tampil 2 angka desimal
+      // daftar kode yang selalu tampil 2 angka desimal
       const FIXED_TWO_DECIMAL_CODES = ['INV_SHARE','MGMT_FUND','EMP_INC','COPIC','CONS','FEE_TL'];
+
+      // kode kantor (warna hijau)
+      const KANTOR_CODES = [
+        'SERVICE','MGMT_FUND','INV_SHARE','EMP_INC',
+        'PIC1','REWARD','INV_FUND','PROMO_FUND','LISTER'
+      ];
 
       // kode yang badge di Pos pakai label penuh
       const FULL_LABEL_BADGE_CODES = [
         'REWARD','INV_FUND','PROMO_FUND',
         'SERVICE','PRINC_FUND','INV_SHARE','MGMT_FUND','EMP_INC',
         'FEE_TL'
+      ];
+
+      // label pos (untuk tampilan)
+      const POS_LABEL_MAP = {
+        'UP1': 'Upline 1',
+        'UP2': 'Upline 2',
+        'UP3': 'Upline 3',
+        'LISTER': 'Lister',
+        'COPIC': 'CO PIC',
+        'CONS': 'Consultant',
+        'REWARD': 'Reward Fund',
+        'INV_FUND': 'Investment Fund',
+        'PROMO_FUND': 'Promotion Fund',
+        'PIC1': 'PIC 1',
+        'PIC2': 'PIC 2',
+        'PIC3': 'PIC 3',
+        'PIC4': 'PIC 4',
+        'PIC5': 'PIC 5',
+        'THC': 'THC',
+        'SERVICE': 'Service Fund',
+        'FEE_TL': 'Fee Team Leader',
+        'PRINC_FEE': 'Principal Fee',
+        'INV_SHARE': 'Investor Sharing',
+        'MGMT_FUND': 'Management Fund',
+        'EMP_INC': 'Employee Incentive'
+      };
+
+      // urutan tampil di detail (mengikuti urutan schema lama)
+      const POS_ORDER = [
+        'UP1','UP2','UP3','LISTER','COPIC','CONS',
+        'REWARD','INV_FUND','PROMO_FUND','PIC1','PIC2','PIC3','PIC4','PIC5',
+        'THC','SERVICE','FEE_TL','PRINC_FEE','INV_SHARE','MGMT_FUND','EMP_INC'
       ];
 
       function rupiah(x){
@@ -5107,7 +5986,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return (str || '').replace(/[^\d]/g,'');
       }
 
-      // NEW: helper format input uang + trigger event
+      // helper format input uang + trigger event
       function setMoneyInput(el, val){
         if (!el) return;
         const num = Number(String(val ?? '').replace(/[^\d]/g,'')) || 0;
@@ -5220,6 +6099,9 @@ document.addEventListener('DOMContentLoaded', function () {
         // NEW: Team Leader hidden (value id_agent)
         const teamLeaderInput = document.getElementById('tc-team-leader');
 
+        // sumber override dari modal ubah pembagian
+        const overrideWrap = document.getElementById('tc-pembagian-overrides-hidden');
+
         if (!overlay || !form) return;
 
         // ==== HELPER UNTUK UPLINE ====
@@ -5266,7 +6148,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         // =============================
 
-        // ✅ NEW: ambil nama Team Leader terpilih dari dropdown (hidden input tc-team-leader)
+        // ✅ ambil nama Team Leader terpilih dari dropdown (hidden input tc-team-leader)
         function getSelectedTeamLeaderId(){
           const id = (teamLeaderInput && teamLeaderInput.value) ? String(teamLeaderInput.value).trim() : '';
           return id || 'AG016';
@@ -5274,15 +6156,11 @@ document.addEventListener('DOMContentLoaded', function () {
         function getSelectedTeamLeaderName(){
           const id = getSelectedTeamLeaderId();
 
-          // prioritas 1: map dari data agentsDropdown (yang Anda inject di No 1)
-          if (window.AGENT_NAME_MAP && window.AGENT_NAME_MAP[id]) {
-            return window.AGENT_NAME_MAP[id];
-          }
+          // prioritas 1: map dari data agentsDropdown (kalau Anda punya window.AGENT_NAME_MAP)
+          if (window.AGENT_NAME_MAP && window.AGENT_NAME_MAP[id]) return window.AGENT_NAME_MAP[id];
 
           // prioritas 2: map performanceAgents
-          if (_AGENT_NAME_MAP && _AGENT_NAME_MAP[id]) {
-            return _AGENT_NAME_MAP[id];
-          }
+          if (_AGENT_NAME_MAP && _AGENT_NAME_MAP[id]) return _AGENT_NAME_MAP[id];
 
           // prioritas 3: label dropdown kalau ada
           const lbl = document.getElementById('tc-tl-label');
@@ -5383,9 +6261,7 @@ document.addEventListener('DOMContentLoaded', function () {
           });
 
           const cleanedCurrent = cleanCopicName(currentCopicName);
-          if (cleanedCurrent && cleanedCurrent !== '-' && cleanedCurrent !== '–') {
-            found.push(cleanedCurrent);
-          }
+          if (cleanedCurrent && cleanedCurrent !== '-' && cleanedCurrent !== '–') found.push(cleanedCurrent);
 
           const seen = new Set();
           const uniq = [];
@@ -5402,187 +6278,253 @@ document.addEventListener('DOMContentLoaded', function () {
           }
         }
 
-        // Update panel "Detail Pembagian" dari baseAmount
+        // =============================
+        // ✅ DETAIL PEMBAGIAN: SUMBER 100% DARI MODAL UBAH PEMBAGIAN
+        // - porsi: pembagian_override_porsi[KODE] (dalam persen)
+        // - agent: pembagian_override_agent[KODE] (id_agent)
+        // =============================
         function updateDetailPembagian(baseAmount, mode){
-          if (!pembagianBody || !baseLabelEl || !baseNominalEl) return;
+  if (!pembagianBody || !baseLabelEl || !baseNominalEl) return;
 
-          if (!baseAmount || !mode){
-            resetPembagian();
-            return;
-          }
+  if (!baseAmount || !mode){
+    resetPembagian();
+    return;
+  }
 
-          const label = (mode === 'price_gap')
-            ? 'Basis pembagian: Selisih (Harga Deal - (Harga Bidding + Balik Nama + Eksekusi + Cobroke))'
-            : 'Basis pembagian: Komisi (fee)';
+  const label = (mode === 'price_gap')
+    ? 'Basis pembagian: Selisih (Harga Deal - (Harga Bidding + Balik Nama + Eksekusi + Cobroke))'
+    : 'Basis pembagian: Komisi (fee)';
 
-          baseLabelEl.textContent   = label;
-          baseNominalEl.textContent = rupiah(baseAmount);
+  baseLabelEl.textContent   = label;
+  baseNominalEl.textContent = rupiah(baseAmount);
 
-          function getSchemaRate(kode, fallback){
-            for (let i=0; i<KOMISI_SCHEMA.length; i++){
-              if (KOMISI_SCHEMA[i].kode === kode) return Number(KOMISI_SCHEMA[i].rate || 0);
-            }
-            return Number(fallback || 0);
-          }
+  // ---------- helpers override ----------
+  function getOverrideAgentIdByKode(kode){
+    if (!overrideWrap || !kode) return '';
+    const name = 'pembagian_override_agent['+ kode +']';
+    const el = overrideWrap.querySelector('input[name="'+ (window.CSS && CSS.escape ? CSS.escape(name) : name) +'"]');
+    return (el && el.value) ? String(el.value).trim() : '';
+  }
 
-          // ===== DYNAMIC FEE TL (BERLAKU UNTUK price_gap DAN profit) =====
-          let dynamicNominalMap = null;
+  function getOverridePorsiPercentByKode(kode){
+    if (!overrideWrap || !kode) return null;
+    const name = 'pembagian_override_porsi['+ kode +']';
+    const el = overrideWrap.querySelector('input[name="'+ (window.CSS && CSS.escape ? CSS.escape(name) : name) +'"]');
+    if (!el || el.value == null) return null;
+    const raw = String(el.value).trim();
+    if (!raw) return null;
+    const n = parseFloat(raw.replace(',','.'));
+    return isNaN(n) ? null : n; // persen
+  }
 
-          if (mode === 'price_gap' || mode === 'profit') {
-            const base = Number(baseAmount || 0);
+  function resolveAgentNameSafeById(id){
+    try {
+      const nm = resolveAgentNameById(id);
+      if (nm && String(nm).trim()) return String(nm).trim();
+    } catch(e){}
+    try {
+      if (window.AGENT_NAME_MAP && window.AGENT_NAME_MAP[id]) return String(window.AGENT_NAME_MAP[id]).trim();
+    } catch(e){}
+    return String(id || '').trim();
+  }
 
-            const serviceRate = getSchemaRate('SERVICE', 0.10);
-            const rewardRate  = getSchemaRate('REWARD', 0.03);
-            const promoRate   = getSchemaRate('PROMO_FUND', 0.02);
+  function formatPercentByKode(kode, pct){
+    const raw = Number(pct || 0);
+    if (FIXED_TWO_DECIMAL_CODES.indexOf(kode) !== -1) return raw.toFixed(2).replace('.',',') + '%';
 
-            let serviceNom = Math.round(base * serviceRate);
-            let rewardNom  = Math.round(base * rewardRate);
-            let promoNom   = Math.round(base * promoRate);
+    const rounded = Math.round(raw * 10) / 10;
+    if (Number.isInteger(rounded)) return rounded.toFixed(0).replace('.',',') + '%';
+    return String(rounded).replace('.',',') + '%';
+  }
 
-            const feeBase = base * FEE_TL_RATE;
-            let feeTlNom  = Math.round(Math.min(feeBase, FEE_TL_MAX));
+  function buildPosHtml(kode){
+    const lbl = POS_LABEL_MAP[kode] || kode;
+    if (FULL_LABEL_BADGE_CODES.indexOf(kode) !== -1) {
+      return '<span class="badge bg-light text-muted border me-1">' + lbl + '</span>';
+    }
+    return (
+      '<span class="badge bg-light text-muted border me-1">' + kode + '</span>' +
+      '<span>' + lbl + '</span>'
+    );
+  }
 
-            serviceNom = serviceNom - feeTlNom;
+  // ---------- cek hidden override ada/tidak ----------
+  const hasAnyOverride = overrideWrap && overrideWrap.querySelector('input[name^="pembagian_override_porsi["]');
+  if (!hasAnyOverride) {
+    pembagianBody.innerHTML =
+      '<tr><td colspan="4" class="text-center text-muted small">' +
+        'Silakan buka <b>Ubah Pembagian</b> lalu isi porsi & agent (total 100%) untuk menampilkan detail pembagian.' +
+      '</td></tr>';
+    return;
+  }
 
-            if (serviceNom < 0) {
-              let sisa = -serviceNom;
-              serviceNom = 0;
+  // ======================================================
+  // ✅ DYNAMIC FEE TL (AUTO)
+  // TL = base * 10% (maks 2jt)
+  // potong SERVICE -> REWARD -> PROMO_FUND
+  // ======================================================
+  const FEE_TL_MAX  = 2000000;
+  const FEE_TL_RATE = 0.10;
 
-              rewardNom = rewardNom - sisa;
-              if (rewardNom < 0) {
-                sisa = -rewardNom;
-                rewardNom = 0;
+  // helper ambil pct override untuk 3 pos sumber potongan
+  function getPctOrZero(kode){
+    const p = getOverridePorsiPercentByKode(kode);
+    return (p === null || isNaN(p)) ? 0 : Number(p);
+  }
 
-                promoNom = promoNom - sisa;
-                if (promoNom < 0) promoNom = 0;
-              }
-            }
+  const base = Number(baseAmount || 0);
 
-            dynamicNominalMap = {
-              FEE_TL:     Math.max(feeTlNom, 0),
-              SERVICE:    Math.max(serviceNom, 0),
-              REWARD:     Math.max(rewardNom, 0),
-              PROMO_FUND: Math.max(promoNom, 0)
-            };
-          }
-          // ======================================================
+  // nominal awal dari override (sebelum dipotong TL)
+  let servicePct = getPctOrZero('SERVICE');
+  let rewardPct  = getPctOrZero('REWARD');
+  let promoPct   = getPctOrZero('PROMO_FUND');
 
-          let html = '';
-          KOMISI_SCHEMA.forEach(function(item){
-            const isCopic  = (item.kode === 'COPIC');
-            const isKantor = KANTOR_CODES.indexOf(item.kode) !== -1;
+  let serviceNom = Math.round(base * (servicePct/100));
+  let rewardNom  = Math.round(base * (rewardPct/100));
+  let promoNom   = Math.round(base * (promoPct/100));
 
-            // ===== KHUSUS COPIC: bisa banyak agent & 0,25% dibagi rata =====
-            if (isCopic) {
-              let agents = currentCopicAgents && currentCopicAgents.length
-                ? currentCopicAgents
-                : (cleanCopicName(currentCopicName) && currentCopicName !== '-' && currentCopicName !== '–'
-                    ? [cleanCopicName(currentCopicName)]
-                    : []);
+  let feeTlNom   = Math.round(Math.min(base * FEE_TL_RATE, FEE_TL_MAX));
 
-              if (agents.length > 0) {
-                const totalRate = item.rate;
-                const perRate   = totalRate / agents.length;
+  // potong dari SERVICE -> REWARD -> PROMO
+  let sisa = feeTlNom;
 
-                const posHtml =
-                  '<span class="badge bg-light text-muted border me-1">' + item.kode + '</span>' +
-                  '<span>' + item.label + '</span>';
+  if (sisa > 0) {
+    const take = Math.min(serviceNom, sisa);
+    serviceNom -= take;
+    sisa -= take;
+  }
+  if (sisa > 0) {
+    const take = Math.min(rewardNom, sisa);
+    rewardNom -= take;
+    sisa -= take;
+  }
+  if (sisa > 0) {
+    const take = Math.min(promoNom, sisa);
+    promoNom -= take;
+    sisa -= take;
+  }
 
-                agents.forEach(function(agentNameRaw){
-                  const agentName = cleanCopicName(agentNameRaw) || '-';
-                  const nominal = Math.round(baseAmount * perRate);
+  // pct efektif setelah potongan (berdasarkan nominal aktual)
+  function pctFromNom(nom){
+    if (!base) return 0;
+    return (Number(nom || 0) / base) * 100;
+  }
 
-                  let rawPercent = perRate * 100;
-                  let percentText = rawPercent.toFixed(2);
-                  percentText = percentText.replace('.',',') + '%';
+  const feeTlPctEff   = pctFromNom(feeTlNom);
+  const servicePctEff = pctFromNom(serviceNom);
+  const rewardPctEff  = pctFromNom(rewardNom);
+  const promoPctEff   = pctFromNom(promoNom);
 
-                  html += '<tr>' +
-                    '<td class="text-start">' + posHtml + '</td>' +
-                    '<td class="text-end">' + percentText + '</td>' +
-                    '<td class="text-end">' + rupiah(nominal) + '</td>' +
-                    '<td class="text-center small text-muted">' + agentName + '</td>' +
-                  '</tr>';
-                });
+  // map nominal dinamis agar row SERVICE/REWARD/PROMO/FEE_TL pakai nominal aktual
+  const dynamicNominalMap = {
+    FEE_TL: feeTlNom,
+    SERVICE: serviceNom,
+    REWARD: rewardNom,
+    PROMO_FUND: promoNom
+  };
+  const dynamicPctMap = {
+    FEE_TL: feeTlPctEff,
+    SERVICE: servicePctEff,
+    REWARD: rewardPctEff,
+    PROMO_FUND: promoPctEff
+  };
 
-                return;
-              }
-            }
-            // ===== END KHUSUS COPIC =====
+  // ======================================================
+  // Render table
+  // ======================================================
+  let html = '';
 
-            let nominal;
-            let rateUsed;
+  POS_ORDER.forEach(function(kode){
+    // ✅ FEE_TL HARUS SELALU MUNCUL
+    const isFeeTl = (kode === 'FEE_TL');
 
-            if (dynamicNominalMap && Object.prototype.hasOwnProperty.call(dynamicNominalMap, item.kode)) {
-              nominal = Number(dynamicNominalMap[item.kode] || 0);
-              rateUsed = baseAmount ? (nominal / Number(baseAmount || 1)) : 0;
-            } else {
-              nominal = Math.round(baseAmount * item.rate);
-              rateUsed = Number(item.rate || 0);
-            }
+    // normal pos pakai override pct (kalau null/0 => skip)
+    let pct = getOverridePorsiPercentByKode(kode);
 
-            const rawPercent = rateUsed * 100;
-            let percentText;
+    // untuk pos dinamis, pct diambil dari pct efektif hasil potongan
+    if (dynamicPctMap[kode] !== undefined) pct = dynamicPctMap[kode];
 
-            if (FIXED_TWO_DECIMAL_CODES.indexOf(item.kode) !== -1) {
-              percentText = rawPercent.toFixed(2);
-            } else {
-              const rounded = Math.round(rawPercent * 10) / 10;
-              if (Number.isInteger(rounded)) percentText = rounded.toFixed(0);
-              else percentText = rounded.toString();
-            }
-            percentText = percentText.replace('.',',') + '%';
+    if (!isFeeTl) {
+      if (pct === null || Number(pct) <= 0) return;
+    } else {
+      // kalau base 0, tetap munculkan row tapi 0
+      if (pct === null) pct = dynamicPctMap.FEE_TL || 0;
+    }
 
-            // nama agent
-            let agentName = '';
-            if (item.kode === 'THC') {
-              agentName = currentClosingAgentName || '';
-            } else if (item.kode === 'UP1') {
-              agentName = up1AgentName || '';
-            } else if (item.kode === 'UP2') {
-              agentName = up2AgentName || '';
-            } else if (item.kode === 'UP3') {
-              agentName = up3AgentName || '';
-            } else if (item.kode === 'FEE_TL') {
-              // ✅ INI SATU-SATUNYA PERUBAHAN INTI:
-              // ambil nama TL dari dropdown yang dipilih
-              agentName = getSelectedTeamLeaderName();
-            } else {
-              const agentId = KOMISI_KODE_TO_AGENT_ID[item.kode];
-              if (agentId && AGENT_NAME_MAP && AGENT_NAME_MAP[agentId]) {
-                agentName = AGENT_NAME_MAP[agentId];
-              }
-            }
-            if (!agentName) {
-              agentName = isKantor ? 'Kantor' : '-';
-            }
+    const isKantor = KANTOR_CODES.indexOf(kode) !== -1;
 
-            // tampilan badge Pos
-            let posHtml = '';
-            if (FULL_LABEL_BADGE_CODES.indexOf(item.kode) !== -1) {
-              posHtml =
-                '<span class="badge bg-light text-muted border me-1">' +
-                  item.label +
-                '</span>';
-            } else {
-              posHtml =
-                '<span class="badge bg-light text-muted border me-1">' +
-                  item.kode +
-                '</span>' +
-                '<span>' + item.label + '</span>';
-            }
+    // ===== COPIC: multi agent kalau tidak dioverride agent =====
+    if (kode === 'COPIC') {
+      const overrideAgentId = getOverrideAgentIdByKode('COPIC');
+      if (!overrideAgentId) {
+        let agents = currentCopicAgents && currentCopicAgents.length
+          ? currentCopicAgents
+          : (cleanCopicName(currentCopicName) && currentCopicName !== '-' && currentCopicName !== '–'
+              ? [cleanCopicName(currentCopicName)]
+              : []);
 
-            const agentClass = isKantor ? 'text-success' : 'text-muted';
+        if (agents.length > 0) {
+          const perPct  = Number(pct) / agents.length;
+          const perRate = perPct / 100;
+
+          agents.forEach(function(agentNameRaw){
+            const agentName = cleanCopicName(agentNameRaw) || '-';
+            const nominal = Math.round(base * perRate);
 
             html += '<tr>' +
-              '<td class="text-start">' + posHtml + '</td>' +
-              '<td class="text-end">' + percentText + '</td>' +
+              '<td class="text-start">' + buildPosHtml('COPIC') + '</td>' +
+              '<td class="text-end">' + formatPercentByKode('COPIC', perPct) + '</td>' +
               '<td class="text-end">' + rupiah(nominal) + '</td>' +
-              '<td class="text-center small ' + agentClass + '">' + agentName + '</td>' +
+              '<td class="text-center small text-muted">' + agentName + '</td>' +
             '</tr>';
           });
-
-          pembagianBody.innerHTML = html;
+          return;
         }
+      }
+      // jika override agent ada -> jatuh ke normal single agent
+    }
+
+    // ===== agentName =====
+    let agentName = '';
+    const overrideAgentId = getOverrideAgentIdByKode(kode);
+
+    if (overrideAgentId) {
+      agentName = resolveAgentNameSafeById(overrideAgentId) || overrideAgentId;
+    } else {
+      if (kode === 'THC') agentName = currentClosingAgentName || '-';
+      else if (kode === 'UP1') agentName = up1AgentName || '-';
+      else if (kode === 'UP2') agentName = up2AgentName || '-';
+      else if (kode === 'UP3') agentName = up3AgentName || '-';
+      else if (kode === 'FEE_TL') agentName = getSelectedTeamLeaderName();
+      else agentName = isKantor ? 'Kantor' : '-';
+    }
+
+    // ===== nominal =====
+    let nominal = 0;
+    if (dynamicNominalMap[kode] !== undefined) {
+      nominal = Number(dynamicNominalMap[kode] || 0);
+    } else {
+      const rateUsed = Number(pct) / 100;
+      nominal = Math.round(base * rateUsed);
+    }
+
+    const agentClass = isKantor ? 'text-success' : 'text-muted';
+
+    html += '<tr>' +
+      '<td class="text-start">' + buildPosHtml(kode) + '</td>' +
+      '<td class="text-end">' + formatPercentByKode(kode, pct) + '</td>' +
+      '<td class="text-end">' + rupiah(nominal) + '</td>' +
+      '<td class="text-center small ' + agentClass + '">' + agentName + '</td>' +
+    '</tr>';
+  });
+
+  pembagianBody.innerHTML = html || (
+    '<tr><td colspan="4" class="text-center text-muted small">' +
+      'Tidak ada porsi yang terdeteksi. Pastikan Anda sudah mengisi porsi di <b>Ubah Pembagian</b>.' +
+    '</td></tr>'
+  );
+}
+
 
         function computeSelisihDanRoyalty(){
           const hargaBidding = hargaMenangInput ? Number(onlyDigits(hargaMenangInput.value)) || 0 : 0;
@@ -5594,7 +6536,6 @@ document.addEventListener('DOMContentLoaded', function () {
           const selisih = Math.max(hargaDeal - (hargaBidding + biayaBN + biayaEks + cobrokeFee), 0);
 
           if (selisihInput) selisihInput.value = selisih ? selisih.toLocaleString('id-ID') : '';
-
           if (selisihSummaryEl) selisihSummaryEl.textContent = rupiah(selisih);
 
           const royalty = Math.round(selisih * 0.003);
@@ -5605,6 +6546,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function updateKomisiFromPercent(){
           if (!komisiEstimasi) return;
+
           const hargaNum = hargaMenangInput ? Number(onlyDigits(hargaMenangInput.value)) || 0 : 0;
           const persenRaw= komisiPersenInput ? (komisiPersenInput.value || '') : '';
           const persen   = parseFloat(persenRaw.replace(',','.')) || 0;
@@ -5644,6 +6586,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
           if (mode === 'price_gap') updateSelisihFromGap(selisihDeal);
           else updateKomisiFromPercent();
+
+          // Detail pembagian akan selalu baca hidden override terbaru
         }
 
         function handleHargaMenangInput(){
@@ -5796,7 +6740,6 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error('Error prefill new fields:', e);
           }
 
-          // ✅ Pastikan default TL selalu ada (kalau kosong)
           if (teamLeaderInput && (!teamLeaderInput.value || !String(teamLeaderInput.value).trim())) {
             teamLeaderInput.value = 'AG016';
           }
@@ -5871,14 +6814,23 @@ document.addEventListener('DOMContentLoaded', function () {
           });
         });
 
-        // ✅ NEW: kalau user ganti Team Leader, langsung update detail pembagian
+        // ganti Team Leader -> refresh detail
         document.addEventListener('click', function(e){
           const opt = e.target.closest('.tc-tl-option');
           if (!opt) return;
-          // diasumsikan script dropdown TL Anda akan set #tc-team-leader
-          // kita paksa hitung ulang supaya baris FEE_TL refresh
           updateAllCalc();
         });
+
+        // ✅ KUNCI: setelah "Simpan" di modal ubah pembagian -> refresh detail pembagian
+        const ubahPembagianSaveBtn = document.getElementById('tc-ubah-pembagian-save');
+        if (ubahPembagianSaveBtn) {
+          ubahPembagianSaveBtn.addEventListener('click', function(){
+            // tunggu modal menulis hidden (persistOverridesFromTable) selesai
+            setTimeout(function(){
+              updateAllCalc();
+            }, 0);
+          });
+        }
 
         if (hargaMenangInput) hargaMenangInput.addEventListener('input', handleHargaMenangInput);
 
@@ -5955,6 +6907,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     })();
     </script>
+
 
 
 
