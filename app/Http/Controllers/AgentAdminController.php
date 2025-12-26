@@ -1073,13 +1073,17 @@ $performanceAgents = DB::table('agent')
 )
 ->get();
 
+$agentsDropdown = \App\Models\Agent::select('id_agent','nama')
+  ->whereNotNull('nama')
+  ->orderBy('nama')
+  ->get();
 
 
         //grafik
         $monthlyData = DB::table('transaction')
-            ->selectRaw("DATE_TRUNC('month', tanggal_dibuat) as bulan, SUM(basis_pendapatan) as total_pendapatan, COUNT(*) as total_transaksi")
-            ->groupByRaw("DATE_TRUNC('month', tanggal_dibuat)")
-            ->orderByRaw("DATE_TRUNC('month', tanggal_dibuat)")
+            ->selectRaw("DATE_TRUNC('month', tanggal_transaksi) as bulan, SUM(basis_pendapatan) as total_pendapatan, COUNT(*) as total_transaksi")
+            ->groupByRaw("DATE_TRUNC('month', tanggal_transaksi)")
+            ->orderByRaw("DATE_TRUNC('month', tanggal_transaksi)")
             ->get();
 
         $performanceClients = DB::table('account')
@@ -1217,6 +1221,7 @@ $performanceAgents = DB::table('agent')
             'tab'                 => $tab,
             'exportProperties'    => $exportProperties,
             'events'              => $eventsFormatted,
+            'agentsDropdown' => $agentsDropdown,
             // 🔥 kirim map COPIC ke Blade (id_listing => ['ids'=>[],'names'=>[]])
             'copicAgentsMap'      => $copicAgentsMap,
         ]);
@@ -2629,7 +2634,23 @@ public function updatetransaksi(Request $request)
         'tanggal_diupdate' => 'required|date',     // tanggal closing (Y-m-d)
         'biaya_balik_nama' => 'nullable|string',  // dari input modal (boleh ada titik)
         'biaya_eksekusi'   => 'nullable|string',  // dari input modal (boleh ada titik)
+
+        // ✅ NEW: Team Leader dari dropdown (default AG016)
+        'team_leader'      => 'nullable|string',
     ]);
+
+    // ✅ NEW: default Team Leader
+    $teamLeaderId = $request->input('team_leader');
+    $teamLeaderId = $teamLeaderId ? trim($teamLeaderId) : '';
+    if ($teamLeaderId === '') {
+        $teamLeaderId = 'AG016';
+    }
+
+    // (opsional safety) kalau TL tidak ada di tabel agent, fallback AG016
+    $tlExists = DB::table('agent')->where('id_agent', $teamLeaderId)->exists();
+    if (!$tlExists) {
+        $teamLeaderId = 'AG016';
+    }
 
     // --- Ambil property untuk dapat harga_limit ---
     /** @var \App\Models\Property $property */
@@ -2888,8 +2909,13 @@ public function updatetransaksi(Request $request)
         // Upline
         if ($up1Id) {
             $roleAgentMap['UP1'] = [$up1Id];
-            $roleAgentMap['FEE_TL'] = [$up1Id]; // NEW: Fee TL diarahkan ke UP1 (Team Leader)
         }
+
+        // ✅ Fee TL mengikuti dropdown TL (default AG016)
+        if ($teamLeaderId) {
+            $roleAgentMap['FEE_TL'] = [$teamLeaderId];
+        }
+
         if ($up2Id) {
             $roleAgentMap['UP2'] = [$up2Id];
         }
@@ -2920,46 +2946,44 @@ public function updatetransaksi(Request $request)
             }
         }
 
-        // --- 4.5. NEW: Perhitungan dinamis FEE_TL & pengurangan SERVICE/REWARD/PROMO_FUND (HANYA SAAT price_gap) ---
+        // --- 4.5. NEW: Perhitungan dinamis FEE_TL & pengurangan SERVICE/REWARD/PROMO_FUND (BERLAKU UNTUK SEMUA SKEMA) ---
         $dynFeeTl   = 0;
         $dynService = null;
         $dynReward  = null;
         $dynPromo   = null;
 
-        if ($closingType === 'price_gap') {
-            $maxFeeTl = 2000000;
+        $maxFeeTl = 2000000;
 
-            $serviceNom = (int) round($basisPendapatan * 0.10);
-            $rewardNom  = (int) round($basisPendapatan * 0.03);
-            $promoNom   = (int) round($basisPendapatan * 0.02);
+        $serviceNom = (int) round($basisPendapatan * 0.10);
+        $rewardNom  = (int) round($basisPendapatan * 0.03);
+        $promoNom   = (int) round($basisPendapatan * 0.02);
 
-            $feeTlNom = (int) round(min($basisPendapatan * 0.10, $maxFeeTl));
+        $feeTlNom = (int) round(min($basisPendapatan * 0.10, $maxFeeTl));
 
-            // potong dari SERVICE dulu
-            $serviceNom = $serviceNom - $feeTlNom;
+        // potong dari SERVICE dulu
+        $serviceNom = $serviceNom - $feeTlNom;
 
-            // fallback kalau service kurang -> REWARD -> PROMO
-            if ($serviceNom < 0) {
-                $sisa = -$serviceNom;
-                $serviceNom = 0;
+        // fallback kalau service kurang -> REWARD -> PROMO
+        if ($serviceNom < 0) {
+            $sisa = -$serviceNom;
+            $serviceNom = 0;
 
-                $rewardNom = $rewardNom - $sisa;
-                if ($rewardNom < 0) {
-                    $sisa = -$rewardNom;
-                    $rewardNom = 0;
+            $rewardNom = $rewardNom - $sisa;
+            if ($rewardNom < 0) {
+                $sisa = -$rewardNom;
+                $rewardNom = 0;
 
-                    $promoNom = $promoNom - $sisa;
-                    if ($promoNom < 0) {
-                        $promoNom = 0;
-                    }
+                $promoNom = $promoNom - $sisa;
+                if ($promoNom < 0) {
+                    $promoNom = 0;
                 }
             }
-
-            $dynFeeTl   = max($feeTlNom, 0);
-            $dynService = max($serviceNom, 0);
-            $dynReward  = max($rewardNom, 0);
-            $dynPromo   = max($promoNom, 0);
         }
+
+        $dynFeeTl   = max($feeTlNom, 0);
+        $dynService = max($serviceNom, 0);
+        $dynReward  = max($rewardNom, 0);
+        $dynPromo   = max($promoNom, 0);
 
         // --- 5. Sinkronisasi ke transaction_commissions (tanpa reset ID) ---
         $keptIds = []; // id row yang dipertahankan / diupdate
@@ -2968,10 +2992,7 @@ public function updatetransaksi(Request $request)
             $kode = $item['kode'];
             $rate = (float) $item['rate'];
 
-            // NEW: hanya tampilkan/simpan FEE_TL ketika price_gap
-            if ($kode === 'FEE_TL' && $closingType !== 'price_gap') {
-                continue;
-            }
+            // ❌ Dihapus: FEE_TL tidak dibatasi lagi hanya price_gap
 
             // Kalau tidak ada agent untuk kode ini, skip
             if (!isset($roleAgentMap[$kode]) || empty($roleAgentMap[$kode])) {
@@ -3011,14 +3032,14 @@ public function updatetransaksi(Request $request)
 
                 foreach ($agents as $agId) {
 
-                    // NEW: override nominal untuk SERVICE/REWARD/PROMO/FEE_TL saat price_gap
-                    if ($closingType === 'price_gap' && $kode === 'SERVICE' && $dynService !== null) {
+                    // ✅ override nominal dinamis untuk SERVICE/REWARD/PROMO/FEE_TL BERLAKU UNTUK SEMUA SKEMA
+                    if ($kode === 'SERVICE' && $dynService !== null) {
                         $pendapatan = (int) $dynService;
-                    } elseif ($closingType === 'price_gap' && $kode === 'REWARD' && $dynReward !== null) {
+                    } elseif ($kode === 'REWARD' && $dynReward !== null) {
                         $pendapatan = (int) $dynReward;
-                    } elseif ($closingType === 'price_gap' && $kode === 'PROMO_FUND' && $dynPromo !== null) {
+                    } elseif ($kode === 'PROMO_FUND' && $dynPromo !== null) {
                         $pendapatan = (int) $dynPromo;
-                    } elseif ($closingType === 'price_gap' && $kode === 'FEE_TL') {
+                    } elseif ($kode === 'FEE_TL') {
                         $pendapatan = (int) $dynFeeTl;
                     } else {
                         // Kode lain: masing2 agent (biasanya cuma 1) dapat full rate
@@ -3076,6 +3097,7 @@ public function updatetransaksi(Request $request)
 
     return back()->with('success', 'Status transaksi berhasil disimpan.');
 }
+
 
 
 
