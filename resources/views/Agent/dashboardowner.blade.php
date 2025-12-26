@@ -2825,7 +2825,7 @@ clearAllBtn?.addEventListener('click', clearAll);
                 type="button" role="tab"
                 aria-controls="transaksi-list"
                 aria-selected="true">
-          💳 Daftar Transaksi
+          🏠 Pilih Listing
         </button>
       </li>
 
@@ -6444,6 +6444,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // untuk pos dinamis, pct diambil dari pct efektif hasil potongan
     if (dynamicPctMap[kode] !== undefined) pct = dynamicPctMap[kode];
 
+    // Memastikan bahwa row MGMT_FUND1 dan MGMT_FUND2 tetap muncul
+    if (kode === 'MGMT_FUND1' || kode === 'MGMT_FUND2') {
+      if (pct === null || Number(pct) <= 0) {
+        pct = 0.029750;  // memberi nilai default untuk memastikan tampil
+      }
+    }
+
     if (!isFeeTl) {
       if (pct === null || Number(pct) <= 0) return;
     } else {
@@ -6524,6 +6531,8 @@ document.addEventListener('DOMContentLoaded', function () {
     '</td></tr>'
   );
 }
+
+
 
 
         function computeSelisihDanRoyalty(){
