@@ -204,14 +204,14 @@
         </button>
       </li>
 
-      <li class="nav-item" role="presentation">
+      {{-- <li class="nav-item" role="presentation">
         <button class="nav-link {{ $tab==='progress' ? 'active' : '' }}"
                 id="progress-tab" data-bs-toggle="tab" data-bs-target="#progress"
                 type="button" role="tab" aria-controls="progress"
                 aria-selected="{{ $tab==='progress' ? 'true' : 'false' }}">
           📦 Progress Lelang
         </button>
-      </li>
+      </li> --}}
   </ul>
 
     <div class="tab-content mt-3" id="mainTabsContent">
@@ -378,127 +378,6 @@
             </div>
         </div>
 
-        <!-- Progress Lelang -->
-<div class="tab-pane fade {{ $tab==='progress' ? 'show active' : '' }}" id="progress" role="tabpanel" aria-labelledby="progress-tab">
-
-    {{-- ORIGINAL (disimpan, tidak dihapus):
-    <ul class="nav nav-pills mb-3" id="progressSubTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="progress-agent-tab" data-bs-toggle="pill" data-bs-target="#progress-agent" type="button" role="tab" aria-controls="progress-agent" aria-selected="true">
-                🧑‍💼 Agent
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="progress-register-tab" data-bs-toggle="pill" data-bs-target="#progress-register" type="button" role="tab" aria-controls="progress-register" aria-selected="false">
-                📝 Register
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="progress-pengosongan-tab" data-bs-toggle="pill" data-bs-target="#progress-pengosongan" type="button" role="tab" aria-controls="progress-pengosongan" aria-selected="false">
-                🏠 Pengosongan
-            </button>
-        </li>
-    </ul>
-    --}}
-
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-semibold text-primary">📋 Progress Lelang (Semua Transaksi)</h5>
-        </div>
-
-        <div class="card-body table-responsive">
-            <table class="table align-middle table-hover text-center" id="progressAllTable">
-                <thead class="table-light align-middle">
-                    <tr>
-                        <th style="width: 50px;">#</th>
-                        <th style="min-width: 180px;">Agent</th>
-                        <th style="width: 120px;">Property ID</th>
-                        <th style="min-width: 260px;">Lokasi</th>
-                        <th style="min-width: 140px;">Harga</th>
-                        <th style="min-width: 180px;">Progress</th>
-                        <th style="min-width: 140px;">Status</th>
-                        <th style="width: 120px;">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($progressTransactions as $index => $trx)
-                        @php
-                            $status = $trx->status ?? 'Closing';
-
-                            // Progress single timeline (naik terus sampai selesai)
-                            $progress = match($status) {
-                                'Closing' => 0,
-                                'Kuitansi' => 20,
-                                'Kode Billing' => 40,
-                                'Kutipan Risalah Lelang' => 60,
-                                'Akte Grosse' => 80,
-                                'Balik Nama' => 90,
-                                'Eksekusi Pengosongan' => 95,
-                                'Selesai' => 100,
-                                default => 0,
-                            };
-
-                            $barClass = match($status) {
-                                'Selesai' => 'bg-success',
-                                'Eksekusi Pengosongan' => 'bg-warning',
-                                default => 'bg-secondary',
-                            };
-
-                            // Detail URL: kalau id_klien null, tetap bisa buka pakai route opsional
-                            $detailUrl = !empty($trx->id_klien)
-                                ? route('dashboard.detail', ['id_listing' => $trx->id_listing, 'id_account' => $trx->id_klien])
-                                : route('dashboard.detail', ['id_listing' => $trx->id_listing]);
-                        @endphp
-
-                        <tr id="row-{{ $trx->id_transaction }}-{{ $trx->id_listing }}">
-                            <td>{{ $index + 1 }}</td>
-                            <td class="text-start">
-                                <div class="fw-semibold">{{ $trx->agent_nama }}</div>
-                                <div class="small text-muted">{{ $trx->id_agent }}</div>
-                            </td>
-                            <td>
-                                <span class="badge bg-secondary">{{ $trx->id_listing }}</span>
-                            </td>
-                            <td class="text-start">
-                                <span class="text-truncate d-inline-block" style="max-width: 360px;">
-                                    {{ $trx->lokasi }}
-                                </span>
-                            </td>
-                            <td>
-                                Rp {{ number_format((int) ($trx->harga ?? 0), 0, ',', '.') }}
-                            </td>
-                            <td>
-                                <div class="progress" style="height: 16px;">
-                                    <div class="progress-bar {{ $barClass }}"
-                                         role="progressbar"
-                                         style="width: {{ $progress }}%;"
-                                         aria-valuenow="{{ $progress }}"
-                                         aria-valuemin="0"
-                                         aria-valuemax="100">
-                                        {{ $progress }}%
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="badge bg-light text-dark">{{ $status }}</span>
-                            </td>
-                            <td>
-                                <a href="{{ $detailUrl }}" class="btn btn-sm bg-secondary text-white rounded-pill px-3 shadow-sm">
-                                    Detail
-                                </a>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="8" class="text-center text-muted py-4">Belum ada data transaksi.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-</div>
 
 
         <!-- Performance -->
@@ -2933,260 +2812,409 @@ clearAllBtn?.addEventListener('click', clearAll);
     })();
     </script>
 
-{{-- ========== Transaksi ========== --}}
+{{-- ========== Transaksi (dengan 2 Subtab) ========== --}}
 <div class="tab-pane fade {{ $tab==='transaksi' ? 'show active' : '' }}" id="transaksi" role="tabpanel" aria-labelledby="transaksi-tab">
-    <div class="row">
-      {{-- 3/4 kiri: tabel transaksi (mirror Stoker) --}}
-      <div class="col-lg-9">
+
+    {{-- SUBTAB NAV --}}
+    <ul class="nav nav-pills mb-3" id="transaksiSubTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active"
+                id="transaksi-list-tab"
+                data-bs-toggle="pill"
+                data-bs-target="#transaksi-list"
+                type="button" role="tab"
+                aria-controls="transaksi-list"
+                aria-selected="true">
+          💳 Daftar Transaksi
+        </button>
+      </li>
+
+      <li class="nav-item" role="presentation">
+        <button class="nav-link"
+                id="transaksi-progress-tab"
+                data-bs-toggle="pill"
+                data-bs-target="#transaksi-progress"
+                type="button" role="tab"
+                aria-controls="transaksi-progress"
+                aria-selected="false">
+          📋 Progress Lelang
+        </button>
+      </li>
+    </ul>
+
+    {{-- SUBTAB CONTENT --}}
+    <div class="tab-content" id="transaksiSubTabContent">
+
+      {{-- ===================== SUBTAB: DAFTAR TRANSAKSI ===================== --}}
+      <div class="tab-pane fade show active"
+           id="transaksi-list"
+           role="tabpanel"
+           aria-labelledby="transaksi-list-tab">
+
+        <div class="row">
+          {{-- 3/4 kiri: tabel transaksi (mirror Stoker) --}}
+          <div class="col-lg-9">
+            <div class="card shadow-sm border-0 mb-4">
+              <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-semibold text-primary">💳 Daftar Transaksi</h5>
+              </div>
+
+              <div class="card-body">
+                {{-- =================== FILTER BAR (TRANSAKSI) =================== --}}
+                <div class="row g-3 p-3 rounded shadow-sm bg-white mb-3 align-items-end transaksi-filter-grid">
+                  {{-- Form FILTER (GET) tembus ke grid --}}
+                  <form id="transaksi-filter-form"
+                        method="GET"
+                        action="{{ route('dashboard.owner') }}"
+                        class="d-contents">
+                    <input type="hidden" name="tab" value="transaksi" />
+
+                    {{-- Cari ID Listing (numeric) --}}
+                    <div class="col-6 col-lg-1 pe-lg-2">
+                      <label for="transaksi_search" class="form-label mb-1">Cari ID</label>
+                      <input type="text" name="search" id="transaksi_search" value="{{ request('search') }}"
+                             class="form-control form-control-sm" placeholder="ID Listing"
+                             inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+                    </div>
+
+                    {{-- Cari Vendor (text) --}}
+                    <div class="col-12 col-lg-3 pe-lg-2">
+                      <label for="transaksi_vendor" class="form-label mb-1">Cari Vendor</label>
+                      <input type="text" name="vendor" id="transaksi_vendor" value="{{ request('vendor') }}"
+                             class="form-control form-control-sm" placeholder="Contoh : BRI Rajawali" autocomplete="off">
+                    </div>
+
+                    {{-- Tipe properti --}}
+                    <div class="col-6 col-lg-1 pe-lg-2">
+                      <label for="transaksi_property_type" class="form-label mb-1">Tipe</label>
+                      <select name="property_type" id="transaksi_property_type" class="form-select form-select-sm">
+                        <option value="" {{ request('property_type') ? '' : 'selected' }} disabled>Tipe Property</option>
+                        <option value="rumah" @selected(request('property_type')==='rumah')>Rumah</option>
+                        <option value="gudang" @selected(request('property_type')==='gudang')>Gudang</option>
+                        <option value="apartemen" @selected(request('property_type')==='apartemen')>Apartemen</option>
+                        <option value="tanah" @selected(request('property_type')==='tanah')>Tanah</option>
+                        <option value="pabrik" @selected(request('property_type')==='pabrik')>Pabrik</option>
+                        <option value="hotel dan villa" @selected(request('property_type')==='hotel dan villa')>Hotel dan Villa</option>
+                        <option value="ruko" @selected(request('property_type')==='ruko')>Ruko</option>
+                        <option value="toko" @selected(request('property_type')==='toko')>Toko</option>
+                        <option value="inventaris" @selected(request('property_type')==='inventaris')>Inventaris</option>
+                        <option value="lain-lain" @selected(request('property_type')==='lain-lain')>Lainnya</option>
+                      </select>
+                    </div>
+
+                    {{-- Provinsi --}}
+                    <div class="col-6 col-lg-2 pe-lg-2">
+                      <label for="transaksi_province" class="form-label mb-1">Pilih Provinsi</label>
+                      <select id="transaksi_province" name="province" class="form-select form-select-sm">
+                        <option disabled {{ request('province') ? '' : 'selected' }}>Pilih Provinsi</option>
+                      </select>
+                    </div>
+
+                    {{-- Kota/Kab --}}
+                    <div class="col-6 col-lg-2 pe-lg-2">
+                      <label for="transaksi_city" class="form-label mb-1">Pilih Kota/Kab</label>
+                      <select id="transaksi_city" name="city" class="form-select form-select-sm" {{ request('province') ? '' : 'disabled' }}>
+                        <option disabled selected>Pilih Kota/Kab</option>
+                      </select>
+                    </div>
+
+                    {{-- Kecamatan --}}
+                    <div class="col-6 col-lg-2 pe-lg-2">
+                      <label for="transaksi_district" class="form-label mb-1">Pilih Kecamatan</label>
+                      <select id="transaksi_district" name="district" class="form-select form-select-sm" {{ request('city') ? '' : 'disabled' }}>
+                        <option disabled selected>Pilih Kecamatan</option>
+                      </select>
+                    </div>
+                  </form>
+
+                  {{-- Tombol Reset --}}
+                  <div class="col-6 col-lg-1">
+                    <label class="form-label d-block invisible">Reset</label>
+                    <button type="button" id="btn-transaksi-clear" class="btn reset-chip w-100">
+                      <span class="me-1">↺</span>Reset
+                    </button>
+                  </div>
+                </div>
+
+                {{-- HOST STABIL untuk partial + spinner (mirror Stoker) --}}
+                <div id="transaksi-list-wrap">
+                  <div id="transaksi-loading" class="export-loading d-none">
+                    <div class="spinner-border" role="status" aria-label="Loading"></div>
+                  </div>
+                  <div id="transaksi-fragment-host">@include('partial.transaksi_list')</div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          {{-- 1/4 kanan: riwayat transaksi --}}
+          <div class="col-lg-3">
+            <div class="card trx-history-card shadow-sm border-0 mb-4">
+              <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="trx-status-dot"></span>
+                  <div>
+                    <h6 class="mb-0 fw-semibold text-danger">Riwayat Transaksi</h6>
+                    <small class="text-muted">Update terakhir aktivitas closing</small>
+                  </div>
+                </div>
+                <span class="badge bg-light text-muted border fw-normal small">
+                  {{ $transaksiHistory->count() }} aktivitas
+                </span>
+              </div>
+
+              <div class="card-body p-0">
+                @if($transaksiHistory->isEmpty())
+                  <div class="p-4 text-center text-muted small">
+                    <div class="empty-icon mb-2">📄</div>
+                    Belum ada riwayat transaksi.
+                  </div>
+                @else
+                  <div class="trx-history-list">
+                    @foreach($transaksiHistory as $t)
+                      @php
+                        $status      = $t->status ?? 'Closing';
+                        $statusLower = strtolower($status);
+
+                        $badgeClass = 'status-pill-muted';
+                        if ($statusLower === 'closing') {
+                            $badgeClass = 'status-pill-primary';
+                        } elseif (in_array($statusLower, ['kuitansi','kode billing'])) {
+                            $badgeClass = 'status-pill-info';
+                        } elseif (in_array($statusLower, ['kutipan risalah lelang','akte grosse'])) {
+                            $badgeClass = 'status-pill-warning';
+                        } elseif (in_array($statusLower, ['balik nama','eksekusi pengosongan'])) {
+                            $badgeClass = 'status-pill-success';
+                        } elseif ($statusLower === 'selesai') {
+                            $badgeClass = 'status-pill-finish';
+                        }
+
+                        $fotoArray = array_values(array_filter(
+                            array_map('trim', explode(',', (string)($t->gambar ?? '')))
+                        ));
+                        $fotoUtama = $fotoArray[0] ?? '';
+                        if ($fotoUtama !== '' && preg_match('~^https?://~i', $fotoUtama)) {
+                            $thumbSrc = $fotoUtama;
+                        } elseif ($fotoUtama !== '') {
+                            $thumbSrc = asset(ltrim($fotoUtama, '/'));
+                        } else {
+                            $thumbSrc = asset('img/placeholder.jpg');
+                        }
+                      @endphp
+
+                      <div class="trx-history-item">
+                        <div class="trx-history-left">
+                          <div class="trx-history-thumb">
+                            <img src="{{ $thumbSrc }}"
+                                 alt="Property {{ $t->id_listing }}"
+                                 loading="lazy">
+                          </div>
+
+                          <div class="trx-history-main">
+                            {{-- Baris: ID transaksi – nama agent --}}
+                            <div class="d-flex align-items-center gap-1 mb-1">
+                              <span class="trx-history-id">
+                                {{ $t->id_transaction ?? 'TR—' }}
+                              </span>
+                              @if(!empty($t->agent_nama))
+                                <span class="text-muted">•</span>
+                                <span class="trx-history-agent text-truncate">
+                                  {{ $t->agent_nama }}
+                                </span>
+                              @endif
+                            </div>
+
+                            {{-- Baris: tanggal • #id listing (tanpa tulisan "ID Listing") --}}
+                            <div class="trx-history-meta mb-1">
+                              <span>{{ \Carbon\Carbon::parse($t->tanggal_transaksi)->format('d M Y') }}</span>
+                              <span class="mx-1">•</span>
+                              <span>#{{ $t->id_listing }}</span>
+                            </div>
+
+                            {{-- Harga bidding (kalau ada), fallback harga_limit --}}
+                            <div class="trx-history-amount mb-1">
+                              Rp {{ number_format($t->harga_bidding ?? $t->harga_limit ?? 0, 0, ',', '.') }}
+                            </div>
+
+                            {{-- Lokasi singkat --}}
+                            <div class="trx-history-location text-truncate">
+                              {{ $t->lokasi }}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="trx-history-right">
+                          <span class="trx-status-pill {{ $badgeClass }}">
+                            {{ $t->status }}
+                          </span>
+
+                          @php
+                            // aman kalau $t stdClass atau model
+                            $komisiPersen = '';
+                            if (isset($t->persentase_komisi) && $t->persentase_komisi !== null) {
+                                // di DB 0.050000 → 5
+                                $komisiPersen = (float) $t->persentase_komisi * 100;
+                            }
+
+                            // fallback harga_limit:
+                            // 1) pakai transaksi.harga_limit kalau ada
+                            // 2) kalau kosong, pakai property.harga / 1.278 (markup → limit)
+                            $hargaLimitBtn = 0;
+                            if (isset($t->harga_limit) && $t->harga_limit > 0) {
+                                $hargaLimitBtn = (int) $t->harga_limit;
+                            } elseif (isset($t->harga) && $t->harga > 0) {
+                                $hargaLimitBtn = (int) round($t->harga / 1.278);
+                            }
+                          @endphp
+
+                          <button type="button"
+                                  class="btn btn-sm btn-outline-danger rounded-pill mt-2 trx-history-edit"
+                                  data-id-listing="{{ $t->id_listing }}"
+                                  data-id-transaksi="{{ $t->id_transaction ?? '' }}"
+                                  data-status="{{ $t->status ?? '' }}"
+                                  data-lokasi="{{ $t->lokasi }}"
+                                  data-tipe="{{ $t->tipe ?? '' }}"
+                                  data-harga-limit="{{ $hargaLimitBtn }}"
+                                  data-harga-menang="{{ $t->harga_bidding ?? 0 }}"
+                                  data-harga-deal="{{ $t->harga_deal ?? 0 }}"
+                                  data-cobroke-fee="{{ $t->cobroke_fee ?? 0 }}"
+                                  data-royalty-fee="{{ $t->royalty_fee ?? 0 }}"
+                                  data-closing-type="{{ ($t->skema_komisi ?? '') === 'Selisih harga' ? 'price_gap' : 'profit' }}"
+                                  data-komisi-persen="{{ $komisiPersen }}"
+                                  data-biaya-balik-nama="{{ $t->biaya_baliknama ?? '' }}"
+                                  data-biaya-eksekusi="{{ $t->biaya_pengosongan ?? '' }}"
+                                  data-tanggal="{{ \Carbon\Carbon::parse($t->tanggal_transaksi ?? $t->tanggal_diupdate)->format('Y-m-d') }}"
+                                  data-id-agent="{{ $t->id_agent ?? '' }}"
+                                  data-agent-nama="{{ $t->agent_nama ?? '' }}"
+                                  data-id-klien="{{ $t->id_klien ?? '' }}"
+                                  data-gambar="{{ $t->gambar ?? '' }}"
+                                  data-photo="{{ $thumbSrc }}"
+                                  data-copic-name="{{ $t->agent_nama ?? '' }}">
+                            Edit
+                          </button>
+
+                        </div>
+                      </div>
+                    @endforeach
+                  </div>
+                @endif
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      {{-- ===================== SUBTAB: PROGRESS LELANG ===================== --}}
+      <div class="tab-pane fade"
+           id="transaksi-progress"
+           role="tabpanel"
+           aria-labelledby="transaksi-progress-tab">
+
         <div class="card shadow-sm border-0 mb-4">
           <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-semibold text-primary">💳 Daftar Transaksi</h5>
+            <h5 class="mb-0 fw-semibold text-primary">📋 Progress Lelang (Semua Transaksi)</h5>
           </div>
 
-          <div class="card-body">
-            {{-- =================== FILTER BAR (TRANSAKSI) =================== --}}
-            <div class="row g-3 p-3 rounded shadow-sm bg-white mb-3 align-items-end transaksi-filter-grid">
-              {{-- Form FILTER (GET) tembus ke grid --}}
-              <form id="transaksi-filter-form"
-                    method="GET"
-                    action="{{ route('dashboard.owner') }}"
-                    class="d-contents">
-                <input type="hidden" name="tab" value="transaksi" />
-
-                {{-- Cari ID Listing (numeric) --}}
-                <div class="col-6 col-lg-1 pe-lg-2">
-                  <label for="transaksi_search" class="form-label mb-1">Cari ID</label>
-                  <input type="text" name="search" id="transaksi_search" value="{{ request('search') }}"
-                         class="form-control form-control-sm" placeholder="ID Listing"
-                         inputmode="numeric" pattern="[0-9]*" autocomplete="off">
-                </div>
-
-                {{-- Cari Vendor (text) --}}
-                <div class="col-12 col-lg-3 pe-lg-2">
-                  <label for="transaksi_vendor" class="form-label mb-1">Cari Vendor</label>
-                  <input type="text" name="vendor" id="transaksi_vendor" value="{{ request('vendor') }}"
-                         class="form-control form-control-sm" placeholder="Contoh : BRI Rajawali" autocomplete="off">
-                </div>
-
-                {{-- Tipe properti --}}
-                <div class="col-6 col-lg-1 pe-lg-2">
-                  <label for="transaksi_property_type" class="form-label mb-1">Tipe</label>
-                  <select name="property_type" id="transaksi_property_type" class="form-select form-select-sm">
-                    <option value="" {{ request('property_type') ? '' : 'selected' }} disabled>Tipe Property</option>
-                    <option value="rumah" @selected(request('property_type')==='rumah')>Rumah</option>
-                    <option value="gudang" @selected(request('property_type')==='gudang')>Gudang</option>
-                    <option value="apartemen" @selected(request('property_type')==='apartemen')>Apartemen</option>
-                    <option value="tanah" @selected(request('property_type')==='tanah')>Tanah</option>
-                    <option value="pabrik" @selected(request('property_type')==='pabrik')>Pabrik</option>
-                    <option value="hotel dan villa" @selected(request('property_type')==='hotel dan villa')>Hotel dan Villa</option>
-                    <option value="ruko" @selected(request('property_type')==='ruko')>Ruko</option>
-                    <option value="toko" @selected(request('property_type')==='toko')>Toko</option>
-                    <option value="inventaris" @selected(request('property_type')==='inventaris')>Inventaris</option>
-                    <option value="lain-lain" @selected(request('property_type')==='lain-lain')>Lainnya</option>
-                  </select>
-                </div>
-
-                {{-- Provinsi --}}
-                <div class="col-6 col-lg-2 pe-lg-2">
-                  <label for="transaksi_province" class="form-label mb-1">Pilih Provinsi</label>
-                  <select id="transaksi_province" name="province" class="form-select form-select-sm">
-                    <option disabled {{ request('province') ? '' : 'selected' }}>Pilih Provinsi</option>
-                  </select>
-                </div>
-
-                {{-- Kota/Kab --}}
-                <div class="col-6 col-lg-2 pe-lg-2">
-                  <label for="transaksi_city" class="form-label mb-1">Pilih Kota/Kab</label>
-                  <select id="transaksi_city" name="city" class="form-select form-select-sm" {{ request('province') ? '' : 'disabled' }}>
-                    <option disabled selected>Pilih Kota/Kab</option>
-                  </select>
-                </div>
-
-                {{-- Kecamatan --}}
-                <div class="col-6 col-lg-2 pe-lg-2">
-                  <label for="transaksi_district" class="form-label mb-1">Pilih Kecamatan</label>
-                  <select id="transaksi_district" name="district" class="form-select form-select-sm" {{ request('city') ? '' : 'disabled' }}>
-                    <option disabled selected>Pilih Kecamatan</option>
-                  </select>
-                </div>
-              </form>
-
-              {{-- Tombol Reset --}}
-              <div class="col-6 col-lg-1">
-                <label class="form-label d-block invisible">Reset</label>
-                <button type="button" id="btn-transaksi-clear" class="btn reset-chip w-100">
-                  <span class="me-1">↺</span>Reset
-                </button>
-              </div>
-            </div>
-
-            {{-- HOST STABIL untuk partial + spinner (mirror Stoker) --}}
-            <div id="transaksi-list-wrap">
-              <div id="transaksi-loading" class="export-loading d-none">
-                <div class="spinner-border" role="status" aria-label="Loading"></div>
-              </div>
-              <div id="transaksi-fragment-host">@include('partial.transaksi_list')</div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-{{-- 1/4 kanan: riwayat transaksi --}}
-<div class="col-lg-3">
-    <div class="card trx-history-card shadow-sm border-0 mb-4">
-      <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center gap-2">
-          <span class="trx-status-dot"></span>
-          <div>
-            <h6 class="mb-0 fw-semibold text-danger">Riwayat Transaksi</h6>
-            <small class="text-muted">Update terakhir aktivitas closing</small>
-          </div>
-        </div>
-        <span class="badge bg-light text-muted border fw-normal small">
-          {{ $transaksiHistory->count() }} aktivitas
-        </span>
-      </div>
-
-      <div class="card-body p-0">
-        @if($transaksiHistory->isEmpty())
-          <div class="p-4 text-center text-muted small">
-            <div class="empty-icon mb-2">📄</div>
-            Belum ada riwayat transaksi.
-          </div>
-        @else
-          <div class="trx-history-list">
-            @foreach($transaksiHistory as $t)
-              @php
-                $status      = $t->status ?? 'Closing';
-                $statusLower = strtolower($status);
-
-                $badgeClass = 'status-pill-muted';
-                if ($statusLower === 'closing') {
-                    $badgeClass = 'status-pill-primary';
-                } elseif (in_array($statusLower, ['kuitansi','kode billing'])) {
-                    $badgeClass = 'status-pill-info';
-                } elseif (in_array($statusLower, ['kutipan risalah lelang','akte grosse'])) {
-                    $badgeClass = 'status-pill-warning';
-                } elseif (in_array($statusLower, ['balik nama','eksekusi pengosongan'])) {
-                    $badgeClass = 'status-pill-success';
-                } elseif ($statusLower === 'selesai') {
-                    $badgeClass = 'status-pill-finish';
-                }
-
-                $fotoArray = array_values(array_filter(
-                    array_map('trim', explode(',', (string)($t->gambar ?? '')))
-                ));
-                $fotoUtama = $fotoArray[0] ?? '';
-                if ($fotoUtama !== '' && preg_match('~^https?://~i', $fotoUtama)) {
-                    $thumbSrc = $fotoUtama;
-                } elseif ($fotoUtama !== '') {
-                    $thumbSrc = asset(ltrim($fotoUtama, '/'));
-                } else {
-                    $thumbSrc = asset('img/placeholder.jpg');
-                }
-              @endphp
-
-              <div class="trx-history-item">
-                <div class="trx-history-left">
-                  <div class="trx-history-thumb">
-                    <img src="{{ $thumbSrc }}"
-                         alt="Property {{ $t->id_listing }}"
-                         loading="lazy">
-                  </div>
-
-                  <div class="trx-history-main">
-                    {{-- Baris: ID transaksi – nama agent --}}
-                    <div class="d-flex align-items-center gap-1 mb-1">
-                      <span class="trx-history-id">
-                        {{ $t->id_transaction ?? 'TR—' }}
-                      </span>
-                      @if(!empty($t->agent_nama))
-                        <span class="text-muted">•</span>
-                        <span class="trx-history-agent text-truncate">
-                          {{ $t->agent_nama }}
-                        </span>
-                      @endif
-                    </div>
-
-                    {{-- Baris: tanggal • #id listing (tanpa tulisan "ID Listing") --}}
-                    <div class="trx-history-meta mb-1">
-                      <span>{{ \Carbon\Carbon::parse($t->tanggal_transaksi)->format('d M Y') }}</span>
-                      <span class="mx-1">•</span>
-                      <span>#{{ $t->id_listing }}</span>
-                    </div>
-
-                    {{-- Harga bidding (kalau ada), fallback harga_limit --}}
-                    <div class="trx-history-amount mb-1">
-                      Rp {{ number_format($t->harga_bidding ?? $t->harga_limit ?? 0, 0, ',', '.') }}
-                    </div>
-
-                    {{-- Lokasi singkat --}}
-                    <div class="trx-history-location text-truncate">
-                      {{ $t->lokasi }}
-                    </div>
-                  </div>
-                </div>
-
-                <div class="trx-history-right">
-                  <span class="trx-status-pill {{ $badgeClass }}">
-                    {{ $t->status }}
-                  </span>
-
+          <div class="card-body table-responsive">
+            <table class="table align-middle table-hover text-center" id="progressAllTable">
+              <thead class="table-light align-middle">
+                <tr>
+                  <th style="width: 50px;">#</th>
+                  <th style="min-width: 180px;">Agent</th>
+                  <th style="width: 120px;">Property ID</th>
+                  <th style="min-width: 260px;">Lokasi</th>
+                  <th style="min-width: 140px;">Harga</th>
+                  <th style="min-width: 180px;">Progress</th>
+                  <th style="min-width: 140px;">Status</th>
+                  <th style="width: 120px;">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                @forelse ($progressTransactions as $index => $trx)
                   @php
-                    // aman kalau $t stdClass atau model
-                    $komisiPersen = '';
-                    if (isset($t->persentase_komisi) && $t->persentase_komisi !== null) {
-                        // di DB 0.050000 → 5
-                        $komisiPersen = (float) $t->persentase_komisi * 100;
-                    }
+                    $status = $trx->status ?? 'Closing';
 
-                    // fallback harga_limit:
-                    // 1) pakai transaksi.harga_limit kalau ada
-                    // 2) kalau kosong, pakai property.harga / 1.278 (markup → limit)
-                    $hargaLimitBtn = 0;
-                    if (isset($t->harga_limit) && $t->harga_limit > 0) {
-                        $hargaLimitBtn = (int) $t->harga_limit;
-                    } elseif (isset($t->harga) && $t->harga > 0) {
-                        $hargaLimitBtn = (int) round($t->harga / 1.278);
-                    }
-                @endphp
+                    // Progress single timeline (naik terus sampai selesai)
+                    $progress = match($status) {
+                      'Closing' => 0,
+                      'Kuitansi' => 20,
+                      'Kode Billing' => 40,
+                      'Kutipan Risalah Lelang' => 60,
+                      'Akte Grosse' => 80,
+                      'Balik Nama' => 90,
+                      'Eksekusi Pengosongan' => 95,
+                      'Selesai' => 100,
+                      default => 0,
+                    };
 
-<button type="button"
-        class="btn btn-sm btn-outline-danger rounded-pill mt-2 trx-history-edit"
-        data-id-listing="{{ $t->id_listing }}"
-        data-id-transaksi="{{ $t->id_transaction ?? '' }}"
-        data-status="{{ $t->status ?? '' }}"
-        data-lokasi="{{ $t->lokasi }}"
-        data-tipe="{{ $t->tipe ?? '' }}"
-        data-harga-limit="{{ $hargaLimitBtn }}"
-        data-harga-menang="{{ $t->harga_bidding ?? 0 }}"
-        data-harga-deal="{{ $t->harga_deal ?? 0 }}"
-        data-cobroke-fee="{{ $t->cobroke_fee ?? 0 }}"
-        data-royalty-fee="{{ $t->royalty_fee ?? 0 }}"
-        data-closing-type="{{ ($t->skema_komisi ?? '') === 'Selisih harga' ? 'price_gap' : 'profit' }}"
-        data-komisi-persen="{{ $komisiPersen }}"
-        data-biaya-balik-nama="{{ $t->biaya_baliknama ?? '' }}"
-        data-biaya-eksekusi="{{ $t->biaya_pengosongan ?? '' }}"
-        data-tanggal="{{ \Carbon\Carbon::parse($t->tanggal_transaksi ?? $t->tanggal_diupdate)->format('Y-m-d') }}"
-        data-id-agent="{{ $t->id_agent ?? '' }}"
-        data-agent-nama="{{ $t->agent_nama ?? '' }}"
-        data-id-klien="{{ $t->id_klien ?? '' }}"
-        data-gambar="{{ $t->gambar ?? '' }}"
-        data-photo="{{ $thumbSrc }}"
-        data-copic-name="{{ $t->agent_nama ?? '' }}">
-        Edit
-</button>
+                    $barClass = match($status) {
+                      'Selesai' => 'bg-success',
+                      'Eksekusi Pengosongan' => 'bg-warning',
+                      default => 'bg-secondary',
+                    };
 
+                    // Detail URL: kalau id_klien null, tetap bisa buka pakai route opsional
+                    $detailUrl = !empty($trx->id_klien)
+                      ? route('dashboard.detail', ['id_listing' => $trx->id_listing, 'id_account' => $trx->id_klien])
+                      : route('dashboard.detail', ['id_listing' => $trx->id_listing]);
+                  @endphp
 
-                </div>
-              </div>
-            @endforeach
+                  <tr id="row-{{ $trx->id_transaction }}-{{ $trx->id_listing }}">
+                    <td>{{ $index + 1 }}</td>
+                    <td class="text-start">
+                      <div class="fw-semibold">{{ $trx->agent_nama }}</div>
+                      <div class="small text-muted">{{ $trx->id_agent }}</div>
+                    </td>
+                    <td>
+                      <span class="badge bg-secondary">{{ $trx->id_listing }}</span>
+                    </td>
+                    <td class="text-start">
+                      <span class="text-truncate d-inline-block" style="max-width: 360px;">
+                        {{ $trx->lokasi }}
+                      </span>
+                    </td>
+                    <td>
+                      Rp {{ number_format((int) ($trx->harga ?? 0), 0, ',', '.') }}
+                    </td>
+                    <td>
+                      <div class="progress" style="height: 16px;">
+                        <div class="progress-bar {{ $barClass }}"
+                             role="progressbar"
+                             style="width: {{ $progress }}%;"
+                             aria-valuenow="{{ $progress }}"
+                             aria-valuemin="0"
+                             aria-valuemax="100">
+                          {{ $progress }}%
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="badge bg-light text-dark">{{ $status }}</span>
+                    </td>
+                    <td>
+                      <a href="{{ $detailUrl }}" class="btn btn-sm bg-secondary text-white rounded-pill px-3 shadow-sm">
+                        Detail
+                      </a>
+                    </td>
+                  </tr>
+                @empty
+                  <tr>
+                    <td colspan="8" class="text-center text-muted py-4">Belum ada data transaksi.</td>
+                  </tr>
+                @endforelse
+              </tbody>
+            </table>
           </div>
-        @endif
+        </div>
+
       </div>
+
     </div>
   </div>
+
 
   <script>
     (function(){
