@@ -2847,7 +2847,8 @@ public function updatetransaksi(Request $request)
             ['kode' => 'FEE_TL',    'rate' => 0.000000], // NEW (dinamis, dipotong dari SERVICE/REWARD/PROMO_FUND)
             ['kode' => 'PRINC_FEE', 'rate' => 0.030000],
             ['kode' => 'INV_SHARE', 'rate' => 0.095200],
-            ['kode' => 'MGMT_FUND', 'rate' => 0.059500],
+            ['kode' => 'MGMT_FUND1', 'rate' => 0.029750],
+['kode' => 'MGMT_FUND2', 'rate' => 0.029750],
             ['kode' => 'EMP_INC',   'rate' => 0.015300],
         ];
 
@@ -2866,7 +2867,8 @@ public function updatetransaksi(Request $request)
             'SERVICE'    => 'AG006',
             'PRINC_FEE'  => 'AG012',
             'INV_SHARE'  => 'AG001',
-            'MGMT_FUND'  => 'AG006',
+            'MGMT_FUND1' => 'AG006',
+'MGMT_FUND2' => 'AG001',
             'EMP_INC'    => 'AG001',
         ];
 
