@@ -2625,31 +2625,31 @@ public function updatetransaksi(Request $request)
         'closing_type'     => 'required|in:profit,price_gap', // 'profit' / 'price_gap'
         'id_agent'         => 'nullable|string',
         'id_klien'         => 'nullable|string',
-        'harga_menang'     => 'required|string',   // masih format "4.000.000.000" (HARGA BIDDING)
+        'harga_menang'     => 'nullable|string',   // masih format "4.000.000.000" (HARGA BIDDING)
         'harga_deal'       => 'nullable|string',   // NEW: dari input modal (boleh ada titik)
         'royalty_fee'      => 'nullable|string',   // NEW: dari input modal (boleh ada titik) -> akan dioverride perhitungan server
         'cobroke_fee'      => 'nullable|string',   // NEW: dari input modal (boleh ada titik)
         'komisi_persen'    => 'nullable|numeric',  // contoh: 5, 10
         'status'           => 'nullable|string',
         'tanggal_diupdate' => 'required|date',     // tanggal closing (Y-m-d)
-        'biaya_balik_nama' => 'nullable|string',  // dari input modal (boleh ada titik)
-        'biaya_eksekusi'   => 'nullable|string',  // dari input modal (boleh ada titik)
+        'biaya_balik_nama' => 'nullable|string',   // dari input modal (boleh ada titik)
+        'biaya_eksekusi'   => 'nullable|string',   // dari input modal (boleh ada titik)
 
-        // ✅ NEW: Team Leader dari dropdown (default AG016)
+        // ✅ NEW: Team Leader dari dropdown (boleh NULL / kosong)
         'team_leader'      => 'nullable|string',
     ]);
 
-    // ✅ NEW: default Team Leader
-    $teamLeaderId = $request->input('team_leader');
-    $teamLeaderId = $teamLeaderId ? trim($teamLeaderId) : '';
-    if ($teamLeaderId === '') {
-        $teamLeaderId = 'AG016';
-    }
-
-    // (opsional safety) kalau TL tidak ada di tabel agent, fallback AG016
-    $tlExists = DB::table('agent')->where('id_agent', $teamLeaderId)->exists();
-    if (!$tlExists) {
-        $teamLeaderId = 'AG016';
+    // ✅ Team Leader: benar-benar dinamis (boleh NULL)
+    // - kalau user pilih "- tidak ada -" / kosong / "null" -> simpan NULL
+    // - kalau ada value -> validasi exist, kalau tidak exist -> NULL
+    $teamLeaderId = trim((string) $request->input('team_leader', ''));
+    if ($teamLeaderId === '' || $teamLeaderId === '-' || strtolower($teamLeaderId) === 'null') {
+        $teamLeaderId = null; // ✅ benar-benar NULL
+    } else {
+        $tlExists = DB::table('agent')->where('id_agent', $teamLeaderId)->exists();
+        if (!$tlExists) {
+            $teamLeaderId = null; // ✅ kalau tidak ada, kosongkan
+        }
     }
 
     // --- Ambil property untuk dapat harga_limit ---
@@ -2660,10 +2660,17 @@ public function updatetransaksi(Request $request)
     $hargaLimit  = $hargaMarkup > 0 ? round($hargaMarkup / 1.278) : 0;
 
     // --- Normalisasi angka dari input harga_menang (hapus titik/koma dll) ---
-    $hargaBidding = (int) preg_replace('/[^\d]/', '', $data['harga_menang'] ?? '');
-    if ($hargaBidding <= 0) {
+    $hargaBiddingRaw = (string) ($data['harga_menang'] ?? '');
+    $hargaBidding    = (int) preg_replace('/[^\d]/', '', $hargaBiddingRaw);
+
+    // ✅ kalau kosong / "0" => jadi 0 dan DIIZINKAN
+    // ❌ kalau user isi teks aneh, preg_replace jadi '' => 0 juga (tetap diizinkan sesuai requirement kamu)
+
+    // kalau kamu tetap mau blok kasus "diisi tapi bukan angka", pakai ini:
+    if (trim($hargaBiddingRaw) !== '' && preg_replace('/[^\d]/', '', $hargaBiddingRaw) === '') {
         return back()->with('error', 'Harga menang tidak valid.')->withInput();
     }
+
 
     // --- Normalisasi input NEW: harga_deal, cobroke_fee, royalty_fee (hapus titik/koma dll) ---
     $hargaDeal   = (int) preg_replace('/[^\d]/', '', $data['harga_deal'] ?? '');
@@ -2783,6 +2790,20 @@ public function updatetransaksi(Request $request)
         Transaction::create($payload);
     }
 
+    // ✅ PATCH: bersihkan row FEE_TL lama agar tidak "nyangkut" di DB
+    // - Kalau TL kosong: hapus semua FEE_TL untuk transaksi ini
+    // - Kalau TL ada: hapus FEE_TL untuk agent lain (jaga-jaga jika TL berubah)
+    if (!$teamLeaderId) {
+        TransactionCommission::where('id_transaction', $idTransaksi)
+            ->where('role', 'FEE_TL')
+            ->delete();
+    } else {
+        TransactionCommission::where('id_transaction', $idTransaksi)
+            ->where('role', 'FEE_TL')
+            ->where('id_agent', '!=', $teamLeaderId)
+            ->delete();
+    }
+
     /*
     |--------------------------------------------------------------------------
     |  SINKRONISASI DETAIL PEMBAGIAN KE TABEL transaction_commissions
@@ -2828,28 +2849,28 @@ public function updatetransaksi(Request $request)
 
         // --- 1. Konstanta skema (harus sama dengan JS) ---
         $KOMISI_SCHEMA = [
-            ['kode' => 'UP1',       'rate' => 0.004000],
-            ['kode' => 'UP2',       'rate' => 0.003000],
-            ['kode' => 'UP3',       'rate' => 0.002000],
-            ['kode' => 'LISTER',    'rate' => 0.010000],
-            ['kode' => 'COPIC',     'rate' => 0.002500],
-            ['kode' => 'CONS',      'rate' => 0.008500],
-            ['kode' => 'REWARD',    'rate' => 0.030000],
-            ['kode' => 'INV_FUND',  'rate' => 0.020000],
-            ['kode' => 'PROMO_FUND','rate' => 0.020000],
-            ['kode' => 'PIC1',      'rate' => 0.040000],
-            ['kode' => 'PIC2',      'rate' => 0.040000],
-            ['kode' => 'PIC3',      'rate' => 0.040000],
-            ['kode' => 'PIC4',      'rate' => 0.040000],
-            ['kode' => 'PIC5',      'rate' => 0.040000],
-            ['kode' => 'THC',       'rate' => 0.400000],
-            ['kode' => 'SERVICE',   'rate' => 0.100000],
-            ['kode' => 'FEE_TL',    'rate' => 0.000000], // NEW (dinamis, dipotong dari SERVICE/REWARD/PROMO_FUND)
-            ['kode' => 'PRINC_FEE', 'rate' => 0.030000],
-            ['kode' => 'INV_SHARE', 'rate' => 0.095200],
+            ['kode' => 'UP1',        'rate' => 0.004000],
+            ['kode' => 'UP2',        'rate' => 0.003000],
+            ['kode' => 'UP3',        'rate' => 0.002000],
+            ['kode' => 'LISTER',     'rate' => 0.010000],
+            ['kode' => 'COPIC',      'rate' => 0.002500],
+            ['kode' => 'CONS',       'rate' => 0.008500],
+            ['kode' => 'REWARD',     'rate' => 0.030000],
+            ['kode' => 'INV_FUND',   'rate' => 0.020000],
+            ['kode' => 'PROMO_FUND', 'rate' => 0.020000],
+            ['kode' => 'PIC1',       'rate' => 0.040000],
+            ['kode' => 'PIC2',       'rate' => 0.040000],
+            ['kode' => 'PIC3',       'rate' => 0.040000],
+            ['kode' => 'PIC4',       'rate' => 0.040000],
+            ['kode' => 'PIC5',       'rate' => 0.040000],
+            ['kode' => 'THC',        'rate' => 0.400000],
+            ['kode' => 'SERVICE',    'rate' => 0.100000],
+            ['kode' => 'FEE_TL',     'rate' => 0.000000], // NEW (dinamis, dipotong dari SERVICE/REWARD/PROMO_FUND)
+            ['kode' => 'PRINC_FEE',  'rate' => 0.030000],
+            ['kode' => 'INV_SHARE',  'rate' => 0.095200],
             ['kode' => 'MGMT_FUND1', 'rate' => 0.029750],
-['kode' => 'MGMT_FUND2', 'rate' => 0.029750],
-            ['kode' => 'EMP_INC',   'rate' => 0.015300],
+            ['kode' => 'MGMT_FUND2', 'rate' => 0.029750],
+            ['kode' => 'EMP_INC',    'rate' => 0.015300],
         ];
 
         // mapping kode skema -> id_agent tetap (seperti di JS)
@@ -2868,7 +2889,7 @@ public function updatetransaksi(Request $request)
             'PRINC_FEE'  => 'AG012',
             'INV_SHARE'  => 'AG001',
             'MGMT_FUND1' => 'AG006',
-'MGMT_FUND2' => 'AG001',
+            'MGMT_FUND2' => 'AG001',
             'EMP_INC'    => 'AG001',
         ];
 
@@ -2913,7 +2934,7 @@ public function updatetransaksi(Request $request)
             $roleAgentMap['UP1'] = [$up1Id];
         }
 
-        // ✅ Fee TL mengikuti dropdown TL (default AG016)
+        // ✅ Fee TL benar-benar dinamis: kalau NULL tidak dibuat
         if ($teamLeaderId) {
             $roleAgentMap['FEE_TL'] = [$teamLeaderId];
         }
@@ -2960,7 +2981,11 @@ public function updatetransaksi(Request $request)
         $rewardNom  = (int) round($basisPendapatan * 0.03);
         $promoNom   = (int) round($basisPendapatan * 0.02);
 
-        $feeTlNom = (int) round(min($basisPendapatan * 0.10, $maxFeeTl));
+        $feeTlNom = 0;
+if ($teamLeaderId) {
+    $feeTlNom = (int) round(min($basisPendapatan * 0.10, $maxFeeTl));
+}
+
 
         // potong dari SERVICE dulu
         $serviceNom = $serviceNom - $feeTlNom;
@@ -2993,8 +3018,6 @@ public function updatetransaksi(Request $request)
         foreach ($KOMISI_SCHEMA as $item) {
             $kode = $item['kode'];
             $rate = (float) $item['rate'];
-
-            // ❌ Dihapus: FEE_TL tidak dibatasi lagi hanya price_gap
 
             // Kalau tidak ada agent untuk kode ini, skip
             if (!isset($roleAgentMap[$kode]) || empty($roleAgentMap[$kode])) {
@@ -3092,13 +3115,15 @@ public function updatetransaksi(Request $request)
     if (!empty($similarListingIds)) {
         Property::whereIn('id_listing', $similarListingIds)
             ->update([
-                'status'          => 'Terjual',
-                'tanggal_diupdate'=> now(),
+                'status'           => 'Terjual',
+                'tanggal_diupdate' => now(),
             ]);
     }
 
     return back()->with('success', 'Status transaksi berhasil disimpan.');
 }
+
+
 
 
 

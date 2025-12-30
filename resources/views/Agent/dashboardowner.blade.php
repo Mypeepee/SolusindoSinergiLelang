@@ -3944,7 +3944,6 @@ document.addEventListener('DOMContentLoaded', function () {
           <input type="hidden" name="id_klien"     id="tc-client">
 
           {{-- NEW: TEAM LEADER (ID) dikirim ke server --}}
-          <input type="hidden" name="team_leader" id="tc-team-leader" value="AG016">
 
           <script>
             // Paksa foto modal selalu ngikut data-photo tombol Closing
@@ -4231,6 +4230,20 @@ document.addEventListener('DOMContentLoaded', function () {
           </button>
 
           <ul class="dropdown-menu w-100 tc-agent-menu" id="tc-tl-menu">
+
+            {{-- ✅ OPSI NULL: pilih ini kalau benar-benar tidak ada Team Leader --}}
+            <li>
+              <button type="button"
+                      class="dropdown-item d-flex align-items-center gap-2 tc-tl-option"
+                      data-id=""
+                      data-name="— Tidak ada —"
+                      data-initial="-">
+                <span class="tc-agent-avatar">-</span>
+                <span>— Tidak ada —</span>
+                <span class="text-muted ms-auto">NULL</span>
+              </button>
+            </li>
+
             @foreach($agentsDropdown as $ag)
               @php
                 $initial = mb_strtoupper(mb_substr($ag->nama ?? '-', 0, 1, 'UTF-8'));
@@ -4252,6 +4265,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         <div class="text-muted small mt-2">
           Default Team Leader ID: <span class="fw-semibold" id="tc-tl-default-hint">AG016</span>
+          <span class="text-muted"> (bisa pilih “— Tidak ada —” untuk kirim NULL)</span>
         </div>
       </div>
 
@@ -4272,71 +4286,83 @@ document.addEventListener('DOMContentLoaded', function () {
       </div>
     </div>
   </div>
+
   <script>
-    (function(){
-      function setTeamLeader(id, name, initial){
-        const hidden = document.getElementById('tc-team-leader');
-        const label  = document.getElementById('tc-tl-label');
-        const avatar = document.getElementById('tc-tl-avatar-btn');
-        const sum    = document.getElementById('tc-tl-summary');
+  (function(){
+    const DEFAULT_TL_ID = 'AG016';
 
-        if (hidden) hidden.value = id || 'AG016';
+    function setTeamLeader(id, name, initial){
+      const hidden = document.getElementById('tc-team-leader');
+      const label  = document.getElementById('tc-tl-label');
+      const avatar = document.getElementById('tc-tl-avatar-btn');
+      const sum    = document.getElementById('tc-tl-summary');
 
-        // Yang ditampilkan adalah NAMA
-        const displayName = (name && String(name).trim()) ? name : (id || 'AG016');
+      const cleanId = (id === null || id === undefined) ? '' : String(id).trim();
 
-        if (label) label.textContent = displayName;
-        if (avatar) avatar.textContent = (initial || displayName.charAt(0) || 'A').toUpperCase();
-        if (sum) sum.textContent = displayName + ' (' + (id || 'AG016') + ')';
+      // ✅ kalau kosong -> kirim NULL (empty string) ke server
+      if (hidden) hidden.value = cleanId;
+
+      // UI untuk kondisi NULL
+      if (!cleanId) {
+        if (label)  label.textContent  = '— Tidak ada —';
+        if (avatar) avatar.textContent = '-';
+        if (sum)    sum.textContent    = '— Tidak ada —';
+        return;
       }
 
-      // Default: selalu AG016, tapi tampilkan nama dari list jika ada
-      function initDefaultAG016(){
-        const hidden = document.getElementById('tc-team-leader');
-        if (hidden) hidden.value = 'AG016';
+      // Yang ditampilkan adalah NAMA
+      const displayName = (name && String(name).trim()) ? String(name).trim() : cleanId;
 
-        // cari option yang id=AG016
-        const btn = document.querySelector('.tc-tl-option[data-id="AG016"]');
-        if (btn) {
-          setTeamLeader(btn.dataset.id, btn.dataset.name, btn.dataset.initial);
-        } else {
-          // fallback jika AG016 tidak ada di dropdown
-          setTeamLeader('AG016', 'AG016', 'A');
-        }
+      if (label)  label.textContent  = displayName;
+      if (avatar) avatar.textContent = (initial || displayName.charAt(0) || 'A').toUpperCase();
+      if (sum)    sum.textContent    = displayName + ' (' + cleanId + ')';
+    }
+
+    // Default: tampil AG016 (dan hidden = AG016)
+    function initDefaultAG016(){
+      const btn = document.querySelector('.tc-tl-option[data-id="'+ DEFAULT_TL_ID +'"]');
+      if (btn) {
+        setTeamLeader(btn.dataset.id, btn.dataset.name, btn.dataset.initial);
+      } else {
+        // fallback jika AG016 tidak ada di dropdown
+        setTeamLeader(DEFAULT_TL_ID, DEFAULT_TL_ID, 'A');
       }
+    }
 
-      // Klik option Team Leader
-      document.addEventListener('click', function(e){
-        const opt = e.target.closest('.tc-tl-option');
-        if (!opt) return;
-        e.preventDefault();
-        setTeamLeader(opt.dataset.id, opt.dataset.name, opt.dataset.initial);
-      });
+    // Klik option Team Leader
+    document.addEventListener('click', function(e){
+      const opt = e.target.closest('.tc-tl-option');
+      if (!opt) return;
+      e.preventDefault();
+      setTeamLeader(opt.dataset.id, opt.dataset.name, opt.dataset.initial);
+    });
 
-      // OPTIONAL: update ringkasan Agent Closing kalau user pilih agent
-      document.addEventListener('click', function(e){
-        const opt = e.target.closest('.tc-agent-option');
-        if (!opt) return;
-        const sum = document.getElementById('tc-agent-summary');
-        if (sum) sum.textContent = (opt.dataset.name ? (opt.dataset.name + ' (' + opt.dataset.id + ')') : (opt.dataset.id || '-'));
-      });
+    // OPTIONAL: update ringkasan Agent Closing kalau user pilih agent
+    document.addEventListener('click', function(e){
+      const opt = e.target.closest('.tc-agent-option');
+      if (!opt) return;
+      const sum = document.getElementById('tc-agent-summary');
+      if (sum) sum.textContent = (opt.dataset.name ? (opt.dataset.name + ' (' + opt.dataset.id + ')') : (opt.dataset.id || '-'));
+    });
 
-      // Saat modal dibuka, set default AG016 lagi (biar konsisten tiap buka modal)
-      document.addEventListener('click', function(e){
-        const btn = e.target.closest('.btn-transaksi-closing');
-        if (!btn) return;
-        initDefaultAG016();
-      });
-
-      // init pertama kali
+    // Saat modal dibuka, set default AG016 lagi (biar konsisten tiap buka modal)
+    document.addEventListener('click', function(e){
+      const btn = e.target.closest('.btn-transaksi-closing');
+      if (!btn) return;
       initDefaultAG016();
-    })();
-      // Map untuk cari nama agent berdasarkan id_agent
+    });
+
+    // init pertama kali
+    initDefaultAG016();
+  })();
+
+  // Map untuk cari nama agent berdasarkan id_agent
   window.AGENT_NAME_MAP = window.AGENT_NAME_MAP || {};
   @foreach($agentsDropdown as $ag)
     window.AGENT_NAME_MAP[@json($ag->id_agent)] = @json($ag->nama);
   @endforeach
-    </script>
+  </script>
+
 
 
                     {{-- PANEL: INFORMASI TRANSAKSI --}}
@@ -4809,8 +4835,8 @@ document.addEventListener('DOMContentLoaded', function () {
       INV_SHARE:  { label:'Investor Sharing',    agent:'AG001', rate:0.095200 },
 
       // MGMT FUND split 2: total 0.0595 => masing2 0.02975
-      MGMT_FUND1: { label:'Management Fund 1',   agent:'AG006', rate:0.029750 },
-      MGMT_FUND2: { label:'Management Fund 2',   agent:'AG001', rate:0.029750 },
+      MGMT_FUND1: { label:'Management Fund 1',   agent:'AG006', rate:0.0297 },
+      MGMT_FUND2: { label:'Management Fund 2',   agent:'AG001', rate:0.0298 },
 
       // EMP_INC default Yedija
       EMP_INC:    { label:'Employee Incentive',  agent:'AG035', rate:0.015300 },
@@ -5573,72 +5599,75 @@ document.addEventListener('DOMContentLoaded', function () {
           })();
         </script>
 
-        <script>
-          (function(){
-            const form = document.getElementById('closingForm');
-            if (!form) return;
-            const submitBtn = document.getElementById('tc-submit-btn') || form.querySelector('button[type="submit"]');
-            if (!submitBtn) return;
+<script>
+    (function(){
+      const form = document.getElementById('closingForm');
+      if (!form) return;
+      const submitBtn = document.getElementById('tc-submit-btn') || form.querySelector('button[type="submit"]');
+      if (!submitBtn) return;
 
-            let isSubmitting = false;
+      let isSubmitting = false;
 
-            form.addEventListener('submit', function(e){
-              if (isSubmitting) {
-                e.preventDefault();
-                return;
-              }
+      form.addEventListener('submit', function(e){
+        if (isSubmitting) {
+          e.preventDefault();
+          return;
+        }
 
-              const agentInput  = document.getElementById('tc-agent');
-              const hargaInput  = document.getElementById('tc-harga-menang');
-              const schemeInput = document.getElementById('tc-closing-type');
-              const komisiInput = document.getElementById('tc-komisi-persen');
+        const agentInput  = document.getElementById('tc-agent');
+        const hargaInput  = document.getElementById('tc-harga-menang');
+        const schemeInput = document.getElementById('tc-closing-type');
+        const komisiInput = document.getElementById('tc-komisi-persen');
 
-              // NEW: TL wajib ada (default AG016)
-              const tlInput = document.getElementById('tc-team-leader');
+        // TL boleh kosong (nullable)
+        const tlInput = document.getElementById('tc-team-leader');
 
-              const agentVal = (agentInput && agentInput.value ? agentInput.value : '').trim();
-              const tlVal    = (tlInput && tlInput.value ? tlInput.value : '').trim();
+        const agentVal = (agentInput && agentInput.value ? agentInput.value : '').trim();
+        const tlVal    = (tlInput && tlInput.value ? tlInput.value : '').trim(); // tetap dibaca, tapi tidak wajib
 
-              const hargaRaw = (hargaInput && hargaInput.value ? hargaInput.value : '').replace(/[^\d]/g,'');
-              const hargaNum = hargaRaw ? parseInt(hargaRaw, 10) : 0;
-              const schemeVal = (schemeInput && schemeInput.value ? schemeInput.value : '').trim();
-              const komisiRaw = (komisiInput && komisiInput.value ? komisiInput.value : '').trim();
-              const komisiNum = komisiRaw ? parseFloat(komisiRaw.replace(',','.')) : 0;
+        const hargaRaw  = (hargaInput && hargaInput.value ? hargaInput.value : '').replace(/[^\d]/g,'');
+        const hargaNum  = hargaRaw ? parseInt(hargaRaw, 10) : 0; // kosong => 0
 
-              if (!tlVal) {
-                e.preventDefault();
-                alert('Silakan pilih Team Leader terlebih dahulu.');
-                return;
-              }
+        const schemeVal = (schemeInput && schemeInput.value ? schemeInput.value : '').trim();
+        const komisiRaw = (komisiInput && komisiInput.value ? komisiInput.value : '').trim();
+        const komisiNum = komisiRaw ? parseFloat(komisiRaw.replace(',','.')) : 0;
 
-              if (!agentVal) {
-                e.preventDefault();
-                alert('Silakan pilih agent yang closing terlebih dahulu.');
-                return;
-              }
+        // ✅ TL TIDAK WAJIB
+        // (hapus validasi: if (!tlVal) ...)
 
-              if (!hargaNum || isNaN(hargaNum) || hargaNum <= 0) {
-                e.preventDefault();
-                alert('Silakan isi harga menang transaksi dengan benar.');
-                return;
-              }
+        if (!agentVal) {
+          e.preventDefault();
+          alert('Silakan pilih agent yang closing terlebih dahulu.');
+          return;
+        }
 
-              if (schemeVal === 'profit' && (!komisiRaw || isNaN(komisiNum) || komisiNum <= 0)) {
-                e.preventDefault();
-                alert('Silakan isi persentase komisi (%).');
-                return;
-              }
+        // ✅ Harga bidding BOLEH 0 / kosong
+        // Hanya blok kalau user input tapi bukan angka valid (misal "abc")
+        // Kalau kosong => hargaRaw '' => hargaNum 0 => lolos
+        if (hargaRaw && (isNaN(hargaNum) || hargaNum < 0)) {
+          e.preventDefault();
+          alert('Harga bidding tidak valid.');
+          return;
+        }
 
-              // lulus validasi → aktifkan spinner & lock tombol
-              isSubmitting = true;
-              submitBtn.disabled = true;
-              submitBtn.dataset.originalHtml = submitBtn.innerHTML;
-              submitBtn.innerHTML =
-                '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>' +
-                'Menyimpan...';
-            });
-          })();
-        </script>
+        // Profit: komisi persen tetap wajib > 0
+        if (schemeVal === 'profit' && (!komisiRaw || isNaN(komisiNum) || komisiNum <= 0)) {
+          e.preventDefault();
+          alert('Silakan isi persentase komisi (%).');
+          return;
+        }
+
+        // lulus validasi → aktifkan spinner & lock tombol
+        isSubmitting = true;
+        submitBtn.disabled = true;
+        submitBtn.dataset.originalHtml = submitBtn.innerHTML;
+        submitBtn.innerHTML =
+          '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>' +
+          'Menyimpan...';
+      });
+    })();
+  </script>
+
 
       </div>
     </div>
@@ -6214,9 +6243,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // ✅ ambil nama Team Leader terpilih dari dropdown (hidden input tc-team-leader)
         function getSelectedTeamLeaderId(){
-          const id = (teamLeaderInput && teamLeaderInput.value) ? String(teamLeaderInput.value).trim() : '';
-          return id || 'AG016';
-        }
+  const id = (teamLeaderInput && teamLeaderInput.value) ? String(teamLeaderInput.value).trim() : '';
+  if (!id || id === '-' || id.toLowerCase() === 'null') return '';
+  return id;
+}
+
+
+
         function getSelectedTeamLeaderName(){
           const id = getSelectedTeamLeaderId();
 
@@ -6366,14 +6399,16 @@ document.addEventListener('DOMContentLoaded', function () {
   function getOverrideAgentIdByKode(kode){
     if (!overrideWrap || !kode) return '';
     const name = 'pembagian_override_agent['+ kode +']';
-    const el = overrideWrap.querySelector('input[name="'+ (window.CSS && CSS.escape ? CSS.escape(name) : name) +'"]');
+    const sel  = 'input[name="'+ (window.CSS && CSS.escape ? CSS.escape(name) : name) +'"]';
+    const el   = overrideWrap.querySelector(sel);
     return (el && el.value) ? String(el.value).trim() : '';
   }
 
   function getOverridePorsiPercentByKode(kode){
     if (!overrideWrap || !kode) return null;
     const name = 'pembagian_override_porsi['+ kode +']';
-    const el = overrideWrap.querySelector('input[name="'+ (window.CSS && CSS.escape ? CSS.escape(name) : name) +'"]');
+    const sel  = 'input[name="'+ (window.CSS && CSS.escape ? CSS.escape(name) : name) +'"]';
+    const el   = overrideWrap.querySelector(sel);
     if (!el || el.value == null) return null;
     const raw = String(el.value).trim();
     if (!raw) return null;
@@ -6413,7 +6448,9 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // ---------- cek hidden override ada/tidak ----------
-  const hasAnyOverride = overrideWrap && overrideWrap.querySelector('input[name^="pembagian_override_porsi["]');
+  // NOTE: selector lama kamu bisa gagal kalau overrideWrap null / beda elemen / id dobel.
+  // Di sini kita cek lebih aman: ada minimal 1 input override porsi apapun.
+  const hasAnyOverride = !!(overrideWrap && overrideWrap.querySelector('input[name^="pembagian_override_porsi["], input[name^="pembagian_override_porsi\\["]'));
   if (!hasAnyOverride) {
     pembagianBody.innerHTML =
       '<tr><td colspan="4" class="text-center text-muted small">' +
@@ -6423,7 +6460,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // ======================================================
-  // ✅ DYNAMIC FEE TL (AUTO)
+  // ✅ DYNAMIC FEE TL (AUTO) — TAPI kalau TL NULL → jangan tampilkan (0)
   // TL = base * 10% (maks 2jt)
   // potong SERVICE -> REWARD -> PROMO_FUND
   // ======================================================
@@ -6447,7 +6484,16 @@ document.addEventListener('DOMContentLoaded', function () {
   let rewardNom  = Math.round(base * (rewardPct/100));
   let promoNom   = Math.round(base * (promoPct/100));
 
-  let feeTlNom   = Math.round(Math.min(base * FEE_TL_RATE, FEE_TL_MAX));
+  // === TL NULL handling ===
+  // kalau TL benar-benar kosong (user null-in), fee TL dibuat 0 dan tidak memotong SERVICE/REWARD/PROMO.
+  const tlIdForDisplay = (typeof getSelectedTeamLeaderId === 'function')
+    ? String(getSelectedTeamLeaderId() || '').trim()
+    : '';
+
+  let feeTlNom = 0;
+  if (tlIdForDisplay) {
+    feeTlNom = Math.round(Math.min(base * FEE_TL_RATE, FEE_TL_MAX));
+  }
 
   // potong dari SERVICE -> REWARD -> PROMO
   let sisa = feeTlNom;
@@ -6499,27 +6545,34 @@ document.addEventListener('DOMContentLoaded', function () {
   let html = '';
 
   POS_ORDER.forEach(function(kode){
-    // ✅ FEE_TL HARUS SELALU MUNCUL
+    // ✅ FEE_TL hanya muncul kalau TL ada ATAU ada override agent/porsi khusus
     const isFeeTl = (kode === 'FEE_TL');
 
-    // normal pos pakai override pct (kalau null/0 => skip)
+    // normal: pakai override pct
     let pct = getOverridePorsiPercentByKode(kode);
 
-    // untuk pos dinamis, pct diambil dari pct efektif hasil potongan
+    // pos dinamis: pct dari hasil potongan (SERVICE/REWARD/PROMO/FEE_TL)
     if (dynamicPctMap[kode] !== undefined) pct = dynamicPctMap[kode];
 
-    // Memastikan bahwa row MGMT_FUND1 dan MGMT_FUND2 tetap muncul
+    // Memastikan bahwa row MGMT_FUND1 dan MGMT_FUND2 tetap muncul (kalau POS_ORDER memang memuat kode ini)
     if (kode === 'MGMT_FUND1' || kode === 'MGMT_FUND2') {
       if (pct === null || Number(pct) <= 0) {
-        pct = 0.029750;  // memberi nilai default untuk memastikan tampil
+        pct = 2.975; // persen (0.029750 * 100)
       }
     }
 
     if (!isFeeTl) {
       if (pct === null || Number(pct) <= 0) return;
     } else {
-      // kalau base 0, tetap munculkan row tapi 0
+      // FEE_TL: kalau TL null dan tidak ada override, jangan tampil
+      const overrideAgentId = getOverrideAgentIdByKode('FEE_TL');
+      const overridePorsi   = getOverridePorsiPercentByKode('FEE_TL');
+      const shouldShowFeeTl = (!!tlIdForDisplay && feeTlNom > 0) || (!!overrideAgentId) || (overridePorsi !== null && Number(overridePorsi) > 0);
+
+      if (!shouldShowFeeTl) return;
+
       if (pct === null) pct = dynamicPctMap.FEE_TL || 0;
+      if (Number(pct) <= 0 && feeTlNom <= 0) return;
     }
 
     const isKantor = KANTOR_CODES.indexOf(kode) !== -1;
@@ -6566,7 +6619,10 @@ document.addEventListener('DOMContentLoaded', function () {
       else if (kode === 'UP1') agentName = up1AgentName || '-';
       else if (kode === 'UP2') agentName = up2AgentName || '-';
       else if (kode === 'UP3') agentName = up3AgentName || '-';
-      else if (kode === 'FEE_TL') agentName = getSelectedTeamLeaderName();
+      else if (kode === 'FEE_TL') {
+        // ✅ kalau NULL, tampil '-' (dan row biasanya sudah di-skip di atas)
+        agentName = tlIdForDisplay ? (typeof getSelectedTeamLeaderName === 'function' ? getSelectedTeamLeaderName() : tlIdForDisplay) : '-';
+      }
       else agentName = isKantor ? 'Kantor' : '-';
     }
 
@@ -6578,6 +6634,9 @@ document.addEventListener('DOMContentLoaded', function () {
       const rateUsed = Number(pct) / 100;
       nominal = Math.round(base * rateUsed);
     }
+
+    // kalau nominal 0 jangan tampil (kecuali memang ada alasan)
+    if (Number(nominal) <= 0) return;
 
     const agentClass = isKantor ? 'text-success' : 'text-muted';
 
@@ -6595,6 +6654,7 @@ document.addEventListener('DOMContentLoaded', function () {
     '</td></tr>'
   );
 }
+
 
 
 
