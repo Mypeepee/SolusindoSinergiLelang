@@ -1102,6 +1102,156 @@ $agentsDropdown = \App\Models\Agent::select('id_agent','nama')
             ->orderBy('account.id_account')
             ->get();
 
+// =========================
+// KPI TAHUNAN (FULL YEAR) + YoY
+// =========================
+$year     = (int) request('year', \Carbon\Carbon::now()->year);
+$prevYear = $year - 1;
+
+$startYear = \Carbon\Carbon::create($year, 1, 1)->toDateString();
+$endYear   = \Carbon\Carbon::create($year, 12, 31)->toDateString();
+
+$startPrev = \Carbon\Carbon::create($prevYear, 1, 1)->toDateString();
+$endPrev   = \Carbon\Carbon::create($prevYear, 12, 31)->toDateString();
+
+$trxSummaryForYear = function ($start, $end) {
+    return DB::table('transaction')
+        ->whereBetween('tanggal_transaksi', [$start, $end])
+        ->selectRaw("
+            COALESCE(SUM(harga_deal::numeric), 0) AS omzet,
+            COALESCE(SUM(basis_pendapatan::numeric), 0) AS pendapatan_kotor,
+            COALESCE(SUM((basis_pendapatan - COALESCE(royalty_fee,0) - COALESCE(cobroke_fee,0))::numeric), 0) AS pendapatan_kantor,
+            COALESCE(COUNT(*), 0) AS total_transaksi
+        ")
+        ->first();
+};
+
+$trxSummaryYear     = $trxSummaryForYear($startYear, $endYear);
+$trxSummaryPrevYear = $trxSummaryForYear($startPrev, $endPrev);
+
+$calcGrowth = function ($current, $prev) {
+    $prev = (float) $prev;
+    $current = (float) $current;
+    if ($prev <= 0) return null;
+    return (($current - $prev) / $prev) * 100.0;
+};
+
+$trxGrowthYoY = (object)[
+    'omzet'             => $calcGrowth($trxSummaryYear->omzet, $trxSummaryPrevYear->omzet),
+    'pendapatan_kotor'  => $calcGrowth($trxSummaryYear->pendapatan_kotor, $trxSummaryPrevYear->pendapatan_kotor),
+    'pendapatan_kantor' => $calcGrowth($trxSummaryYear->pendapatan_kantor, $trxSummaryPrevYear->pendapatan_kantor),
+];
+
+// (opsional) total all-time kalau masih mau ditampilkan kecil
+$trxSummaryAll = DB::table('transaction')
+    ->selectRaw("
+        COALESCE(SUM(harga_deal::numeric), 0) AS omzet,
+        COALESCE(SUM(basis_pendapatan::numeric), 0) AS pendapatan_kotor,
+        COALESCE(SUM((basis_pendapatan - COALESCE(royalty_fee,0) - COALESCE(cobroke_fee,0))::numeric), 0) AS pendapatan_kantor,
+        COALESCE(COUNT(*), 0) AS total_transaksi
+    ")
+    ->first();
+
+// === Tahun tersedia untuk dropdown (berdasar data transaksi) ===
+$maxYear = (int) \Carbon\Carbon::now()->year;
+
+$minYearRaw = DB::table('transaction')
+    ->selectRaw("MIN(EXTRACT(YEAR FROM tanggal_transaksi)) as y")
+    ->value('y');
+
+$minYear = $minYearRaw ? (int) $minYearRaw : $maxYear;
+
+// batasi minimal 5 tahun terakhir kalau mau (opsional)
+// $minYear = max($minYear, $maxYear - 5);
+
+$availableYears = range($maxYear, $minYear);
+
+// pastikan year valid
+if (!in_array($year, $availableYears, true)) {
+    $year = $maxYear;
+    $prevYear = $year - 1;
+}
+// =========================
+// PENDAPATAN BERSIH (Jason & Lieming) dari transaction_commissions
+// hanya AG001 dan AG006
+// =========================
+$netAgentIds = ['AG001', 'AG006'];
+
+$startYear = \Carbon\Carbon::create($year, 1, 1)->toDateString();
+$endYear   = \Carbon\Carbon::create($year, 12, 31)->toDateString();
+
+$startPrev = \Carbon\Carbon::create($prevYear, 1, 1)->toDateString();
+$endPrev   = \Carbon\Carbon::create($prevYear, 12, 31)->toDateString();
+
+$netSummaryForYear = function ($start, $end) use ($netAgentIds) {
+    return DB::table('transaction_commissions as tc')
+        ->join('transaction as t', 't.id_transaction', '=', 'tc.id_transaction')
+        ->whereBetween('t.tanggal_transaksi', [$start, $end])
+        ->whereIn('tc.id_agent', $netAgentIds)
+        ->selectRaw("COALESCE(SUM(tc.pendapatan::numeric), 0) AS pendapatan_bersih")
+        ->first();
+};
+
+$netSummaryYear     = $netSummaryForYear($startYear, $endYear);
+$netSummaryPrevYear = $netSummaryForYear($startPrev, $endPrev);
+
+$netSummaryAll = DB::table('transaction_commissions as tc')
+    ->whereIn('tc.id_agent', $netAgentIds)
+    ->selectRaw("COALESCE(SUM(tc.pendapatan::numeric), 0) AS pendapatan_bersih")
+    ->first();
+
+$calcGrowth = function ($current, $prev) {
+    $prev = (float) $prev;
+    $current = (float) $current;
+    if ($prev <= 0) return null;
+    return (($current - $prev) / $prev) * 100.0;
+};
+
+$netGrowthYoY = (object)[
+    'pendapatan_bersih' => $calcGrowth(
+        $netSummaryYear->pendapatan_bersih ?? 0,
+        $netSummaryPrevYear->pendapatan_bersih ?? 0
+    ),
+];
+// =========================
+// DATA CHART KPI TAHUNAN: omzet, gross, net (AG001+AG006)
+// =========================
+$baseYearly = DB::table('transaction')
+  ->selectRaw("
+    EXTRACT(YEAR FROM tanggal_transaksi)::int AS tahun,
+    COALESCE(SUM(harga_deal::numeric), 0) AS omzet,
+    COALESCE(SUM(basis_pendapatan::numeric), 0) AS gross
+  ")
+  ->groupByRaw("EXTRACT(YEAR FROM tanggal_transaksi)")
+  ->orderByRaw("EXTRACT(YEAR FROM tanggal_transaksi)")
+  ->get();
+
+$netYearlyMap = DB::table('transaction_commissions as tc')
+  ->join('transaction as t', 't.id_transaction', '=', 'tc.id_transaction')
+  ->whereIn('tc.id_agent', ['AG001','AG006'])
+  ->selectRaw("
+    EXTRACT(YEAR FROM t.tanggal_transaksi)::int AS tahun,
+    COALESCE(SUM(tc.pendapatan::numeric), 0) AS net
+  ")
+  ->groupByRaw("EXTRACT(YEAR FROM t.tanggal_transaksi)")
+  ->orderByRaw("EXTRACT(YEAR FROM t.tanggal_transaksi)")
+  ->pluck('net', 'tahun')
+  ->toArray();
+
+// satukan tahun (biar kalau ada net di tahun tertentu tapi transaksi base kosong, tetap masuk)
+$years = collect($baseYearly->pluck('tahun')->all())
+  ->merge(array_keys($netYearlyMap))
+  ->unique()
+  ->sort()
+  ->values();
+
+$yearlyKpiLabels = $years->map(fn($y) => (string)$y)->all();
+
+$baseMap = $baseYearly->keyBy('tahun');
+
+$yearlyKpiOmzet = $years->map(fn($y) => (float)($baseMap[$y]->omzet ?? 0))->all();
+$yearlyKpiGross = $years->map(fn($y) => (float)($baseMap[$y]->gross ?? 0))->all();
+$yearlyKpiNet   = $years->map(fn($y) => (float)($netYearlyMap[$y] ?? 0))->all();
 
         // ---------- BLOK EXPORT (bersih, tanpa join tabel fiktif) ----------
         $exportQuery = \App\Models\Property::from('property as p')
@@ -1223,6 +1373,24 @@ $agentsDropdown = \App\Models\Agent::select('id_agent','nama')
             'events'              => $eventsFormatted,
             'agentsDropdown' => $agentsDropdown,
             // 🔥 kirim map COPIC ke Blade (id_listing => ['ids'=>[],'names'=>[]])
+            'yearlyKpiLabels' => $yearlyKpiLabels,
+'yearlyKpiOmzet'  => $yearlyKpiOmzet,
+'yearlyKpiGross'  => $yearlyKpiGross,
+'yearlyKpiNet'    => $yearlyKpiNet,
+
+            'netSummaryYear'     => $netSummaryYear,
+'netSummaryPrevYear' => $netSummaryPrevYear,
+'netSummaryAll'      => $netSummaryAll,
+'netGrowthYoY'       => $netGrowthYoY,
+            'availableYears' => $availableYears,
+            'year'               => $year,
+            'prevYear'           => $prevYear,
+            'trxSummaryYear'     => $trxSummaryYear,
+            'trxSummaryPrevYear' => $trxSummaryPrevYear,
+            'trxGrowthYoY'       => $trxGrowthYoY,
+            'trxSummaryAll'      => $trxSummaryAll, // opsional
+
+
             'copicAgentsMap'      => $copicAgentsMap,
         ]);
     }

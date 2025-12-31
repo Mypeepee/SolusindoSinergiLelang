@@ -7061,6 +7061,252 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 <div class="container-fluid px-3 mt-4">
+    {{-- =========================
+     KPI HEADER + YEAR PICKER
+========================= --}}
+<div class="d-flex align-items-center justify-content-between mb-2">
+    <div>
+      <div class="kpi-section-title">Ringkasan Keuangan</div>
+      <div class="kpi-section-sub">Perbandingan full year: {{ $year }} vs {{ $prevYear }}</div>
+    </div>
+
+    <form method="GET" class="d-flex align-items-center gap-2">
+      {{-- pertahankan query lain (tab, filter, dll) --}}
+      @foreach(request()->except('year') as $k => $v)
+        @if(is_array($v))
+          @foreach($v as $vv)
+            <input type="hidden" name="{{ $k }}[]" value="{{ $vv }}">
+          @endforeach
+        @else
+          <input type="hidden" name="{{ $k }}" value="{{ $v }}">
+        @endif
+      @endforeach
+
+      <span class="text-muted small">Tahun</span>
+      <select name="year" class="form-select form-select-sm kpi-year-select" onchange="this.form.submit()">
+        @foreach(($availableYears ?? range(now()->year, now()->year-5)) as $y)
+          <option value="{{ $y }}" @selected((int)$year === (int)$y)>{{ $y }}</option>
+        @endforeach
+      </select>
+    </form>
+  </div>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // aman: cuma init kalau bootstrap tooltip tersedia
+    if (window.bootstrap && bootstrap.Tooltip) {
+      document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+        new bootstrap.Tooltip(el);
+      });
+    }
+  });
+  </script>
+
+  @php
+    $rupiah = function($n){
+      return 'Rp ' . number_format((float)$n, 0, ',', '.');
+    };
+
+    // Format pendek biar gampang dibaca (tetap ada tooltip untuk angka full)
+    $rupiahShort = function($n){
+      $n = (float)$n;
+      $abs = abs($n);
+      if ($abs >= 1e12) return 'Rp ' . number_format($n/1e12, 2, ',', '.') . ' T';
+      if ($abs >= 1e9)  return 'Rp ' . number_format($n/1e9, 2, ',', '.')  . ' M';
+      if ($abs >= 1e6)  return 'Rp ' . number_format($n/1e6, 1, ',', '.')  . ' Jt';
+      if ($abs >= 1e3)  return 'Rp ' . number_format($n/1e3, 1, ',', '.')  . ' Rb';
+      return 'Rp ' . number_format($n, 0, ',', '.');
+    };
+
+    $trend = function($g){
+      if ($g === null) {
+        return '<span class="badge kpi-badge kpi-badge-neutral">YoY: —</span>';
+      }
+      $isUp = $g >= 0;
+      $icon = $isUp ? 'bi-arrow-up-right' : 'bi-arrow-down-right';
+      $cls  = $isUp ? 'kpi-badge-up' : 'kpi-badge-down';
+      return '<span class="badge kpi-badge '.$cls.'"><i class="bi '.$icon.' me-1"></i>YoY '.
+             number_format($g, 1, ',', '.') . '%</span>';
+    };
+
+    $kpis = [
+      [
+        'title' => 'Omzet',
+        'hint'  => "Omzet = Σ harga_deal untuk transaksi pada Tahun {$year}",
+        'value' => $trxSummaryYear->omzet ?? 0,
+        'prev'  => $trxSummaryPrevYear->omzet ?? 0,
+        'all'   => $trxSummaryAll->omzet ?? null,
+        'growth'=> $trxGrowthYoY->omzet ?? null,
+        'icon'  => 'bi-cash-stack',
+        'iconClass' => 'kpi-icon-omzet',
+      ],
+      [
+        'title' => 'Pendapatan Kotor',
+        'hint'  => "Pendapatan Kotor = Σ basis_pendapatan pada Tahun {$year}",
+        'value' => $trxSummaryYear->pendapatan_kotor ?? 0,
+        'prev'  => $trxSummaryPrevYear->pendapatan_kotor ?? 0,
+        'all'   => $trxSummaryAll->pendapatan_kotor ?? null,
+        'growth'=> $trxGrowthYoY->pendapatan_kotor ?? null,
+        'icon'  => 'bi-graph-up',
+        'iconClass' => 'kpi-icon-gross',
+      ],
+      [
+  'title' => 'Pendapatan Bersih (Jason & Lieming)',
+  'hint'  => "Pendapatan Bersih = Σ transaction_commissions.pendapatan untuk AG001 & AG006 pada Tahun {$year}",
+  'value' => $netSummaryYear->pendapatan_bersih ?? 0,
+  'prev'  => $netSummaryPrevYear->pendapatan_bersih ?? 0,
+  'all'   => $netSummaryAll->pendapatan_bersih ?? null,
+  'growth'=> $netGrowthYoY->pendapatan_bersih ?? null,
+  'icon'  => 'bi-people',
+  'iconClass' => 'kpi-icon-office',
+],
+
+    ];
+  @endphp
+
+  <div class="row g-3 mb-3">
+    @foreach($kpis as $kpi)
+      <div class="col-12 col-md-4">
+        <div class="card shadow-sm border-0 kpi-card h-100">
+          <div class="card-body d-flex justify-content-between align-items-start">
+            <div class="me-3 flex-grow-1">
+
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <div class="kpi-title">{{ $kpi['title'] }} <span class="text-muted">(Tahun {{ $year }})</span></div>
+                <i class="bi bi-info-circle kpi-info"
+                   data-bs-toggle="tooltip"
+                   title="{{ $kpi['hint'] }}"></i>
+              </div>
+
+              {{-- nilai utama: tampil pendek, tooltip angka full --}}
+              <div class="kpi-value"
+                   data-bs-toggle="tooltip"
+                   title="{{ $rupiah($kpi['value']) }}">
+                {{ $rupiahShort($kpi['value']) }}
+              </div>
+
+              {{-- meta rapi: Tahun lalu + Akumulasi (kalau ada) --}}
+              <div class="kpi-meta mt-2">
+                <div class="d-flex flex-wrap gap-3">
+                  <div>
+                    <span class="kpi-meta-label">Tahun {{ $prevYear }}</span>
+                    <span class="kpi-meta-value" data-bs-toggle="tooltip" title="{{ $rupiah($kpi['prev']) }}">
+                      {{ $rupiahShort($kpi['prev']) }}
+                    </span>
+                  </div>
+
+                  @if(!is_null($kpi['all']))
+                    <div>
+                      <span class="kpi-meta-label">Akumulasi</span>
+                      <span class="kpi-meta-value" data-bs-toggle="tooltip" title="{{ $rupiah($kpi['all']) }}">
+                        {{ $rupiahShort($kpi['all']) }}
+                      </span>
+                    </div>
+                  @endif
+                </div>
+              </div>
+
+            </div>
+
+            <div class="kpi-icon {{ $kpi['iconClass'] }}">
+              <i class="bi {{ $kpi['icon'] }}"></i>
+            </div>
+          </div>
+
+          <div class="card-footer bg-transparent border-0 pt-0 pb-3 px-3 d-flex align-items-center justify-content-between">
+            {!! $trend($kpi['growth']) !!}
+            <span class="text-muted small">vs {{ $prevYear }}</span>
+          </div>
+        </div>
+      </div>
+    @endforeach
+  </div>
+
+  <style>
+  /* Header section */
+  .kpi-section-title{
+    font-weight: 700;
+    font-size: 1rem;
+    line-height: 1.2;
+  }
+  .kpi-section-sub{
+    color: #6c757d;
+    font-size: .875rem;
+  }
+  .kpi-year-select{
+    min-width: 110px;
+  }
+
+  /* Card */
+  .kpi-card{
+    border-radius: 18px !important;
+  }
+  .kpi-title{
+    font-size: .9rem;
+    font-weight: 600;
+    color: #495057;
+  }
+  .kpi-info{
+    color: #adb5bd;
+    cursor: pointer;
+  }
+  .kpi-value{
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    color: #212529;
+  }
+
+  /* Meta */
+  .kpi-meta{
+    font-size: .85rem;
+    color: #6c757d;
+  }
+  .kpi-meta-label{
+    display:inline-block;
+    min-width: 86px;
+    color:#868e96;
+  }
+  .kpi-meta-value{
+    font-weight: 600;
+    color:#495057;
+  }
+
+  /* Trend badge */
+  .kpi-badge{
+    border-radius: 999px;
+    padding: .45rem .6rem;
+    font-weight: 700;
+  }
+  .kpi-badge-up{
+    background: rgba(25,135,84,.12);
+    color: #198754;
+  }
+  .kpi-badge-down{
+    background: rgba(220,53,69,.12);
+    color: #dc3545;
+  }
+  .kpi-badge-neutral{
+    background: rgba(108,117,125,.12);
+    color: #6c757d;
+  }
+
+  /* Icon box */
+  .kpi-icon{
+    width: 46px; height: 46px;
+    display:flex; align-items:center; justify-content:center;
+    border-radius: 14px;
+    font-size: 22px;
+    color:#fff;
+    opacity:.95;
+    flex: 0 0 auto;
+  }
+  .kpi-icon-omzet{ background: #f4511e; }
+  .kpi-icon-gross{ background: #1e88e5; }
+  .kpi-icon-office{ background: #43a047; }
+  </style>
+
+
     <div class="row">
         <!-- Grafik Transaksi (kiri) -->
         <div class="col-md-6">
@@ -7078,17 +7324,198 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
         </div>
 
-        <!-- Placeholder chart lain (kanan) -->
-        <div class="col-md-6">
-            <div class="card shadow-sm rounded mb-4 h-100">
-                <div class="card-body d-flex align-items-center justify-content-center text-muted">
-                    <div>
-                        <h6 class="text-center mb-3">Distribusi Status Minat</h6>
-                        <canvas id="statusPieChart" height="200"></canvas>
-                    </div>
-                </div>
-            </div>
+<!-- KPI Tahunan (kanan) -->
+<div class="col-md-6">
+    <div class="card shadow-sm rounded mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color:#43a047;">
+        <div class="d-flex align-items-center gap-2">
+          <span><i class="bi bi-bar-chart-line me-2"></i> Kinerja Tahunan</span>
+          <i class="bi bi-info-circle"
+             data-bs-toggle="tooltip"
+             title="Bar = nilai per tahun. Line = tren (naik/turun). Bersih = Σ komisi AG001 + AG006."></i>
         </div>
+
+        <select id="yearlyRange" class="form-select form-select-sm w-auto">
+          <option value="5" selected>5 Tahun</option>
+          <option value="10">10 Tahun</option>
+          <option value="0">Semua</option>
+        </select>
+      </div>
+
+      <div class="card-body">
+        <div class="chart-fixed">
+          <canvas id="yearlyKpiChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  <style>
+    .chart-fixed{
+      position: relative;
+      height: 340px; /* samakan dengan kira-kira tinggi chart kiri */
+    }
+  </style>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Data dari Controller (wajib ada)
+      const yearlyLabels = @json($yearlyKpiLabels ?? []);
+      const yearlyOmzet  = @json($yearlyKpiOmzet  ?? []);
+      const yearlyGross  = @json($yearlyKpiGross  ?? []);
+      const yearlyNet    = @json($yearlyKpiNet    ?? []);
+
+      const $range = document.getElementById('yearlyRange');
+      const ctx = document.getElementById('yearlyKpiChart')?.getContext('2d');
+      if (!ctx) return;
+
+      const toShortIDR = (n) => {
+        n = Number(n || 0);
+        const abs = Math.abs(n);
+        const fmt = (x, d=1) => x.toLocaleString('id-ID', {maximumFractionDigits:d});
+        if (abs >= 1e12) return 'Rp ' + fmt(n/1e12, 2) + ' T';
+        if (abs >= 1e9)  return 'Rp ' + fmt(n/1e9,  2) + ' M';
+        if (abs >= 1e6)  return 'Rp ' + fmt(n/1e6,  1) + ' Jt';
+        if (abs >= 1e3)  return 'Rp ' + fmt(n/1e3,  1) + ' Rb';
+        return 'Rp ' + Math.round(n).toLocaleString('id-ID');
+      };
+
+      const toFullIDR = (n) => 'Rp ' + Math.round(Number(n || 0)).toLocaleString('id-ID');
+
+      let yearlyChart = null;
+
+      function sliceByRange(rangeVal) {
+        const r = Number(rangeVal || 5);
+        if (r === 0 || yearlyLabels.length <= r) {
+          return { labels: yearlyLabels, omzet: yearlyOmzet, gross: yearlyGross, net: yearlyNet };
+        }
+        const start = Math.max(0, yearlyLabels.length - r);
+        return {
+          labels: yearlyLabels.slice(start),
+          omzet:  yearlyOmzet.slice(start),
+          gross:  yearlyGross.slice(start),
+          net:    yearlyNet.slice(start),
+        };
+      }
+
+      function render(rangeVal) {
+        const d = sliceByRange(rangeVal);
+
+        if (yearlyChart) yearlyChart.destroy();
+
+        yearlyChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: d.labels,
+            datasets: [
+              // Bars
+              {
+                label: 'Omzet',
+                data: d.omzet,
+                backgroundColor: 'rgba(244,81,30,0.35)',
+                borderColor: 'rgba(244,81,30,1)',
+                borderWidth: 1,
+                borderRadius: 8,
+                barThickness: 14,
+              },
+              {
+                label: 'Pendapatan Kotor',
+                data: d.gross,
+                backgroundColor: 'rgba(30,136,229,0.30)',
+                borderColor: 'rgba(30,136,229,1)',
+                borderWidth: 1,
+                borderRadius: 8,
+                barThickness: 14,
+              },
+              {
+                label: 'Pendapatan Bersih',
+                data: d.net,
+                backgroundColor: 'rgba(67,160,71,0.30)',
+                borderColor: 'rgba(67,160,71,1)',
+                borderWidth: 1,
+                borderRadius: 8,
+                barThickness: 14,
+              },
+
+              // Lines (trend)
+              {
+                type: 'line',
+                label: 'Tren Omzet',
+                data: d.omzet,
+                borderColor: 'rgba(244,81,30,1)',
+                backgroundColor: 'rgba(244,81,30,0.08)',
+                borderWidth: 2,
+                pointRadius: 2,
+                tension: 0.25,
+                fill: false,
+              },
+              {
+                type: 'line',
+                label: 'Tren Kotor',
+                data: d.gross,
+                borderColor: 'rgba(30,136,229,1)',
+                backgroundColor: 'rgba(30,136,229,0.08)',
+                borderWidth: 2,
+                pointRadius: 2,
+                tension: 0.25,
+                fill: false,
+              },
+              {
+                type: 'line',
+                label: 'Tren Bersih',
+                data: d.net,
+                borderColor: 'rgba(67,160,71,1)',
+                backgroundColor: 'rgba(67,160,71,0.08)',
+                borderWidth: 2,
+                pointRadius: 2,
+                tension: 0.25,
+                fill: false,
+              },
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { usePointStyle: true, boxWidth: 10, boxHeight: 10 }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    const v = context.parsed.y;
+                    return `${context.dataset.label}: ${toFullIDR(v)}`;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: { maxRotation: 0 }
+              },
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  callback: function(value) { return toShortIDR(value); }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // initial
+      render($range?.value || 5);
+
+      // range change
+      $range?.addEventListener('change', function () {
+        render(this.value);
+      });
+    });
+    </script>
+
     </div>
 </div>
 
