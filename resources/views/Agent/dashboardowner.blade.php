@@ -6198,6 +6198,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let currentCopicAgents   = [];
         let loadedHistoryForId   = null;
         let biayaBalikNamaManual = false;
+        let royaltyFeeManual = false;
         let currentClosingAgentName = '';
         let currentClosingAgentId   = '';
 
@@ -6385,6 +6386,7 @@ document.addEventListener('DOMContentLoaded', function () {
           if (biayaBalikNamaInput) biayaBalikNamaInput.value = '';
           if (biayaEksekusiInput) biayaEksekusiInput.value = '';
           biayaBalikNamaManual = false;
+          royaltyFeeManual = false;
           resetPembagian();
         }
 
@@ -6725,23 +6727,37 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-        function computeSelisihDanRoyalty(){
-          const hargaBidding = hargaMenangInput ? Number(onlyDigits(hargaMenangInput.value)) || 0 : 0;
-          const hargaDeal    = hargaDealInput ? Number(onlyDigits(hargaDealInput.value)) || 0 : 0;
-          const biayaBN      = biayaBalikNamaInput ? Number(onlyDigits(biayaBalikNamaInput.value)) || 0 : 0;
-          const biayaEks     = biayaEksekusiInput ? Number(onlyDigits(biayaEksekusiInput.value)) || 0 : 0;
-          const cobrokeFee   = cobrokeFeeInput ? Number(onlyDigits(cobrokeFeeInput.value)) || 0 : 0;
+function computeSelisihDanRoyalty(){
+  const hargaBidding = hargaMenangInput ? Number(onlyDigits(hargaMenangInput.value)) || 0 : 0;
+  const hargaDeal    = hargaDealInput ? Number(onlyDigits(hargaDealInput.value)) || 0 : 0;
+  const biayaBN      = biayaBalikNamaInput ? Number(onlyDigits(biayaBalikNamaInput.value)) || 0 : 0;
+  const biayaEks     = biayaEksekusiInput ? Number(onlyDigits(biayaEksekusiInput.value)) || 0 : 0;
+  const cobrokeFee   = cobrokeFeeInput ? Number(onlyDigits(cobrokeFeeInput.value)) || 0 : 0;
 
-          const selisih = Math.max(hargaDeal - (hargaBidding + biayaBN + biayaEks + cobrokeFee), 0);
+  // ✅ selisih KOTOR (sesuai rumus awal kamu)
+  const selisihKotor = Math.max(hargaDeal - (hargaBidding + biayaBN + biayaEks + cobrokeFee), 0);
 
-          if (selisihInput) selisihInput.value = selisih ? selisih.toLocaleString('id-ID') : '';
-          if (selisihSummaryEl) selisihSummaryEl.textContent = rupiah(selisih);
+  // ✅ Royalty:
+  // - kalau user sudah pernah edit field royalty => pakai input
+  // - kalau belum => AUTO dari selisihKotor * 0.003
+  let royalty = 0;
 
-          const royalty = Math.round(selisih * 0.003);
-          if (royaltyFeeInput) royaltyFeeInput.value = royalty ? royalty.toLocaleString('id-ID') : '';
+  if (royaltyFeeManual) {
+    royalty = royaltyFeeInput ? (Number(onlyDigits(royaltyFeeInput.value)) || 0) : 0;
+  } else {
+    royalty = Math.round(selisihKotor * 0.003);
+    if (royaltyFeeInput) royaltyFeeInput.value = royalty ? royalty.toLocaleString('id-ID') : '';
+  }
 
-          return selisih;
-        }
+  // ✅ selisih BERSIH (ini yang kamu mau: royalty mempengaruhi selisih)
+  const selisihBersih = Math.max(selisihKotor - royalty, 0);
+
+  if (selisihInput) selisihInput.value = selisihBersih ? selisihBersih.toLocaleString('id-ID') : '';
+  if (selisihSummaryEl) selisihSummaryEl.textContent = rupiah(selisihBersih);
+
+  return selisihBersih;
+}
+
 
         function updateKomisiFromPercent(){
           if (!komisiEstimasi) return;
@@ -7083,9 +7099,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (royaltyFeeInput) {
-          royaltyFeeInput.addEventListener('input', handleBiayaInput);
-          royaltyFeeInput.addEventListener('change', handleBiayaInput);
-        }
+  royaltyFeeInput.addEventListener('input', function(e){
+    handleBiayaInput(e);
+    if (!isHydratingModal) royaltyFeeManual = true;
+    updateAllCalc();
+  });
+  royaltyFeeInput.addEventListener('change', function(e){
+    handleBiayaInput(e);
+    if (!isHydratingModal) royaltyFeeManual = true;
+    updateAllCalc();
+  });
+}
+
 
         tabButtons.forEach(function(btn){
           btn.addEventListener('click', function(){
