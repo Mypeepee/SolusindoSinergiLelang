@@ -2805,6 +2805,12 @@ public function updatetransaksi(Request $request)
 
         // ✅ NEW: Team Leader dari dropdown (boleh NULL / kosong)
         'team_leader'      => 'nullable|string',
+
+        // ✅ NEW: Override pembagian dari modal "Ubah Pembagian"
+        'pembagian_override_porsi'         => 'nullable|array',
+        'pembagian_override_porsi.*'       => 'nullable|numeric|min:0|max:100',
+        'pembagian_override_agent'         => 'nullable|array',
+        'pembagian_override_agent.*'       => 'nullable|string',
     ]);
 
     // ✅ Team Leader: benar-benar dinamis (boleh NULL)
@@ -2977,10 +2983,10 @@ public function updatetransaksi(Request $request)
     |  SINKRONISASI DETAIL PEMBAGIAN KE TABEL transaction_commissions
     |--------------------------------------------------------------------------
     |  - Basis = $basisPendapatan (fee / selisih harga)
-    |  - Skema pembagian mengikuti KONSTANTA yang sama seperti di JS
+    |  - Semua pembagian (rate + agent) SUMBER DARI OVERRIDE MODAL "Ubah Pembagian"
     |  - COPIC: dibagi rata ke semua agent yang PERNAH pegang aset yg sama
     |    (berdasarkan sertifikat + luas + kota), tanpa dobel kalau agent sama.
-    |  - NEW: FEE_TL (Fee Team Leader) dinamis:
+    |  - FEE_TL (Fee Team Leader) dinamis:
     |      fee_tl = min(basis*10%, 2.000.000)
     |      diambil dari SERVICE dulu, kalau kurang -> REWARD, kalau masih kurang -> PROMO_FUND
     */
@@ -3015,53 +3021,68 @@ public function updatetransaksi(Request $request)
         TransactionCommission::where('id_transaction', $idTransaksi)->delete();
     } else {
 
-        // --- 1. Konstanta skema (harus sama dengan JS) ---
-        $KOMISI_SCHEMA = [
-            ['kode' => 'UP1',        'rate' => 0.004000],
-            ['kode' => 'UP2',        'rate' => 0.003000],
-            ['kode' => 'UP3',        'rate' => 0.002000],
-            ['kode' => 'LISTER',     'rate' => 0.010000],
-            ['kode' => 'COPIC',      'rate' => 0.002500],
-            ['kode' => 'CONS',       'rate' => 0.008500],
-            ['kode' => 'REWARD',     'rate' => 0.030000],
-            ['kode' => 'INV_FUND',   'rate' => 0.020000],
-            ['kode' => 'PROMO_FUND', 'rate' => 0.020000],
-            ['kode' => 'PIC1',       'rate' => 0.040000],
-            ['kode' => 'PIC2',       'rate' => 0.040000],
-            ['kode' => 'PIC3',       'rate' => 0.040000],
-            ['kode' => 'PIC4',       'rate' => 0.040000],
-            ['kode' => 'PIC5',       'rate' => 0.040000],
-            ['kode' => 'THC',        'rate' => 0.400000],
-            ['kode' => 'SERVICE',    'rate' => 0.100000],
-            ['kode' => 'FEE_TL',     'rate' => 0.000000], // NEW (dinamis, dipotong dari SERVICE/REWARD/PROMO_FUND)
-            ['kode' => 'PRINC_FEE',  'rate' => 0.030000],
-            ['kode' => 'INV_SHARE',  'rate' => 0.095200],
-            ['kode' => 'MGMT_FUND1', 'rate' => 0.029750],
-            ['kode' => 'MGMT_FUND2', 'rate' => 0.029750],
-            ['kode' => 'EMP_INC',    'rate' => 0.015300],
-        ];
+        // ==========================================================
+        // ✅ SUMBER PEMBAGIAN 100% DARI OVERRIDE (TANPA KONSTANTA RATE/AGENT)
+        // ==========================================================
 
-        // mapping kode skema -> id_agent tetap (seperti di JS)
-        $KOMISI_KODE_TO_AGENT_ID = [
-            'LISTER'     => 'AG001',
-            'CONS'       => 'AG014',
-            'REWARD'     => 'AG006',
-            'INV_FUND'   => 'AG006',
-            'PROMO_FUND' => 'AG006',
-            'PIC1'       => 'AG006',
-            'PIC2'       => 'AG012',
-            'PIC3'       => 'AG008',
-            'PIC4'       => 'AG014',
-            'PIC5'       => 'AG009',
-            'SERVICE'    => 'AG006',
-            'PRINC_FEE'  => 'AG012',
-            'INV_SHARE'  => 'AG001',
-            'MGMT_FUND1' => 'AG006',
-            'MGMT_FUND2' => 'AG001',
-            'EMP_INC'    => 'AG001',
-        ];
+        $overridePorsi = (array) $request->input('pembagian_override_porsi', []);
+        $overrideAgent = (array) $request->input('pembagian_override_agent', []);
 
-        // --- 2. Hitung upline dari closing agent (sama seperti JS) ---
+        // Wajib ada override (sesuai requirement: DB harus mengikuti override)
+        if (empty($overridePorsi)) {
+            return back()->with('error', 'Pembagian belum di-set. Silakan buka "Ubah Pembagian" lalu klik Simpan (total 100%).')->withInput();
+        }
+
+        // Normalisasi key -> uppercase
+        $normalizeKeyedArray = function (array $arr) {
+            $out = [];
+            foreach ($arr as $k => $v) {
+                $kk = strtoupper(trim((string) $k));
+                if ($kk === '') continue;
+                $out[$kk] = $v;
+            }
+            return $out;
+        };
+        $overridePorsi = $normalizeKeyedArray($overridePorsi);
+        $overrideAgent = $normalizeKeyedArray($overrideAgent);
+
+        // Parse persen string -> float (0..100)
+        $parsePercent = function ($v) {
+            $s = trim((string) $v);
+            if ($s === '') return 0.0;
+            $s = str_replace(',', '.', $s);
+            $s = preg_replace('/[^0-9.\-]/', '', $s);
+            $n = (float) $s;
+            if ($n < 0) $n = 0;
+            if ($n > 100) $n = 100;
+            return $n;
+        };
+
+        // Convert persen -> rate desimal
+        $rateMap = [];
+        $totalPct = 0.0;
+        foreach ($overridePorsi as $kode => $pctRaw) {
+            if ($kode === 'FEE_TL') {
+                continue; // AUTO, tidak ikut total 100%
+            }
+            $pct = $parsePercent($pctRaw);
+            $rateMap[$kode] = $pct / 100;
+            $totalPct += $pct;
+        }
+
+        // Validasi total 100% (exclude FEE_TL)
+        if (abs(100 - $totalPct) > 0.01) {
+            return back()->with('error', 'Total porsi wajib tepat 100%. Server membaca: ' . number_format($totalPct, 2) . '%.')->withInput();
+        }
+
+        // Helper normalisasi agent id (allow empty)
+        $normalizeAgentId = function ($v) {
+            $s = trim((string) $v);
+            if ($s === '' || $s === '-' || strtolower($s) === 'null') return '';
+            return $s;
+        };
+
+        // --- 2. Hitung upline dari closing agent (dipakai jika UP1/UP2/UP3 tidak dioverride agent) ---
         $getUplineId = function (?string $agentId, ?string $defaultId = null) {
             if (!$agentId) {
                 return $defaultId;
@@ -3089,41 +3110,64 @@ public function updatetransaksi(Request $request)
             ->values()
             ->all();    // contoh: ['AG001','AG002']
 
-        // --- 4. Susun map role -> daftar id_agent ---
+        // --- 4. Susun map role -> daftar id_agent (agent juga dari override) ---
         $roleAgentMap = [];
 
-        // THC = agent closing
-        if ($idAgent) {
-            $roleAgentMap['THC'] = [$idAgent];
-        }
+        // Buat daftar role dari override porsi (tambahkan FEE_TL kalau TL ada)
+        $roleKeys = array_keys($rateMap);
+        $roleKeys = array_values(array_unique(array_filter($roleKeys)));
 
-        // Upline
-        if ($up1Id) {
-            $roleAgentMap['UP1'] = [$up1Id];
-        }
+        // THC/UP1/UP2/UP3 bisa jadi tidak ada di rateMap kalau user set 0, tapi kalau ada di override agent tetap bisa masuk.
+        // Namun sesuai requirement pembagian dari override porsi, kita ikuti role yang punya rate > 0.
+        foreach ($roleKeys as $kode) {
+            $kode = strtoupper(trim((string) $kode));
+            if ($kode === '') continue;
 
-        // ✅ Fee TL benar-benar dinamis: kalau NULL tidak dibuat
-        if ($teamLeaderId) {
-            $roleAgentMap['FEE_TL'] = [$teamLeaderId];
-        }
+            // COPIC: jika override agent ada -> single, jika tidak -> multi dari history
+            if ($kode === 'COPIC') {
+                $ov = $normalizeAgentId($overrideAgent['COPIC'] ?? '');
+                if ($ov !== '') {
+                    $roleAgentMap['COPIC'] = [$ov];
+                } else {
+                    if (!empty($copicAgentIds)) $roleAgentMap['COPIC'] = $copicAgentIds;
+                }
+                continue;
+            }
 
-        if ($up2Id) {
-            $roleAgentMap['UP2'] = [$up2Id];
-        }
-        if ($up3Id) {
-            $roleAgentMap['UP3'] = [$up3Id];
-        }
+            // THC: default closing agent jika tidak dioverride
+            if ($kode === 'THC') {
+                $ov = $normalizeAgentId($overrideAgent['THC'] ?? '');
+                $roleAgentMap['THC'] = [($ov !== '' ? $ov : (string) $idAgent)];
+                continue;
+            }
 
-        // Static mapping (LISTER, CONS, PIC1.., office funds, dll)
-        foreach ($KOMISI_KODE_TO_AGENT_ID as $kode => $agentStaticId) {
-            if ($agentStaticId) {
-                $roleAgentMap[$kode] = [$agentStaticId];
+            // UP1/UP2/UP3: default dari upline jika tidak dioverride
+            if ($kode === 'UP1') {
+                $ov = $normalizeAgentId($overrideAgent['UP1'] ?? '');
+                $roleAgentMap['UP1'] = [($ov !== '' ? $ov : (string) $up1Id)];
+                continue;
+            }
+            if ($kode === 'UP2') {
+                $ov = $normalizeAgentId($overrideAgent['UP2'] ?? '');
+                $roleAgentMap['UP2'] = [($ov !== '' ? $ov : (string) $up2Id)];
+                continue;
+            }
+            if ($kode === 'UP3') {
+                $ov = $normalizeAgentId($overrideAgent['UP3'] ?? '');
+                $roleAgentMap['UP3'] = [($ov !== '' ? $ov : (string) $up3Id)];
+                continue;
+            }
+
+            // Role lain: agent harus dari override_agent
+            $ov = $normalizeAgentId($overrideAgent[$kode] ?? '');
+            if ($ov !== '') {
+                $roleAgentMap[$kode] = [$ov];
             }
         }
 
-        // COPIC: semua agent unik dari aset yang sama
-        if (!empty($copicAgentIds)) {
-            $roleAgentMap['COPIC'] = $copicAgentIds;
+        // ✅ Fee TL dinamis: kalau NULL tidak dibuat
+        if ($teamLeaderId) {
+            $roleAgentMap['FEE_TL'] = [$teamLeaderId];
         }
 
         // Pastikan tiap list unik & tidak kosong
@@ -3137,7 +3181,16 @@ public function updatetransaksi(Request $request)
             }
         }
 
-        // --- 4.5. NEW: Perhitungan dinamis FEE_TL & pengurangan SERVICE/REWARD/PROMO_FUND (BERLAKU UNTUK SEMUA SKEMA) ---
+        // Validasi: kalau ada rate > 0 tetapi agent kosong (kecuali COPIC yg boleh auto multi)
+        foreach ($rateMap as $kode => $rate) {
+            if ((float) $rate <= 0) continue;
+            if ($kode === 'COPIC') continue;
+            if (!isset($roleAgentMap[$kode]) || empty($roleAgentMap[$kode])) {
+                return back()->with('error', 'Agent untuk pos ' . $kode . ' belum dipilih pada "Ubah Pembagian".')->withInput();
+            }
+        }
+
+        // --- 4.5. NEW: Perhitungan dinamis FEE_TL & pengurangan SERVICE/REWARD/PROMO_FUND (BERDASARKAN OVERRIDE RATE) ---
         $dynFeeTl   = 0;
         $dynService = null;
         $dynReward  = null;
@@ -3145,15 +3198,18 @@ public function updatetransaksi(Request $request)
 
         $maxFeeTl = 2000000;
 
-        $serviceNom = (int) round($basisPendapatan * 0.10);
-        $rewardNom  = (int) round($basisPendapatan * 0.03);
-        $promoNom   = (int) round($basisPendapatan * 0.02);
+        $serviceRate = (float) ($rateMap['SERVICE'] ?? 0);
+        $rewardRate  = (float) ($rateMap['REWARD'] ?? 0);
+        $promoRate   = (float) ($rateMap['PROMO_FUND'] ?? 0);
+
+        $serviceNom = (int) round($basisPendapatan * $serviceRate);
+        $rewardNom  = (int) round($basisPendapatan * $rewardRate);
+        $promoNom   = (int) round($basisPendapatan * $promoRate);
 
         $feeTlNom = 0;
-if ($teamLeaderId) {
-    $feeTlNom = (int) round(min($basisPendapatan * 0.10, $maxFeeTl));
-}
-
+        if ($teamLeaderId) {
+            $feeTlNom = (int) round(min($basisPendapatan * 0.10, $maxFeeTl));
+        }
 
         // potong dari SERVICE dulu
         $serviceNom = $serviceNom - $feeTlNom;
@@ -3183,9 +3239,13 @@ if ($teamLeaderId) {
         // --- 5. Sinkronisasi ke transaction_commissions (tanpa reset ID) ---
         $keptIds = []; // id row yang dipertahankan / diupdate
 
-        foreach ($KOMISI_SCHEMA as $item) {
-            $kode = $item['kode'];
-            $rate = (float) $item['rate'];
+        foreach ($rateMap as $kode => $rate) {
+            $kode = strtoupper(trim((string) $kode));
+            $rate = (float) $rate;
+
+            if ($rate <= 0) {
+                continue;
+            }
 
             // Kalau tidak ada agent untuk kode ini, skip
             if (!isset($roleAgentMap[$kode]) || empty($roleAgentMap[$kode])) {
@@ -3195,7 +3255,7 @@ if ($teamLeaderId) {
             $agents = $roleAgentMap[$kode];
 
             if ($kode === 'COPIC') {
-                // COPIC 0.25% dibagi rata ke semua agent COPIC
+                // COPIC dibagi rata ke semua agent COPIC
                 $count = count($agents);
                 if ($count < 1) {
                     continue;
@@ -3225,17 +3285,15 @@ if ($teamLeaderId) {
 
                 foreach ($agents as $agId) {
 
-                    // ✅ override nominal dinamis untuk SERVICE/REWARD/PROMO/FEE_TL BERLAKU UNTUK SEMUA SKEMA
-                    if ($kode === 'SERVICE' && $dynService !== null) {
+                    // ✅ override nominal dinamis untuk SERVICE/REWARD/PROMO/FEE_TL
+                    if ($kode === 'SERVICE') {
                         $pendapatan = (int) $dynService;
-                    } elseif ($kode === 'REWARD' && $dynReward !== null) {
+                    } elseif ($kode === 'REWARD') {
                         $pendapatan = (int) $dynReward;
-                    } elseif ($kode === 'PROMO_FUND' && $dynPromo !== null) {
+                    } elseif ($kode === 'PROMO_FUND') {
                         $pendapatan = (int) $dynPromo;
-                    } elseif ($kode === 'FEE_TL') {
-                        $pendapatan = (int) $dynFeeTl;
                     } else {
-                        // Kode lain: masing2 agent (biasanya cuma 1) dapat full rate
+                        // Kode lain: rate murni dari override
                         $pendapatan = (int) round($basisPendapatan * $rate);
                     }
 
@@ -3254,6 +3312,26 @@ if ($teamLeaderId) {
                         ]
                     );
 
+                    $keptIds[] = $row->id;
+                }
+            }
+        }
+
+        // ✅ Buat row FEE_TL terpisah (karena tidak ikut rateMap / total 100%)
+        if (isset($roleAgentMap['FEE_TL']) && !empty($roleAgentMap['FEE_TL'])) {
+            foreach ($roleAgentMap['FEE_TL'] as $agId) {
+                $pendapatan = (int) $dynFeeTl;
+                if ($pendapatan > 0) {
+                    $row = TransactionCommission::updateOrCreate(
+                        [
+                            'id_transaction' => $idTransaksi,
+                            'role'           => 'FEE_TL',
+                            'id_agent'       => $agId,
+                        ],
+                        [
+                            'pendapatan'     => $pendapatan,
+                        ]
+                    );
                     $keptIds[] = $row->id;
                 }
             }
@@ -3290,6 +3368,7 @@ if ($teamLeaderId) {
 
     return back()->with('success', 'Status transaksi berhasil disimpan.');
 }
+
 
 
 
