@@ -4972,76 +4972,6 @@ document.addEventListener('DOMContentLoaded', function () {
         window.__TC_AGENT_LIST = window.__TC_AGENT_LIST || [];
         const AGENTS = Array.isArray(window.__TC_AGENT_LIST) ? window.__TC_AGENT_LIST.slice() : [];
 
-        // =========================================================
-        // ✅ SYNC TEAM LEADER PANEL <-> FEE_TL (AGENT SAJA)
-        // =========================================================
-        function getAgentNameFromList(id){
-          const key = String(id || '').trim();
-          if (!key) return '';
-          const found = AGENTS.find(function(a){ return String(a.id) === String(key); });
-          if (found && found.name) return String(found.name);
-          const fromMap = resolveAgentNameById(key);
-          return fromMap ? String(fromMap) : key;
-        }
-
-        function setTeamLeaderUIById(id){
-          const teamInput  = document.getElementById('tc-team-leader');
-          const labelEl    = document.getElementById('tc-tl-label');
-          const avatarEl   = document.getElementById('tc-tl-avatar-btn');
-          const summaryEl  = document.getElementById('tc-tl-summary');
-
-          const newId = String(id || '').trim();
-
-          if (teamInput) teamInput.value = newId;
-
-          let name = '— Tidak ada —';
-          let initial = '-';
-
-          if (newId) {
-            name = getAgentNameFromList(newId) || newId;
-            const ch = String(name || '').trim().charAt(0);
-            initial = ch ? ch.toUpperCase() : 'A';
-          }
-
-          if (labelEl) labelEl.textContent = name;
-          if (avatarEl) avatarEl.textContent = initial;
-          if (summaryEl) summaryEl.textContent = name;
-        }
-
-        function upsertHiddenOverrideAgent(pos, val){
-          const posCode = String(pos || '').trim();
-          const v = String(val || '').trim();
-          if (!posCode) return;
-
-          const name = 'pembagian_override_agent['+ posCode +']';
-          const q = 'input[name="'+ (window.CSS && CSS.escape ? CSS.escape(name) : name) +'"]';
-          let input = hiddenWrap.querySelector(q);
-
-          if (!v) { if (input) input.remove(); return; }
-
-          if (!input) {
-            input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = name;
-            hiddenWrap.appendChild(input);
-          }
-          input.value = v;
-        }
-
-        function syncFeeTlFromTeamLeaderInput(){
-          const tlEl = document.getElementById('tc-team-leader');
-          const tlId = tlEl ? String(tlEl.value || '').trim() : '';
-
-          // pastikan hidden override FEE_TL ikut TL
-          upsertHiddenOverrideAgent('FEE_TL', tlId);
-
-          // kalau modal sedang terbuka dan select FEE_TL ada -> set val nya
-          const feeSel = body.querySelector('select.tc-agent-select[data-pos="FEE_TL"]');
-          if (feeSel) {
-            feeSel.value = tlId;
-          }
-        }
-
         function closeModal(){
           overlay.classList.add('d-none');
         }
@@ -5191,6 +5121,37 @@ document.addEventListener('DOMContentLoaded', function () {
           return optHtml;
         }
 
+        // ✅ sinkron FEE_TL di modal -> panel Team Leader
+        function syncTeamLeaderFromFeeTlSelect(newId){
+          const val = String(newId || '').trim();
+
+          const tlHidden = document.getElementById('tc-team-leader');
+          if (tlHidden) tlHidden.value = val;
+
+          const nm = val ? (resolveAgentNameById(val) || val) : '— Tidak ada —';
+
+          const labelEl = document.getElementById('tc-tl-label');
+          if (labelEl) labelEl.textContent = nm;
+
+          const summaryEl = document.getElementById('tc-tl-summary');
+          if (summaryEl) summaryEl.textContent = nm;
+
+          const avatarBtn = document.getElementById('tc-tl-avatar-btn');
+          if (avatarBtn) {
+            if (!val) {
+              avatarBtn.textContent = '-';
+            } else {
+              const first = String(nm).trim().charAt(0);
+              avatarBtn.textContent = first ? first.toUpperCase() : 'A';
+            }
+          }
+
+          // refresh detail pembagian
+          if (typeof window.updateAllCalc === 'function') {
+            try { window.updateAllCalc(); } catch(e){}
+          }
+        }
+
         function openModal(){
           const out = [];
 
@@ -5216,18 +5177,19 @@ document.addEventListener('DOMContentLoaded', function () {
               if (thcId && !prevA) agentValue = thcId;
             }
 
+            // ✅ FEE_TL agent: ambil dari panel Team Leader (#tc-team-leader) kalau belum override
+            if (code === 'FEE_TL') {
+              const tlNow = document.getElementById('tc-team-leader')
+                ? String(document.getElementById('tc-team-leader').value || '').trim()
+                : '';
+              if (tlNow && !prevA) agentValue = tlNow;
+            }
+
             // ✅ UP1/UP2/UP3: ambil dari penelusuran upline agent closing (kalau belum override)
             if (!prevA) {
               if (code === 'UP1' && upl.up1) agentValue = upl.up1;
               if (code === 'UP2' && upl.up2) agentValue = upl.up2;
               if (code === 'UP3' && upl.up3) agentValue = upl.up3;
-            }
-
-            // ✅ FEE_TL: default agent ikut panel Team Leader (#tc-team-leader) jika belum override
-            if (code === 'FEE_TL' && !prevA) {
-              const tlEl = document.getElementById('tc-team-leader');
-              const tlId = tlEl ? String(tlEl.value || '').trim() : '';
-              if (tlId) agentValue = tlId;
             }
 
             // COPIC agent tidak dipilih manual (auto dari CO PIC)
@@ -5241,16 +5203,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 ? ('<input type="text" class="form-control form-control-sm tc-porsi-input" data-pos="'+ escapeHtml(code) +'" value="AUTO" disabled>')
                 : ('<input type="number" min="0" step="0.01" class="form-control form-control-sm tc-porsi-input" data-pos="'+ escapeHtml(code) +'" value="'+ escapeHtml(formatPercentValue(porsiValue)) +'" placeholder="0">');
 
-            // ✅ REVISI: FEE_TL dropdown agent TIDAK AUTO/DISABLED (hanya COPIC yang AUTO)
+            // ✅ COPIC & FEE_TL SEKARANG DIBUKA (tidak AUTO/disabled)
             const agentSelect =
-  (isCopic)
-    ? ('<select class="form-select form-select-sm tc-agent-select" data-pos="'+ escapeHtml(code) +'" disabled>' +
-        '<option value="">AUTO</option>' +
-      '</select>')
-    : ('<select class="form-select form-select-sm tc-agent-select" data-pos="'+ escapeHtml(code) +'">' +
-        buildAgentOptions(agentValue) +
-      '</select>');
-
+              ('<select class="form-select form-select-sm tc-agent-select" data-pos="'+ escapeHtml(code) +'">' +
+                buildAgentOptions(agentValue) +
+              '</select>');
 
             out.push(
               '<tr data-pos-code="'+ escapeHtml(code) +'">' +
@@ -5278,9 +5235,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
           // isi hidden pertama kali (biar detail pembagian langsung ikut template)
           persistOverridesFromTable();
-
-          // ✅ pastikan override FEE_TL agent selalu mengikuti TL input (kalau TL sudah di-set)
-          syncFeeTlFromTeamLeaderInput();
         }
 
         function isTotalValid100(){
@@ -5307,35 +5261,18 @@ document.addEventListener('DOMContentLoaded', function () {
           const sel = e.target.closest('select.tc-agent-select');
           if (!sel) return;
 
-          // simpan override agent
           persistOverridesFromTable();
 
-          // ✅ kalau yang diubah adalah FEE_TL, maka update PANEL Team Leader juga
+          // ✅ kalau yang diganti FEE_TL -> sinkron ke panel TL
           const pos = String(sel.dataset.pos || '').trim();
           if (pos === 'FEE_TL') {
-            const newTlId = String(sel.value || '').trim();
-            setTeamLeaderUIById(newTlId);
-            syncFeeTlFromTeamLeaderInput();
-
-            // refresh detail pembagian (kalau fungsi updateAllCalc ada di scope global)
+            syncTeamLeaderFromFeeTlSelect(sel.value);
+          } else {
+            // refresh detail pembagian
             if (typeof window.updateAllCalc === 'function') {
               try { window.updateAllCalc(); } catch(e){}
             }
           }
-        });
-
-        // ✅ kalau user ganti Team Leader dari panel (klik .tc-tl-option),
-        //    maka FEE_TL di modal (kalau terbuka) ikut berubah + hidden override ikut sync
-        document.addEventListener('click', function(e){
-          const opt = e.target.closest('.tc-tl-option');
-          if (!opt) return;
-          setTimeout(function(){
-            syncFeeTlFromTeamLeaderInput();
-            // refresh detail pembagian (kalau fungsi updateAllCalc ada di scope global)
-            if (typeof window.updateAllCalc === 'function') {
-              try { window.updateAllCalc(); } catch(e){}
-            }
-          }, 0);
         });
 
         if (btnSave) {
@@ -5348,9 +5285,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // ✅ persist + paksa MGMT tersimpan
             persistOverridesFromTable();
-
-            // ✅ pastikan team_leader & override FEE_TL selalu sinkron sebelum tutup
-            syncFeeTlFromTeamLeaderInput();
 
             closeModal();
 
@@ -5528,15 +5462,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
           const isCopic = (kode === 'COPIC');
 
-          // ===== COPIC multi row =====
+          // ===== COPIC: kalau ada override agent -> 1 baris saja, kalau tidak -> split seperti sebelumnya =====
           if (isCopic) {
+            const overrideCopicId = getOverrideAgent('COPIC');
+            const totalRate = getEffectiveRate('COPIC');
+
+            if (overrideCopicId) {
+              const nm = resolveAgentName(overrideCopicId) || '-';
+              const nominal = Math.round(Number(baseAmount || 0) * totalRate);
+
+              html += '<tr>' +
+                '<td class="text-start">' +
+                  '<span class="badge bg-light text-muted border me-1">COPIC</span><span>CO PIC</span>' +
+                '</td>' +
+                '<td class="text-end">' + formatPercentFromRate(totalRate, true) + '</td>' +
+                '<td class="text-end">' + rupiah(nominal) + '</td>' +
+                '<td class="text-center small text-muted">' + escapeHtml(nm) + '</td>' +
+              '</tr>';
+              return;
+            }
+
             let agents = (Array.isArray(currentCopicAgents) && currentCopicAgents.length)
               ? currentCopicAgents
               : (cleanCopicNameSafe(currentCopicName) && currentCopicName !== '-' && currentCopicName !== '–'
                   ? [cleanCopicNameSafe(currentCopicName)]
                   : []);
-
-            const totalRate = getEffectiveRate('COPIC');
 
             if (agents.length > 0 && totalRate > 0) {
               const perRate = totalRate / agents.length;
@@ -5620,6 +5570,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     })();
   </script>
+
 
 
 
