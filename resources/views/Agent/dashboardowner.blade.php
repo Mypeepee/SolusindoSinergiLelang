@@ -125,10 +125,10 @@
 <div class="container-fluid">
 
     @php
-    $allowed = ['verifikasi','progress','performance','stoker','calendar'];
+    $allowed = ['analitik','verifikasi','progress','performance','stoker','calendar'];
     $tab = request('tab');
     if (!in_array($tab, $allowed, true)) {
-        $tab = 'verifikasi'; // default benar2 fresh
+        $tab = 'analitik'; // default benar2 fresh
     }
 
     // Kalau tab=stoker tapi TIDAK ada filter Stoker, paksa balik ke verifikasi
@@ -151,6 +151,15 @@
 
 
   <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {{ $tab==='analitik' ? 'active' : '' }}"
+              id="analitik-tab" data-bs-toggle="tab" data-bs-target="#analitik"
+              type="button" role="tab" aria-controls="analitik"
+              aria-selected="{{ $tab==='analitik' ? 'true' : 'false' }}">
+        📊 Analitik
+      </button>
+    </li>
+
     <li class="nav-item" role="presentation">
       <button class="nav-link {{ $tab==='verifikasi' ? 'active' : '' }}"
               id="verifikasi-tab" data-bs-toggle="tab" data-bs-target="#verifikasi"
@@ -1459,6 +1468,854 @@
     </script>
 
         {{-- ========== Stoker ========== --}}
+
+{{-- ========== Analitik ========== --}}
+<div class="tab-pane fade {{ $tab==='analitik' ? 'show active' : '' }}" id="analitik" role="tabpanel" aria-labelledby="analitik-tab">
+  <div class="row">
+    <div class="col-12">
+
+      <div class="card shadow-sm border-0 mb-4">
+
+        <div class="card-body">
+          {{-- HOST STABIL untuk chart (bisa kamu ganti jadi @include partial) --}}
+          <div id="analitik-list-wrap">
+            <div id="analitik-loading" class="export-loading d-none">
+              <div class="spinner-border" role="status" aria-label="Loading"></div>
+            </div>
+
+            <div id="analitik-fragment-host">
+
+              <div class="container-fluid px-3 mt-4">
+                {{-- =========================
+                 KPI HEADER + YEAR PICKER
+            ========================= --}}
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <div>
+                  <div class="kpi-section-title">Ringkasan Keuangan</div>
+                  <div class="kpi-section-sub">Perbandingan full year: {{ $year }} vs {{ $prevYear }}</div>
+                </div>
+
+                <form method="GET" class="d-flex align-items-center gap-2">
+                  {{-- pertahankan query lain (tab, filter, dll) --}}
+                  @foreach(request()->except('year') as $k => $v)
+                    @if(is_array($v))
+                      @foreach($v as $vv)
+                        <input type="hidden" name="{{ $k }}[]" value="{{ $vv }}">
+                      @endforeach
+                    @else
+                      <input type="hidden" name="{{ $k }}" value="{{ $v }}">
+                    @endif
+                  @endforeach
+
+                  <span class="text-muted small">Tahun</span>
+                  <select name="year" class="form-select form-select-sm kpi-year-select" onchange="this.form.submit()">
+                    @foreach(($availableYears ?? range(now()->year, now()->year-5)) as $y)
+                      <option value="{{ $y }}" @selected((int)$year === (int)$y)>{{ $y }}</option>
+                    @endforeach
+                  </select>
+                </form>
+              </div>
+
+              <script>
+              document.addEventListener('DOMContentLoaded', function () {
+                // aman: cuma init kalau bootstrap tooltip tersedia
+                if (window.bootstrap && bootstrap.Tooltip) {
+                  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+                    new bootstrap.Tooltip(el);
+                  });
+                }
+              });
+              </script>
+
+              @php
+                $rupiah = function($n){
+                  return 'Rp ' . number_format((float)$n, 0, ',', '.');
+                };
+
+                // Format pendek biar gampang dibaca (tetap ada tooltip untuk angka full)
+                $rupiahShort = function($n){
+                  $n = (float)$n;
+                  $abs = abs($n);
+                  if ($abs >= 1e12) return 'Rp ' . number_format($n/1e12, 2, ',', '.') . ' T';
+                  if ($abs >= 1e9)  return 'Rp ' . number_format($n/1e9, 2, ',', '.')  . ' M';
+                  if ($abs >= 1e6)  return 'Rp ' . number_format($n/1e6, 1, ',', '.')  . ' Jt';
+                  if ($abs >= 1e3)  return 'Rp ' . number_format($n/1e3, 1, ',', '.')  . ' Rb';
+                  return 'Rp ' . number_format($n, 0, ',', '.');
+                };
+
+                $trend = function($g){
+                  if ($g === null) {
+                    return '<span class="badge kpi-badge kpi-badge-neutral">YoY: —</span>';
+                  }
+                  $isUp = $g >= 0;
+                  $icon = $isUp ? 'bi-arrow-up-right' : 'bi-arrow-down-right';
+                  $cls  = $isUp ? 'kpi-badge-up' : 'kpi-badge-down';
+                  return '<span class="badge kpi-badge '.$cls.'"><i class="bi '.$icon.' me-1"></i>YoY '.
+                         number_format($g, 1, ',', '.') . '%</span>';
+                };
+
+                $kpis = [
+                  [
+                    'title' => 'Omzet',
+                    'hint'  => "Omzet = Σ harga_deal untuk transaksi pada Tahun {$year}",
+                    'value' => $trxSummaryYear->omzet ?? 0,
+                    'prev'  => $trxSummaryPrevYear->omzet ?? 0,
+                    'all'   => $trxSummaryAll->omzet ?? null,
+                    'growth'=> $trxGrowthYoY->omzet ?? null,
+                    'icon'  => 'bi-cash-stack',
+                    'iconClass' => 'kpi-icon-omzet',
+                  ],
+                  [
+                    'title' => 'Pendapatan Kotor',
+                    'hint'  => "Pendapatan Kotor = Σ basis_pendapatan pada Tahun {$year}",
+                    'value' => $trxSummaryYear->pendapatan_kotor ?? 0,
+                    'prev'  => $trxSummaryPrevYear->pendapatan_kotor ?? 0,
+                    'all'   => $trxSummaryAll->pendapatan_kotor ?? null,
+                    'growth'=> $trxGrowthYoY->pendapatan_kotor ?? null,
+                    'icon'  => 'bi-graph-up',
+                    'iconClass' => 'kpi-icon-gross',
+                  ],
+                  [
+              'title' => 'Pendapatan Bersih (Jason & Lieming)',
+              'hint'  => "Pendapatan Bersih = Σ transaction_commissions.pendapatan untuk AG001 & AG006 pada Tahun {$year}",
+              'value' => $netSummaryYear->pendapatan_bersih ?? 0,
+              'prev'  => $netSummaryPrevYear->pendapatan_bersih ?? 0,
+              'all'   => $netSummaryAll->pendapatan_bersih ?? null,
+              'growth'=> $netGrowthYoY->pendapatan_bersih ?? null,
+              'icon'  => 'bi-people',
+              'iconClass' => 'kpi-icon-office',
+            ],
+
+                ];
+              @endphp
+
+              <div class="row g-3 mb-3">
+                @foreach($kpis as $kpi)
+                  <div class="col-12 col-md-4">
+                    <div class="card shadow-sm border-0 kpi-card h-100">
+                      <div class="card-body d-flex justify-content-between align-items-start">
+                        <div class="me-3 flex-grow-1">
+
+                          <div class="d-flex align-items-center gap-2 mb-1">
+                            <div class="kpi-title">{{ $kpi['title'] }} <span class="text-muted">(Tahun {{ $year }})</span></div>
+                            <i class="bi bi-info-circle kpi-info"
+                               data-bs-toggle="tooltip"
+                               title="{{ $kpi['hint'] }}"></i>
+                          </div>
+
+                          {{-- nilai utama: tampil pendek, tooltip angka full --}}
+                          <div class="kpi-value"
+                               data-bs-toggle="tooltip"
+                               title="{{ $rupiah($kpi['value']) }}">
+                            {{ $rupiahShort($kpi['value']) }}
+                          </div>
+
+                          {{-- meta rapi: Tahun lalu + Akumulasi (kalau ada) --}}
+                          <div class="kpi-meta mt-2">
+                            <div class="d-flex flex-wrap gap-3">
+                              <div>
+                                <span class="kpi-meta-label">Tahun {{ $prevYear }}</span>
+                                <span class="kpi-meta-value" data-bs-toggle="tooltip" title="{{ $rupiah($kpi['prev']) }}">
+                                  {{ $rupiahShort($kpi['prev']) }}
+                                </span>
+                              </div>
+
+                              @if(!is_null($kpi['all']))
+                                <div>
+                                  <span class="kpi-meta-label">Akumulasi</span>
+                                  <span class="kpi-meta-value" data-bs-toggle="tooltip" title="{{ $rupiah($kpi['all']) }}">
+                                    {{ $rupiahShort($kpi['all']) }}
+                                  </span>
+                                </div>
+                              @endif
+                            </div>
+                          </div>
+
+                        </div>
+
+                        <div class="kpi-icon {{ $kpi['iconClass'] }}">
+                          <i class="bi {{ $kpi['icon'] }}"></i>
+                        </div>
+                      </div>
+
+                      <div class="card-footer bg-transparent border-0 pt-0 pb-3 px-3 d-flex align-items-center justify-content-between">
+                        {!! $trend($kpi['growth']) !!}
+                        <span class="text-muted small">vs {{ $prevYear }}</span>
+                      </div>
+                    </div>
+                  </div>
+                @endforeach
+              </div>
+
+              <style>
+              /* Header section */
+              .kpi-section-title{
+                font-weight: 700;
+                font-size: 1rem;
+                line-height: 1.2;
+              }
+              .kpi-section-sub{
+                color: #6c757d;
+                font-size: .875rem;
+              }
+              .kpi-year-select{
+                min-width: 110px;
+              }
+
+              /* Card */
+              .kpi-card{
+                border-radius: 18px !important;
+              }
+              .kpi-title{
+                font-size: .9rem;
+                font-weight: 600;
+                color: #495057;
+              }
+              .kpi-info{
+                color: #adb5bd;
+                cursor: pointer;
+              }
+              .kpi-value{
+                font-size: 1.75rem;
+                font-weight: 800;
+                letter-spacing: -0.3px;
+                color: #212529;
+              }
+
+              /* Meta */
+              .kpi-meta{
+                font-size: .85rem;
+                color: #6c757d;
+              }
+              .kpi-meta-label{
+                display:inline-block;
+                min-width: 86px;
+                color:#868e96;
+              }
+              .kpi-meta-value{
+                font-weight: 600;
+                color:#495057;
+              }
+
+              /* Trend badge */
+              .kpi-badge{
+                border-radius: 999px;
+                padding: .45rem .6rem;
+                font-weight: 700;
+              }
+              .kpi-badge-up{
+                background: rgba(25,135,84,.12);
+                color: #198754;
+              }
+              .kpi-badge-down{
+                background: rgba(220,53,69,.12);
+                color: #dc3545;
+              }
+              .kpi-badge-neutral{
+                background: rgba(108,117,125,.12);
+                color: #6c757d;
+              }
+
+              /* Icon box */
+              .kpi-icon{
+                width: 46px; height: 46px;
+                display:flex; align-items:center; justify-content:center;
+                border-radius: 14px;
+                font-size: 22px;
+                color:#fff;
+                opacity:.95;
+                flex: 0 0 auto;
+              }
+              .kpi-icon-omzet{ background: #f4511e; }
+              .kpi-icon-gross{ background: #1e88e5; }
+              .kpi-icon-office{ background: #43a047; }
+              </style>
+
+
+{{-- =========================
+  Leaderboard Agent (Top 10)
+========================= --}}
+<div class="row g-3 mb-4">
+    <!-- Leaderboard Basis Pendapatan -->
+    <div class="col-12 col-lg-6">
+      <div class="card shadow-sm rounded h-100">
+        <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color:#1e88e5;">
+          <span><i class="bi bi-trophy me-2"></i> Top 10 — Kontributor Pendapatan Kotor Terbesar</span>
+          <span class="small opacity-75">Tahun {{ $year }}</span>
+        </div>
+        <div class="card-body">
+          <div style="position:relative;height:340px;">
+            <canvas id="topBasisChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leaderboard Harga Deal -->
+    <div class="col-12 col-lg-6">
+      <div class="card shadow-sm rounded h-100">
+        <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color:#f4511e;">
+          <span><i class="bi bi-trophy me-2"></i> Top 10 — Kontributor Omzet Tertinggi</span>
+          <span class="small opacity-75">Tahun {{ $year }}</span>
+        </div>
+        <div class="card-body">
+          <div style="position:relative;height:340px;">
+            <canvas id="topDealChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // Data dari Controller
+    const topBasisLabels = @json($topBasisLabels ?? []);
+    const topBasisValues = @json($topBasisValues ?? []);
+    const topDealLabels  = @json($topDealLabels  ?? []);
+    const topDealValues  = @json($topDealValues  ?? []);
+
+    // helper format
+    const toShortIDR = (n) => {
+      n = Number(n || 0);
+      const abs = Math.abs(n);
+      const fmt = (x, d=1) => x.toLocaleString('id-ID', {maximumFractionDigits:d});
+      if (abs >= 1e12) return 'Rp ' + fmt(n/1e12, 2) + ' T';
+      if (abs >= 1e9)  return 'Rp ' + fmt(n/1e9,  2) + ' M';
+      if (abs >= 1e6)  return 'Rp ' + fmt(n/1e6,  1) + ' Jt';
+      if (abs >= 1e3)  return 'Rp ' + fmt(n/1e3,  1) + ' Rb';
+      return 'Rp ' + Math.round(n).toLocaleString('id-ID');
+    };
+    const toFullIDR = (n) => 'Rp ' + Math.round(Number(n || 0)).toLocaleString('id-ID');
+
+    // ===== Chart 1: Top Basis Pendapatan =====
+    const basisCanvas = document.getElementById('topBasisChart');
+    if (basisCanvas && topBasisLabels.length) {
+      new Chart(basisCanvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: topBasisLabels,
+          datasets: [{
+            label: 'Kontribusi',
+            data: topBasisValues,
+            borderWidth: 1,
+            borderRadius: 8,
+            barThickness: 14
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` ${ctx.dataset.label}: ${toFullIDR(ctx.parsed.x)}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: { callback: (v) => toShortIDR(v) }
+            },
+            y: {
+              ticks: { autoSkip: false }
+            }
+          }
+        }
+      });
+    } else if (basisCanvas) {
+      basisCanvas.parentElement.innerHTML = '<div class="text-muted small">Belum ada data basis pendapatan untuk tahun ini.</div>';
+    }
+
+    // ===== Chart 2: Top Harga Deal =====
+    const dealCanvas = document.getElementById('topDealChart');
+    if (dealCanvas && topDealLabels.length) {
+      new Chart(dealCanvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: topDealLabels,
+          datasets: [{
+            label: 'Harga Deal',
+            data: topDealValues,
+            borderWidth: 1,
+            borderRadius: 8,
+            barThickness: 14
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` ${ctx.dataset.label}: ${toFullIDR(ctx.parsed.x)}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: { callback: (v) => toShortIDR(v) }
+            },
+            y: {
+              ticks: { autoSkip: false }
+            }
+          }
+        }
+      });
+    } else if (dealCanvas) {
+      dealCanvas.parentElement.innerHTML = '<div class="text-muted small">Belum ada data harga deal untuk tahun ini.</div>';
+    }
+  });
+  </script>
+
+                <div class="row">
+                    <!-- Grafik Transaksi (kiri) -->
+                    <div class="col-md-6">
+                        <div class="card shadow-sm rounded mb-4">
+                            <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color: #f4511e;">
+                                <span><i class="bi bi-graph-up-arrow me-2"></i> Grafik Transaksi</span>
+                                <select id="chartToggle" class="form-select form-select-sm w-auto">
+                                    <option value="revenue">Pendapatan</option>
+                                    <option value="transactions">Jumlah Transaksi</option>
+                                </select>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="dashboardChart" height="160"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+            <!-- KPI Tahunan (kanan) -->
+            <div class="col-md-6">
+                <div class="card shadow-sm rounded mb-4">
+                  <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color:#43a047;">
+                    <div class="d-flex align-items-center gap-2">
+                      <span><i class="bi bi-bar-chart-line me-2"></i> Kinerja Tahunan</span>
+                      <i class="bi bi-info-circle"
+                         data-bs-toggle="tooltip"
+                         title="Bar = nilai per tahun. Line = tren (naik/turun). Bersih = Σ komisi AG001 + AG006."></i>
+                    </div>
+
+                    <select id="yearlyRange" class="form-select form-select-sm w-auto">
+                      <option value="5" selected>5 Tahun</option>
+                      <option value="10">10 Tahun</option>
+                      <option value="0">Semua</option>
+                    </select>
+                  </div>
+
+                  <div class="card-body">
+                    <div class="chart-fixed">
+                      <canvas id="yearlyKpiChart"></canvas>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <style>
+                .chart-fixed{
+                  position: relative;
+                  height: 340px; /* samakan dengan kira-kira tinggi chart kiri */
+                }
+              </style>
+
+              <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                  // Data dari Controller (wajib ada)
+                  const yearlyLabels = @json($yearlyKpiLabels ?? []);
+                  const yearlyOmzet  = @json($yearlyKpiOmzet  ?? []);
+                  const yearlyGross  = @json($yearlyKpiGross  ?? []);
+                  const yearlyNet    = @json($yearlyKpiNet    ?? []);
+
+                  const $range = document.getElementById('yearlyRange');
+                  const ctx = document.getElementById('yearlyKpiChart')?.getContext('2d');
+                  if (!ctx) return;
+
+                  const toShortIDR = (n) => {
+                    n = Number(n || 0);
+                    const abs = Math.abs(n);
+                    const fmt = (x, d=1) => x.toLocaleString('id-ID', {maximumFractionDigits:d});
+                    if (abs >= 1e12) return 'Rp ' + fmt(n/1e12, 2) + ' T';
+                    if (abs >= 1e9)  return 'Rp ' + fmt(n/1e9,  2) + ' M';
+                    if (abs >= 1e6)  return 'Rp ' + fmt(n/1e6,  1) + ' Jt';
+                    if (abs >= 1e3)  return 'Rp ' + fmt(n/1e3,  1) + ' Rb';
+                    return 'Rp ' + Math.round(n).toLocaleString('id-ID');
+                  };
+
+                  const toFullIDR = (n) => 'Rp ' + Math.round(Number(n || 0)).toLocaleString('id-ID');
+
+                  let yearlyChart = null;
+
+                  function sliceByRange(rangeVal) {
+                    const r = Number(rangeVal || 5);
+                    if (r === 0 || yearlyLabels.length <= r) {
+                      return { labels: yearlyLabels, omzet: yearlyOmzet, gross: yearlyGross, net: yearlyNet };
+                    }
+                    const start = Math.max(0, yearlyLabels.length - r);
+                    return {
+                      labels: yearlyLabels.slice(start),
+                      omzet:  yearlyOmzet.slice(start),
+                      gross:  yearlyGross.slice(start),
+                      net:    yearlyNet.slice(start),
+                    };
+                  }
+
+                  function render(rangeVal) {
+                    const d = sliceByRange(rangeVal);
+
+                    if (yearlyChart) yearlyChart.destroy();
+
+                    yearlyChart = new Chart(ctx, {
+                      type: 'bar',
+                      data: {
+                        labels: d.labels,
+                        datasets: [
+                          // Bars
+                          {
+                            label: 'Omzet',
+                            data: d.omzet,
+                            backgroundColor: 'rgba(244,81,30,0.35)',
+                            borderColor: 'rgba(244,81,30,1)',
+                            borderWidth: 1,
+                            borderRadius: 8,
+                            barThickness: 14,
+                          },
+                          {
+                            label: 'Pendapatan Kotor',
+                            data: d.gross,
+                            backgroundColor: 'rgba(30,136,229,0.30)',
+                            borderColor: 'rgba(30,136,229,1)',
+                            borderWidth: 1,
+                            borderRadius: 8,
+                            barThickness: 14,
+                          },
+                          {
+                            label: 'Pendapatan Bersih',
+                            data: d.net,
+                            backgroundColor: 'rgba(67,160,71,0.30)',
+                            borderColor: 'rgba(67,160,71,1)',
+                            borderWidth: 1,
+                            borderRadius: 8,
+                            barThickness: 14,
+                          },
+
+                          // Lines (trend)
+                          {
+                            type: 'line',
+                            label: 'Tren Omzet',
+                            data: d.omzet,
+                            borderColor: 'rgba(244,81,30,1)',
+                            backgroundColor: 'rgba(244,81,30,0.08)',
+                            borderWidth: 2,
+                            pointRadius: 2,
+                            tension: 0.25,
+                            fill: false,
+                          },
+                          {
+                            type: 'line',
+                            label: 'Tren Kotor',
+                            data: d.gross,
+                            borderColor: 'rgba(30,136,229,1)',
+                            backgroundColor: 'rgba(30,136,229,0.08)',
+                            borderWidth: 2,
+                            pointRadius: 2,
+                            tension: 0.25,
+                            fill: false,
+                          },
+                          {
+                            type: 'line',
+                            label: 'Tren Bersih',
+                            data: d.net,
+                            borderColor: 'rgba(67,160,71,1)',
+                            backgroundColor: 'rgba(67,160,71,0.08)',
+                            borderWidth: 2,
+                            pointRadius: 2,
+                            tension: 0.25,
+                            fill: false,
+                          },
+                        ]
+                      },
+                      options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                          legend: {
+                            position: 'bottom',
+                            labels: { usePointStyle: true, boxWidth: 10, boxHeight: 10 }
+                          },
+                          tooltip: {
+                            callbacks: {
+                              label: function(context) {
+                                const v = context.parsed.y;
+                                return `${context.dataset.label}: ${toFullIDR(v)}`;
+                              }
+                            }
+                          }
+                        },
+                        scales: {
+                          x: {
+                            grid: { display: false },
+                            ticks: { maxRotation: 0 }
+                          },
+                          y: {
+                            beginAtZero: true,
+                            ticks: {
+                              callback: function(value) { return toShortIDR(value); }
+                            }
+                          }
+                        }
+                      }
+                    });
+                  }
+
+                  // initial
+                  render($range?.value || 5);
+
+                  // range change
+                  $range?.addEventListener('change', function () {
+                    render(this.value);
+                  });
+                });
+                </script>
+
+                </div>
+            </div>
+
+            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+            <script>
+            //property types
+
+            document.addEventListener('DOMContentLoaded', function () {
+                // Toggle tombol muncul / hilang
+                const cards = document.querySelectorAll('.property-card');
+                cards.forEach(card => {
+                    card.addEventListener('click', function () {
+                        const btn = this.querySelector('.action-btn');
+                        if (btn.style.display === 'block') {
+                            btn.style.display = 'none';
+                        } else {
+                            document.querySelectorAll('.property-card .action-btn').forEach(otherBtn => {
+                                otherBtn.style.display = 'none';
+                            });
+                            btn.style.display = 'block';
+                        }
+                    });
+                });
+
+                // Kirim AJAX saat klik tombol scrape
+                const scrapeButtons = document.querySelectorAll('.scrape-btn');
+                scrapeButtons.forEach(button => {
+                    button.addEventListener('click', function (e) {
+                        e.stopPropagation(); // Supaya tidak toggle lagi
+                        const tipe = this.dataset.tipe;
+
+                        fetch("{{ route('property.scrape') }}", {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ tipe: tipe })
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert(data.message); // atau pakai toast
+                            } else {
+                                alert("❌ Gagal: " + data.message);
+                            }
+                        })
+                        .catch(err => alert("❌ Error: " + err.message));
+                    });
+                });
+            });
+
+            //ini filter performance
+            document.addEventListener('DOMContentLoaded', function () {
+                const idInput = document.getElementById('filterIdAgent');
+                const namaInput = document.getElementById('filterNama');
+                const statusSelect = document.getElementById('filterStatus');
+                const sortListing = document.getElementById('sortListing');
+                const sortPenjualan = document.getElementById('sortPenjualan');
+                const sortKomisi = document.getElementById('sortKomisi');
+                const tableBody = document.getElementById('performanceBody');
+
+                // ✅ Simpan semua rows original
+                const originalRows = Array.from(tableBody.querySelectorAll('tr'));
+
+                function filterAndSortTable() {
+                    // Ambil ulang dari original rows setiap kali filter/sort
+                    let filteredRows = originalRows.slice();
+
+                    const idFilter = idInput.value.toLowerCase();
+                    const namaFilter = namaInput.value.toLowerCase();
+                    const statusFilter = statusSelect.value;
+
+                    // ✅ Filter
+                    filteredRows = filteredRows.filter(row => {
+                        const id = row.querySelector('.agent-id').textContent.toLowerCase();
+                        const nama = row.querySelector('.agent-nama').textContent.toLowerCase();
+                        const status = row.querySelector('.agent-status').textContent.trim();
+                        return (
+                            (id.includes(idFilter)) &&
+                            (nama.includes(namaFilter)) &&
+                            (statusFilter === "" || status === statusFilter)
+                        );
+                    });
+
+                    // ✅ Sort
+                    if (sortListing.value) {
+                        filteredRows.sort((a, b) => {
+                            const aVal = parseInt(a.querySelector('.agent-listing').textContent);
+                            const bVal = parseInt(b.querySelector('.agent-listing').textContent);
+                            return sortListing.value === 'asc' ? aVal - bVal : bVal - aVal;
+                        });
+                    } else if (sortPenjualan.value) {
+                        filteredRows.sort((a, b) => {
+                            const aVal = parseInt(a.querySelector('.agent-penjualan').textContent);
+                            const bVal = parseInt(b.querySelector('.agent-penjualan').textContent);
+                            return sortPenjualan.value === 'asc' ? aVal - bVal : bVal - aVal;
+                        });
+                    } else if (sortKomisi.value) {
+                        filteredRows.sort((a, b) => {
+                            const aVal = parseFloat(a.querySelector('.agent-komisi').dataset.komisi);
+                            const bVal = parseFloat(b.querySelector('.agent-komisi').dataset.komisi);
+                            return sortKomisi.value === 'asc' ? aVal - bVal : bVal - aVal;
+                        });
+                    }
+
+                    // ✅ Render ulang rows
+                    tableBody.innerHTML = '';
+                    filteredRows.forEach(row => tableBody.appendChild(row));
+                }
+
+                // Event listeners
+                idInput.addEventListener('input', filterAndSortTable);
+                namaInput.addEventListener('input', filterAndSortTable);
+                statusSelect.addEventListener('change', filterAndSortTable);
+                sortListing.addEventListener('change', function() {
+                    // Reset dropdown lain saat pilih ini
+                    sortPenjualan.value = "";
+                    sortKomisi.value = "";
+                    filterAndSortTable();
+                });
+                sortPenjualan.addEventListener('change', function() {
+                    sortListing.value = "";
+                    sortKomisi.value = "";
+                    filterAndSortTable();
+                });
+                sortKomisi.addEventListener('change', function() {
+                    sortListing.value = "";
+                    sortPenjualan.value = "";
+                    filterAndSortTable();
+                });
+            });
+
+            //grafik
+                const labels = {!! json_encode($labels) !!};
+                const revenueData = {!! json_encode($revenue) !!};
+                const transactionData = {!! json_encode($transactions) !!};
+
+                const ctx = document.getElementById('dashboardChart').getContext('2d');
+                let chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Pendapatan',
+                            data: revenueData,
+                            fill: false,
+                            borderColor: '#f15b2a',
+                            tension: 0.3,
+                            pointBackgroundColor: '#f15b2a'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: (value) => 'Rp ' + value.toLocaleString()
+                                }
+                            }
+                        }
+                    }
+                });
+
+                document.getElementById('chartToggle').addEventListener('change', function () {
+                    const mode = this.value;
+                    if (mode === 'revenue') {
+                        chartInstance.data.datasets[0].label = 'Pendapatan';
+                        chartInstance.data.datasets[0].data = revenueData;
+                        chartInstance.data.datasets[0].borderColor = '#f15b2a';
+                        chartInstance.options.scales.y.ticks.callback = (val) => 'Rp ' + val.toLocaleString();
+                    } else {
+                        chartInstance.data.datasets[0].label = 'Jumlah Transaksi';
+                        chartInstance.data.datasets[0].data = transactionData;
+                        chartInstance.data.datasets[0].borderColor = '#0d6efd';
+                        chartInstance.options.scales.y.ticks.callback = (val) => val;
+                    }
+                    chartInstance.update();
+                });
+
+                // Pie Chart Data (dari controller)
+                const statusData = {!! json_encode($statusCounts) !!};
+
+                const pieLabels = Object.keys(statusData);
+                const pieValues = Object.values(statusData);
+
+                const pieColors = [
+                    '#f15b2a', '#007bff', '#28a745', '#ffc107', '#6f42c1', '#dc3545', '#17a2b8'
+                ];
+
+                const pieCtx = document.getElementById('statusPieChart').getContext('2d');
+                new Chart(pieCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: pieLabels,
+                        datasets: [{
+                            data: pieValues,
+                            backgroundColor: pieColors.slice(0, pieLabels.length),
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.raw || 0;
+                                        return `${label}: ${value}`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+            </script>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
 
         <!-- Calendar -->
         <div class="tab-pane fade {{ $tab==='calendar' ? 'show active' : '' }}" id="calendar" role="tabpanel" aria-labelledby="calendar-tab">
@@ -7149,687 +8006,3 @@ function computeSelisihDanRoyalty(){
         </div>
     </div>
 </div>
-
-
-<div class="container-fluid px-3 mt-4">
-    {{-- =========================
-     KPI HEADER + YEAR PICKER
-========================= --}}
-<div class="d-flex align-items-center justify-content-between mb-2">
-    <div>
-      <div class="kpi-section-title">Ringkasan Keuangan</div>
-      <div class="kpi-section-sub">Perbandingan full year: {{ $year }} vs {{ $prevYear }}</div>
-    </div>
-
-    <form method="GET" class="d-flex align-items-center gap-2">
-      {{-- pertahankan query lain (tab, filter, dll) --}}
-      @foreach(request()->except('year') as $k => $v)
-        @if(is_array($v))
-          @foreach($v as $vv)
-            <input type="hidden" name="{{ $k }}[]" value="{{ $vv }}">
-          @endforeach
-        @else
-          <input type="hidden" name="{{ $k }}" value="{{ $v }}">
-        @endif
-      @endforeach
-
-      <span class="text-muted small">Tahun</span>
-      <select name="year" class="form-select form-select-sm kpi-year-select" onchange="this.form.submit()">
-        @foreach(($availableYears ?? range(now()->year, now()->year-5)) as $y)
-          <option value="{{ $y }}" @selected((int)$year === (int)$y)>{{ $y }}</option>
-        @endforeach
-      </select>
-    </form>
-  </div>
-
-  <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    // aman: cuma init kalau bootstrap tooltip tersedia
-    if (window.bootstrap && bootstrap.Tooltip) {
-      document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
-        new bootstrap.Tooltip(el);
-      });
-    }
-  });
-  </script>
-
-  @php
-    $rupiah = function($n){
-      return 'Rp ' . number_format((float)$n, 0, ',', '.');
-    };
-
-    // Format pendek biar gampang dibaca (tetap ada tooltip untuk angka full)
-    $rupiahShort = function($n){
-      $n = (float)$n;
-      $abs = abs($n);
-      if ($abs >= 1e12) return 'Rp ' . number_format($n/1e12, 2, ',', '.') . ' T';
-      if ($abs >= 1e9)  return 'Rp ' . number_format($n/1e9, 2, ',', '.')  . ' M';
-      if ($abs >= 1e6)  return 'Rp ' . number_format($n/1e6, 1, ',', '.')  . ' Jt';
-      if ($abs >= 1e3)  return 'Rp ' . number_format($n/1e3, 1, ',', '.')  . ' Rb';
-      return 'Rp ' . number_format($n, 0, ',', '.');
-    };
-
-    $trend = function($g){
-      if ($g === null) {
-        return '<span class="badge kpi-badge kpi-badge-neutral">YoY: —</span>';
-      }
-      $isUp = $g >= 0;
-      $icon = $isUp ? 'bi-arrow-up-right' : 'bi-arrow-down-right';
-      $cls  = $isUp ? 'kpi-badge-up' : 'kpi-badge-down';
-      return '<span class="badge kpi-badge '.$cls.'"><i class="bi '.$icon.' me-1"></i>YoY '.
-             number_format($g, 1, ',', '.') . '%</span>';
-    };
-
-    $kpis = [
-      [
-        'title' => 'Omzet',
-        'hint'  => "Omzet = Σ harga_deal untuk transaksi pada Tahun {$year}",
-        'value' => $trxSummaryYear->omzet ?? 0,
-        'prev'  => $trxSummaryPrevYear->omzet ?? 0,
-        'all'   => $trxSummaryAll->omzet ?? null,
-        'growth'=> $trxGrowthYoY->omzet ?? null,
-        'icon'  => 'bi-cash-stack',
-        'iconClass' => 'kpi-icon-omzet',
-      ],
-      [
-        'title' => 'Pendapatan Kotor',
-        'hint'  => "Pendapatan Kotor = Σ basis_pendapatan pada Tahun {$year}",
-        'value' => $trxSummaryYear->pendapatan_kotor ?? 0,
-        'prev'  => $trxSummaryPrevYear->pendapatan_kotor ?? 0,
-        'all'   => $trxSummaryAll->pendapatan_kotor ?? null,
-        'growth'=> $trxGrowthYoY->pendapatan_kotor ?? null,
-        'icon'  => 'bi-graph-up',
-        'iconClass' => 'kpi-icon-gross',
-      ],
-      [
-  'title' => 'Pendapatan Bersih (Jason & Lieming)',
-  'hint'  => "Pendapatan Bersih = Σ transaction_commissions.pendapatan untuk AG001 & AG006 pada Tahun {$year}",
-  'value' => $netSummaryYear->pendapatan_bersih ?? 0,
-  'prev'  => $netSummaryPrevYear->pendapatan_bersih ?? 0,
-  'all'   => $netSummaryAll->pendapatan_bersih ?? null,
-  'growth'=> $netGrowthYoY->pendapatan_bersih ?? null,
-  'icon'  => 'bi-people',
-  'iconClass' => 'kpi-icon-office',
-],
-
-    ];
-  @endphp
-
-  <div class="row g-3 mb-3">
-    @foreach($kpis as $kpi)
-      <div class="col-12 col-md-4">
-        <div class="card shadow-sm border-0 kpi-card h-100">
-          <div class="card-body d-flex justify-content-between align-items-start">
-            <div class="me-3 flex-grow-1">
-
-              <div class="d-flex align-items-center gap-2 mb-1">
-                <div class="kpi-title">{{ $kpi['title'] }} <span class="text-muted">(Tahun {{ $year }})</span></div>
-                <i class="bi bi-info-circle kpi-info"
-                   data-bs-toggle="tooltip"
-                   title="{{ $kpi['hint'] }}"></i>
-              </div>
-
-              {{-- nilai utama: tampil pendek, tooltip angka full --}}
-              <div class="kpi-value"
-                   data-bs-toggle="tooltip"
-                   title="{{ $rupiah($kpi['value']) }}">
-                {{ $rupiahShort($kpi['value']) }}
-              </div>
-
-              {{-- meta rapi: Tahun lalu + Akumulasi (kalau ada) --}}
-              <div class="kpi-meta mt-2">
-                <div class="d-flex flex-wrap gap-3">
-                  <div>
-                    <span class="kpi-meta-label">Tahun {{ $prevYear }}</span>
-                    <span class="kpi-meta-value" data-bs-toggle="tooltip" title="{{ $rupiah($kpi['prev']) }}">
-                      {{ $rupiahShort($kpi['prev']) }}
-                    </span>
-                  </div>
-
-                  @if(!is_null($kpi['all']))
-                    <div>
-                      <span class="kpi-meta-label">Akumulasi</span>
-                      <span class="kpi-meta-value" data-bs-toggle="tooltip" title="{{ $rupiah($kpi['all']) }}">
-                        {{ $rupiahShort($kpi['all']) }}
-                      </span>
-                    </div>
-                  @endif
-                </div>
-              </div>
-
-            </div>
-
-            <div class="kpi-icon {{ $kpi['iconClass'] }}">
-              <i class="bi {{ $kpi['icon'] }}"></i>
-            </div>
-          </div>
-
-          <div class="card-footer bg-transparent border-0 pt-0 pb-3 px-3 d-flex align-items-center justify-content-between">
-            {!! $trend($kpi['growth']) !!}
-            <span class="text-muted small">vs {{ $prevYear }}</span>
-          </div>
-        </div>
-      </div>
-    @endforeach
-  </div>
-
-  <style>
-  /* Header section */
-  .kpi-section-title{
-    font-weight: 700;
-    font-size: 1rem;
-    line-height: 1.2;
-  }
-  .kpi-section-sub{
-    color: #6c757d;
-    font-size: .875rem;
-  }
-  .kpi-year-select{
-    min-width: 110px;
-  }
-
-  /* Card */
-  .kpi-card{
-    border-radius: 18px !important;
-  }
-  .kpi-title{
-    font-size: .9rem;
-    font-weight: 600;
-    color: #495057;
-  }
-  .kpi-info{
-    color: #adb5bd;
-    cursor: pointer;
-  }
-  .kpi-value{
-    font-size: 1.75rem;
-    font-weight: 800;
-    letter-spacing: -0.3px;
-    color: #212529;
-  }
-
-  /* Meta */
-  .kpi-meta{
-    font-size: .85rem;
-    color: #6c757d;
-  }
-  .kpi-meta-label{
-    display:inline-block;
-    min-width: 86px;
-    color:#868e96;
-  }
-  .kpi-meta-value{
-    font-weight: 600;
-    color:#495057;
-  }
-
-  /* Trend badge */
-  .kpi-badge{
-    border-radius: 999px;
-    padding: .45rem .6rem;
-    font-weight: 700;
-  }
-  .kpi-badge-up{
-    background: rgba(25,135,84,.12);
-    color: #198754;
-  }
-  .kpi-badge-down{
-    background: rgba(220,53,69,.12);
-    color: #dc3545;
-  }
-  .kpi-badge-neutral{
-    background: rgba(108,117,125,.12);
-    color: #6c757d;
-  }
-
-  /* Icon box */
-  .kpi-icon{
-    width: 46px; height: 46px;
-    display:flex; align-items:center; justify-content:center;
-    border-radius: 14px;
-    font-size: 22px;
-    color:#fff;
-    opacity:.95;
-    flex: 0 0 auto;
-  }
-  .kpi-icon-omzet{ background: #f4511e; }
-  .kpi-icon-gross{ background: #1e88e5; }
-  .kpi-icon-office{ background: #43a047; }
-  </style>
-
-
-    <div class="row">
-        <!-- Grafik Transaksi (kiri) -->
-        <div class="col-md-6">
-            <div class="card shadow-sm rounded mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color: #f4511e;">
-                    <span><i class="bi bi-graph-up-arrow me-2"></i> Grafik Transaksi</span>
-                    <select id="chartToggle" class="form-select form-select-sm w-auto">
-                        <option value="revenue">Pendapatan</option>
-                        <option value="transactions">Jumlah Transaksi</option>
-                    </select>
-                </div>
-                <div class="card-body">
-                    <canvas id="dashboardChart" height="160"></canvas>
-                </div>
-            </div>
-        </div>
-
-<!-- KPI Tahunan (kanan) -->
-<div class="col-md-6">
-    <div class="card shadow-sm rounded mb-4">
-      <div class="card-header d-flex justify-content-between align-items-center text-white" style="background-color:#43a047;">
-        <div class="d-flex align-items-center gap-2">
-          <span><i class="bi bi-bar-chart-line me-2"></i> Kinerja Tahunan</span>
-          <i class="bi bi-info-circle"
-             data-bs-toggle="tooltip"
-             title="Bar = nilai per tahun. Line = tren (naik/turun). Bersih = Σ komisi AG001 + AG006."></i>
-        </div>
-
-        <select id="yearlyRange" class="form-select form-select-sm w-auto">
-          <option value="5" selected>5 Tahun</option>
-          <option value="10">10 Tahun</option>
-          <option value="0">Semua</option>
-        </select>
-      </div>
-
-      <div class="card-body">
-        <div class="chart-fixed">
-          <canvas id="yearlyKpiChart"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
-  <style>
-    .chart-fixed{
-      position: relative;
-      height: 340px; /* samakan dengan kira-kira tinggi chart kiri */
-    }
-  </style>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      // Data dari Controller (wajib ada)
-      const yearlyLabels = @json($yearlyKpiLabels ?? []);
-      const yearlyOmzet  = @json($yearlyKpiOmzet  ?? []);
-      const yearlyGross  = @json($yearlyKpiGross  ?? []);
-      const yearlyNet    = @json($yearlyKpiNet    ?? []);
-
-      const $range = document.getElementById('yearlyRange');
-      const ctx = document.getElementById('yearlyKpiChart')?.getContext('2d');
-      if (!ctx) return;
-
-      const toShortIDR = (n) => {
-        n = Number(n || 0);
-        const abs = Math.abs(n);
-        const fmt = (x, d=1) => x.toLocaleString('id-ID', {maximumFractionDigits:d});
-        if (abs >= 1e12) return 'Rp ' + fmt(n/1e12, 2) + ' T';
-        if (abs >= 1e9)  return 'Rp ' + fmt(n/1e9,  2) + ' M';
-        if (abs >= 1e6)  return 'Rp ' + fmt(n/1e6,  1) + ' Jt';
-        if (abs >= 1e3)  return 'Rp ' + fmt(n/1e3,  1) + ' Rb';
-        return 'Rp ' + Math.round(n).toLocaleString('id-ID');
-      };
-
-      const toFullIDR = (n) => 'Rp ' + Math.round(Number(n || 0)).toLocaleString('id-ID');
-
-      let yearlyChart = null;
-
-      function sliceByRange(rangeVal) {
-        const r = Number(rangeVal || 5);
-        if (r === 0 || yearlyLabels.length <= r) {
-          return { labels: yearlyLabels, omzet: yearlyOmzet, gross: yearlyGross, net: yearlyNet };
-        }
-        const start = Math.max(0, yearlyLabels.length - r);
-        return {
-          labels: yearlyLabels.slice(start),
-          omzet:  yearlyOmzet.slice(start),
-          gross:  yearlyGross.slice(start),
-          net:    yearlyNet.slice(start),
-        };
-      }
-
-      function render(rangeVal) {
-        const d = sliceByRange(rangeVal);
-
-        if (yearlyChart) yearlyChart.destroy();
-
-        yearlyChart = new Chart(ctx, {
-          type: 'bar',
-          data: {
-            labels: d.labels,
-            datasets: [
-              // Bars
-              {
-                label: 'Omzet',
-                data: d.omzet,
-                backgroundColor: 'rgba(244,81,30,0.35)',
-                borderColor: 'rgba(244,81,30,1)',
-                borderWidth: 1,
-                borderRadius: 8,
-                barThickness: 14,
-              },
-              {
-                label: 'Pendapatan Kotor',
-                data: d.gross,
-                backgroundColor: 'rgba(30,136,229,0.30)',
-                borderColor: 'rgba(30,136,229,1)',
-                borderWidth: 1,
-                borderRadius: 8,
-                barThickness: 14,
-              },
-              {
-                label: 'Pendapatan Bersih',
-                data: d.net,
-                backgroundColor: 'rgba(67,160,71,0.30)',
-                borderColor: 'rgba(67,160,71,1)',
-                borderWidth: 1,
-                borderRadius: 8,
-                barThickness: 14,
-              },
-
-              // Lines (trend)
-              {
-                type: 'line',
-                label: 'Tren Omzet',
-                data: d.omzet,
-                borderColor: 'rgba(244,81,30,1)',
-                backgroundColor: 'rgba(244,81,30,0.08)',
-                borderWidth: 2,
-                pointRadius: 2,
-                tension: 0.25,
-                fill: false,
-              },
-              {
-                type: 'line',
-                label: 'Tren Kotor',
-                data: d.gross,
-                borderColor: 'rgba(30,136,229,1)',
-                backgroundColor: 'rgba(30,136,229,0.08)',
-                borderWidth: 2,
-                pointRadius: 2,
-                tension: 0.25,
-                fill: false,
-              },
-              {
-                type: 'line',
-                label: 'Tren Bersih',
-                data: d.net,
-                borderColor: 'rgba(67,160,71,1)',
-                backgroundColor: 'rgba(67,160,71,0.08)',
-                borderWidth: 2,
-                pointRadius: 2,
-                tension: 0.25,
-                fill: false,
-              },
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-              legend: {
-                position: 'bottom',
-                labels: { usePointStyle: true, boxWidth: 10, boxHeight: 10 }
-              },
-              tooltip: {
-                callbacks: {
-                  label: function(context) {
-                    const v = context.parsed.y;
-                    return `${context.dataset.label}: ${toFullIDR(v)}`;
-                  }
-                }
-              }
-            },
-            scales: {
-              x: {
-                grid: { display: false },
-                ticks: { maxRotation: 0 }
-              },
-              y: {
-                beginAtZero: true,
-                ticks: {
-                  callback: function(value) { return toShortIDR(value); }
-                }
-              }
-            }
-          }
-        });
-      }
-
-      // initial
-      render($range?.value || 5);
-
-      // range change
-      $range?.addEventListener('change', function () {
-        render(this.value);
-      });
-    });
-    </script>
-
-    </div>
-</div>
-
-
-
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<script>
-//property types
-
-document.addEventListener('DOMContentLoaded', function () {
-    // Toggle tombol muncul / hilang
-    const cards = document.querySelectorAll('.property-card');
-    cards.forEach(card => {
-        card.addEventListener('click', function () {
-            const btn = this.querySelector('.action-btn');
-            if (btn.style.display === 'block') {
-                btn.style.display = 'none';
-            } else {
-                document.querySelectorAll('.property-card .action-btn').forEach(otherBtn => {
-                    otherBtn.style.display = 'none';
-                });
-                btn.style.display = 'block';
-            }
-        });
-    });
-
-    // Kirim AJAX saat klik tombol scrape
-    const scrapeButtons = document.querySelectorAll('.scrape-btn');
-    scrapeButtons.forEach(button => {
-        button.addEventListener('click', function (e) {
-            e.stopPropagation(); // Supaya tidak toggle lagi
-            const tipe = this.dataset.tipe;
-
-            fetch("{{ route('property.scrape') }}", {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ tipe: tipe })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    alert(data.message); // atau pakai toast
-                } else {
-                    alert("❌ Gagal: " + data.message);
-                }
-            })
-            .catch(err => alert("❌ Error: " + err.message));
-        });
-    });
-});
-
-//ini filter performance
-document.addEventListener('DOMContentLoaded', function () {
-    const idInput = document.getElementById('filterIdAgent');
-    const namaInput = document.getElementById('filterNama');
-    const statusSelect = document.getElementById('filterStatus');
-    const sortListing = document.getElementById('sortListing');
-    const sortPenjualan = document.getElementById('sortPenjualan');
-    const sortKomisi = document.getElementById('sortKomisi');
-    const tableBody = document.getElementById('performanceBody');
-
-    // ✅ Simpan semua rows original
-    const originalRows = Array.from(tableBody.querySelectorAll('tr'));
-
-    function filterAndSortTable() {
-        // Ambil ulang dari original rows setiap kali filter/sort
-        let filteredRows = originalRows.slice();
-
-        const idFilter = idInput.value.toLowerCase();
-        const namaFilter = namaInput.value.toLowerCase();
-        const statusFilter = statusSelect.value;
-
-        // ✅ Filter
-        filteredRows = filteredRows.filter(row => {
-            const id = row.querySelector('.agent-id').textContent.toLowerCase();
-            const nama = row.querySelector('.agent-nama').textContent.toLowerCase();
-            const status = row.querySelector('.agent-status').textContent.trim();
-            return (
-                (id.includes(idFilter)) &&
-                (nama.includes(namaFilter)) &&
-                (statusFilter === "" || status === statusFilter)
-            );
-        });
-
-        // ✅ Sort
-        if (sortListing.value) {
-            filteredRows.sort((a, b) => {
-                const aVal = parseInt(a.querySelector('.agent-listing').textContent);
-                const bVal = parseInt(b.querySelector('.agent-listing').textContent);
-                return sortListing.value === 'asc' ? aVal - bVal : bVal - aVal;
-            });
-        } else if (sortPenjualan.value) {
-            filteredRows.sort((a, b) => {
-                const aVal = parseInt(a.querySelector('.agent-penjualan').textContent);
-                const bVal = parseInt(b.querySelector('.agent-penjualan').textContent);
-                return sortPenjualan.value === 'asc' ? aVal - bVal : bVal - aVal;
-            });
-        } else if (sortKomisi.value) {
-            filteredRows.sort((a, b) => {
-                const aVal = parseFloat(a.querySelector('.agent-komisi').dataset.komisi);
-                const bVal = parseFloat(b.querySelector('.agent-komisi').dataset.komisi);
-                return sortKomisi.value === 'asc' ? aVal - bVal : bVal - aVal;
-            });
-        }
-
-        // ✅ Render ulang rows
-        tableBody.innerHTML = '';
-        filteredRows.forEach(row => tableBody.appendChild(row));
-    }
-
-    // Event listeners
-    idInput.addEventListener('input', filterAndSortTable);
-    namaInput.addEventListener('input', filterAndSortTable);
-    statusSelect.addEventListener('change', filterAndSortTable);
-    sortListing.addEventListener('change', function() {
-        // Reset dropdown lain saat pilih ini
-        sortPenjualan.value = "";
-        sortKomisi.value = "";
-        filterAndSortTable();
-    });
-    sortPenjualan.addEventListener('change', function() {
-        sortListing.value = "";
-        sortKomisi.value = "";
-        filterAndSortTable();
-    });
-    sortKomisi.addEventListener('change', function() {
-        sortListing.value = "";
-        sortPenjualan.value = "";
-        filterAndSortTable();
-    });
-});
-
-//grafik
-    const labels = {!! json_encode($labels) !!};
-    const revenueData = {!! json_encode($revenue) !!};
-    const transactionData = {!! json_encode($transactions) !!};
-
-    const ctx = document.getElementById('dashboardChart').getContext('2d');
-    let chartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Pendapatan',
-                data: revenueData,
-                fill: false,
-                borderColor: '#f15b2a',
-                tension: 0.3,
-                pointBackgroundColor: '#f15b2a'
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: (value) => 'Rp ' + value.toLocaleString()
-                    }
-                }
-            }
-        }
-    });
-
-    document.getElementById('chartToggle').addEventListener('change', function () {
-        const mode = this.value;
-        if (mode === 'revenue') {
-            chartInstance.data.datasets[0].label = 'Pendapatan';
-            chartInstance.data.datasets[0].data = revenueData;
-            chartInstance.data.datasets[0].borderColor = '#f15b2a';
-            chartInstance.options.scales.y.ticks.callback = (val) => 'Rp ' + val.toLocaleString();
-        } else {
-            chartInstance.data.datasets[0].label = 'Jumlah Transaksi';
-            chartInstance.data.datasets[0].data = transactionData;
-            chartInstance.data.datasets[0].borderColor = '#0d6efd';
-            chartInstance.options.scales.y.ticks.callback = (val) => val;
-        }
-        chartInstance.update();
-    });
-
-    // Pie Chart Data (dari controller)
-    const statusData = {!! json_encode($statusCounts) !!};
-
-    const pieLabels = Object.keys(statusData);
-    const pieValues = Object.values(statusData);
-
-    const pieColors = [
-        '#f15b2a', '#007bff', '#28a745', '#ffc107', '#6f42c1', '#dc3545', '#17a2b8'
-    ];
-
-    const pieCtx = document.getElementById('statusPieChart').getContext('2d');
-    new Chart(pieCtx, {
-        type: 'pie',
-        data: {
-            labels: pieLabels,
-            datasets: [{
-                data: pieValues,
-                backgroundColor: pieColors.slice(0, pieLabels.length),
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const label = context.label || '';
-                            const value = context.raw || 0;
-                            return `${label}: ${value}`;
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-</script>

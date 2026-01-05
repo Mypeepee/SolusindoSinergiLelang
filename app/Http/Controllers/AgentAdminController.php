@@ -1253,6 +1253,53 @@ $yearlyKpiOmzet = $years->map(fn($y) => (float)($baseMap[$y]->omzet ?? 0))->all(
 $yearlyKpiGross = $years->map(fn($y) => (float)($baseMap[$y]->gross ?? 0))->all();
 $yearlyKpiNet   = $years->map(fn($y) => (float)($netYearlyMap[$y] ?? 0))->all();
 
+// ambil tanggal transaksi paling kecil
+$minDate = Transaction::min('tanggal_transaksi');
+$minYear = $minDate ? Carbon::parse($minDate)->year : now()->year;
+
+$maxYear = now()->year;
+
+// year aktif (dari dropdown)
+$year = (int) request('year', $maxYear);
+
+// list tahun untuk dropdown (desc)
+
+
+// Map nama agent (kalau kamu sudah punya $performanceAgents seperti sebelumnya)
+$agentNameMap = $performanceAgents->pluck('nama','id_agent'); // id_agent => nama
+
+// 1) Top 10 basis pendapatan per agent (SUM basis_pendapatan)
+$topBasisAgents = Transaction::query()
+  ->select('id_agent', DB::raw('SUM(basis_pendapatan) as total_basis'))
+  ->whereYear('tanggal_transaksi', $year)
+  ->groupBy('id_agent')
+  ->orderByDesc('total_basis')
+  ->limit(10)
+  ->get();
+
+$topBasisLabels = $topBasisAgents->map(function($r) use ($agentNameMap){
+  $nm = $agentNameMap[$r->id_agent] ?? $r->id_agent;
+  return $nm.' ('.$r->id_agent.')';
+})->values();
+
+$topBasisValues = $topBasisAgents->pluck('total_basis')->values();
+
+// 2) Top 10 harga deal per agent (SUM harga_deal)
+$topDealAgents = Transaction::query()
+  ->select('id_agent', DB::raw('SUM(harga_deal) as total_deal'))
+  ->whereYear('tanggal_transaksi', $year)
+  ->groupBy('id_agent')
+  ->orderByDesc('total_deal')
+  ->limit(10)
+  ->get();
+
+$topDealLabels = $topDealAgents->map(function($r) use ($agentNameMap){
+  $nm = $agentNameMap[$r->id_agent] ?? $r->id_agent;
+  return $nm.' ('.$r->id_agent.')';
+})->values();
+
+$topDealValues = $topDealAgents->pluck('total_deal')->values();
+
         // ---------- BLOK EXPORT (bersih, tanpa join tabel fiktif) ----------
         $exportQuery = \App\Models\Property::from('property as p')
             ->select([
@@ -1390,6 +1437,10 @@ $yearlyKpiNet   = $years->map(fn($y) => (float)($netYearlyMap[$y] ?? 0))->all();
             'trxGrowthYoY'       => $trxGrowthYoY,
             'trxSummaryAll'      => $trxSummaryAll, // opsional
 
+            'topBasisLabels' => $topBasisLabels,
+            'topBasisValues' => $topBasisValues,
+            'topDealLabels'  => $topDealLabels,
+            'topDealValues'  => $topDealValues,
 
             'copicAgentsMap'      => $copicAgentsMap,
         ]);
