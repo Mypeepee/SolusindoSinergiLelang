@@ -21,7 +21,7 @@ use App\Http\Controllers\propertydetailController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\WhatsappController;
 
-
+use App\Http\Controllers\AgentAnalitikController;
 
 Route::get('/', [HomeController::class, 'Home'])->name('home');
 
@@ -330,3 +330,30 @@ Route::post('/dashboard/owner/transaksi/update-status', [AgentAdminController::c
 
     Route::get('/dashboard/owner/transaksi/history', [AgentAdminController::class, 'transaksiPropertyHistory'])
     ->name('dashboard.owner.transaksi.history');
+
+
+
+
+    Route::prefix('dashboard/owner/analitik/agent')
+    ->name('dashboard.owner.analitik.agent.')
+    ->group(function () {
+
+      Route::get('{agentId}', [AgentAnalitikController::class, 'show'])
+        ->name('show');
+
+      Route::get('{agentId}/widgets/kpis', [AgentAnalitikController::class, 'widgetsKpis'])
+        ->name('widgets.kpis');
+
+      Route::get('{agentId}/widgets/trend', [AgentAnalitikController::class, 'widgetsTrend'])
+        ->name('widgets.trend');
+
+      Route::get('{agentId}/widgets/roles', [AgentAnalitikController::class, 'widgetsRoles'])
+        ->name('widgets.roles');
+
+      Route::get('{agentId}/widgets/transactions', [AgentAnalitikController::class, 'widgetsTransactions'])
+        ->name('widgets.transactions');
+  });
+
+  Route::get('/dashboard/owner/analitik/agent/{id_agent}', [AgentAnalitikController::class, 'show'])
+  ->name('dashboard.owner.analitik.agent.show');
+

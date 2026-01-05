@@ -472,14 +472,8 @@
                     <tr>
                       <th>#</th>
                       <th>ID Agent</th>
-
                       <th>Nama</th>
-
-                      {{-- NEW: Kolom Upline --}}
-                      <th>Upline</th>
-
                       <th>Status</th>
-
                       {{-- NEW: Header sort klik (arrow kiri) --}}
                       <th>
                         <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 js-sort"
@@ -520,6 +514,8 @@
                           <span>Referral Click</span>
                         </button>
                       </th>
+
+                      <th class="text-end">Detail</th>
                     </tr>
                   </thead>
 
@@ -531,11 +527,6 @@
                         <td class="agent-id">{{ $agent->id_agent }}</td>
 
                         <td class="agent-nama">{{ $agent->nama }}</td>
-
-                        {{-- NEW: isi upline nama --}}
-                        <td class="agent-upline">
-                          {{ $agent->upline_nama ?? '-' }}
-                        </td>
 
                         <td class="agent-status">
                           <div class="dropdown d-inline-block position-relative" data-id-account="{{ $agent->id_account }}">
@@ -673,6 +664,14 @@
                         <td class="agent-share-listing text-center">
                           {{ (int) ($agent->share_listing ?? 0) }}
                         </td>
+
+                        <td class="text-end">
+                            <a href="{{ route('dashboard.owner.analitik.agent.show', ['id_agent' => $agent->id_agent]) }}"
+                               class="btn btn-sm btn-outline-primary rounded-pill">
+                              Detail
+                            </a>
+                          </td>
+
                       </tr>
                     @empty
                       <tr><td colspan="10" class="text-center text-muted py-4">Tidak ada data agent.</td></tr>
